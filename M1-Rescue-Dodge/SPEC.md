@@ -114,7 +114,7 @@ Player mở game (pre-roll ad tự chạy)
 
 ### 4.1 Gameplay (mô tả)
 - **Nhân vật**: 1 chú mèo (sprite tĩnh, hoạt ảnh lật/xoay bằng tween — KHÔNG sprite-sheet nhiều khung).
-- **Cơ chế**: track chạy 3 lane (hoặc dọc) — ong bay tới, player tap để mèo đổi lane tránh ong. Né thành công → +điểm; trúng ong → game over.
+- **Cơ chế & điều khiển**: track **3 lane dọc** — ong bay tới, player **chạm/click về phía lane muốn né** → mèo di chuyển **tới lane gần vị trí chạm/click nhất** (đi theo từng lane, tween mượt ~120ms; trùng lane hiện tại → không di chuyển khỏi giật). Hỗ trợ **bàn phím ↑/↓ hoặc W/S** để chuyển lane (desktop). Né thành công → +1 điểm; trúng ong → game over.
 - **Difficulty curve (BẮT BUỘC):** 10 giây đầu tốc độ ong THẤP (giữ chân người mới, không bỏ sớm); sau đó tốc độ & mật độ spawn tăng liên tục theo thời gian + **nhảy bậc** ở mỗi milestone Level (BR-17).
 - **Progression / Level-up (BR-14):** cứ mỗi **10 điểm** → lên 1 Level (KHÔNG reset). Ở mỗi Level: đổi art-palette nền (cảnh mới) + tốc độ/spawn ong tăng bậc + popup "Cấp {n}" 1.5s (không chặn gameplay, không ad). Ít nhất **3 palette nền** (level 1–3+ vòng lại) — asset trong DATA-MODEL.
 - **Combo streak (BR-15):** né liên tiếp không chạm — mỗi 5 lần né liên tiếp cộng thưởng +5 (popup hiệu ứng). Reset combo khi chạm ong.
@@ -140,7 +140,7 @@ Player mở game (pre-roll ad tự chạy)
 
 ### 4.3 Copy (tiếng Việt — đối tượng 13+ quốc tế, dùng EN fallback)
 - Start: **"Chơi"** / EN "Play"
-- Tutorial: **"Giữ để né ong"** / EN "Hold to dodge bees"
+- Tutorial: **"Chạm để né ong"** / EN "Tap to dodge bees"
 - Game Over: **"Chơi lại"** / EN "Play Again" · **"Tiếp tục (xem ad)"** / EN "Continue (watch ad)"
 - Level-up: **"Cấp 2!"** / EN "Level 2!"
 - Kỷ lục: **"KỶ LỤC MỚI!"** / EN "NEW RECORD!"

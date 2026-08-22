@@ -11,7 +11,8 @@ export class TutorialScene extends Phaser.Scene {
 
     // Bong bóng tutorial (DESIGN-SPEC 3.4) — data-testid=tutorial-text
     const padX = sp[6], padY = sp[4];
-    const t = this.add.text(width / 2, height * 0.35, 'Giữ để né ong', fontStyle(type.body, color.textPrimary))
+    // SPEC 4.3: copy "Chạm để né ong" / EN "Tap to dodge bees" — cơ chế 1 chạm, KHÔNG giữ
+    const t = this.add.text(width / 2, height * 0.35, 'Chạm để né ong', fontStyle(type.body, color.textPrimary))
       .setOrigin(0.5).setDepth(z.tutorial + 1);
     t.setData('testid', 'tutorial-text');
     const tw = t.width + padX * 2, th = t.height + padY * 2;
