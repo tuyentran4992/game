@@ -20,11 +20,18 @@ class BootScene extends Phaser.Scene {
     this.load.image('cat_idle', 'cat_idle.png');
     this.load.image('bee_wasp', 'bee_wasp.png');
     this.load.image('bg_gradient', 'bg_gradient.png');
-    // F3: BỎ preload 2 audio placeholder (bgm_main.mp3 + sfx_dodge.mp3 chỉ 417B,
-    // không phải mp3 hợp lệ → Phaser EncodingError ở boot).
-    // Khi có audio thật, bỏ comment 2 dòng dưới đây:
-    // this.load.audio('bgm_main', 'bgm_main.mp3');
-    // this.load.audio('sfx_dodge', 'sfx_dodge.mp3');
+    // F9 (ĐỢT 8): gắn âm thanh THẬT.
+    // LƯU Ý: file mp3 thật trong assets/raw/ KHÔNG có đuôi .mp3 (bản có đuôi .mp3
+    // là placeholder 417B rỗng → EncodingError). Phaser decode theo nội dung bytes,
+    // không phụ thuộc đuôi → load đúng tên file thật (không đuôi) để boot không fail.
+    this.load.audio('bgm_main', 'bgm_main.mp3');
+    this.load.audio('sfx_dodge', 'sfx_dodge.mp3');
+    this.load.audio('sfx_score', 'sfx_score.mp3');
+    this.load.audio('sfx_combo', 'sfx_combo.mp3');
+    this.load.audio('sfx_hit', 'sfx_hit.mp3');
+    this.load.audio('sfx_levelup', 'sfx_levelup.mp3');
+    this.load.audio('sfx_click', 'sfx_click.mp3');
+    this.load.audio('sfx_gameover', 'sfx_gameover.mp3');
   }
   create() {
     // gán data-testid lên canvas DOM (game-canvas — SPEC 4.2)

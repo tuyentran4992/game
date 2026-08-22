@@ -80,7 +80,25 @@ export class GameplayScene extends Phaser.Scene {
     this.cameras.main.fadeIn(dur.scene, 0, 0, 0);
     this.cameras.main.once('camerafadeincomplete', () => { this.running = true; });
 
+    // F9 (ĐỢT 8): BGM loop khi vào Gameplay (setLoop true, volume 0.3).
+    // Tôn trọng mute toàn cục (game.sound.mute do sdk.onAudioEnabledChange set).
+    this.startBgm();
+
     this.scale.on('resize', (g: Phaser.Structs.Size) => this.onResize(g));
+  }
+
+  // F9: phát BGM loop (idempotent — không overlap nếu đang phát).
+  private startBgm() {
+    const bgm = this.sound.get('bgm_main');
+    if (!bgm || !bgm.isPlaying) {
+      this.sound.play('bgm_main', { loop: true, volume: 0.3 });
+    }
+  }
+
+  // F9: helper phát sfx tôn trọng mute phiên + chỉ khi audio đã preload (tránh warning).
+  private playSfx(key: string, volume = 0.35) {
+    if (this.muted) return;
+    if (this.cache.audio.exists(key)) this.sound.play(key, { volume });
   }
 
   private drawLevelBg(level: number) {
@@ -169,10 +187,11 @@ export class GameplayScene extends Phaser.Scene {
   private onDodge(_bee: Bee) {
     const r = ctx.engine.registerDodge();
     this.updateHud();
+    // F9 (ĐỢT 8): né → sfx_dodge; +điểm mỗi lần né → sfx_score.
+    this.playSfx('sfx_dodge', 0.4);
+    this.playSfx('sfx_score', 0.3);
     if (r.comboTriggered) this.showComboPopup();
     if (r.levelUp) this.onLevelUp(r.newLevel);
-    // F3: chỉ play sfx khi audio thật đã được preload (tránh warning khi chưa có asset)
-    if (!this.muted && this.cache.audio.exists('sfx_dodge')) this.sound.play('sfx_dodge', { volume: 0.4 });
   }
 
   private onLevelUp(level: number) {
@@ -184,6 +203,8 @@ export class GameplayScene extends Phaser.Scene {
       targets: this.levelPopup, alpha: 1, scale: { from: 0.6, to: 1 }, duration: 200, ease: 'back.out',
       onComplete: () => this.tweens.add({ targets: this.levelPopup, alpha: 0, duration: 300, delay: 1000, ease: 'cubic.in' }),
     });
+    // F9: level up → sfx_levelup
+    this.playSfx('sfx_levelup', 0.4);
   }
 
   private showComboPopup() {
@@ -192,6 +213,8 @@ export class GameplayScene extends Phaser.Scene {
     this.tweens.add({
       targets: this.comboPopup, y: this.cat.y - 120, alpha: 0, scale: 1.25, duration: 700, ease: 'quad.out',
     });
+    // F9: combo +5 → sfx_combo
+    this.playSfx('sfx_combo', 0.4);
   }
 
   private showRecordPopup() {
@@ -217,6 +240,9 @@ export class GameplayScene extends Phaser.Scene {
   private async onHit() {
     this.running = false;
     ctx.engine.registerHit();
+    // F9: va chạm ong → sfx_hit; dừng BGM khi kết thúc (Game Over sẽ phát sfx_gameover).
+    this.playSfx('sfx_hit', 0.4);
+    this.sound.stopByKey('bgm_main');
     this.cameras.main.shake(160, 0.01);
     this.tweens.add({ targets: this.cat, angle: 30, y: this.cat.y + 90, duration: 350, ease: 'cubic.out' });
     const end = ctx.engine.endGame();

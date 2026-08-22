@@ -50,4 +50,26 @@
   - Title "GAME OVER": font `type.h1`, màu cân đối (không chói — dùng `color.danger` hoặc `color.text.primary` có bóng nhẹ hợp nền).
   - Giữ data-testid `retry-btn`, `continue-btn`, `final-score`, `best-score`.
   - Nếu nền 2 mảng màu phẳng nhìn sơ sài: thêm chút chi tiết rẻ tiền (vd vạch lane đứt như §2.3, vài bụi cỏ/chấm trang trí) không phức tạp hóa.
+
+---
+
+> **PHẢN HỒI MỚI TỪ ANH Tuyền (2026-08-22) — Đợt 7-8:**
+
+### ĐỢT 7 — BỎ GẠCH CHÂN NÚT (F8, 🔴)
+- **F8. Nút "Tiếp tục (xem ad)" bị GẠCH CHÂN (gạch đít) dưới chữ** (đường gạch cam cong). Anh không thích. Bỏ hẳn underline/gạch chân ở MỌI nút (btn-primary, btn-ghost). Kiểm tra `drawButton`/`drawPanel` trong ui.ts — đừng vẽ underline dưới text nút.
+
+### ĐỢT 8 — GẮN ÂM THANH THẬT (F9, 🔴 — anh báo "chưa có âm thanh")
+- **F9. Hiện game CÂM (audio placeholder đã bỏ).** Đã sinh file mp3 THẬT trong `game/public/raw/` + `assets/raw/`: `sfx_dodge.mp3, sfx_score.mp3, sfx_combo.mp3, sfx_hit.mp3, sfx_levelup.mp3, sfx_click.mp3, sfx_gameover.mp3, bgm_main.mp3`. Yêu cầu:
+  - Trong `main.ts` BootScene.preload: **bỏ comment 2 dòng** `this.load.audio('bgm_main', 'bgm_main.mp3')` + `this.load.audio('sfx_dodge', 'sfx_dodge.mp3')`, VÀ thêm load các sfx còn lại (`sfx_score`, `sfx_combo`, `sfx_hit`, `sfx_levelup`, `sfx_click`, `sfx_gameover`). baseURL `'./raw/'` đã đúng.
+  - Wire `this.sound.play(...)` đúng sự kiện (volume nhỏ, ~0.3-0.4):
+    - né ong thành công → `sfx_dodge`
+    - được điểm (+1) → `sfx_score` (mỗi lần né)
+    - combo +5 → `sfx_combo`
+    - chạm ong / va chạm → `sfx_hit`
+    - level up (đổi cảnh) → `sfx_levelup`
+    - bấm nút (Start/Chơi lại/Tiếp tục/ghost) → `sfx_click`
+    - hiện màn game over → `sfx_gameover`
+  - **BGM**: phát `bgm_main` loop (setLoop true) khi vào Gameplay (hoặc Start) — dừng/silence ở game over; tôn trọng mute (sdk.isAudioEnabled / sdk onAudioEnabledChange đã có).
+  - Đảm bảo KHÔNG còn `EncodingError` (mp3 thật decode được). Boot không vì audio mà fail.
+- Điều kiện xong: `npm test` pass, `npm run build` OK, `npx tsc --noEmit` không lỗi mới.
   - ✅ ĐÃ SỬA (2026-08-22, DEV): `GameOver.ts` + `ui.ts` — panel vẽ bằng token (`color.surface`, `color.primary` 4px, `shadow.panel`, `radius.lg`); slide-up 48px → 0 với `dur.slow` + `cubic.out`. Title `type.h1` `color.danger` + `setShadow` bóng nhẹ (`color.shadow`). Nút "Chơi lại" = `drawButton` (btn-primary, đã đúng §3.1). Nút "Tiếp tục" = `drawButton` variant `ghost` (surface + viền primary 4px + chữ `color.textPrimary`), `textType: type.h2`, width 320. Giữ data-testid retry-btn/continue-btn/final-score/best-score. Thêm `drawDecor`: bụi cỏ tam giác dọc mép cỏ + vạch lane đứt (§2.3) làm chi tiết nền. `drawButton` mở rộng nhận `textType` (mặc định `type.display`), không break caller cũ.

@@ -13,7 +13,6 @@ export function drawButton(
   const textType = opts.textType ?? type.display;
   const g = scene.add.graphics();
   const fill = variant === 'primary' ? color.primary : color.surface;
-  const border = variant === 'primary' ? color.primaryDark : color.primary;
   const txtColor = variant === 'primary' ? color.textOnAccent : color.textPrimary;
   // SHADOW vẽ TRƯỚC (đằng sau nút) để không đè lên fill — fix F1 (nút bị tối/đen)
   g.fillStyle(toColor(color.shadow), shadow.btn.alpha);
@@ -21,9 +20,12 @@ export function drawButton(
   // FILL chính (token color.primary cam) — DESIGN-SPEC §3.1 btn-primary
   g.fillStyle(toColor(fill), 1);
   g.fillRoundedRect(-width / 2, -height / 2, width, height, radius.lg);
-  // viền dưới đậm 6px (nút nổi chibi) — color.primary.dark
-  g.fillStyle(toColor(border), 1);
-  g.fillRect(-width / 2, height / 2 - 6, width, 6);
+  // F8 (ĐỢT 7): BỎ gạch chân (viền dưới 6px) ở MỌI nút theo QA-FIXES.
+  // btn-ghost: vẽ viền full 4px primary (DESIGN-SPEC §3.1); btn-primary: pill cam + shadow.
+  if (variant === 'ghost') {
+    g.lineStyle(4, toColor(color.primary), 1);
+    g.strokeRoundedRect(-width / 2, -height / 2, width, height, radius.lg);
+  }
   g.setDepth(z.panel);
   const t = scene.add.text(0, 0, text, fontStyle(textType, txtColor)).setOrigin(0.5).setDepth(z.panel + 1);
   const container = scene.add.container(x, y, [g, t]).setSize(width, height).setDepth(z.panel);
@@ -33,10 +35,14 @@ export function drawButton(
     container.setData('testid', opts.testid);
   }
   container.setInteractive({ useHandCursor: true });
+  // F9 (ĐỢT 8): sfx_click khi bấm nút (volume ~0.35, tôn trọng mute toàn cục).
+  const playClick = () => {
+    if (scene.cache.audio.exists('sfx_click')) scene.sound.play('sfx_click', { volume: 0.35 });
+  };
   // hover/active states (DESIGN-SPEC 5.9/5.10)
   container.on('pointerover', () => scene.tweens.add({ targets: container, scale: 1.03, duration: dur.tn, ease: 'quad.out' }));
   container.on('pointerout', () => scene.tweens.add({ targets: container, scale: 1, duration: dur.tn, ease: 'quad.out' }));
-  container.on('pointerdown', () => scene.tweens.add({ targets: container, scale: 0.96, duration: dur.fast, ease: 'quad.in' }));
+  container.on('pointerdown', () => { playClick(); scene.tweens.add({ targets: container, scale: 0.96, duration: dur.fast, ease: 'quad.in' }); });
   container.on('pointerup', () => scene.tweens.add({ targets: container, scale: 1.03, duration: dur.tn, ease: 'quad.out' }));
   return { container, textObj: t };
 }

@@ -13,6 +13,10 @@ export class GameOverScene extends Phaser.Scene {
     const best = data?.bestScore ?? 0;
     const isNewRecord = data?.isNewRecord ?? false;
 
+    // F9 (ĐỢT 8): hiện màn Game Over → sfx_gameover; đảm bảo BGM đã dừng.
+    this.sound.stopByKey('bgm_main');
+    if (this.cache.audio.exists('sfx_gameover')) this.sound.play('sfx_gameover', { volume: 0.4 });
+
     // Nền + chi tiết rẻ tiền (F7: bụi cỏ + vạch lane đứt §2.3)
     drawGradientBg(this, color.bg.top, color.bg.bottom, color.grass);
     this.drawDecor(width, height);
