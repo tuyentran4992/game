@@ -1,0 +1,22 @@
+{
+  "title": "Cuu Meo - Bee Dodge",
+  "short_desc": "Một chạm để né ong, cứu chú mèo. Điểm tăng dần theo thời gian và mỗi lần né thành công!",
+  "genre": [
+    "Hyper Casual",
+    "Arcade"
+  ],
+  "theme": "flat pastel cartoon",
+  "version": "0.1.0",
+  "publisher": {
+    "name": "ExceltApp Games",
+    "contact_email": "games@exceltoapp.vn"
+  },
+  "thumbnails": {
+    "1:1": "thumbnail_1x1.png",
+    "5:7": "thumbnail_5x7.png",
+    "16:9": "thumbnail_16x9.png"
+  },
+  "preview_video": {
+    "16:9": "preview_16x9.mp4"
+  }
+}

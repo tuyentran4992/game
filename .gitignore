@@ -1,0 +1,27 @@
+# dependencies
+node_modules/
+
+# build artifacts
+/game/dist/
+/build/
+/dist/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.Python
+
+# env & secrets
+.env
+*.env
+*.log
+
+# editor / OS
+.vscode/
+.idea/
+.DS_Store
+
+# QA / cache temp
+cache/
+*.bak

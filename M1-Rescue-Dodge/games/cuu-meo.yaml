@@ -1,0 +1,111 @@
+name: cuu-meo
+version: 0.1.0
+
+metadata:
+  title: "Cuu Meo - Bee Dodge"
+  short_desc: "Một chạm để né ong, cứu chú mèo. Điểm tăng dần theo thời gian và mỗi lần né thành công!"
+  genre: ["Hyper Casual", "Arcade"]
+  theme: "flat pastel cartoon"
+  style: "warm cute, đơn giản, nền gradient tối thiểu"
+  flag_movie: false
+
+assets:
+  - key: cat_idle
+    type: png
+    description: "Nhân vật mèo tĩnh, nền trong suốt, ~512x512"
+    _size_est_kb: 80
+    _usage_scenes: [Gameplay, GameOver]
+  - key: bee_wasp
+    type: png
+    description: "Chướng ngại (ong) nền trong suốt, ~256x256"
+    _size_est_kb: 40
+    _usage_scenes: [Gameplay, Tutorial]
+  - key: bg_gradient
+    type: png
+    description: "Nền gradient tĩnh màn Start/Tutorial"
+    _size_est_kb: 30
+    _usage_scenes: [Start, Tutorial]
+  - key: bg_pal_morning
+    type: png
+    description: "Nền cảnh Level 1 (palette pal_morning)"
+    _size_est_kb: 40
+    _usage_scenes: [Gameplay]
+  - key: bg_pal_sunset
+    type: png
+    description: "Nền cảnh Level 2 (palette pal_sunset)"
+    _size_est_kb: 40
+    _usage_scenes: [Gameplay]
+  - key: bg_pal_night
+    type: png
+    description: "Nền cảnh Level 3 (palette pal_night)"
+    _size_est_kb: 40
+    _usage_scenes: [Gameplay]
+  - key: ui_icons
+    type: png
+    description: "Icon nút chơi/chơi lại/tiếp tục"
+    _size_est_kb: 25
+    _usage_scenes: [Start, GameOver]
+  - key: sfx_dodge
+    type: audio
+    description: "SFX ngắn khi né, <1s"
+    _size_est_kb: 20
+    _usage_scenes: [Gameplay]
+  - key: bgm_main
+    type: audio
+    description: "BGM nhẹ vòng lặp, mono, bitrate thấp"
+    _size_est_kb: 150
+    _usage_scenes: [Gameplay]
+
+mechanics:
+  lane_count: 3
+  lane_axis: horizontal
+  bee:
+    base_speed: 120
+    speed_increment: 8
+    speed_interval_s: 5
+    spawn_rate_max: 4
+  score:
+    points_per_dodge: 1
+    points_per_second: 1
+  reward:
+    continue_max_per_gameover: 1
+  ad:
+    interstitial_delay_games: 2
+  progression:
+    milestone_interval: 10
+    combo_per: 5
+    combo_bonus: 5
+    palettes:
+      - key: pal_morning
+        level: 1
+        bg_top: "#FDF1DC"
+        bg_bottom: "#FFD6A5"
+        grass: "#8FCA7B"
+        lane_color: "#EAF2E0"
+        primary: "#4A7C59"
+        accent: "#E2725B"
+      - key: pal_sunset
+        level: 2
+        bg_top: "#FFD8A8"
+        bg_bottom: "#F79D65"
+        grass: "#6FA86B"
+        lane_color: "#F6E3C5"
+        primary: "#8A4226"
+        accent: "#5D6BA6"
+      - key: pal_night
+        level: 3
+        bg_top: "#2E3A59"
+        bg_bottom: "#151E3B"
+        grass: "#3E6B4F"
+        lane_color: "#C7D6E5"
+        primary: "#E3E9FF"
+        accent: "#FFB454"
+    difficulty:
+      start_speed: 120
+      speed_increase_per_sec: 8
+      spawn_increase: 0.03
+
+publisher:
+  name: "ExceltApp Games"
+  contact_email: "games@exceltoapp.vn"
+  website: ""
