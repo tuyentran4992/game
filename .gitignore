@@ -2,8 +2,8 @@
 node_modules/
 
 # build artifacts
-**/dist/
-**/build/
+dist/
+build/
 
 # python
 __pycache__/
