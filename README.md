@@ -36,3 +36,32 @@ Business: làm **casual HTML5 game** đưa lên [YouTube Playables](https://www.
 - Metadata: title ≤ 50 ký tự, short desc ≤ 150 ký tự, thumbnail 1:1/5:7/16:9, preview video 16:9, publisher + 1–2 genre, KHÔNG branding trong thumbnail.
 - Engine hỗ trợ: Phaser 3, Cocos2d, Construct, Unity(WebGL), Framer.
 - Chia sẻ doanh thu Premium: gói Premium Lite (VN 49k/th) đã trừ ads trên nhiều game; dev hưởng 60% quỹ Premium Lite / 30% Premium → 55% long-form / 45% Shorts.
+
+---
+
+## 🎮 Cách CHẠY game M1 "Cứu Mèo" (để test chơi thử)
+
+> Game = Phaser 3 + Vite (TypeScript). Cần Node.js (npm). Các lệnh:
+
+**Cách 1 — Dev server (nên dùng, hot-reload):**
+```bash
+cd M1-Rescue-Dodge/game
+npm install
+npm run dev        # mở trình duyệt http://localhost:5173
+```
+
+**Cách 2 — Build + xem bản production:**
+```bash
+cd M1-Rescue-Dodge/game
+npm install
+npm run build          # tạo dist/
+npm run preview        # mở http://localhost:4173
+# hoặc: cd dist && python3 -m http.server 8000 → http://localhost:8000
+```
+
+**Điều khiển:** chạm/click để mèo né ong. Né → +1đ (combo 5 lần liên tiếp +5); mỗi 10đ lên cấp đổi cảnh (trời xanh → hoàng hôn → đêm tím). Chạm ong → game over; nút "Chơi lại" / "Tiếp tục (xem ad)".
+
+**Test logic game:** `cd M1-Rescue-Dodge/game && npm test`
+**Test pipeline (đóng gói Playables):** `python -m pytest M1-Rescue-Dodge/pipeline/tests/ -v`
+
+> Lưu ý: `game/dist/`, `node_modules/`, `build/` không đẩy lên git (làm lại bằng lệnh build). Asset PNG lấy từ `M1-Rescue-Dodge/assets/raw/` (đồng bộ với `game/public/raw/`).
