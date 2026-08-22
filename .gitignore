@@ -2,9 +2,8 @@
 node_modules/
 
 # build artifacts
-/game/dist/
-/build/
-/dist/
+**/dist/
+**/build/
 
 # python
 __pycache__/
