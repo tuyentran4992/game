@@ -31,3 +31,23 @@
 - F3: boot không còn `EncodingError` audio.
 - F4: `npx tsc --noEmit` hết các lỗi `Property ... does not exist on type` (không yêu cầu 0 tuyệt đối nếu khác nguồn).
 - `npm test` + `npm run build` pass.
+
+---
+
+> **PHẢN HỒI TỪ ANH Tuyền test thật trên máy (2026-08-22) — thêm 2 đợt mới:**
+
+### ĐỢT 5 — HƯỚNG MẶT NHÂN VẬT (F5, 🔴)
+- **F5. Mèo đang nhìn NGƯỢC hướng khi chơi.** Xác định: ong bay tới mèo từ **bên phải** (spawn phải → bay qua trái). Yêu cầu: mèo phải **quay mặt về phía ong (bên phải)**. Kiểm tra GameplayScene — flip ngang sprite mèo (sceneScaleX ±) sao cho mặt mèo hướng về phía ong đang bay tới. (Ở StartScene mặt mèo nhìn về người xem/nút — giữ hợp lý.) Xác định hướng spawn ong trong code trước khi flip (đừng đoán).
+  - ✅ ĐÃ SỬA (2026-08-22, DEV): `Gameplay.ts` — ong spawn tại `x = width + 60` (bên phải) và dịch `x -= speed*dt` (bay trái) → mèo phải quay mặt phải. Phân tích sprite `cat_idle.png` (360×305): khối lượng vùng đầu/râu nằm cột 28–177 (nửa trái) → sprite mặc định quay TRÁI. Thêm `this.cat.setFlipX(true)` để mèo quay mặt phải về phía ong. StartScene giữ nguyên (theo spec). Đồng thời đảo dấu rotate trong tween đổi lane (`-(next-prev)*0.26`) để hướng nghiêng -15°/+15° (§5.3) vẫn đúng sau khi lật flipX.
+
+### ĐỢT 6 — MÀN GAME OVER CSS XẤU (F6-F7, 🔴 — anh đánh giá từ ảnh thật)
+- **F6. "Tiếp tục (xem ad)" bị CẮT CỤT chữ** (chân chữ T/p/t đè lên mép dưới khung). Sửa panel GameOver: tăng chiều cao + padding đủ chứa title + 2 nut mà KHÔNG có chữ đè viền/dính mép.
+  - ✅ ĐÃ SỬA (2026-08-22, DEV): `GameOver.ts` — viết lại bố cục panel trong 1 container, nội dung xếp theo con trỏ y với padding `sp[8]` (32px) mỗi cạnh; nút "Tiếp tục" đặt dưới nút "Chơi lại" cách `sp[4]` (16px), đủ khoảng đệm đáy → chữ không còn đè viền. Ghost button dùng `type.h2` (28px) + width 320 để "Tiếp tục (xem ad)" vừa width không tràn.
+- **F7. Làm màn Game Over chuẩn DESIGN-SPEC** để đẹp hơn:
+  - Panel theo §3.3: radius `radius.lg` (32), fill `color.surface`, border `color.primary` 4px, padding `space-6` (32), shadow `shadow.panel`, xuất hiện slide-up `dur.slow`.
+  - Nút "Chơi lại" = `btn-primary` chuẩn §3.1: fill `color.primary` + viền dưới `color.primary.dark` 6px, text `type.display` trắng, shadow `shadow.btn` (nút hiện tại nếu đúng rồi thì giữ).
+  - "Tiếp tục (xem ad)" = `btn-ghost` RÕ RÀNG (§3.1): nền `color.surface` + viền `color.primary` 4px + chữ `color.text.primary`, cao ~56-60px, căn giữa dưới nút Chơi lại, đủ padding, KHÔNG phải chữ trần chìm.
+  - Title "GAME OVER": font `type.h1`, màu cân đối (không chói — dùng `color.danger` hoặc `color.text.primary` có bóng nhẹ hợp nền).
+  - Giữ data-testid `retry-btn`, `continue-btn`, `final-score`, `best-score`.
+  - Nếu nền 2 mảng màu phẳng nhìn sơ sài: thêm chút chi tiết rẻ tiền (vd vạch lane đứt như §2.3, vài bụi cỏ/chấm trang trí) không phức tạp hóa.
+  - ✅ ĐÃ SỬA (2026-08-22, DEV): `GameOver.ts` + `ui.ts` — panel vẽ bằng token (`color.surface`, `color.primary` 4px, `shadow.panel`, `radius.lg`); slide-up 48px → 0 với `dur.slow` + `cubic.out`. Title `type.h1` `color.danger` + `setShadow` bóng nhẹ (`color.shadow`). Nút "Chơi lại" = `drawButton` (btn-primary, đã đúng §3.1). Nút "Tiếp tục" = `drawButton` variant `ghost` (surface + viền primary 4px + chữ `color.textPrimary`), `textType: type.h2`, width 320. Giữ data-testid retry-btn/continue-btn/final-score/best-score. Thêm `drawDecor`: bụi cỏ tam giác dọc mép cỏ + vạch lane đứt (§2.3) làm chi tiết nền. `drawButton` mở rộng nhận `textType` (mặc định `type.display`), không break caller cũ.

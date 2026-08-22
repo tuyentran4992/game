@@ -62,6 +62,9 @@ export class GameplayScene extends Phaser.Scene {
     this.cat = this.add.image(width / 2, this.lanes[this.currentLane], 'cat_idle')
       .setDisplaySize(120, 120).setDepth(z.actor);
     this.cat.setData('testid', 'cat');
+    // F5: ong spawn bên phải (x = width+60) bay sang trái → mèo quay mặt PHẢI về phía ong.
+    // Sprite cat_idle mặc định quay TRÁI (khối lượng đầu/râu nằm bên trái) → lật ngang.
+    this.cat.setFlipX(true);
 
     // Input: tap đổi lane (touch + mouse)
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
@@ -99,11 +102,11 @@ export class GameplayScene extends Phaser.Scene {
     if (next === this.currentLane) return;
     const prev = this.currentLane;
     this.currentLane = next;
-    // tween đổi lane (5.3)
+    // tween đổi lane (5.3) — F5: lật flipX nên đảo dấu rotate giữ hướng nghiêng đúng (lên = -15°, xuống = +15°)
     this.tweens.add({
       targets: this.cat, y: this.lanes[next],
       duration: 120, ease: 'cubic.inout',
-      onUpdate: () => { this.cat.setRotation((next - prev) * 0.26); },
+      onUpdate: () => { this.cat.setRotation(-(next - prev) * 0.26); },
       onComplete: () => this.cat.setRotation(0),
     });
   }

@@ -5,11 +5,12 @@ import { color, type, sp, radius, shadow, z, dur, fontStyle, toColor } from './t
 export function drawButton(
   scene: Phaser.Scene,
   x: number, y: number, text: string,
-  opts: { width?: number; variant?: 'primary' | 'ghost'; testid?: string } = {}
+  opts: { width?: number; variant?: 'primary' | 'ghost'; testid?: string; textType?: { size: string; weight: string; lh: number } } = {}
 ): { container: Phaser.GameObjects.Container; textObj: Phaser.GameObjects.Text; } {
   const width = opts.width ?? 280;
   const height = 72;
   const variant = opts.variant ?? 'primary';
+  const textType = opts.textType ?? type.display;
   const g = scene.add.graphics();
   const fill = variant === 'primary' ? color.primary : color.surface;
   const border = variant === 'primary' ? color.primaryDark : color.primary;
@@ -24,7 +25,7 @@ export function drawButton(
   g.fillStyle(toColor(border), 1);
   g.fillRect(-width / 2, height / 2 - 6, width, 6);
   g.setDepth(z.panel);
-  const t = scene.add.text(0, 0, text, fontStyle(type.display, txtColor)).setOrigin(0.5).setDepth(z.panel + 1);
+  const t = scene.add.text(0, 0, text, fontStyle(textType, txtColor)).setOrigin(0.5).setDepth(z.panel + 1);
   const container = scene.add.container(x, y, [g, t]).setSize(width, height).setDepth(z.panel);
   if (opts.testid) {
     g.setData('testid', opts.testid);
