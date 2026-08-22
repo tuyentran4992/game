@@ -1,0 +1,101 @@
+name: neon-sort
+version: 0.1.0
+
+metadata:
+  title: "Neon Sort: Galaxy Pour"
+  short_desc: "Pour glowing neon liquid between tubes and sort every color! A relaxing space puzzle — climb levels and set records."
+  genre: ["Puzzle", "Casual"]
+  theme: "neon galaxy"
+  style: "dark space + glowing neon liquid, hiện đại bắt mắt"
+  flag_movie: false
+
+assets:
+  - key: tube_base
+    type: png
+    description: "Ống thủy tinh rỗng (bo đáy, 2 sọc kính, đế ellipse) — nền trong suốt"
+    _size_est_kb: 60
+  - key: liquid_neon
+    type: png
+    description: "1 sprite mảnh chất lỏng neon (tint theo màu palette lúc load) — mặt thoáng + halo glow"
+    _size_est_kb: 20
+  - key: bg_space
+    type: png
+    description: "Nền deep-space gradient tối (đen→tím) + sao/tinh vân nhẹ"
+    _size_est_kb: 90
+  - key: sfx_pour
+    type: audio
+    description: "SFX đổ chất lỏng (short, mượt)"
+    _size_est_kb: 20
+  - key: sfx_error
+    type: audio
+    description: "SFX đổ không hợp lệ (rung/không được)"
+    _size_est_kb: 15
+  - key: sfx_clear
+    type: audio
+    description: "SFX hoàn thành level (fanfare nhẹ)"
+    _size_est_kb: 25
+  - key: bgm_main
+    type: audio
+    description: "BGM nhẹ lo-fi space, vòng lặp, mono low-bitrate"
+    _size_est_kb: 150
+
+mechanics:
+  # (dummy kế thừa validate M1 — M2 color-sort không dùng lane/bee; game code M2 tự xử lý)
+  lane_count: 3
+  bee: { base_speed: 0 }
+  # Color Sort core
+  tube_count_start: 4
+  capacity: 4                    # lát tối đa mỗi ống (level đầu)
+  empty_tubes_start: 1           # số ống trống workspace ban đầu
+  palette:
+    - { id: neon_cyan,  hex: "#00E5FF" }
+    - { id: neon_magenta, hex: "#FF3DFF" }
+    - { id: neon_lime,  hex: "#A6FF00" }
+    - { id: neon_amber, hex: "#FFB300" }
+    - { id: neon_violet, hex: "#B967FF" }
+    - { id: neon_red,   hex: "#FF3B57" }
+    - { id: neon_aqua,  hex: "#00FFC6" }
+    - { id: neon_azure, hex: "#3D86FF" }
+  # Trig tuyến tăng khó theo level
+  level_ramp:
+    - { at_level: 1,  tubes: 4,  colors: 3, capacity: 4, empty: 1 }
+    - { at_level: 3,  tubes: 5,  colors: 4, capacity: 4, empty: 1 }
+    - { at_level: 6,  tubes: 6,  colors: 5, capacity: 4, empty: 1 }
+    - { at_level: 10, tubes: 8,  colors: 6, capacity: 5, empty: 1 }
+    - { at_level: 15, tubes: 10, colors: 7, capacity: 5, empty: 2 }
+    - { at_level: 22, tubes: 12, colors: 9, capacity: 5, empty: 2 }
+  shuffle_back_steps: 60         # số bước trộn ngược khi sinh board (độ khó)
+  # (dummy — để pipeline validate config chung M1 pass; M2 color-sort không dùng combo/milestone)
+  progression:
+    milestone_interval: 10
+    combo_per: 5
+    combo_bonus: 5
+    palettes:
+      - { key: nz_space,  level: 1, bg_top: "#0B0B1E", bg_bottom: "#16123B", primary: "#B967FF", accent: "#00E5FF" }
+      - { key: nz_space2, level: 2, bg_top: "#16123B", bg_bottom: "#2A1668", primary: "#00E5FF", accent: "#FF3DFF" }
+      - { key: nz_space3, level: 3, bg_top: "#0B0B1E", bg_bottom: "#2A1668", primary: "#FF3DFF", accent: "#A6FF00" }
+
+reward:
+  hint: { cost_ad: true, hint_once_per_level: true }
+  extra_tube: { cost_ad: true, max_extra: 1 }
+
+ad:
+  interstitial_after_clear: true
+
+progression:
+  save_schema_version: 1
+  best_level: 0
+  best_moves: 0
+  # (không dùng ở M2 — để pipeline validate config chung M1 pass)
+  milestone_interval: 10
+  combo_per: 5
+  combo_bonus: 5
+  palettes:
+    - { key: nz_space,  level: 1, bg_top: "#0B0B1E", bg_bottom: "#16123B", primary: "#B967FF", accent: "#00E5FF" }
+    - { key: nz_space2, level: 2, bg_top: "#16123B", bg_bottom: "#2A1668", primary: "#00E5FF", accent: "#FF3DFF" }
+    - { key: nz_space3, level: 3, bg_top: "#0B0B1E", bg_bottom: "#2A1668", primary: "#FF3DFF", accent: "#A6FF00" }
+
+publisher:
+  name: "ExcelToApp Games"
+  contact_email: "games@exceltoapp.vn"
+  website: ""
