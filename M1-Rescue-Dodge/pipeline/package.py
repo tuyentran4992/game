@@ -45,26 +45,24 @@ def package(game_dir: Path, project_root: Path, build_dir: Path) -> int:
     game_src = project_root / "game"
     assets_dir = project_root / "assets" / "raw"
 
-    # Build index.html for the zip (entry point)
-    index_html = _build_index_html(cfg)
+    # --- Create zip (dùng game/dist — vite bundle đã build, entry trỏ đúng assets) ---
+    dist_dir = game_src / "dist"
+    if not (dist_dir / "index.html").exists():
+        print("ERROR: chưa build game — cần `npm run build` trong game/ trước. Huỷ package.")
+        return 1
 
     with ZipFile(zip_path, "w", ZIP_DEFLATED) as zf:
-        # Add index.html
-        zf.writestr("index.html", index_html)
-
-        # Add game source files
-        if game_src.exists():
-            for f in game_src.rglob("*"):
-                if f.is_file() and "node_modules" not in str(f):
-                    arcname = f.relative_to(game_src)
-                    # Put game source under game/ in zip
-                    zf.write(f, f"game/{arcname}")
-
-        # Add assets
-        if assets_dir.exists():
-            for f in assets_dir.iterdir():
-                if f.is_file():
-                    zf.write(f, f"assets/{f.name}")
+        # Entry index.html từ dist (trỏ ./assets/index-*.js + ./raw/ đúng)
+        zf.write(dist_dir / "index.html", "index.html")
+        # JS bundle
+        for f in sorted((dist_dir / "assets").glob("*")):
+            if f.is_file():
+                zf.write(f, f"assets/{f.name}")
+        # Asset raw (preload baseURL './raw/')
+        raw_dir = dist_dir / "raw"
+        for f in (sorted(raw_dir.glob("*")) if raw_dir.exists() else []):
+            if f.is_file():
+                zf.write(f, f"raw/{f.name}")
 
     # --- Create metadata ---
     _write_metadata(cfg, metadata_dir, project_root)
