@@ -14,7 +14,10 @@ export function fruitKey(tier: number): string {
 /** All 12 fruit sprite keys in tier order (cherry -> watermelon). */
 export const FRUIT_KEYS: readonly string[] = CONFIG.chain.map((_, i) => fruitKey(i));
 
-/** Static (non-fruit) image keys from yaml §assets. */
+/** Static (non-fruit) image keys from yaml §assets. Only `bucket` and
+ *  `bg_gradient` are actually generated (loaded by the Boot scene); `logo`,
+ *  `ui_icons`, and `danger_line` were NOT generated (image API refused in step
+ *  14) and are drawn by code fallback (text/graphics), so they are not loaded. */
 export const IMAGE_KEYS = [
   'bucket',
   'bg_gradient',

@@ -2,15 +2,28 @@ import Phaser from 'phaser';
 import { CONFIG } from '../logic/config';
 import { ctx } from '../context';
 import { color, z, type, fontStyle, toColor, dur } from '../tokens';
-import { drawGradientBg } from '../ui';
+import { drawBackground, drawMuteButton } from '../ui';
 import { computeBucketLayout, type BucketLayout } from '../gameplay/physics-layout';
 import { resolveFruitTexture, fruitRadius, fruitDiameter } from '../gameplay/fruit-sprite';
 import { resolveMergeBatch, type CollidingFruit, type MergePlan } from '../gameplay/merge-handler';
+import { checkGameOver } from '../logic/game-over';
+import { isWorldSettled } from '../logic/settle';
+import { fruitsAboveLine } from '../logic/continue';
 
 interface DroppedFruit {
   id: number;
   obj: Phaser.Physics.Matter.Image;
   tier: number;
+}
+
+// Structural read-shape of a Matter body for settle detection. `obj.body` is
+// typed as a broad union (Arcade/Matter), but only the Matter `BodyType` carries
+// `isSleeping` + `speed`; we cast through `unknown` to read those safely without
+// changing runtime behavior (only dropped fruits — non-static Matter bodies —
+// ever reach `isBodyAtRest`).
+interface RestBody {
+  isSleeping?: boolean;
+  speed?: number;
 }
 
 // Minimal Matter body shape used to read the collision event's pairs. The real
@@ -27,6 +40,17 @@ interface CollisionPairHandle {
 interface CollisionEventHandle {
   pairs: CollisionPairHandle[];
 }
+
+// --- Settle / game-over tuning (M3-03, the Suika trap) ---------------------
+// A fruit is "at rest" when Matter has put it to sleep OR its speed is below a
+// small epsilon. The world is "settled" only after every fruit is at rest AND a
+// 500ms grace period has passed since the last motion — the grace rejects a
+// fruit momentarily at a bounce apex right above the line, and covers the lag
+// between Matter's sleep flag flipping and the pile being truly stable.
+const MOVE_SPEED_EPS = 0.5; // px/step below which a body counts as motionless
+const SETTLE_GRACE_MS = 500; // calm time required after last motion
+// How far below the line a fruit can sit while still pulsing the warning band.
+const DANGER_NEAR_BAND = 90;
 
 // Gameplay scene — physics core (step 9) + merge on collision (step 10).
 // A Matter bucket with two static walls + a floor, a translucent "ghost" fruit
@@ -50,26 +74,42 @@ export class GameplayScene extends Phaser.Scene {
   private nextFruitId = 1;
   private scoreText!: Phaser.GameObjects.Text;
   private comboPopup!: Phaser.GameObjects.Text;
+  private dangerLine!: Phaser.GameObjects.Graphics;
+  /** Scene time (ms) of the last frame in which any fruit was observed moving. */
+  private lastMotionMs = 0;
+  /** Latch: once game-over fires, stop re-checking until the scene restarts/resumes. */
+  private gameOverTriggered = false;
+  /** Tracks the previous-frame danger-band state so sfx_danger only fires on a
+   *  false -> true entry (re-arms when the band is vacated, no per-frame spam). */
+  private wasNearDanger = false;
 
   constructor() { super({ key: 'GameplayScene' }); }
 
   create(): void {
     const { width, height } = this.scale;
     this.layout = computeBucketLayout(width, height);
-    drawGradientBg(this, color.bgTop, color.bgBottom, color.grass);
+    drawBackground(this);
 
     // Reset scene-local fruit bookkeeping on every (re)start so a Retry
     // (scene.restart, Bước 12) does not carry references to destroyed bodies.
     this.fruits = [];
     this.fruitsById.clear();
     this.nextFruitId = 1;
+    this.gameOverTriggered = false;
+    this.lastMotionMs = 0;
+    this.wasNearDanger = false;
 
     this.setupPhysics();
     this.drawBucket();
+    this.drawDangerLine();
     this.createHud();
     this.createComboPopup();
     this.createGhost();
     this.setupCollisions();
+
+    // In-canvas mute toggle (step 15). Top-right so it never covers the
+    // score (top-left) or the bucket. Survives into the GameOver overlay.
+    drawMuteButton(this);
 
     // Fresh run: zero score, reseeded fruit queue (Retry semantics handled in 12).
     ctx.engine.startNewGame();
@@ -89,37 +129,193 @@ export class GameplayScene extends Phaser.Scene {
     // fruits can only be contained by the bucket (open top = where danger lives).
     this.matter.world.setBounds(0, 0, this.scale.width, this.scale.height, 64, false, false, false, false);
     this.buildBucketWalls();
+    // Defensive: a prior game-over paused the Matter step. On (re)start the
+    // world must step again — resume() is idempotent on a fresh scene.
+    this.matter.world.resume();
   }
 
-  /** Static Matter walls + floor for the bucket, also rendered as colored rects. */
+  /** Static Matter walls + floor for the bucket. The rectangles are physics-only
+   *  (alpha 0): the wooden bucket is drawn as a sprite in {@link drawBucket}, so
+   *  we keep the collision bodies but hide their debug-colored fill. */
   private buildBucketWalls(): void {
     const L = this.layout;
     const t = L.wallThickness;
     const H = L.bucketBottomY - L.bucketTopY;
     const midY = (L.bucketTopY + L.bucketBottomY) / 2;
     const opt = { isStatic: true, restitution: CONFIG.physics.restitution, friction: CONFIG.physics.friction };
-    const wallColor = toColor(color.primaryDark);
 
-    const left = this.add.rectangle(L.bucketX0 - t / 2, midY, t, H, wallColor).setDepth(z.actor);
-    const right = this.add.rectangle(L.bucketX1 + t / 2, midY, t, H, wallColor).setDepth(z.actor);
-    const floor = this.add.rectangle((L.bucketX0 + L.bucketX1) / 2, L.bucketBottomY + t / 2, L.bucketWidth + 2 * t, t, wallColor).setDepth(z.actor);
+    const left = this.add.rectangle(L.bucketX0 - t / 2, midY, t, H, 0xffffff).setAlpha(0).setDepth(z.actor);
+    const right = this.add.rectangle(L.bucketX1 + t / 2, midY, t, H, 0xffffff).setAlpha(0).setDepth(z.actor);
+    const floor = this.add.rectangle((L.bucketX0 + L.bucketX1) / 2, L.bucketBottomY + t / 2, L.bucketWidth + 2 * t, t, 0xffffff).setAlpha(0).setDepth(z.actor);
     this.matter.add.gameObject(left, opt);
     this.matter.add.gameObject(right, opt);
     this.matter.add.gameObject(floor, opt);
   }
 
   // --- Bucket visual ---------------------------------------------------------
+  /** Draw the wooden bucket sprite stretched to the playfield (step 14b). The
+   *  sprite is transparent (white stripped) and placed behind the fruits; the
+   *  physics walls remain invisible collision bodies. A QA test container marks
+   *  the bucket bounds. */
   private drawBucket(): void {
     const L = this.layout;
     const H = L.bucketBottomY - L.bucketTopY;
-    const g = this.add.graphics().setDepth(z.actor - 1);
-    g.fillStyle(toColor(color.surface), 0.12);
-    g.fillRect(L.bucketX0, L.bucketTopY, L.bucketWidth, H);
+    if (this.textures.exists('bucket')) {
+      this.add.image(L.bucketX0, L.bucketTopY, 'bucket')
+        .setOrigin(0, 0)
+        .setDisplaySize(L.bucketWidth, H)
+        .setDepth(z.bg + 1);
+    } else {
+      // Fallback: a translucent inner fill so the playfield is readable pre-asset.
+      const g = this.add.graphics().setDepth(z.bg + 1);
+      g.fillStyle(toColor(color.surface), 0.12);
+      g.fillRect(L.bucketX0, L.bucketTopY, L.bucketWidth, H);
+    }
 
     // Bucket anchor for QA/test: a container sized to the playfield.
     const bucket = this.add.container(L.bucketX0, L.bucketTopY).setDepth(z.actor);
     bucket.setSize(L.bucketWidth, H);
     bucket.setData('testid', 'bucket');
+  }
+
+  // --- Danger line (M3-03, UI-05) -------------------------------------------
+  /** Dashed danger line at ~20% into the bucket from the mouth. Pulses (alpha
+   *  yoyo) when a fruit is near/above it so the player reads the threat. */
+  private drawDangerLine(): void {
+    const L = this.layout;
+    const g = this.add.graphics().setDepth(z.hud);
+    this.drawDangerLineStroke(g, 0.7);
+    g.setData('testid', 'danger-line');
+    this.dangerLine = g;
+  }
+
+  /** (Re)draw the dashed stroke at a given alpha. Dashed because Phaser graphics
+   *  has no native dash — we lay short segments along the bucket width. */
+  private drawDangerLineStroke(g: Phaser.GameObjects.Graphics, alpha: number): void {
+    const L = this.layout;
+    g.clear();
+    g.lineStyle(4, toColor(color.danger), alpha);
+    const dash = 22, gap = 14;
+    for (let x = L.bucketX0; x < L.bucketX1; x += dash + gap) {
+      const x2 = Math.min(x + dash, L.bucketX1);
+      g.beginPath();
+      g.moveTo(x, L.dangerY);
+      g.lineTo(x2, L.dangerY);
+      g.strokePath();
+    }
+  }
+
+  /** Pulse the danger line while a fruit sits in the near/above band; steady otherwise. */
+  private refreshDangerLine(nearDanger: boolean): void {
+    if (nearDanger) {
+      // (Re)start a yoyo pulse only when entering the danger band.
+      if (!this.dangerLine.getData('pulsing')) {
+        this.dangerLine.setData('pulsing', true);
+        this.tweens.add({
+          targets: this.dangerLine,
+          alpha: { from: 1, to: 0.3 },
+          duration: 350,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      }
+    } else {
+      this.tweens.killTweensOf(this.dangerLine);
+      this.dangerLine.setData('pulsing', false);
+      this.drawDangerLineStroke(this.dangerLine, 0.7);
+      this.dangerLine.setAlpha(1);
+    }
+  }
+
+  // --- Settle -> game over (M3-03, the Suika trap) --------------------------
+  /** Per-frame: track motion, pulse the danger line, and when the world settles
+   *  run the pure game-over check. Game over ⟺ settled AND ≥1 fruit center
+   *  above the line (y < dangerY). A fruit still FALLING across the line is not
+   *  settled → no false game over. */
+  update(time: number): void {
+    if (this.gameOverTriggered) return;
+    if (this.fruits.length === 0) {
+      this.lastMotionMs = time;
+      this.refreshDangerLine(false);
+      return;
+    }
+
+    // A body is at rest when Matter has slept it or its speed is negligible.
+    const atRest = this.fruits.map((f) => this.isBodyAtRest(f.obj));
+    const anyMoving = atRest.some((r) => !r);
+    if (anyMoving) this.lastMotionMs = time;
+
+    // Pulse the line while any fruit is in/near the danger band (y < line + band).
+    const nearDanger = this.fruits.some((f) => f.obj.y < this.layout.dangerY + DANGER_NEAR_BAND);
+    this.refreshDangerLine(nearDanger);
+    // Danger sfx on the leading edge only (false -> true); re-arms once the
+    // band clears, so a lingering pile does not replay it every frame.
+    if (nearDanger && !this.wasNearDanger) this.playSfx('sfx_danger');
+    this.wasNearDanger = nearDanger;
+
+    const settled = isWorldSettled(atRest, time, this.lastMotionMs, SETTLE_GRACE_MS);
+    if (!settled) return;
+
+    // checkGameOver is the pure gate (Bước 5): settled AND a fruit above the line.
+    const positions = this.fruits.map((f) => ({ y: f.obj.y }));
+    if (!checkGameOver(positions, this.layout.dangerY, true)) return;
+
+    this.triggerGameOver();
+  }
+
+  /** A fruit body is at rest when Matter has put it to sleep OR its speed is
+   *  below a small epsilon (covers bodies Matter hasn't slept yet). */
+  private isBodyAtRest(obj: Phaser.Physics.Matter.Image): boolean {
+    const b = obj.body as unknown as RestBody | null;
+    if (!b) return true;
+    if (b.isSleeping) return true;
+    return typeof b.speed === 'number' && b.speed < MOVE_SPEED_EPS;
+  }
+
+  /** Whether game-over has fired this turn. Read by main's SDK onResume so a
+   *  host resume during the GameOver overlay does NOT unfreeze the frozen pile
+   *  (the overlay sits on a paused Gameplay — resuming physics would un-pause
+   *  it under the panel). */
+  isGameOver(): boolean { return this.gameOverTriggered; }
+
+  /** Lock input, freeze physics, mutate engine state, and launch the GameOver
+   *  overlay on top. First game-over this turn → no interstitial (M3-07). */
+  private triggerGameOver(): void {
+    this.gameOverTriggered = true;
+    this.input.enabled = false;
+    this.matter.world.pause();
+    // Game-over sting plays before the scene pauses (SoundManager is global,
+    // so the one-shot keeps playing under the GameOver overlay).
+    this.playSfx('sfx_gameover');
+    // setGameOver mutates: gameOver=true, playCount++, bestScore mirror.
+    ctx.engine.setGameOver(true, true);
+    // Pause this scene's update loop; GameOver runs on top with the pile frozen
+    // visible behind its panel. Resume happens on Continue (step 12) / Retry.
+    this.scene.pause();
+    this.scene.launch('GameOverScene');
+  }
+
+  /** Rewarded "Continue" earned (M3-05): remove every fruit above the danger line
+   *  (Bước 6 helper), clear the game-over latch, and resume physics. Step 12
+   *  wraps this in `requestRewardedAd` + handles the not-earned branch; the
+   *  mechanical clear-the-line resume lives here so the Gameplay scene owns its
+   *  bodies. Called by GameOverScene on a granted continue. */
+  clearFruitsAboveDanger(): void {
+    const above = fruitsAboveLine(
+      this.fruits.map((f) => ({ y: f.obj.y, df: f })),
+      this.layout.dangerY,
+    );
+    for (const item of above) this.removeFruit(item.df);
+    // Nudge the survivors down so they drop away from the line.
+    for (const f of this.fruits) {
+      f.obj.setVelocity(f.obj.body?.velocity.x ?? 0, 2);
+    }
+    this.gameOverTriggered = false;
+    this.input.enabled = true;
+    this.lastMotionMs = this.time.now;
+    this.matter.world.resume();
+    this.updateHud();
   }
 
   // --- HUD -------------------------------------------------------------------
@@ -285,10 +481,16 @@ export class GameplayScene extends Phaser.Scene {
     if (pairs.length === 0) return;
     const now = this.time.now;
     const plans = resolveMergeBatch(pairs, now, ctx.engine);
-    for (const plan of plans) this.executeMerge(plan);
+    // A high-tier merge (melon+; tier >= maxTier-1) plays the bigger "merge_big"
+    // sting instead of the plain pop, one sfx per batch.
+    let bigMerge = false;
+    for (const plan of plans) {
+      this.executeMerge(plan);
+      if (plan.newTier >= CONFIG.maxTier - 1) bigMerge = true;
+    }
     if (plans.length > 0) {
       this.updateHud();
-      this.playSfx('sfx_merge');
+      this.playSfx(bigMerge ? 'sfx_merge_big' : 'sfx_merge');
     }
   }
 
@@ -328,12 +530,13 @@ export class GameplayScene extends Phaser.Scene {
     });
   }
 
-  // --- Audio hook (silent placeholder until assets land in step 14) -----------
+  // --- Audio hook ----------------------------------------------------------
   /** Play an sfx by key if its audio is loaded; no-op (silent) otherwise so the
-   *  scene never errors on a missing asset during logic development. */
-  private playSfx(key: string): void {
+   *  scene never errors on a missing asset. Volume defaults to 0.5 — present but
+   *  not harsh on mobile speakers; the global mute flag silences it entirely. */
+  private playSfx(key: string, volume = 0.5): void {
     if (!this.cache.audio.exists(key)) return;
-    this.sound.play(key);
+    this.sound.play(key, { volume });
   }
 }
 

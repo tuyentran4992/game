@@ -4,7 +4,7 @@ version: 0.1.0
 metadata:
   title: "Cuu Meo - Bee Dodge"
   short_desc: "One-tap dodge action! Guide a brave cat past a swarm of angry bees, climb levels, chain combos and set new records. Free hyper-casual fun."
-  genre: ["Hyper Casual", "Arcade"]
+  genre: ["Casual", "Arcade"]
   theme: "flat pastel cartoon"
   style: "warm cute, đơn giản, nền gradient tối thiểu"
   flag_movie: false
@@ -106,6 +106,6 @@ mechanics:
       spawn_increase: 0.03
 
 publisher:
-  name: "ExceltApp Games"
+  name: "ExcelToApp Games"
   contact_email: "games@exceltoapp.vn"
   website: ""
