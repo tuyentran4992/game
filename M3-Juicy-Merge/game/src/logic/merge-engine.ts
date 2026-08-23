@@ -93,9 +93,20 @@ export class MergeEngine {
     return this.state.gameOver;
   }
 
-  canContinue(): boolean { return !this.state.continueUsed && this.state.continueMax > 0; }
+  // Rewarded "Continue" (M3-05): ≤1 earned continue per turn. Available iff we
+  // are AT a game over this turn AND the single continue has not been consumed.
+  // Requiring gameOver keeps the offer tied to a game-over moment (not mid-play).
+  canContinue(): boolean {
+    return this.state.gameOver && !this.state.continueUsed && this.state.continueMax > 0;
+  }
+
+  /** Consume the rewarded continue (earned): clear game over, resume play. Marks
+   *  continueUsed so a 2nd game-over this turn falls through to interstitial. */
   useContinue(): void { this.state.continueUsed = true; this.state.gameOver = false; }
 
+  /** Interstitial only from the 2nd game-over onward within a turn (M3-07).
+   *  playCount resets each new turn (startNewGame), so a fresh run never starts
+   *  with an interstitial. */
   shouldShowInterstitial(): boolean { return this.state.playCount >= 2; }
 
   startNewGame(): void {
