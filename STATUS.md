@@ -84,6 +84,9 @@ Lưu ý: `scaffold.py`/`validate.py` vốn viết riêng cho M1 (độ cứng la
 - Script: `scripts/verify_game.sh`. File: game/package.json đã thêm `"typecheck": "tsc --noEmit"` cho M1+M2.
 - Browser boot/render QA vẫn là bước của Hermes (mở browser + vision) sau khi verify pass — không thay thế bằng script.
 
+## 6e. GIAO CLAUDE — QUY TẮC VÀNG: PLAN TRƯỚC + CHIA BƯỚC VERIFY (2026-08-23, anh Tuyền yêu cầu)
+> Giao Claude code 1 lèo → đổ 1 đống lỗi. **BẮT BUỘC:** (1) ép Claude lên plan trước, KHÔNG code — chia thành BƯỚC nhỏ, mỗi bước có mục tiêu/file đổi/cách verify (typecheck/test/build/browser); (2) Hermes review plan → trình anh nếu cần chốt; (3) giao code THEO TỪNG BƯỚC, sau mỗi bước Hermes chạy `scripts/verify_game.sh` + QA vision → PASS mới sang bước kế; (4) KHÔNG gộp plan vào 1 prompt code. Chi tiết: skill `claude-code-orchestration` §Quy tắc vàng.
+
 ## 7. CHI PHÍ (của Claude Code GLM, AI-Box) — cộng dồn
 - M1: pipeline $2.23 + game $1.96 + qafixes $1.62 + UX-fixes ~$? ≈ ~$6-8
 - M2: code $3.04 + fix layout $0.44 + icon/glow + icon-final ≈ ~$4-5
