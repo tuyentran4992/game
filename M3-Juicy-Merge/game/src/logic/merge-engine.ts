@@ -1,6 +1,9 @@
 // M3 Juicy Merge — MergeEngine (logic THUẦN, testable)
 // SPEC: chain 12 trái, merge 2 cùng loại → bậc kế, score, RNG deterministic, game-over khi settle & trái trên vạch.
 // Đây là HỢP ĐỒNG logic — Claude code theo SPEC này + TEST-CASES (GC-01..14).
+// Nguồn sự thật runtime: `config.ts` (phản ánh games/juicy-merge.yaml §mechanics).
+
+import { CONFIG } from './config';
 
 export interface FruitSpec {
   tier: number;      // 0..11 (bậc 1..12)
@@ -8,11 +11,9 @@ export interface FruitSpec {
   score: number[];   // điểm tạo trái bậc i
 }
 
-export const CHAIN12 = [
-  'cherry', 'strawberry', 'grape', 'dekopon', 'pomegranate', 'orange',
-  'apple', 'pear', 'peach', 'pineapple', 'melon', 'watermelon',
-];
-export const SCORE_TIER = [1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66, 100];
+// Re-export chain + score table from the config source of truth (no duplicate literals).
+export const CHAIN12: readonly string[] = CONFIG.chain;
+export const SCORE_TIER: readonly number[] = CONFIG.scorePerTier;
 
 export interface MergeState {
   score: number;
@@ -40,11 +41,11 @@ export class MergeEngine {
   merge(aTier: number, bTier: number, nowMs = 0): { tier: number; scoreGain: number } | null {
     if (aTier !== bTier) return null;
     const next = aTier + 1;
-    if (next >= 12) return null;        // watermelon max, không merge tiếp (M3-02)
+    if (next > CONFIG.maxTier) return null; // watermelon max, không merge tiếp (M3-02)
     const gain = SCORE_TIER[next];
     this.state.score += gain;
-    // combo
-    if (nowMs - this.state.lastMergeTime <= 2000) this.state.comboCount++;
+    // combo — window from config (M3 §4.3)
+    if (nowMs - this.state.lastMergeTime <= CONFIG.comboWindowMs) this.state.comboCount++;
     else this.state.comboCount = 1;
     this.state.lastMergeTime = nowMs;
     return { tier: next, scoreGain: gain };
