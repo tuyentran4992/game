@@ -61,6 +61,19 @@ Lưu ý: `scaffold.py`/`validate.py` vốn viết riêng cho M1 (độ cứng la
 3. Khi 2026→2027 mở **IAP**: thêm vào game + tối ưu monetize.
 4. Cân nhắc post-process/thêm art sâu nếu muốn M2 "lung linh" hơn nữa (hiện đã đẹp, ổn).
 
+## 6b. MEDIACUBE ONBOARDING (cập nhật 2026-08-23) — ĐANG TIẾN HÀNH
+- **Đã đăng ký MC Pay** (`mcpay.io`) thành công — anh Tuyền account "Tuyen Tran", CONFIRMED Yes.
+- **MC Play** (`mcplay.mediacube.io`) đã vào, dùng **indie developer** profile (không company — chưa có pháp nhân; sau này có công ty mới nâng cấp).
+- Đã điền: contact email preferred, bio EN, **portfolio link = Netlify demo M1** `https://fancy-frangollo-dde64c.netlify.app` (host M1 dist qua Netlify Drop, QA THẬT: boot OK, start→gameplay→gameover→kỷ lục mới, 0 lỗi JS).
+- **Status: PENDING** chờ admin MC Play duyệt (game management mở sau khi approval).
+- **Khi được duyệt → nộp M1:** dùng `build/cuu-meo.zip` + `build/metadata/` (đã sửa publisher name `ExcelToApp Games` + genre `Casual/Arcade`). Mediacube hỗ trợ integrate SDK + pre-cert.
+- Lưu ý an toàn: MCP Play link đúng domain `mediacube.io` (cẩn thận kẻ mạo danh `mediacubenetwork.com` giả). Review tiêu cực Reddit nói về Mediacube MCN (video), KHÔNG liên quan mảng Playables.
+
+## 6c. M3 "Juicy Merge" — ĐÃ CÓ 5 FILE SPEC (2026-08-23, chờ duyệt + code)
+- Game 3 = **physics-merge kiểu Suika/Watermelon**: thả trái cây, 2 cùng loại chạm → gộp bậc lên (chain 12 trái cherry→watermelon), vạch danger + game over, rewarded "Tiếp tục" ≤1 lần. Đa dạng hóa factory: reflex(M1)—logic(M2)—physics-merge(M3).
+- Ý tưởng chọn bởi MoA (quality) 2026-08-23. 5 file SPEC /data/youtube-playables/M3-Juicy-Merge/ (SPEC/DESIGN-SPEC/DATA-MODEL/TEST-CASES/E2E-TESTS) đã commit + push git.
+- **TIẾP THEO:** anh duyệt SPEC M3 → tạo `games/juicy-merge.yaml` + `CLAUDE.md` → giao Claude GLM-5.2 code (TDD TEST-CASES) → QA browser+vision → đóng gói.
+
 ## 7. CHI PHÍ (của Claude Code GLM, AI-Box) — cộng dồn
 - M1: pipeline $2.23 + game $1.96 + qafixes $1.62 + UX-fixes ~$? ≈ ~$6-8
 - M2: code $3.04 + fix layout $0.44 + icon/glow + icon-final ≈ ~$4-5
