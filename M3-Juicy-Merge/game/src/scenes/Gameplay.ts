@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { CONFIG } from '../logic/config';
 import { ctx } from '../context';
 import { color, z, type, fontStyle, toColor, dur } from '../tokens';
-import { drawBackground } from '../ui';
+import { drawBackground, drawMuteButton } from '../ui';
 import { computeBucketLayout, type BucketLayout } from '../gameplay/physics-layout';
 import { resolveFruitTexture, fruitRadius, fruitDiameter } from '../gameplay/fruit-sprite';
 import { resolveMergeBatch, type CollidingFruit, type MergePlan } from '../gameplay/merge-handler';
@@ -106,6 +106,10 @@ export class GameplayScene extends Phaser.Scene {
     this.createComboPopup();
     this.createGhost();
     this.setupCollisions();
+
+    // In-canvas mute toggle (step 15). Top-right so it never covers the
+    // score (top-left) or the bucket. Survives into the GameOver overlay.
+    drawMuteButton(this);
 
     // Fresh run: zero score, reseeded fruit queue (Retry semantics handled in 12).
     ctx.engine.startNewGame();
@@ -268,6 +272,12 @@ export class GameplayScene extends Phaser.Scene {
     if (b.isSleeping) return true;
     return typeof b.speed === 'number' && b.speed < MOVE_SPEED_EPS;
   }
+
+  /** Whether game-over has fired this turn. Read by main's SDK onResume so a
+   *  host resume during the GameOver overlay does NOT unfreeze the frozen pile
+   *  (the overlay sits on a paused Gameplay — resuming physics would un-pause
+   *  it under the panel). */
+  isGameOver(): boolean { return this.gameOverTriggered; }
 
   /** Lock input, freeze physics, mutate engine state, and launch the GameOver
    *  overlay on top. First game-over this turn → no interstitial (M3-07). */

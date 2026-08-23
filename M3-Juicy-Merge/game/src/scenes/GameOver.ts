@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { ctx } from '../context';
 import { color, type, z, dur, fontStyle, toColor, radius } from '../tokens';
-import { drawButton, type ButtonResult } from '../ui';
+import { drawButton, drawMuteButton, type ButtonResult } from '../ui';
 
 // GameOver scene — overlay panel launched on top of a paused Gameplay scene
 // (Bước 11). Bước 12 wires the full game-over flow:
@@ -47,6 +47,10 @@ export class GameOverScene extends Phaser.Scene {
     // panel (the scene was paused, not stopped, on game over).
     this.add.rectangle(0, 0, width, height, 0x000000)
       .setOrigin(0).setAlpha(0.55).setDepth(z.overlay);
+
+    // Mute toggle stays reachable on top of the overlay (drawMuteButton uses
+    // depth 60 > z.overlay); the player may want silence while reading scores.
+    drawMuteButton(this);
 
     const panelW = Math.min(560, width - 64);
     const panelH = 620;

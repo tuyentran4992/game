@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { color, type, z, dur, fontStyle } from '../tokens';
-import { drawButton, drawBackground } from '../ui';
+import { drawButton, drawBackground, drawMuteButton } from '../ui';
 import { fruitKey } from '../assets';
 import { fruitDiameter } from '../gameplay/fruit-sprite';
 
@@ -50,6 +50,10 @@ export class StartScene extends Phaser.Scene {
 
     // --- Corner watermelon decoration (alpha 0.5, mockup §3.1) ---------------
     this.drawCornerDecor(width, height);
+
+    // Mute toggle in the top-right corner (step 15) — available from the title
+    // screen so the player can silence the BGM before it even starts.
+    drawMuteButton(this);
 
     this.scale.on('resize', (g: Phaser.Structs.Size) => {
       title.setPosition(g.width / 2, g.height * 0.30);

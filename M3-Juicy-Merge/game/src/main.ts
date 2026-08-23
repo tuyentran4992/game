@@ -3,6 +3,7 @@ import Phaser, { Scale, AUTO } from 'phaser';
 import { sdk } from './sdk-instance';
 import { ctx } from './context';
 import { dur } from './tokens';
+import { applyMute } from './ui';
 import { FRUIT_KEYS, AUDIO_KEYS } from './assets';
 import { StartScene } from './scenes/Start';
 import { GameplayScene } from './scenes/Gameplay';
@@ -76,12 +77,32 @@ const game = new Phaser.Game(config);
 // Obey the Playables SDK audio toggle from the very first frame: if the host
 // reports audio disabled, Phaser's global SoundManager is muted so every sfx
 // AND the looping BGM stay silent until the user unmutes (onAudioEnabledChange
-// keeps it in sync thereafter).
-game.sound.mute = !sdk.isAudioEnabled();
+// keeps it in sync thereafter). applyMute also folds the in-canvas mute button
+// (ui.drawMuteButton) so the player and the host never fight over audio.
+applyMute(game, sdk.isAudioEnabled());
 
-// Playables SDK: pause/resume + mute obey (step 15 wires scene logic fully).
-sdk.onPause(() => { game.scene.pause('GameplayScene'); game.sound.mute = true; });
-sdk.onResume(() => { game.sound.mute = !sdk.isAudioEnabled(); game.scene.resume('GameplayScene'); });
-sdk.onAudioEnabledChange((enabled: boolean) => { game.sound.mute = !enabled; });
+// Playables SDK pause/resume (M3-10, UI-12). On host pause: freeze the Matter
+// world (fruits stop mid-fall) AND mute audio immediately. On resume: restore
+// audio (honoring the player's mute choice) and resume physics — but only when
+// the game is in active play; if game-over already paused Gameplay (the GameOver
+// overlay sits on top), do NOT resume physics or the frozen pile would unfreeze
+// under the panel. isGameOver() is the guard for exactly that.
+sdk.onPause(() => {
+  const gp = game.scene.getScene('GameplayScene') as GameplayScene | undefined;
+  if (gp && gp.scene.isActive()) {
+    gp.matter.world.pause();
+    gp.scene.pause();
+  }
+  game.sound.mute = true;
+});
+sdk.onResume(() => {
+  applyMute(game, sdk.isAudioEnabled());
+  const gp = game.scene.getScene('GameplayScene') as GameplayScene | undefined;
+  if (gp && !gp.isGameOver()) {
+    gp.matter.world.resume();
+    gp.scene.resume();
+  }
+});
+sdk.onAudioEnabledChange((enabled: boolean) => { applyMute(game, enabled); });
 
 sdk.gameReady();
