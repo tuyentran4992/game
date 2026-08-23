@@ -15,8 +15,8 @@ export class StartScene extends Phaser.Scene {
     cat.setData('testid', 'cat-idle');
     this.tweens.add({ targets: cat, scaleY: 1.04, scaleX: 0.98, duration: 1600, yoyo: true, repeat: -1, ease: 'sine.inout' });
 
-    // Nút Chơi (data-testid=start-btn)
-    const { container } = drawButton(this, width / 2, height * 0.60, 'Chơi', { testid: 'start-btn' });
+    // Play button (data-testid=start-btn)
+    const { container } = drawButton(this, width / 2, height * 0.60, 'Play', { testid: 'start-btn' });
     container.on('pointerdown', () => {
       this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
       this.time.delayedCall(dur.scene, () => this.scene.start('TutorialScene'));

@@ -57,14 +57,14 @@ export class GameOverScene extends Phaser.Scene {
 
     // Kỷ lục mới (nếu có) — type.small warning, ngay dưới title
     if (isNewRecord) {
-      const star = this.add.text(0, y + 9, '★ KỶ lục mới!', fontStyle(type.small, color.warning))
+      const star = this.add.text(0, y + 9, '★ NEW RECORD!', fontStyle(type.small, color.warning))
         .setOrigin(0.5).setDepth(z.panel + 1);
       root.add(star);
       y += 24;
     }
 
     // ĐIỂM (label) + final-score (data-testid=final-score)
-    const fsLabel = this.add.text(0, y + 12, 'ĐIỂM', fontStyle(type.small, color.textPrimary))
+    const fsLabel = this.add.text(0, y + 12, 'SCORE', fontStyle(type.small, color.textPrimary))
       .setOrigin(0.5).setDepth(z.panel + 1);
     root.add(fsLabel);
     y += 24 + sp[1]; // 4
@@ -76,7 +76,7 @@ export class GameOverScene extends Phaser.Scene {
     y += 48 + sp[6]; // 24
 
     // ĐIỂM CAO (label) + best-score (data-testid=best-score)
-    const bsLabel = this.add.text(0, y + 12, 'ĐIỂM CAO', fontStyle(type.small, color.textPrimary))
+    const bsLabel = this.add.text(0, y + 12, 'BEST', fontStyle(type.small, color.textPrimary))
       .setOrigin(0.5).setDepth(z.panel + 1);
     root.add(bsLabel);
     y += 24 + sp[1];
@@ -89,7 +89,7 @@ export class GameOverScene extends Phaser.Scene {
 
     // Nút "Chơi lại" = btn-primary (§3.1) — luôn có; phía trên
     const buttonsY = y + 36; // giữa nút 72px
-    const retryBtn = drawButton(this, 0, buttonsY, 'Chơi lại', { testid: 'retry-btn' });
+    const retryBtn = drawButton(this, 0, buttonsY, 'Retry', { testid: 'retry-btn' });
     root.add(retryBtn.container);
     retryBtn.container.on('pointerdown', async () => {
       // interstitial từ lượt 2+ (BR-09)
@@ -104,19 +104,19 @@ export class GameOverScene extends Phaser.Scene {
     // F6: dùng type.h2 (28px) + width 320 để "Tiếp tục (xem ad)" KHÔNG bị cắt cụt chữ
     let continueBtn: ReturnType<typeof drawButton> | null = null;
     if (ctx.engine.canContinue() && ctx.engine.shouldShowInterstitial()) {
-      continueBtn = drawButton(this, 0, buttonsY + 72 + sp[4], 'Tiếp tục (xem ad)',
+      continueBtn = drawButton(this, 0, buttonsY + 72 + sp[4], 'Continue (watch ad)',
         { variant: 'ghost', width: 320, textType: type.h2, testid: 'continue-btn' });
       const btn = continueBtn; // non-null alias cho closure
       root.add(btn.container);
       btn.container.on('pointerdown', async () => {
-        btn.textObj.setText('Đang tải…');
+        btn.textObj.setText('Loading…');
         btn.container.setAlpha(0.6).disableInteractive();
         const earned = await sdk.requestRewardedAd('continue');
         if (earned) {
           ctx.engine.useContinue();
           this.scene.start('GameplayScene', { resume: true });
         } else {
-          btn.textObj.setText('Tiếp tục (xem ad)');
+          btn.textObj.setText('Continue (watch ad)');
           btn.container.setAlpha(1).setInteractive({ useHandCursor: true });
         }
       });

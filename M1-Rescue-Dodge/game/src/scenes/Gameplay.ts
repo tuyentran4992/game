@@ -46,7 +46,7 @@ export class GameplayScene extends Phaser.Scene {
     this.scoreLabel = this.add.text(sp[4] + 50, sp[4] + 20, '0', fontStyle(type.score, color.textOnAccent))
       .setOrigin(0.5).setDepth(z.hud);
     this.scoreLabel.setData('testid', 'score-label');
-    this.levelLabel = this.add.text(sp[4] + 160, sp[4] + 20, 'Cấp 1', fontStyle(type.small, color.textPrimary))
+    this.levelLabel = this.add.text(sp[4] + 160, sp[4] + 20, 'Level 1', fontStyle(type.small, color.textPrimary))
       .setOrigin(0.5).setDepth(z.hud);
     this.levelLabel.setData('testid', 'level-label');
 
@@ -238,9 +238,9 @@ export class GameplayScene extends Phaser.Scene {
 
   private onLevelUp(level: number) {
     this.drawLevelBg(level);
-    this.levelLabel.setText('Cấp ' + level);
+    this.levelLabel.setText('Level ' + level);
     this.tweens.add({ targets: this.levelLabel, scale: 1.3, duration: dur.tn, yoyo: true, ease: 'back.out' });
-    this.levelPopup.setText('Cấp ' + level);
+    this.levelPopup.setText('Level ' + level);
     this.tweens.add({
       targets: this.levelPopup, alpha: 1, scale: { from: 0.6, to: 1 }, duration: 200, ease: 'back.out',
       onComplete: () => this.tweens.add({ targets: this.levelPopup, alpha: 0, duration: 300, delay: 1000, ease: 'cubic.in' }),
@@ -264,7 +264,7 @@ export class GameplayScene extends Phaser.Scene {
     const bg = this.add.graphics();
     bg.fillStyle(toColor(color.surface), 0.95); bg.fillRoundedRect(-160, -28, 320, 56, radius.lg);
     bg.lineStyle(4, toColor(color.warning), 1); bg.strokeRoundedRect(-160, -28, 320, 56, radius.lg);
-    const t = this.add.text(0, 0, 'KỶ LỤC MỚI!', fontStyle(type.h1, color.warning)).setOrigin(0.5);
+    const t = this.add.text(0, 0, 'NEW RECORD!', fontStyle(type.h1, color.warning)).setOrigin(0.5);
     this.recordPopup.removeAll(true);
     this.recordPopup.add([bg, t]);
     this.recordPopup.setPosition(width / 2, this.scale.height * 0.28).setAlpha(0).setScale(0.8);
