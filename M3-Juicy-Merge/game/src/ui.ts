@@ -1,6 +1,6 @@
 // UI draw helpers tái dùng (design-system component core)
 import Phaser from 'phaser';
-import { color, radius, type, toColor } from './tokens';
+import { color, radius, type, toColor, z } from './tokens';
 
 export interface ButtonOpts {
   testid?: string;
@@ -62,6 +62,26 @@ export function drawButton(
   container.setSize(w, h);
   container.setInteractive({ useHandCursor: true });
   return { container, textObj };
+}
+
+// Background (step 14b): prefer the generated `bg_gradient` PNG (a soft pastel
+// vertical gradient) and stretch it to fill the portrait world; fall back to the
+// programmatic gradient when the texture is not loaded (dev before assets). The
+// grass strip is kept in both paths for the meadow accent (DESIGN-SPEC §3.1).
+export function drawBackground(scene: Phaser.Scene): void {
+  const { width, height } = scene.scale;
+  if (scene.textures.exists('bg_gradient')) {
+    scene.add.image(0, 0, 'bg_gradient')
+      .setOrigin(0, 0)
+      .setDisplaySize(width, height) // smooth gradient -> vertical stretch is invisible
+      .setDepth(z.bg);
+  } else {
+    drawGradientBg(scene, color.bgTop, color.bgBottom, undefined);
+  }
+  // Meadow strip at the very bottom, over the gradient image.
+  const g = scene.add.graphics().setDepth(z.bg);
+  g.fillStyle(toColor(color.grass), 1);
+  g.fillRect(0, height - height * 0.02, width, height * 0.02);
 }
 
 // nền gradient (top → bottom + dải cỏ dưới)

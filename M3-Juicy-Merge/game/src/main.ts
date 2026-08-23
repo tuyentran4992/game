@@ -3,7 +3,7 @@ import Phaser, { Scale, AUTO } from 'phaser';
 import { sdk } from './sdk-instance';
 import { ctx } from './context';
 import { dur } from './tokens';
-import { FRUIT_KEYS, IMAGE_KEYS, AUDIO_KEYS } from './assets';
+import { FRUIT_KEYS, AUDIO_KEYS } from './assets';
 import { StartScene } from './scenes/Start';
 import { GameplayScene } from './scenes/Gameplay';
 import { GameOverScene } from './scenes/GameOver';
@@ -17,9 +17,17 @@ class BootScene extends Phaser.Scene {
 
   preload(): void {
     this.load.baseURL = './raw/';
+    // 12 fruit sprites (gen'd PNGs, transparent) + the static images that were
+    // generated. logo/ui_icons/danger_line are NOT gen'd (image API refused) ->
+    // code fallback (text/graphics), so they are intentionally not loaded here
+    // (avoids loaderror noise + keeps the asset manifest 0-warn). bucket/bg use
+    // literal file strings so the asset-manifest check can verify them.
     for (const key of FRUIT_KEYS) this.load.image(key, `${key}.png`);
-    for (const key of IMAGE_KEYS) this.load.image(key, `${key}.png`);
-    for (const key of AUDIO_KEYS) this.load.audio(key, `${key}.mp3`);
+    this.load.image('bucket', 'bucket.png');
+    this.load.image('bg_gradient', 'bg_gradient.png');
+    // Audio assets pending generation (no .mp3 yet). playSfx no-ops on missing
+    // audio, so we skip loading until sfx files land — silent-but-safe.
+    void AUDIO_KEYS;
     this.load.on('loaderror', (file: Phaser.Loader.File) => {
       console.warn(`asset missing (fallback geometric): ${file.key}`);
     });

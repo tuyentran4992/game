@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { CONFIG } from '../logic/config';
 import { ctx } from '../context';
 import { color, z, type, fontStyle, toColor, dur } from '../tokens';
-import { drawGradientBg } from '../ui';
+import { drawBackground } from '../ui';
 import { computeBucketLayout, type BucketLayout } from '../gameplay/physics-layout';
 import { resolveFruitTexture, fruitRadius, fruitDiameter } from '../gameplay/fruit-sprite';
 import { resolveMergeBatch, type CollidingFruit, type MergePlan } from '../gameplay/merge-handler';
@@ -85,7 +85,7 @@ export class GameplayScene extends Phaser.Scene {
   create(): void {
     const { width, height } = this.scale;
     this.layout = computeBucketLayout(width, height);
-    drawGradientBg(this, color.bgTop, color.bgBottom, color.grass);
+    drawBackground(this);
 
     // Reset scene-local fruit bookkeeping on every (re)start so a Retry
     // (scene.restart, Bước 12) does not carry references to destroyed bodies.
@@ -126,30 +126,43 @@ export class GameplayScene extends Phaser.Scene {
     this.matter.world.resume();
   }
 
-  /** Static Matter walls + floor for the bucket, also rendered as colored rects. */
+  /** Static Matter walls + floor for the bucket. The rectangles are physics-only
+   *  (alpha 0): the wooden bucket is drawn as a sprite in {@link drawBucket}, so
+   *  we keep the collision bodies but hide their debug-colored fill. */
   private buildBucketWalls(): void {
     const L = this.layout;
     const t = L.wallThickness;
     const H = L.bucketBottomY - L.bucketTopY;
     const midY = (L.bucketTopY + L.bucketBottomY) / 2;
     const opt = { isStatic: true, restitution: CONFIG.physics.restitution, friction: CONFIG.physics.friction };
-    const wallColor = toColor(color.primaryDark);
 
-    const left = this.add.rectangle(L.bucketX0 - t / 2, midY, t, H, wallColor).setDepth(z.actor);
-    const right = this.add.rectangle(L.bucketX1 + t / 2, midY, t, H, wallColor).setDepth(z.actor);
-    const floor = this.add.rectangle((L.bucketX0 + L.bucketX1) / 2, L.bucketBottomY + t / 2, L.bucketWidth + 2 * t, t, wallColor).setDepth(z.actor);
+    const left = this.add.rectangle(L.bucketX0 - t / 2, midY, t, H, 0xffffff).setAlpha(0).setDepth(z.actor);
+    const right = this.add.rectangle(L.bucketX1 + t / 2, midY, t, H, 0xffffff).setAlpha(0).setDepth(z.actor);
+    const floor = this.add.rectangle((L.bucketX0 + L.bucketX1) / 2, L.bucketBottomY + t / 2, L.bucketWidth + 2 * t, t, 0xffffff).setAlpha(0).setDepth(z.actor);
     this.matter.add.gameObject(left, opt);
     this.matter.add.gameObject(right, opt);
     this.matter.add.gameObject(floor, opt);
   }
 
   // --- Bucket visual ---------------------------------------------------------
+  /** Draw the wooden bucket sprite stretched to the playfield (step 14b). The
+   *  sprite is transparent (white stripped) and placed behind the fruits; the
+   *  physics walls remain invisible collision bodies. A QA test container marks
+   *  the bucket bounds. */
   private drawBucket(): void {
     const L = this.layout;
     const H = L.bucketBottomY - L.bucketTopY;
-    const g = this.add.graphics().setDepth(z.actor - 1);
-    g.fillStyle(toColor(color.surface), 0.12);
-    g.fillRect(L.bucketX0, L.bucketTopY, L.bucketWidth, H);
+    if (this.textures.exists('bucket')) {
+      this.add.image(L.bucketX0, L.bucketTopY, 'bucket')
+        .setOrigin(0, 0)
+        .setDisplaySize(L.bucketWidth, H)
+        .setDepth(z.bg + 1);
+    } else {
+      // Fallback: a translucent inner fill so the playfield is readable pre-asset.
+      const g = this.add.graphics().setDepth(z.bg + 1);
+      g.fillStyle(toColor(color.surface), 0.12);
+      g.fillRect(L.bucketX0, L.bucketTopY, L.bucketWidth, H);
+    }
 
     // Bucket anchor for QA/test: a container sized to the playfield.
     const bucket = this.add.container(L.bucketX0, L.bucketTopY).setDepth(z.actor);
