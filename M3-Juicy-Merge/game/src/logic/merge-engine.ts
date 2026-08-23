@@ -4,6 +4,7 @@
 // Nguồn sự thật runtime: `config.ts` (phản ánh games/juicy-merge.yaml §mechanics).
 
 import { CONFIG } from './config';
+import { DropQueue } from './rng';
 
 export interface FruitSpec {
   tier: number;      // 0..11 (bậc 1..12)
@@ -29,12 +30,29 @@ export interface MergeState {
 
 export class MergeEngine {
   state: MergeState;
+  // Seeded RNG + next-fruit queue — one instance per session (M3-04). Same seed
+  // ⇒ same fruit sequence, so the run is replayable/deterministic.
+  private dropQueue: DropQueue;
 
   constructor(seed = 1) {
     this.state = {
       score: 0, bestScore: 0, comboCount: 0, lastMergeTime: 0,
       gameOver: false, continueUsed: false, continueMax: 1, playCount: 0, seed,
     };
+    this.dropQueue = new DropQueue(seed);
+  }
+
+  // --- RNG / drop queue (M3-04) ------------------------------------------------
+  /** Snapshot of the next 2 upcoming fruit tiers (preview). Pure: no state side effect beyond queue advance. */
+  peekNext(): readonly number[] { return this.dropQueue.peek(); }
+
+  /** Consume the next fruit tier to drop and refill the queue. */
+  nextFruit(): number { return this.dropQueue.nextFruit(); }
+
+  /** New run with a fresh seed (Retry, M3 §7). Defaults to the stored seed. */
+  reseed(seed = this.state.seed): void {
+    this.state.seed = seed;
+    this.dropQueue.reseed(seed);
   }
 
   // merge 2 trái cùng loại → trả tier mới + điểm cộng; khác loại → null (M3-02)
@@ -73,5 +91,8 @@ export class MergeEngine {
     this.state.continueUsed = false;
     this.state.gameOver = false;
     this.state.playCount = 0; // lượt mới → interstitial lại từ đầu
+    // Reset the fruit queue so a fresh run starts from the beginning of the
+    // seed's sequence. Caller may pass a new seed via reseed() for true variety.
+    this.dropQueue.reseed(this.state.seed);
   }
 }
