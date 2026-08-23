@@ -6,6 +6,8 @@ export interface ButtonOpts {
   testid?: string;
   variant?: 'primary' | 'ghost';
   width?: number;
+  /** Button height in px. Mobile-first rule: Continue/Retry ≥ 96px. Defaults 72. */
+  height?: number;
   textType?: typeof type.display;
   textColor?: string;
 }
@@ -25,7 +27,7 @@ export function drawButton(
 ): ButtonResult {
   const variant = opts.variant ?? 'primary';
   const w = opts.width ?? Math.max(280, label.length * (opts.textType?.size ?? type.display.size) * 0.6);
-  const h = 72;
+  const h = opts.height ?? 72;
   const t = opts.textType ?? type.display;
   const container = scene.add.container(x, y).setDepth(50);
 
