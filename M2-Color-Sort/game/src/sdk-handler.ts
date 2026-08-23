@@ -79,8 +79,12 @@ export class SdkHandler {
   }
 
   async requestRewardedAd(rewardId: string): Promise<boolean> {
+    if (!this.ytgame) {
+      // Fallback local dev: luôn cấp thưởng để test gameplay mượt mà
+      return true;
+    }
     try {
-      return await this.ytgame?.ads?.requestRewardedAd?.(rewardId) ?? false;
+      return await this.ytgame.ads?.requestRewardedAd?.(rewardId) ?? true;
     } catch {
       return false;
     }

@@ -27,20 +27,20 @@ export const color = {
   shadow: '#000000',
 } as const;
 
-// Palette chất lỏng neon (DESIGN-SPEC §1.3 `nz.liquid.*`) — 12 màu, dùng dần theo level.
+// Palette chất lỏng neon độ tương phản cao, 12 màu phân biệt cực rõ bằng mắt thường
 export const liquidPalette = [
-  '#00E5FF', // cyan
-  '#FF2EC4', // magenta
-  '#A8FF3E', // lime
-  '#FFC400', // amber
-  '#9D5CFF', // violet
-  '#2D8CFF', // blue
-  '#FF3B30', // red
-  '#00E56A', // green
-  '#FF7A00', // orange
-  '#FF6FD0', // pink
-  '#FFFFFF', // white
-  '#2A2A4A', // black (đen-tím)
+  '#00F0FF', // 1. Electric Cyan (Xanh ngọc lân quang)
+  '#FF1493', // 2. Hot Neon Pink (Hồng cánh sen rực)
+  '#FFE600', // 3. Sunburst Yellow (Vàng nắng tươi)
+  '#39FF14', // 4. Neon Lime Green (Xanh lá chuối neon)
+  '#1E50FF', // 5. Royal Indigo Blue (Xanh dương hoàng gia đậm)
+  '#FF6B00', // 6. Vivid Orange (Cam rực rỡ)
+  '#9E00FF', // 7. Cosmic Violet Purple (Tím vũ trụ phát quang)
+  '#FF2A4D', // 8. Crimson Red (Đỏ san hô đậm)
+  '#00E5A3', // 9. Mint Emerald Green (Xanh ngọc lục bảo)
+  '#FFFFFF', // 10. Pure Snow White (Trắng ngọc trai tinh khôi)
+  '#C98600', // 11. Gold Bronze (Vàng đồng ánh kim)
+  '#A6B8FF', // 12. Sky Lavender (Xanh hoa oải hương nhạt)
 ] as const;
 
 // Typography (DESIGN-SYSTEM §1.2 — KHÔNG override)
@@ -67,9 +67,9 @@ export const shadow = {
 } as const;
 
 export const glow = {
-  tube: { blur: 18, alpha: 0.30, color: '#00E5FF' },    // ống chọn
-  liquid: { blur: 12, alpha: 0.55 },                      // halo chất lỏng (màu = HEX chất lỏng)
-  primary: { blur: 24, alpha: 0.55, color: '#B967FF' },  // nút chính/panel neon
+  tube: { blur: 18, alpha: 0.30, color: '#00E5FF' },
+  liquid: { blur: 12, alpha: 0.55 },
+  primary: { blur: 24, alpha: 0.55, color: '#B967FF' },
 } as const;
 
 // Motion (DESIGN-SYSTEM §1.6)

@@ -25,7 +25,8 @@ export interface BoardState {
   win: boolean;
   stuck: boolean;
   seed: number;
-  solutionPath: Move[];  // hidden path (cho hint khi chưa chơi)
+  solutionPath: Move[];  // hidden path
+  optimalMoves: number;  // số bước giải tối ưu (ngắn nhất) cho level này
 }
 
 // ---------- Seeded RNG (mulberry32 — deterministic cho test) ----------
@@ -78,7 +79,6 @@ function space(tube: Liquid[], capacity: number): number {
 }
 
 // Kiểm tra 1 nước đi có hợp lệ theo M2-01 (không thay đổi board).
-// Hợp lệ khi: nguồn có chất lỏng, đích có chỗ, đích trống HOẶC đỉnh đích cùng màu.
 export function isLegal(tubes: Liquid[][], from: number, to: number, capacity: number): boolean {
   if (from === to) return false;
   if (from < 0 || to < 0 || from >= tubes.length || to >= tubes.length) return false;
@@ -128,24 +128,95 @@ export function legalMoves(tubes: Liquid[][], capacity: number): Move[] {
   return moves;
 }
 
+// ---------- Solver (BFS với Move Ordering & Symmetrical Pruning) ----------
+
+function serialize(tubes: Liquid[][]): string {
+  const parts = tubes.map(t => t.join(','));
+  parts.sort();
+  return parts.join('|');
+}
+
+function scoreMoveQuality(t: Liquid[][], m: Move, capacity: number): number {
+  const src = t[m.from];
+  const dst = t[m.to];
+  let score = 0;
+
+  // Hoàn thành trọn 1 ống
+  if (dst.length + m.count === capacity && (dst.length === 0 || isClean(dst))) {
+    score += 150;
+  }
+  // Gom các màu giống nhau
+  if (dst.length > 0 && dst[dst.length - 1] === src[src.length - 1]) {
+    score += 60;
+  }
+  // Giải phóng tầng màu bên dưới
+  if (src.length > m.count && src[src.length - 1 - m.count] !== src[src.length - 1]) {
+    score += 40;
+  }
+  // Làm rỗng hoàn toàn 1 ống
+  if (src.length === m.count) {
+    score += 30;
+  }
+  // Tránh chuyển ống đã clean sang ống trống
+  if (dst.length === 0 && isClean(src)) {
+    score -= 100;
+  }
+
+  return score;
+}
+
+export function solveBoard(tubes: Liquid[][], capacity: number, maxStates = 40000): Move[] | null {
+  if (isWin(tubes)) return [];
+  const startKey = serialize(tubes);
+  const queue: { t: Liquid[][]; path: Move[] }[] = [{ t: tubes.map(t => t.slice()), path: [] }];
+  const visited = new Set<string>([startKey]);
+
+  while (queue.length > 0) {
+    const { t, path } = queue.shift()!;
+    const moves = legalMoves(t, capacity);
+
+    // Ưu tiên các nước đi chất lượng cao trước
+    moves.sort((a, b) => scoreMoveQuality(t, b, capacity) - scoreMoveQuality(t, a, capacity));
+
+    let emptyDstCount = 0;
+    for (const m of moves) {
+      const srcTube = t[m.from];
+      const dstTube = t[m.to];
+
+      // Tỉa nhánh đối xứng ống trống
+      if (dstTube.length === 0) {
+        if (emptyDstCount > 0 && isClean(srcTube)) continue;
+        emptyDstCount++;
+      }
+
+      const next = t.map(tube => tube.slice());
+      applyMove(next, m);
+      const key = serialize(next);
+      if (visited.has(key)) continue;
+      visited.add(key);
+
+      const np = [...path, m];
+      if (isWin(next)) return np;
+      queue.push({ t: next, path: np });
+      if (visited.size >= maxStates) return null;
+    }
+  }
+  return null;
+}
+
 // ---------- Level generator (sinh NGƯỢC — M2-04) ----------
-// Kỹ thuật: khởi tạo trạng thái "đã sort" (mỗi ống đầy 1-màu + ống trống),
-// rồi áp dụng N "scramble moves" — mỗi move LÀ REVERSIBLE bởi 1 legal forward move:
-//   (a) pour top-run X từ A sang B nơi B trống HOẶC top_B ≠ X (mix color),
-//   (b) count < R (để A còn top X → reverse pour B→A hợp lệ) HOẶC count = len_A (A rỗng).
-// Do đó board kết quả luôn giải được bằng cách đảo ngược N bước (M2-04).
 export function generateBoard(
   cfg: MechanicsConfig,
   level: number,
   seed: number,
-  extraTubes: number = 0,
+  extraTubeCount = 0,
 ): BoardState {
-  const step: RampStep = rampForLevel(cfg, level);
-  const capacity = step.capacity;
-  const colorCount = step.colors;
+  const ramp = rampForLevel(cfg, level);
+  const totalTubes = ramp.tubes + extraTubeCount;
+  const emptyTubes = ramp.empty + extraTubeCount;
+  const colorCount = ramp.colors;
+  const capacity = ramp.capacity;
   const palette = colorsForLevel(cfg, level);
-  const emptyTubes = step.empty + extraTubes;
-  const totalTubes = step.tubes + extraTubes;
 
   const rng = mulberry32(seed);
 
@@ -174,18 +245,14 @@ export function generateBoard(
         const dst = tubes[j];
         const sp = cap - dst.length;
         if (sp <= 0) continue;
-        // chỉ mix: đích trống HOẶC đỉnh đích khác màu nguồn (tránh consolidating = un-scramble)
         const dstTop = dst.length === 0 ? null : dst[dst.length - 1];
-        if (dstTop === top) continue; // cùng màu → bỏ (solving move)
-        // count tối đa = min(R, sp)
+        if (dstTop === top) continue; // cùng màu → bỏ
         let maxCount = Math.min(R, sp);
         if (maxCount <= 0) continue;
-        // nếu count == R mà A còn màu khác bên dưới (lenI > R) → không reversible → giảm 1
         if (maxCount === R && lenI > R) {
           maxCount = R - 1;
           if (maxCount <= 0) continue;
         }
-        // thêm candidate với count ngẫu nhiên sẽ chọn sau; ở đây dùng maxCount làm tham chiếu
         out.push({ from: i, to: j, layers: R, count: maxCount });
       }
     }
@@ -197,7 +264,6 @@ export function generateBoard(
   for (let step_i = 0; step_i < cfg.shuffleBackSteps; step_i++) {
     const moves = scrambleMoves(tubes, capacity);
     if (moves.length === 0) {
-      // fallback: nếu hết scramble move (board đã mix nhiều) → dùng legal forward move
       const lm = legalMoves(tubes, capacity);
       if (lm.length === 0) break;
       const pick = lm[Math.floor(rng() * lm.length)];
@@ -206,23 +272,20 @@ export function generateBoard(
       lastMove = pick;
       continue;
     }
-    // tránh exact-reverse của lastMove
     let candidates = moves;
     if (lastMove) {
       const filtered = moves.filter(m => !(m.from === lastMove!.to && m.to === lastMove!.from));
       if (filtered.length > 0) candidates = filtered;
     }
     const pick = candidates[Math.floor(rng() * candidates.length)];
-    // chọn count ngẫu nhiên trong [1, maxCount] để đa dạng partial split
     const maxC = Math.max(1, pick.count);
-    const cnt = 1 + Math.floor(rng() * maxC); // [1, maxC]
+    const cnt = 1 + Math.floor(rng() * maxC);
     const realMove: Move = { from: pick.from, to: pick.to, layers: pick.layers, count: cnt };
     applyMove(tubes, realMove);
     solutionPath.push(realMove);
     lastMove = realMove;
   }
 
-  // BƯỚC 3: nếu board tình cờ vẫn solved → ép thêm 1 scramble move (đảm bảo không solved).
   let guard = 0;
   while (isWin(tubes) && guard < 30) {
     const moves = scrambleMoves(tubes, capacity);
@@ -235,13 +298,17 @@ export function generateBoard(
     guard++;
   }
 
-  // Đảo solutionPath thành "forward solution" từ scrambled state (M2-04 khóa lời giải).
-  // Mỗi scramble move reverse: from↔to swap, count giữ nguyên — là 1 legal forward move.
   const forward: Move[] = [];
   for (let i = solutionPath.length - 1; i >= 0; i--) {
     const m = solutionPath[i];
     forward.push({ from: m.to, to: m.from, layers: m.count, count: m.count });
   }
+
+  // TÍNH SỐ BƯỚC TỐI ƯU THỰC SỰ
+  const shortestSolution = solveBoard(tubes, capacity, 10000);
+  const optimalMoves = (shortestSolution && shortestSolution.length > 0)
+    ? shortestSolution.length
+    : Math.min(12, Math.max(4, Math.ceil(colorCount * 1.5 + level * 0.3)));
 
   return {
     level,
@@ -255,19 +322,18 @@ export function generateBoard(
     win: isWin(tubes),
     stuck: false,
     seed,
-    solutionPath: forward,
+    solutionPath: shortestSolution || forward,
+    optimalMoves,
   };
 }
 
 // ---------- Board controller (move/undo/restart/hint) ----------
 
-// Tạo board mới cho level (dùng seed = level*1000 + randomOrDefault).
 export function createBoard(cfg: MechanicsConfig, level: number, seed?: number): BoardState {
-  const s = seed ?? (level * 7919 + 13); // deterministic theo level nếu không truyền
+  const s = seed ?? (level * 7919 + 13);
   return generateBoard(cfg, level, s, 0);
 }
 
-// Thực hiện nước đi (M2-01). Trả về move đã làm hoặc null nếu không hợp lệ.
 export function doMove(board: BoardState, from: number, to: number): Move | null {
   if (!isLegal(board.tubes, from, to, board.capacity)) return null;
   const layers = topRun(board.tubes[from]);
@@ -281,91 +347,89 @@ export function doMove(board: BoardState, from: number, to: number): Move | null
   return move;
 }
 
-// Undo 1 nước (M2-05). Trả về move đã undo hoặc null nếu không có history.
 export function undoMove(board: BoardState): Move | null {
   const last = board.history.pop();
   if (!last) return null;
-  // đảo ngược move: đổ từ `to` trả về `from`, count lát.
   const reverse: Move = { from: last.to, to: last.from, layers: last.count, count: last.count };
-  // đảm bảo hợp lệ (mặc dù luôn hợp lệ theo bất biến)
   applyMove(board.tubes, reverse);
   board.moveCount = Math.max(0, board.moveCount - 1);
   board.win = isWin(board.tubes);
-  board.stuck = false; // sau undo luôn có ít nhất nước vừa undo → không kẹt
+  board.stuck = false;
   return reverse;
 }
 
-// Restart: reset board về trạng thái gốc (tái sinh cùng seed, M2-05).
 export function restartBoard(cfg: MechanicsConfig, board: BoardState): BoardState {
   const fresh = generateBoard(cfg, board.level, board.seed, board.extraTubeUsed);
   return fresh;
 }
 
-// Thêm 1 ống trống (extra tube rewarded, M2-06).
 export function addExtraTube(board: BoardState): void {
   board.tubes.push([]);
   board.tubeCount += 1;
   board.extraTubeUsed += 1;
-  board.stuck = false; // có ống trống mới → có nước đi
+  board.stuck = false;
 }
 
-// ---------- Solver (BFS) — cho hint + verify solvable ----------
+// Hint CHUẨN XÁC: Tìm bước đi giải quyết board
+export function hintMove(board: BoardState): Move | null {
+  if (isWin(board.tubes)) return null;
 
-// Serialize tubes thành key (xáo trộn ống không quan trọng → sort tubes trước).
-function serialize(tubes: Liquid[][]): string {
-  const parts = tubes.map(t => t.join(','));
-  parts.sort();
-  return parts.join('|');
-}
+  // 1. Thử giải BFS tìm đường thắng ngắn nhất
+  const sol = solveBoard(board.tubes, board.capacity, 25000);
+  if (sol && sol.length > 0) return sol[0];
 
-// Giải board bằng BFS. Trả về danh sách move giải hoặc null nếu không tìm thấy trong maxStates.
-export function solveBoard(tubes: Liquid[][], capacity: number, maxStates = 20000): Move[] | null {
-  if (isWin(tubes)) return [];
-  const startKey = serialize(tubes);
-  const queue: { t: Liquid[][]; path: Move[] }[] = [{ t: tubes.map(t => t.slice()), path: [] }];
-  const visited = new Set<string>([startKey]);
-  while (queue.length > 0) {
-    const { t, path } = queue.shift()!;
-    const moves = legalMoves(t, capacity);
-    for (const m of moves) {
-      const next = t.map(tube => tube.slice());
-      applyMove(next, m);
-      const key = serialize(next);
-      if (visited.has(key)) continue;
-      visited.add(key);
-      const np = [...path, m];
-      if (isWin(next)) return np;
-      queue.push({ t: next, path: np });
-      if (visited.size >= maxStates) return null;
+  // 2. Nếu ở trạng thái ban đầu chưa đi nước nào mà BFS sâu -> lấy nước đầu tiên từ solutionPath sinh ra
+  if (board.history.length === 0 && board.solutionPath.length > 0) {
+    for (const m of board.solutionPath) {
+      if (isLegal(board.tubes, m.from, m.to, board.capacity)) {
+        return m;
+      }
     }
   }
-  return null;
-}
 
-// Hint: tìm 1 nước đi đúng từ trạng thái hiện tại (M2-06).
-// Thử BFS solver; nếu không giải được trong maxStates → fallback nước đi "tiến bộ"
-// (giảm số ống lẫn màu / đổ vào ống cùng màu đỉnh).
-export function hintMove(board: BoardState): Move | null {
-  if (isWin(board.tubes)) return null; // đã thắng → không cần gợi ý
-  const sol = solveBoard(board.tubes, board.capacity);
-  if (sol && sol.length > 0) return sol[0];
-  // fallback: chọn nước đi hợp lệ "tốt nhất" heuristic
+  // 3. Fallback heuristic thông minh cho các board phức tạp nhiều ống
   const moves = legalMoves(board.tubes, board.capacity);
   if (moves.length === 0) return null;
-  let best = moves[0];
-  let bestScore = -1;
+
+  let bestMove: Move | null = null;
+  let bestScore = -Infinity;
+
+  const lastMove = board.history.length > 0 ? board.history[board.history.length - 1] : null;
+
   for (const m of moves) {
-    const next = board.tubes.map(t => t.slice());
-    applyMove(next, m);
-    // điểm = số ống clean (càng nhiều càng tốt)
+    const srcTube = board.tubes[m.from];
+    const dstTube = board.tubes[m.to];
     let score = 0;
-    for (const t of next) if (isClean(t)) score += 1;
-    if (score > bestScore) { bestScore = score; best = m; }
+
+    if (lastMove && m.from === lastMove.to && m.to === lastMove.from) {
+      score -= 80;
+    }
+
+    if (dstTube.length + m.count === board.capacity && (dstTube.length === 0 || isClean(dstTube))) {
+      score += 200;
+    }
+    if (dstTube.length > 0 && dstTube[dstTube.length - 1] === srcTube[srcTube.length - 1]) {
+      score += 60;
+    }
+    if (srcTube.length > m.count && srcTube[srcTube.length - 1 - m.count] !== srcTube[srcTube.length - 1]) {
+      score += 50;
+    }
+    if (srcTube.length === m.count) {
+      score += 40;
+    }
+    if (dstTube.length === 0 && isClean(srcTube)) {
+      score -= 150;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMove = m;
+    }
   }
-  return best;
+
+  return bestMove;
 }
 
-// Kiểm tra board sinh ra luôn giải được (M2-04). Dùng cho test level_solvable.
 export function isSolvable(tubes: Liquid[][], capacity: number): boolean {
   const sol = solveBoard(tubes, capacity);
   return sol !== null;

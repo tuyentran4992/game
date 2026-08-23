@@ -1,28 +1,60 @@
 import Phaser from 'phaser';
 import { color, type, sp, radius, z, dur, glow, fontStyle, toColor, liquidPalette } from '../tokens';
-import { drawGalaxyBg, drawTube, renderLiquid, drawButton, TubeViews } from '../ui';
+import {
+  drawGalaxyBg,
+  drawTube,
+  renderLiquid,
+  renderPourTransition,
+  drawButton,
+  drawHudCapsule,
+  drawPourStream,
+  drawHintArc,
+  synthAudio,
+  TubeViews,
+  GalaxyBgObjects,
+} from '../ui';
 import { ctx } from '../context';
 import { sdk } from '../sdk-instance';
 import { MECHANICS } from '../logic/mechanics';
-import { createBoard, doMove, undoMove, restartBoard, addExtraTube, hintMove, legalMoves, BoardState, Move } from '../logic/color-sort';
+import {
+  createBoard,
+  doMove,
+  undoMove,
+  restartBoard,
+  addExtraTube,
+  hintMove,
+  isLegal,
+  isClean,
+  BoardState,
+  Move,
+} from '../logic/color-sort';
 
-interface TubeUI { views: TubeViews; index: number; }
+interface TubeUI {
+  views: TubeViews;
+  index: number;
+}
 
-// GameplayScene M2 (DESIGN-SPEC §4.2) — board ống + HUD + toolbar.
 export class GameplayScene extends Phaser.Scene {
   private board!: BoardState;
   private tubeUIs: TubeUI[] = [];
-  private selected: number | null = null;        // index ống nguồn đang chọn
+  private selected: number | null = null;
   private levelLabel!: Phaser.GameObjects.Text;
   private moveLabel!: Phaser.GameObjects.Text;
-  private bgStars!: ReturnType<typeof drawGalaxyBg>;
+  private audioBtnText!: Phaser.GameObjects.Text;
+  private bgObjects!: GalaxyBgObjects;
   private stuckTooltip: Phaser.GameObjects.Container | null = null;
-  private hintUsedThisLevel = false;
   private isAnimating = false;
-  // Toolbar (undo/restart/hint) — lưu để re-layout responsive khi resize
   private toolbarBtns: Phaser.GameObjects.Container[] = [];
+  private origTubePositions: { x: number; y: number }[] = [];
+  private pourStreamG!: Phaser.GameObjects.Graphics;
+  private hintArcG!: Phaser.GameObjects.Graphics;
+  private hintArcTimer: Phaser.Time.TimerEvent | null = null;
+  private boardZone: Phaser.GameObjects.Zone | null = null;
+  private completedTubes = new Set<number>();
 
-  constructor() { super({ key: 'GameplayScene' }); }
+  constructor() {
+    super({ key: 'GameplayScene' });
+  }
 
   async create() {
     await ctx.load();
@@ -30,67 +62,110 @@ export class GameplayScene extends Phaser.Scene {
     const level = Math.max(1, ctx.currentLevel);
     this.board = createBoard(MECHANICS, level, level * 7919 + 13);
     this.selected = null;
-    this.hintUsedThisLevel = false;
     this.isAnimating = false;
+    this.completedTubes.clear();
 
-    this.bgStars = drawGalaxyBg(this);
+    // 1. Nền vũ trụ Deep Space HD (Static, 0 overhead)
+    this.bgObjects = drawGalaxyBg(this);
 
-    // HUD (DESIGN-SPEC §2.2): level-label (huy hiệu đĩa) + move-count
+    // 2. Graphics layer
+    this.pourStreamG = this.add.graphics().setDepth(z.actor + 3);
+    this.hintArcG = this.add.graphics().setDepth(z.actor + 5);
+
+    // 3. HUD
     this.drawHud(width, height);
 
-    // Board (DESIGN-SPEC §2.2/§3.3)
+    // 4. Bố cục ống nghiệm
     this.layoutBoard(width, height);
 
-    // Toolbar (DESIGN-SPEC §2.2/§3.4): undo / restart / hint
+    // 5. Toolbar dưới cùng
     this.drawToolbar(width, height);
 
-    // Tutorial banner level 1 (UX §8: ≤3 tap tới hành động chính)
+    // 6. Tutorial banner nếu mới
     if (!ctx.tutorialSeen) this.showTutorial(width, height);
 
     this.cameras.main.fadeIn(dur.scene, 0, 0, 0);
     this.scale.on('resize', (g: Phaser.Structs.Size) => this.onResize(g));
 
-    // BGM loop
-    if (this.cache.audio.exists('bgm_main')) this.sound.play('bgm_main', { loop: true, volume: 0.3 });
+    if (this.cache.audio.exists('bgm_main')) {
+      this.sound.play('bgm_main', { loop: true, volume: 0.3 });
+    }
   }
 
-  // ---------- HUD ----------
-  private drawHud(width: number, height: number) {
-    // level-label: huy hiệu đĩa tròn primary + text "Lv X" (DESIGN-SPEC §2.2)
-    const badgeX = sp[4] + 36, badgeY = sp[4] + 24;
-    const badge = this.add.graphics().setDepth(z.hud);
-    badge.fillStyle(toColor(color.primary), 1);
-    badge.fillCircle(badgeX, badgeY, 32);
-    badge.lineStyle(3, toColor('#FFFFFF'), 0.85);
-    badge.strokeCircle(badgeX, badgeY, 32);
-    this.levelLabel = this.add.text(badgeX, badgeY, `Lv ${this.board.level}`, fontStyle(type.score, color.textOnAccent))
-      .setOrigin(0.5).setDepth(z.hud + 1);
+  // ==========================================================================
+  // HUD (TOP BAR)
+  // ==========================================================================
+  private drawHud(width: number, _height: number) {
+    const topY = sp[4] + 28;
+
+    // 1. LEVEL BADGE
+    const levelW = 120, levelH = 46;
+    const levelX = sp[4] + levelW / 2 + 8;
+    drawHudCapsule(this, levelX, topY, levelW, levelH, color.primary);
+
+    this.levelLabel = this.add.text(
+      levelX,
+      topY,
+      `Lv ${this.board.level}`,
+      fontStyle(type.score, color.accent),
+    ).setOrigin(0.5).setDepth(z.hud + 1);
+    this.levelLabel.setShadow(0, 2, 'rgba(0,0,0,0.6)', 4, false, true);
     this.levelLabel.setData('testid', 'level-label');
 
-    // move-count: icon ⤵ + số (DESIGN-SPEC §2.2)
-    const mvX = badgeX + 64, mvY = badgeY;
-    this.moveLabel = this.add.text(mvX, mvY, `⤵ ${this.board.moveCount}`, fontStyle(type.score, color.surface))
-      .setOrigin(0).setDepth(z.hud + 1);
-    this.moveLabel.setShadow(0, 2, color.shadow, 3, false, true);
+    // 2. MOVES COUNTER
+    const moveW = 130, moveH = 46;
+    const moveX = levelX + levelW / 2 + moveW / 2 + 12;
+    drawHudCapsule(this, moveX, topY, moveW, moveH, color.primaryDark);
+
+    this.moveLabel = this.add.text(
+      moveX,
+      topY,
+      `⤵ ${this.board.moveCount}`,
+      fontStyle(type.score, color.surface),
+    ).setOrigin(0.5).setDepth(z.hud + 1);
+    this.moveLabel.setShadow(0, 2, 'rgba(0,0,0,0.6)', 4, false, true);
     this.moveLabel.setData('testid', 'move-count');
 
-    // nút audio-toggle (DESIGN-SPEC §2.2 — data-testid audio-toggle)
-    const audioBtn = this.add.text(width - sp[4] - 20, badgeY, '🔊', fontStyle(type.h2, color.surface))
-      .setOrigin(0.5).setDepth(z.hud);
-    audioBtn.setInteractive({ useHandCursor: true });
-    audioBtn.setData('testid', 'audio-toggle');
-    audioBtn.on('pointerdown', () => { this.sound.mute = !this.sound.mute; });
+    // 3. AUDIO TOGGLE
+    const audioW = 54, audioH = 46;
+    const audioX = width - sp[4] - audioW / 2 - 8;
+    const audioCapsule = drawHudCapsule(this, audioX, topY, audioW, audioH, color.accent);
+
+    this.audioBtnText = this.add.text(
+      audioX,
+      topY,
+      this.sound.mute ? '🔇' : '🔊',
+      fontStyle(type.h2, color.surface),
+    ).setOrigin(0.5).setDepth(z.hud + 1);
+    this.audioBtnText.setData('testid', 'audio-toggle');
+
+    const audioZone = this.add.zone(audioX, topY, audioW, audioH).setDepth(z.hud + 2).setInteractive({ useHandCursor: true });
+    audioZone.on('pointerdown', () => {
+      this.sound.mute = !this.sound.mute;
+      synthAudio.setMute(this.sound.mute);
+      this.audioBtnText.setText(this.sound.mute ? '🔇' : '🔊');
+      synthAudio.playClick();
+      this.tweens.add({
+        targets: [this.audioBtnText, audioCapsule],
+        scale: 0.9,
+        duration: dur.fast,
+        yoyo: true,
+        ease: 'quad.out',
+      });
+    });
   }
 
-  // ---------- Board layout ----------
+  // ==========================================================================
+  // BOARD LAYOUT
+  // ==========================================================================
   private layoutBoard(width: number, height: number) {
-    // xóa ống cũ nếu có
     for (const t of this.tubeUIs) t.views.container.destroy();
     this.tubeUIs = [];
+    this.origTubePositions = [];
 
     const tubeCount = this.board.tubes.length;
     const capacity = this.board.capacity;
-    // tính kích thước ống + số cột theo width (DESIGN-SPEC §2.3)
+
     let cols: number;
     if (width >= 1500) cols = Math.min(7, Math.ceil(tubeCount / 2));
     else if (width >= 900) cols = Math.ceil(tubeCount / 2);
@@ -98,56 +173,79 @@ export class GameplayScene extends Phaser.Scene {
     cols = Math.max(1, cols);
     const rows = Math.ceil(tubeCount / cols);
 
-    // ống co tối thiểu 44x120, co theo viewport (DESIGN-SPEC §2.3/§3.1)
-    const boardAreaH = height * 0.60;
-    const maxTubeH = Math.min(240, (boardAreaH - sp[5] * (rows + 1)) / rows);
+    const boardAreaH = height * 0.58;
+    const maxTubeH = Math.min(230, (boardAreaH - sp[5] * (rows + 1)) / rows);
     const tubeH = Math.max(120, maxTubeH);
-    const tubeW = Math.max(44, Math.min(96, tubeH * 0.42));
-    const gapX = sp[3], gapY = sp[5];
+    const tubeW = Math.max(46, Math.min(90, tubeH * 0.42));
+    const gapX = Math.max(12, Math.min(28, (width - cols * tubeW) / (cols + 1)));
+    const gapY = Math.max(16, sp[5]);
+
     const boardW = cols * tubeW + (cols - 1) * gapX;
     const boardH = rows * tubeH + (rows - 1) * gapY;
     const startX = (width - boardW) / 2 + tubeW / 2;
-    const startY = height * 0.50 - boardH / 2 + tubeH / 2;
+    const startY = height * 0.48 - boardH / 2 + tubeH / 2;
 
     for (let i = 0; i < tubeCount; i++) {
       const r = Math.floor(i / cols), c = i % cols;
       const x = startX + c * (tubeW + gapX);
       const y = startY + r * (tubeH + gapY);
+
+      this.origTubePositions.push({ x, y });
+
       const views = drawTube(this, tubeW, tubeH, capacity);
       views.container.setPosition(x, y);
       views.container.setData('testid', `tube-${i}`);
       views.container.setData('tubeIndex', i);
+
       renderLiquid(views, this.board.tubes[i]);
-      // interactive — vùng chạm ≥ 44px (DESIGN-SPEC §2.4)
-      views.container.setSize(Math.max(44, tubeW), Math.max(44, tubeH));
+
+      views.container.setSize(Math.max(48, tubeW), Math.max(48, tubeH));
       views.container.setInteractive({ useHandCursor: true });
       views.container.on('pointerdown', () => this.onTubeTap(i));
+
       this.tubeUIs.push({ views, index: i });
     }
 
-    // board data-testid (DESIGN-SPEC §5) — gán lên container board vùng trung tâm
-    // (tạo 1 zone vô hình đè board để E2E query data-testid=board)
     if (!this.boardZone) {
       this.boardZone = this.add.zone(width / 2, height * 0.5, width, height).setDepth(z.bg).setInteractive();
       this.boardZone.setData('testid', 'board');
     }
   }
-  private boardZone: Phaser.GameObjects.Zone | null = null;
 
-  // ---------- Tube tap → chọn / đổ (M2-01) ----------
+  // ==========================================================================
+  // TUBE SELECTION
+  // ==========================================================================
+  private clearHint() {
+    this.hintArcG.clear();
+    if (this.hintArcTimer) {
+      this.hintArcTimer.remove();
+      this.hintArcTimer = null;
+    }
+  }
+
   private onTubeTap(i: number) {
     if (this.isAnimating || this.board.win) return;
+    this.clearHint();
+
     if (this.selected === null) {
-      // chọn nguồn: ống phải có chất lỏng
-      if (this.board.tubes[i].length === 0) { this.shakeTube(i); return; }
+      if (this.board.tubes[i].length === 0) {
+        this.shakeTube(i);
+        synthAudio.playBuzz();
+        return;
+      }
       this.selected = i;
+      synthAudio.playClick();
       this.updateSelection();
       return;
     }
-    // đã chọn nguồn → tap đích
-    if (i === this.selected) { // bỏ chọn
-      this.selected = null; this.updateSelection(); return;
+
+    if (i === this.selected) {
+      this.selected = null;
+      synthAudio.playClick();
+      this.updateSelection();
+      return;
     }
+
     const from = this.selected;
     this.selected = null;
     this.updateSelection();
@@ -156,253 +254,497 @@ export class GameplayScene extends Phaser.Scene {
 
   private updateSelection() {
     for (const t of this.tubeUIs) {
-      const sel = t.index === this.selected;
-      this.tweens.add({ targets: t.views.container, scale: sel ? 1.04 : 1, duration: dur.fast, ease: 'quad.out' });
-      if (sel) {
-        t.views.glowRing.setAlpha(1);
-        // glow pulse (DESIGN-SPEC §5 A2)
+      const isSel = (t.index === this.selected);
+      const orig = this.origTubePositions[t.index];
+
+      this.tweens.killTweensOf(t.views.container);
+
+      if (isSel) {
+        this.children.bringToTop(t.views.container);
         this.tweens.add({
-          targets: t.views.glowRing, alpha: { from: 0.30, to: 0.65 },
-          duration: dur.slow, yoyo: true, repeat: -1, ease: 'sine.inout',
+          targets: t.views.container,
+          y: orig.y - 20,
+          scale: 1.05,
+          duration: 120,
+          ease: 'cubic.out',
         });
+        t.views.glowRing.setAlpha(0.85);
       } else {
-        this.tweens.killTweensOf(t.views.glowRing);
         t.views.glowRing.setAlpha(0);
+        this.tweens.add({
+          targets: t.views.container,
+          x: orig.x,
+          y: orig.y,
+          angle: 0,
+          scale: 1.0,
+          duration: 120,
+          ease: 'cubic.out',
+        });
       }
     }
   }
 
-  // ---------- Đổ chất lỏng (M2-01) ----------
+  // ==========================================================================
+  // 60 FPS ULTRA SMOOTH POURING ANIMATION PIPELINE
+  // ==========================================================================
   private attemptPour(from: number, to: number) {
-    const move = doMove(this.board, from, to);
-    if (!move) {
-      // đổ không hợp lệ → rung nguồn + sfx_error (M2-01, §6) — giữ chọn nguồn (UX §8)
+    const isMoveLegal = isLegal(this.board.tubes, from, to, this.board.capacity);
+
+    if (!isMoveLegal) {
       this.shakeTube(from);
-      this.selected = from; this.updateSelection();
+      synthAudio.playBuzz();
       this.playSfx('sfx_error', 0.4);
+      this.selected = from;
+      this.updateSelection();
       return;
     }
-    this.isAnimating = true;
-    this.moveLabel.setText(`⤵ ${this.board.moveCount}`);
-    this.tweens.add({ targets: this.moveLabel, scale: 1.25, duration: dur.pop, yoyo: true, ease: 'back.out' });
-    this.playSfx('sfx_pour', 0.4);
 
-    // animation đổ (DESIGN-SPEC §5 A1): nguồn co 0.94 + đổ + đích tăng + ripple
-    const srcUI = this.tubeUIs[from], dstUI = this.tubeUIs[to];
-    this.tweens.add({ targets: srcUI.views.container, scale: 0.94, duration: dur.fast, yoyo: true, ease: 'quad.out' });
-    // đơn giản: cập nhật chất lỏng ngay (tween mượt qua alpha)
+    // Trạng thái mảng màu trước khi đổ
+    const srcBefore = this.board.tubes[from].slice();
+    const dstBefore = this.board.tubes[to].slice();
+    const pourColorHex = srcBefore[srcBefore.length - 1];
+
+    const move = doMove(this.board, from, to);
+    if (!move) return;
+
+    this.isAnimating = true;
+
+    // Cập nhật Move counter
+    this.moveLabel.setText(`⤵ ${this.board.moveCount}`);
+
+    const srcUI = this.tubeUIs[from];
+    const dstUI = this.tubeUIs[to];
+    const origSrc = this.origTubePositions[from];
+    const origDst = this.origTubePositions[to];
+
+    const isPouringRight = origDst.x >= origSrc.x;
+    const targetAngle = isPouringRight ? 55 : -55;
+    const pourTargetX = origDst.x + (isPouringRight ? -srcUI.views.width * 0.68 : srcUI.views.width * 0.68);
+    const pourTargetY = origDst.y - dstUI.views.height * 0.6;
+
+    this.children.bringToTop(srcUI.views.container);
+
+    // BƯỚC 1: Bay và nghiêng ống siêu mượt (140ms)
     this.tweens.add({
-      targets: [srcUI.views.liquidG, dstUI.views.liquidG], alpha: { from: 0.4, to: 1 },
-      duration: dur.base, ease: 'quad.out',
+      targets: srcUI.views.container,
+      x: pourTargetX,
+      y: pourTargetY,
+      angle: targetAngle,
+      duration: 140,
+      ease: 'cubic.out',
+      onComplete: () => {
+        // BƯỚC 2: Rót nước tức thời (180ms)
+        this.runFastPour(from, to, srcBefore, dstBefore, pourColorHex, move.count, () => {
+          // BƯỚC 3: Thu ống về vị trí gốc (140ms)
+          this.tweens.add({
+            targets: srcUI.views.container,
+            x: origSrc.x,
+            y: origSrc.y,
+            angle: 0,
+            duration: 140,
+            ease: 'cubic.out',
+            onComplete: () => {
+              this.isAnimating = false;
+              this.checkTubeCompletionCelebration(to);
+
+              if (this.board.win) {
+                this.time.delayedCall(300, () => this.onLevelClear());
+              } else if (this.board.stuck) {
+                this.showStuckTooltip();
+              }
+            },
+          });
+        });
+      },
+    });
+  }
+
+  // Rót nước O(1) hiệu năng cao
+  private runFastPour(
+    from: number,
+    to: number,
+    srcBefore: string[],
+    dstBefore: string[],
+    colorHex: string,
+    count: number,
+    onComplete: () => void,
+  ) {
+    const srcUI = this.tubeUIs[from];
+    const dstUI = this.tubeUIs[to];
+    const isPouringRight = dstUI.views.container.x >= srcUI.views.container.x;
+
+    const startX = srcUI.views.container.x + (isPouringRight ? srcUI.views.width * 0.35 : -srcUI.views.width * 0.35);
+    const startY = srcUI.views.container.y + srcUI.views.height * 0.12;
+    const endX = dstUI.views.container.x;
+    const endY = dstUI.views.container.y - dstUI.views.height * 0.44;
+
+    synthAudio.playGlug(1);
+    this.playSfx('sfx_pour', 0.35);
+
+    // Mảng nền tĩnh của nguồn (sau khi đã bớt đi lớp đổ)
+    const srcBase = srcBefore.slice(0, srcBefore.length - count);
+    const dstBase = dstBefore.slice();
+
+    const animData = { t: 0 };
+    this.tweens.add({
+      targets: animData,
+      t: 1.0,
+      duration: 180,
+      ease: 'linear',
       onUpdate: () => {
-        renderLiquid(srcUI.views, this.board.tubes[from]);
-        renderLiquid(dstUI.views, this.board.tubes[to]);
+        const progress = animData.t;
+
+        // Vẽ dòng nước
+        drawPourStream(this.pourStreamG, startX, startY, endX, endY, colorHex, 5);
+
+        // Render nguồn rút dần
+        renderPourTransition(srcUI.views, srcBase, colorHex, (1 - progress), true);
+
+        // Render đích dâng dần
+        renderPourTransition(dstUI.views, dstBase, colorHex, progress, false);
       },
       onComplete: () => {
+        this.pourStreamG.clear();
+
+        // Vẽ tĩnh chuẩn xác kết quả
         renderLiquid(srcUI.views, this.board.tubes[from]);
         renderLiquid(dstUI.views, this.board.tubes[to]);
-        // ripple ellipse trên mặt thoáng đích (DESIGN-SPEC §5 A1)
-        const dst = this.tubeUIs[to].views;
-        const rip = this.add.ellipse(dst.container.x, dst.container.y - dst.height / 2 + 8, dst.width - 6, 8, toColor(color.success), 0.6)
-          .setDepth(z.actor + 3);
-        this.tweens.add({ targets: rip, alpha: 0, scale: 1.6, duration: dur.pop, ease: 'quad.out', onComplete: () => rip.destroy() });
-        // ống đích nhấp success 1 lần (DESIGN-SPEC §5 A3)
-        this.tweens.add({ targets: dstUI.views.glass, alpha: { from: 0.7, to: 1 }, duration: dur.fast, yoyo: true });
-        this.isAnimating = false;
-        // check kẹt + win
-        if (this.board.win) { this.onLevelClear(); return; }
-        if (this.board.stuck) this.showStuckTooltip();
+
+        // Ripple nhẹ tại đích
+        this.spawnSurfaceRipple(dstUI, colorHex);
+
+        onComplete();
       },
     });
   }
 
-  // Rung ống (DESIGN-SPEC §3.1 đổ không hợp lệ, §6) — shakeX ±4px ×3
-  private shakeTube(i: number) {
-    const ui = this.tubeUIs[i]; if (!ui) return;
-    const ox = ui.views.container.x;
+  private spawnSurfaceRipple(dstUI: TubeUI, colorHex: string) {
+    const { width: tubeW, height: tubeH, container } = dstUI.views;
+    const currentLen = this.board.tubes[dstUI.index].length;
+    const layerH = (tubeH - 8) / this.board.capacity;
+    const surfaceY = tubeH / 2 - 4 - currentLen * layerH;
+
+    const rip = this.add.ellipse(
+      container.x,
+      container.y + surfaceY,
+      tubeW * 0.8,
+      6,
+      toColor(colorHex),
+      0.8,
+    ).setDepth(z.actor + 4);
+
     this.tweens.add({
-      targets: ui.views.container, x: ox + 4, duration: 60, yoyo: true, repeat: 5, ease: 'quad.inout',
-      onComplete: () => ui.views.container.x = ox,
+      targets: rip,
+      scaleX: 1.25,
+      alpha: 0,
+      duration: 200,
+      ease: 'quad.out',
+      onComplete: () => rip.destroy(),
     });
-    // viền nháy danger
-    this.tweens.add({ targets: ui.views.glass, alpha: { from: 1, to: 0.5 }, duration: 60, yoyo: true, repeat: 5 });
   }
 
-  // ---------- Toolbar (undo/restart/hint) — DESIGN-SPEC §2.2/§3.4 ----------
-  // Responsive mọi aspect: tâm nút cách nhau (btnW + gapX) — KHÔNG bao giờ đè nhau.
-  // Co btnW (≥44 touch, §2.4) và gapX (≥ sp[2]=8) khi viewport hẹp; icon-only khi cần.
+  // ==========================================================================
+  // TUBE COMPLETED FANFARE
+  // ==========================================================================
+  private checkTubeCompletionCelebration(tubeIndex: number) {
+    const tube = this.board.tubes[tubeIndex];
+    if (tube.length === this.board.capacity && isClean(tube)) {
+      if (!this.completedTubes.has(tubeIndex)) {
+        this.completedTubes.add(tubeIndex);
+        this.celebrateCompletedTube(tubeIndex);
+      }
+    }
+  }
+
+  private celebrateCompletedTube(tubeIndex: number) {
+    const ui = this.tubeUIs[tubeIndex];
+    if (!ui) return;
+
+    synthAudio.playTubeComplete();
+    const { width: tubeW, height: tubeH, completionFx } = ui.views;
+    completionFx.removeAll(true);
+
+    const cap = this.add.graphics();
+    cap.fillStyle(toColor(color.primary), 0.9);
+    cap.fillRoundedRect(-tubeW * 0.35, -tubeH / 2 - 6, tubeW * 0.7, 7, 3);
+    cap.lineStyle(1.5, toColor('#FFFFFF'), 0.8);
+    cap.strokeRoundedRect(-tubeW * 0.35, -tubeH / 2 - 6, tubeW * 0.7, 7, 3);
+    cap.setScale(0);
+    completionFx.add(cap);
+
+    this.tweens.add({
+      targets: cap,
+      scale: 1,
+      duration: 250,
+      ease: 'back.out',
+    });
+  }
+
+  private shakeTube(i: number) {
+    const ui = this.tubeUIs[i];
+    if (!ui) return;
+    const ox = this.origTubePositions[i].x;
+    this.tweens.add({
+      targets: ui.views.container,
+      x: ox + 5,
+      duration: 40,
+      yoyo: true,
+      repeat: 3,
+      ease: 'quad.inout',
+      onComplete: () => {
+        ui.views.container.x = ox;
+      },
+    });
+  }
+
+  // ==========================================================================
+  // TOOLBAR
+  // ==========================================================================
   private drawToolbar(width: number, height: number) {
-    // xóa nút cũ nếu có (re-layout khi resize — tránh giữ vị trí cũ gây chồng)
     for (const b of this.toolbarBtns) b.destroy();
     this.toolbarBtns = [];
 
-    const y = height - sp[5] - 36;          // hàng dưới, cách đáy sp.5 (safe area)
-    const margin = sp[4];                    // safe area 2 bên (DESIGN-SPEC §2.4)
+    const y = height - sp[5] - 36;
+    const margin = sp[4];
     const availW = Math.max(0, width - margin * 2);
 
-    // Kích thước lý tưởng (pill 88 — icon + padding, §3.4) → co xuống khi thiếu
-    const idealBtnW = 88;
-    const idealGapX = sp[5];                 // 24
-    const minBtnW = 44;                      // touch tối thiểu (§2.4)
-    const minGapX = sp[2];                   // 8
+    const idealBtnW = 86;
+    const idealGapX = sp[5];
+    const minBtnW = 48;
+    const minGapX = sp[2];
 
     let btnW: number = idealBtnW;
     let gapX: number = idealGapX;
     let total = 3 * btnW + 2 * gapX;
+
     if (total > availW) {
-      // giảm gap trước (giữ nút to nhất có thể)
       gapX = minGapX;
       total = 3 * btnW + 2 * gapX;
       if (total > availW) {
-        // co btnW (≥ minBtnW) — icon-only khi viewport cực hẹp
         btnW = Math.max(minBtnW, Math.floor((availW - 2 * minGapX) / 3));
         gapX = Math.max(minGapX, Math.floor((availW - 3 * btnW) / 2));
       }
     }
     total = 3 * btnW + 2 * gapX;
-    const startX = (width - total) / 2 + btnW / 2;   // căn giữa toolbar
+    const startX = (width - total) / 2 + btnW / 2;
 
     const defs = [
-      { testid: 'undo-btn',    text: '↺',  action: () => this.onUndo(),    icon: 'undo' as const },
-      { testid: 'restart-btn', text: '⟳',  action: () => this.onRestart(), icon: 'restart' as const },
-      { testid: 'hint-btn',    text: '💡', action: () => this.onHint(),    icon: null as null },
+      { testid: 'undo-btn', text: '↺', action: () => this.onUndo(), icon: 'undo' as const },
+      { testid: 'restart-btn', text: '⟳', action: () => this.onRestart(), icon: 'restart' as const },
+      { testid: 'hint-btn', text: '💡', action: () => this.onHint(), icon: 'hint' as const },
     ];
+
     defs.forEach((d, i) => {
-      // tâm nút i cách tâm nút 0 = i*(btnW + gapX) → mép-mép luôn cách gapX, KHÔNG chồng
       const x = startX + i * (btnW + gapX);
-      const btn = drawButton(this, x, y, d.text, { variant: 'ghost', width: btnW, textType: type.h2, testid: d.testid, icon: d.icon });
-      btn.container.on('pointerdown', ( (_p: Phaser.Input.Pointer, _lx: number, _ly: number, event: Phaser.Types.Input.EventData) => { event.stopPropagation(); }) as any);
-      btn.container.on('pointerdown', () => { d.action(); });
+      const btn = drawButton(this, x, y, d.text, {
+        variant: 'ghost',
+        width: btnW,
+        height: 62,
+        textType: type.h2,
+        testid: d.testid,
+        icon: d.icon,
+      });
+
+      btn.container.on('pointerdown', (
+        _p: Phaser.Input.Pointer,
+        _lx: number,
+        _ly: number,
+        event: Phaser.Types.Input.EventData,
+      ) => {
+        event.stopPropagation();
+        d.action();
+      });
+
       this.toolbarBtns.push(btn.container);
     });
   }
 
-  // ---------- Undo (M2-05) ----------
+  // ==========================================================================
+  // CONTROLLER ACTIONS
+  // ==========================================================================
   private onUndo() {
     if (this.isAnimating) return;
+    this.clearHint();
     const undone = undoMove(this.board);
-    if (!undone) { this.playSfx('sfx_error', 0.3); return; }
+    if (!undone) {
+      synthAudio.playBuzz();
+      this.playSfx('sfx_error', 0.3);
+      return;
+    }
     this.moveLabel.setText(`⤵ ${this.board.moveCount}`);
-    // render lại toàn bộ ống (đơn giản, đủ mượt)
-    for (const t of this.tubeUIs) renderLiquid(t.views, this.board.tubes[t.index]);
+    for (const t of this.tubeUIs) {
+      renderLiquid(t.views, this.board.tubes[t.index]);
+    }
+    synthAudio.playGlug(1);
     this.playSfx('sfx_pour', 0.3);
-    this.selected = null; this.updateSelection();
+    this.selected = null;
+    this.updateSelection();
   }
 
-  // ---------- Restart (M2-05) ----------
   private onRestart() {
     if (this.isAnimating) return;
+    this.clearHint();
     this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
     this.time.delayedCall(dur.scene, () => {
       this.board = restartBoard(MECHANICS, this.board);
-      this.selected = null; this.hintUsedThisLevel = false;
+      this.selected = null;
+      this.completedTubes.clear();
       this.moveLabel.setText(`⤵ 0`);
-      for (const t of this.tubeUIs) renderLiquid(t.views, this.board.tubes[t.index]);
+      for (const t of this.tubeUIs) {
+        renderLiquid(t.views, this.board.tubes[t.index]);
+      }
       this.cameras.main.fadeIn(dur.scene, 0, 0, 0);
+      synthAudio.playClick();
       this.playSfx('sfx_click', 0.3);
     });
   }
 
-  // ---------- Hint (rewarded M2-06) ----------
   private async onHint() {
-    if (this.isAnimating || this.hintUsedThisLevel) return;
-    const earned = MECHANICS.reward.hint.costAd ? await sdk.requestRewardedAd('hint') : true;
+    if (this.isAnimating || this.board.win) return;
+    this.clearHint();
+
+    const earned = await sdk.requestRewardedAd('hint');
     if (!earned) return;
-    this.hintUsedThisLevel = true;
+
     const hint = hintMove(this.board);
-    if (!hint) return;
-    // highlight nguồn + đích 3 lần nhấp nháy (DESIGN-SPEC §5 A6)
-    const srcUI = this.tubeUIs[hint.from], dstUI = this.tubeUIs[hint.to];
-    let blink = 0;
-    const doBlink = () => {
-      srcUI.views.glowRing.setAlpha(1);
-      dstUI.views.glowRing.setAlpha(0.5);
-      this.tweens.add({
-        targets: [srcUI.views.glowRing, dstUI.views.glowRing], alpha: 0,
-        duration: 300, ease: 'quad.out',
-        onComplete: () => {
-          blink++;
-          if (blink < 3) doBlink();
-          else {
-            // giữ glow ở nguồn
-            this.selected = hint.from; this.updateSelection();
-          }
-        },
-      });
-    };
-    doBlink();
-    this.playSfx('sfx_click', 0.4);
+    if (!hint) {
+      this.showStuckTooltip('Hết đường thắng! Dùng ↺ Undo hoặc ⟳ Restart nhé 💡');
+      return;
+    }
+
+    const srcPos = this.origTubePositions[hint.from];
+    const dstPos = this.origTubePositions[hint.to];
+    const srcUI = this.tubeUIs[hint.from];
+    const dstUI = this.tubeUIs[hint.to];
+
+    synthAudio.playHint();
+
+    // 1. Tự động nhấc ống nguồn
+    this.selected = hint.from;
+    this.updateSelection();
+
+    // 2. Nhấp nháy ống đích
+    dstUI.views.glowRing.setAlpha(0.85);
+    this.tweens.add({
+      targets: dstUI.views.glowRing,
+      alpha: 0,
+      duration: 300,
+      yoyo: true,
+      repeat: 2,
+    });
+
+    // 3. Vẽ đường chỉ nước đi
+    const startX = srcPos.x;
+    const startY = srcPos.y - srcUI.views.height * 0.45;
+    const endX = dstPos.x;
+    const endY = dstPos.y - dstUI.views.height * 0.45;
+
+    drawHintArc(this.hintArcG, startX, startY, endX, endY, 1.0);
+
+    this.hintArcTimer = this.time.delayedCall(3000, () => {
+      this.clearHint();
+    });
   }
 
-  // ---------- Extra tube (rewarded M2-06) — không gắn nút toolbar, dùng qua hint khi kẹt ----------
   public async requestExtraTube(): Promise<boolean> {
     if (this.board.extraTubeUsed >= MECHANICS.reward.extraTube.maxExtra) return false;
     const earned = await sdk.requestRewardedAd('extra_tube');
     if (!earned) return false;
+
     addExtraTube(this.board);
     this.layoutBoard(this.scale.width, this.scale.height);
-    // ống mới drop-in (DESIGN-SPEC §5 A7)
     const last = this.tubeUIs[this.tubeUIs.length - 1];
     last.views.container.setScale(0);
     this.tweens.add({ targets: last.views.container, scale: 1, duration: dur.pop, ease: 'back.out' });
+    synthAudio.playTubeComplete();
     return true;
   }
 
-  // ---------- Stuck tooltip (M2-03) ----------
-  private showStuckTooltip() {
+  private showStuckTooltip(msg = 'Hết đường thắng! Dùng ↺ Undo hoặc ⟳ Restart nhé 💡') {
     if (this.stuckTooltip) return;
     const { width, height } = this.scale;
-    const y = height - sp[5] - 90;
-    const t = this.add.text(0, 0, 'Dùng Undo / Restart / Hint nhé', fontStyle(type.small, color.warning))
+    const y = height - sp[5] - 92;
+
+    const t = this.add.text(0, 0, msg, fontStyle(type.small, color.warning))
       .setOrigin(0.5);
     t.setShadow(0, 2, color.shadow, 3, false, true);
+
     const w = t.width + sp[4] * 2, h = t.height + sp[3];
     const g = this.add.graphics().setDepth(z.tutorial);
-    g.fillStyle(toColor(color.surfaceAlt), 0.9);
+    g.fillStyle(toColor('#120D2C'), 0.95);
     g.fillRoundedRect(-w / 2, -h / 2, w, h, radius.md);
+    g.lineStyle(1.5, toColor(color.warning), 0.8);
+    g.strokeRoundedRect(-w / 2, -h / 2, w, h, radius.md);
+
     this.stuckTooltip = this.add.container(width / 2, y, [g, t]).setDepth(z.tutorial).setAlpha(0);
     this.tweens.add({
-      targets: this.stuckTooltip, alpha: 1, duration: dur.base, ease: 'quad.out',
+      targets: this.stuckTooltip,
+      alpha: 1,
+      duration: dur.base,
+      ease: 'quad.out',
       onComplete: () => this.time.delayedCall(3000, () => {
-        if (this.stuckTooltip) this.tweens.add({ targets: this.stuckTooltip, alpha: 0, duration: dur.base, onComplete: () => { this.stuckTooltip?.destroy(); this.stuckTooltip = null; } });
+        if (this.stuckTooltip) {
+          this.tweens.add({
+            targets: this.stuckTooltip,
+            alpha: 0,
+            duration: dur.base,
+            onComplete: () => {
+              this.stuckTooltip?.destroy();
+              this.stuckTooltip = null;
+            },
+          });
+        }
       }),
     });
-    this.playSfx('sfx_error', 0.2);
+    synthAudio.playBuzz();
   }
 
-  // ---------- Tutorial banner (UX §8) ----------
   private showTutorial(width: number, height: number) {
-    const t = this.add.text(width / 2, height * 0.38, 'Chọn ống rồi đổ màu', fontStyle(type.body, color.surface))
+    const t = this.add.text(width / 2, height * 0.36, 'Chọn ống rồi đổ màu ✨', fontStyle(type.body, color.surface))
       .setOrigin(0.5).setDepth(z.tutorial).setAlpha(0);
-    t.setShadow(0, 2, color.shadow, 3, false, true);
-    this.tweens.add({ targets: t, alpha: 1, duration: dur.base, onComplete: () => this.time.delayedCall(3000, () => this.tweens.add({ targets: t, alpha: 0, duration: dur.base, onComplete: () => t.destroy() })) });
-    ctx.tutorialSeen = true; void ctx.save();
+    t.setShadow(0, 2, color.shadow, 4, false, true);
+    this.tweens.add({
+      targets: t,
+      alpha: 1,
+      duration: dur.base,
+      onComplete: () => this.time.delayedCall(3000, () => {
+        this.tweens.add({ targets: t, alpha: 0, duration: dur.base, onComplete: () => t.destroy() });
+      }),
+    });
+    ctx.tutorialSeen = true;
+    void ctx.save();
   }
 
-  // ---------- Level Clear (M2-02) ----------
   private onLevelClear() {
+    this.clearHint();
+    synthAudio.playLevelClear();
     this.playSfx('sfx_clear', 0.5);
     ctx.onLevelClear(this.board.level, this.board.moveCount);
     void ctx.save();
-    this.scene.start('LevelClearScene', { level: this.board.level, moves: this.board.moveCount, best: ctx.bestMoves });
+    this.scene.start('LevelClearScene', {
+      level: this.board.level,
+      moves: this.board.moveCount,
+      optimal: this.board.optimalMoves,
+      best: ctx.getBestMovesForLevel(this.board.level),
+    });
   }
 
-  // ---------- SFX helper ----------
   private playSfx(key: string, volume = 0.35) {
     if (this.sound.mute) return;
     if (this.cache.audio.exists(key)) this.sound.play(key, { volume });
   }
 
-  // ---------- Resize ----------
   private onResize(g: Phaser.Structs.Size) {
-    // vẽ lại nền + layout lại board + toolbar (DESIGN-SPEC §2.1 — giữ state)
-    this.bgStars.g.destroy(); for (const s of this.bgStars.stars) s.destroy();
-    this.bgStars = drawGalaxyBg(this);
+    this.clearHint();
+    this.bgObjects.g.destroy();
+    if (this.bgObjects.bgImage) this.bgObjects.bgImage.destroy();
+
+    this.bgObjects = drawGalaxyBg(this);
     this.layoutBoard(g.width, g.height);
-    // Toolbar re-layout responsive (tránh nút giữ vị trí cũ → chồng khi đổi aspect)
     this.drawToolbar(g.width, g.height);
-    // HUD re-position đơn giản
-    this.children.list.filter(c => c instanceof Phaser.GameObjects.Text && c.getData('testid') === 'audio-toggle')
-      .forEach(c => (c as Phaser.GameObjects.Text).setPosition(g.width - sp[4] - 20, sp[4] + 24));
+
+    if (this.audioBtnText) {
+      this.audioBtnText.setPosition(g.width - sp[4] - 27 - 8, sp[4] + 28);
+    }
   }
 }

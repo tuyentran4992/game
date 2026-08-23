@@ -30,18 +30,18 @@ export const MECHANICS: MechanicsConfig = {
   capacity: 4,
   emptyTubesStart: 1,
   palette: [
-    { id: 'neon_cyan',    hex: '#00E5FF' },
-    { id: 'neon_magenta', hex: '#FF2EC4' },
-    { id: 'neon_lime',    hex: '#A8FF3E' },
-    { id: 'neon_amber',   hex: '#FFC400' },
-    { id: 'neon_violet',  hex: '#9D5CFF' },
-    { id: 'neon_blue',    hex: '#2D8CFF' },
-    { id: 'neon_red',     hex: '#FF3B30' },
-    { id: 'neon_green',   hex: '#00E56A' },
-    { id: 'neon_orange',  hex: '#FF7A00' },
-    { id: 'neon_pink',    hex: '#FF6FD0' },
-    { id: 'neon_white',   hex: '#FFFFFF' },
-    { id: 'neon_black',   hex: '#2A2A4A' },
+    { id: 'neon_cyan',      hex: '#00F0FF' }, // 1. Electric Cyan
+    { id: 'neon_pink',      hex: '#FF1493' }, // 2. Hot Neon Pink
+    { id: 'neon_yellow',    hex: '#FFE600' }, // 3. Sunburst Yellow
+    { id: 'neon_lime',      hex: '#39FF14' }, // 4. Neon Lime Green
+    { id: 'neon_blue',      hex: '#1E50FF' }, // 5. Royal Indigo Blue
+    { id: 'neon_orange',    hex: '#FF6B00' }, // 6. Vivid Orange
+    { id: 'neon_violet',    hex: '#9E00FF' }, // 7. Cosmic Violet Purple
+    { id: 'neon_red',       hex: '#FF2A4D' }, // 8. Crimson Red
+    { id: 'neon_emerald',   hex: '#00E5A3' }, // 9. Mint Emerald Green
+    { id: 'neon_white',     hex: '#FFFFFF' }, // 10. Pure Snow White
+    { id: 'neon_bronze',    hex: '#C98600' }, // 11. Gold Bronze
+    { id: 'neon_lavender',  hex: '#A6B8FF' }, // 12. Sky Lavender
   ],
   levelRamp: [
     { atLevel: 1,  tubes: 4,  colors: 3, capacity: 4, empty: 1 },
@@ -68,7 +68,7 @@ export function rampForLevel(cfg: MechanicsConfig, level: number): RampStep {
   return step;
 }
 
-// Chọn `count` màu palette cho level (tránh cặp quá giống — guard đơn giản theo index cách đều).
+// Chọn `count` màu palette cho level
 export function colorsForLevel(cfg: MechanicsConfig, level: number): PaletteColor[] {
   const step = rampForLevel(cfg, level);
   const need = step.colors;

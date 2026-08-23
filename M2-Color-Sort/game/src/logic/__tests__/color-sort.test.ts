@@ -223,6 +223,15 @@ describe('color-sort — hint M2-06', () => {
     expect(isLegal(board.tubes, hint!.from, hint!.to, board.capacity)).toBe(true);
   });
 
+  it('hintMove hoạt động tốt trên các level từ 1 đến 25 với seed mặc định', () => {
+    for (let level = 1; level <= 25; level++) {
+      const board = createBoard(MECHANICS, level);
+      const hint = hintMove(board);
+      expect(hint, `Level ${level} phải có hint hợp lệ lúc khởi tạo`).not.toBeNull();
+      expect(isLegal(board.tubes, hint!.from, hint!.to, board.capacity)).toBe(true);
+    }
+  });
+
   it('hintMove trả về null khi đã win (không cần gợi ý)', () => {
     const board = createBoard(MECHANICS, 1, 1);
     board.tubes = [

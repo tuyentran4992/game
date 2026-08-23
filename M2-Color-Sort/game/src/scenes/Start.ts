@@ -1,52 +1,119 @@
 import Phaser from 'phaser';
 import { color, type, sp, z, dur, glow, fontStyle, toColor } from '../tokens';
-import { drawButton, drawGalaxyBg, drawTube, renderLiquid } from '../ui';
+import { drawButton, drawGalaxyBg, drawTube, renderLiquid, synthAudio, GalaxyBgObjects } from '../ui';
 import { ctx } from '../context';
 
-// StartScene M2 (DESIGN-SPEC §4.1) — nền galaxy + title + ống minh họa + nút Chơi.
 export class StartScene extends Phaser.Scene {
-  constructor() { super({ key: 'StartScene' }); }
+  private bgObjects!: GalaxyBgObjects;
+  private titleContainer!: Phaser.GameObjects.Container;
+  private demoContainer!: Phaser.GameObjects.Container;
+  private startBtn!: Phaser.GameObjects.Container;
+  private caption!: Phaser.GameObjects.Text;
+
+  constructor() {
+    super({ key: 'StartScene' });
+  }
 
   async create() {
     await ctx.load();
     const { width, height } = this.scale;
-    drawGalaxyBg(this);
+    this.bgObjects = drawGalaxyBg(this);
 
-    // Title "NEON SORT / GALAXY POUR" (DESIGN-SPEC §4.1) — type.display, color.surface + stroke
-    const title1 = this.add.text(width / 2, height * 0.22, 'NEON SORT', fontStyle(type.display, color.surface))
-      .setOrigin(0.5).setDepth(z.hud);
-    title1.setShadow(0, 3, color.shadow, 5, false, true);
-    const title2 = this.add.text(width / 2, height * 0.30, 'GALAXY POUR', fontStyle(type.h1, color.accent))
-      .setOrigin(0.5).setDepth(z.hud);
-    title2.setShadow(0, 2, color.shadow, 4, false, true);
+    // 1. Logo / Title container (Crisp & Static, zero text scaling jitter)
+    this.titleContainer = this.add.container(width / 2, height * 0.22).setDepth(z.hud).setAlpha(0);
 
-    // Ống minh họa (DESIGN-SPEC §4.1) — 1 ống chất lỏng neon glow nhấp nháy
-    const demo = drawTube(this, 96, 240, 4);
-    demo.container.setPosition(width / 2, height * 0.50).setDepth(z.actor);
-    renderLiquid(demo, ['#00E5FF', '#FF2EC4', '#00E5FF', '#A8FF3E']);
-    // tween glow nhấp nháy nhẹ
+    const title1 = this.add.text(0, -18, 'NEON SORT', fontStyle(type.display, color.surface))
+      .setOrigin(0.5);
+    title1.setShadow(0, 3, 'rgba(0,0,0,0.7)', 6, false, true);
+
+    const title2 = this.add.text(0, 30, '⚡ GALAXY POUR ⚡', fontStyle(type.h1, color.accent))
+      .setOrigin(0.5);
+    title2.setShadow(0, 2, color.accent, 10, false, true);
+
+    this.titleContainer.add([title1, title2]);
+
+    // Smooth single entrance transition
     this.tweens.add({
-      targets: demo.container, scaleY: 1.04, scaleX: 0.98, duration: dur.slow * 2,
-      yoyo: true, repeat: -1, ease: 'sine.inout',
+      targets: this.titleContainer,
+      y: height * 0.22,
+      alpha: 1,
+      duration: 400,
+      ease: 'cubic.out',
     });
 
-    // Nút Chơi (data-testid=start-btn) — btn-primary neon (§3.5)
-    const { container } = drawButton(this, width / 2, height * 0.72, 'Chơi', { testid: 'start-btn' });
-    container.on('pointerdown', () => {
+    // 2. Demo Ống Nghiệm minh họa
+    this.demoContainer = this.add.container(width / 2, height * 0.48).setDepth(z.actor).setScale(0.85).setAlpha(0);
+
+    const tube1 = drawTube(this, 76, 180, 4);
+    tube1.container.setPosition(-54, 0);
+    renderLiquid(tube1, ['#00E5FF', '#FF2EC4', '#00E5FF', '#A8FF3E']);
+    this.demoContainer.add(tube1.container);
+
+    const tube2 = drawTube(this, 76, 180, 4);
+    tube2.container.setPosition(54, 0);
+    renderLiquid(tube2, ['#FF2EC4', '#A8FF3E', '#FFC400', '#FF2EC4']);
+    this.demoContainer.add(tube2.container);
+
+    // Smooth entrance
+    this.tweens.add({
+      targets: this.demoContainer,
+      scale: 1,
+      alpha: 1,
+      duration: 450,
+      delay: 100,
+      ease: 'back.out',
+    });
+
+    // 3. Nút Chơi Neon (data-testid: start-btn)
+    const { container } = drawButton(this, width / 2, height * 0.72, '▶ CHƠI', {
+      testid: 'start-btn',
+      width: 270,
+      height: 72,
+      variant: 'primary',
+      glowColor: color.primary,
+    });
+    this.startBtn = container;
+    this.startBtn.setAlpha(0).setScale(0.9);
+
+    // Smooth button entrance
+    this.tweens.add({
+      targets: this.startBtn,
+      alpha: 1,
+      scale: 1,
+      duration: 450,
+      delay: 180,
+      ease: 'back.out',
+    });
+
+    this.startBtn.on('pointerdown', () => {
+      synthAudio.playClick();
       this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
       this.time.delayedCall(dur.scene, () => this.scene.start('GameplayScene'));
     });
 
-    // caption "Lv X bắt đầu" (DESIGN-SPEC §4.1) — type.small
+    // 4. Caption Level
     const startLevel = Math.max(1, ctx.currentLevel);
-    this.add.text(width / 2, height * 0.80, `Lv ${startLevel} bắt đầu`, fontStyle(type.small, color.surface))
-      .setOrigin(0.5).setAlpha(0.8).setDepth(z.hud).setShadow(0, 2, color.shadow, 3, false, true);
+    this.caption = this.add.text(
+      width / 2,
+      height * 0.81,
+      `Bắt đầu Level ${startLevel}`,
+      fontStyle(type.small, color.accent),
+    ).setOrigin(0.5).setDepth(z.hud).setAlpha(0);
+    this.caption.setShadow(0, 2, color.shadow, 4, false, true);
+
+    this.tweens.add({
+      targets: this.caption,
+      alpha: 0.9,
+      duration: 400,
+      delay: 250,
+      ease: 'quad.out',
+    });
 
     this.scale.on('resize', (g: Phaser.Structs.Size) => {
-      title1.setPosition(g.width / 2, g.height * 0.22);
-      title2.setPosition(g.width / 2, g.height * 0.30);
-      demo.container.setPosition(g.width / 2, g.height * 0.50);
-      container.setPosition(g.width / 2, g.height * 0.72);
+      this.titleContainer.setPosition(g.width / 2, g.height * 0.22);
+      this.demoContainer.setPosition(g.width / 2, g.height * 0.48);
+      this.startBtn.setPosition(g.width / 2, g.height * 0.72);
+      this.caption.setPosition(g.width / 2, g.height * 0.81);
     });
   }
 }
