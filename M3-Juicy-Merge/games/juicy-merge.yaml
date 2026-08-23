@@ -1,0 +1,167 @@
+name: juicy-merge
+version: 0.1.0
+
+metadata:
+  title: "Juicy Merge: Fruit Pop"
+  short_desc: "Drop fruit, merge two of a kind into a bigger one! A juicy physics puzzle — grow the chain to a giant watermelon and set records."
+  genre: ["Puzzle", "Casual"]
+  theme: "fruity kawaii merge"
+  style: "pastel kawaii fruit, bold outline, juicy satisfying merge pops"
+  flag_movie: false
+
+assets:
+  - key: fruit_01_cherry
+    type: png
+    description: "Bậc 1 Cherry (đỏ #D32F2F, viền đậm) — sprite tròn"
+    _size_est_kb: 40
+  - key: fruit_02_strawberry
+    type: png
+    description: "Bậc 2 Strawberry (hồng đốm)"
+    _size_est_kb: 45
+  - key: fruit_03_grape
+    type: png
+    description: "Bậc 3 Grape (tím chùm)"
+    _size_est_kb: 45
+  - key: fruit_04_dekopon
+    type: png
+    description: "Bậc 4 Dekopon (cam)"
+    _size_est_kb: 50
+  - key: fruit_05_pomegranate
+    type: png
+    description: "Bậc 5 Pomegranate (đỏ sẫm)"
+    _size_est_kb: 55
+  - key: fruit_06_orange
+    type: png
+    description: "Bậc 6 Orange (cam đậm)"
+    _size_est_kb: 60
+  - key: fruit_07_apple
+    type: png
+    description: "Bậc 7 Apple (đỏ + đuôi xanh)"
+    _size_est_kb: 65
+  - key: fruit_08_pear
+    type: png
+    description: "Bậc 8 Pear (xanh-vàng)"
+    _size_est_kb: 70
+  - key: fruit_09_peach
+    type: png
+    description: "Bậc 9 Peach (hồng kem)"
+    _size_est_kb: 75
+  - key: fruit_10_pineapple
+    type: png
+    description: "Bậc 10 Pineapple (vàng gai)"
+    _size_est_kb: 80
+  - key: fruit_11_melon
+    type: png
+    description: "Bậc 11 Melon (xanh vân)"
+    _size_est_kb: 90
+  - key: fruit_12_watermelon
+    type: png
+    description: "Bậc 12 Watermelon (xanh + glow, jackpot, lớn nhất)"
+    _size_est_kb: 100
+  - key: bucket
+    type: png
+    description: "Nền thùng chứa (rộng 640, vách trái/phải)"
+    _size_est_kb: 40
+  - key: bg_gradient
+    type: png
+    description: "Nền gradient pastel Start + Gameplay"
+    _size_est_kb: 90
+  - key: logo
+    type: png
+    description: "Logo chữ Juicy Merge Start"
+    _size_est_kb: 60
+  - key: ui_icons
+    type: png
+    description: "Icon nút (play/retry/continue/pause/mute)"
+    _size_est_kb: 70
+  - key: danger_line
+    type: png
+    description: "Vạch danger dashed"
+    _size_est_kb: 5
+  - key: sfx_drop
+    type: audio
+    description: "SFX thả trái (short)"
+    _size_est_kb: 15
+  - key: sfx_merge
+    type: audio
+    description: "SFX merge (theo bậc, pitch tăng)"
+    _size_est_kb: 20
+  - key: sfx_merge_big
+    type: audio
+    description: "SFX jackpot/watermelon"
+    _size_est_kb: 25
+  - key: sfx_danger
+    type: audio
+    description: "SFX trái sắp quá vạch"
+    _size_est_kb: 15
+  - key: sfx_gameover
+    type: audio
+    description: "SFX game over"
+    _size_est_kb: 20
+  - key: bgm_main
+    type: audio
+    description: "BGM vui nhộn vòng lặp, mono, bitrate thấp"
+    _size_est_kb: 150
+
+mechanics:
+  # (dummy kế thừa validate pipeline M1 — M3 không dùng lane/bee)
+  lane_count: 3
+  bee: { base_speed: 0 }
+  # Physics-merge core
+  bucket_width: 640
+  bucket_height_ratio: 0.70
+  danger_line_ratio: 0.20
+  drop_cooldown_ms: 250
+  drop_start_ratio: 0.0
+  chain:
+    - cherry
+    - strawberry
+    - grape
+    - dekopon
+    - pomegranate
+    - orange
+    - apple
+    - pear
+    - peach
+    - pineapple
+    - melon
+    - watermelon
+  score_per_tier: [1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66, 100]
+  combo_window_ms: 2000
+  physics:
+    gravity_y: 1.0
+    restitution: 0.1
+    friction: 0.8
+    sleep_threshold: 60
+  # (dummy — để pipeline validate config chung M1 pass; M3 không dùng combo/milestone)
+  progression:
+    milestone_interval: 10
+    combo_per: 5
+    combo_bonus: 5
+    palettes:
+      - { key: m3_pk, level: 1, bg_top: "#FFF8E7", bg_bottom: "#FFE4C4", primary: "#FF6B81", accent: "#7ED957" }
+      - { key: m3_pp, level: 2, bg_top: "#FDE8EF", bg_bottom: "#FFD3E0", primary: "#FF6B81", accent: "#7ED957" }
+      - { key: m3_gr, level: 3, bg_top: "#F0FDE8", bg_bottom: "#DCFCD0", primary: "#FF6B81", accent: "#7ED957" }
+
+reward:
+  continue: { cost_ad: true, max_once_per_run: 1 }
+
+ad:
+  interstitial_after_gameover_2plus: true
+
+progression:
+  save_schema_version: 1
+  best_score: 0
+  # (dummy — để pipeline validate config chung M1 pass)
+  milestone_interval: 10
+  combo_per: 5
+  combo_bonus: 5
+  palettes:
+    - { key: m3_pk, level: 1, bg_top: "#FFF8E7", bg_bottom: "#FFE4C4", primary: "#FF6B81", accent: "#7ED957" }
+    - { key: m3_pp, level: 2, bg_top: "#FDE8EF", bg_bottom: "#FFD3E0", primary: "#FF6B81", accent: "#7ED957" }
+    - { key: m3_gr, level: 3, bg_top: "#F0FDE8", bg_bottom: "#DCFCD0", primary: "#FF6B81", accent: "#7ED957" }
+
+publisher:
+  name: "ExcelToApp Games"
+  contact_email: "games@exceltoapp.vn"
+  website: ""

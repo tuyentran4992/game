@@ -1,0 +1,6 @@
+allowBuilds:
+  esbuild: set this to true or false
+# pnpm-workspace.yaml — cấu hình workspace M3 Juicy Merge (pnpm 11)
+# onlyBuiltDependencies: cho phép chạy build script của esbuild (vite cần native binary)
+onlyBuiltDependencies:
+  - esbuild
