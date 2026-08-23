@@ -29,6 +29,19 @@
 4. TDD: viết test logic (vitest) TRƯỚC khi code — RED→GREEN.
 5. Không commit/push code khi chưa có lệnh; chỉ báo kết quả bằng số liệu (số test pass / typecheck / build).
 
+## 📱 MOBILE-FIRST (BẮT BUỘC — anh Tuyền nhấn mạnh 2026-08-23, "M1 chơi mobile rất khó")
+- **World portrait-first:** camera 720×1280 (9:16) — M1 dùng 1920×1080 ngang → chơi mobile chật/kho. Game phải tối ưu cho dọc, desktop tự pillarbox.
+- **Input by touch là chính:** ghost trái theo ngón tay (không chuột), vùng chạm ≥ 44px, thả = chạm/nhả. KHÔNG dựa hover chuột.
+- **Trái/ghost vừa tay:** kích thước sprite/physics (bảng §6 DESIGN-SPEC) scale theo bucket mobile.
+- **HUD/nút lớn, không che gameplay:** nút Continue/Retry ≥ 96px cao, khoảng cách đủ tránh chạm nhầm.
+- **Bố cục bucket chiếm chủ yếu màn dọc,** vạch danger/vùng thả dễ với tay cầm 1 tay.
+- Responsive vẫn hỗ trợ desktop (Scale.FIT + pillarbox) nhưng mọi thứ đo theo chuẩn mobile trước.
+- Verify mobile cụ thể ở bước 9, 15: mở browser chế độ device emulation mobile (9:16) + vision xác nhận không đè/chật.
+
+## Rewarded/Interstitial — semantics (anh Tuyền chốt 2026-08-23)
+- **THEO LƯỢT:** mỗi lần "Chơi lại" = lượt mới → Rewarded "Continue" được lại 1 lần/lượt (M3-05). Interstitial từ lượt 2+ (M3-07). KHÔNG tính theo phiên app.
+- `playCount` reset mỗi lượt mới. GC-12 test theo semantics này.
+
 ## Gameplay cốt (SPEC M3 §4)
 - Thả trái từ đỉnh bucket → rơi theo **Matter.js** (body tròn, có sẵn Phaser) → 2 cùng loại chạm → merge bậc kế.
 - Vạch danger ~20% đỉnh bucket. Game over khi (vật lý settle) VÀ (có trái trên vạch). Không game over khi đang rơi ngang vạch.
