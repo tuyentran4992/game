@@ -204,7 +204,7 @@ export function solveBoard(tubes: Liquid[][], capacity: number, maxStates = 4000
   return null;
 }
 
-// ---------- Level generator (sinh NGƯỢC — M2-04) ----------
+// ---------- Level generator (sinh NGƯỢC + BẢO TOÀN KHẢ NĂNG GIẢI) ----------
 export function generateBoard(
   cfg: MechanicsConfig,
   level: number,
@@ -218,20 +218,8 @@ export function generateBoard(
   const capacity = ramp.capacity;
   const palette = colorsForLevel(cfg, level);
 
-  const rng = mulberry32(seed);
+  const maxScramble = ramp.scramble ?? cfg.shuffleBackSteps;
 
-  // BƯỚC 1: solved state — colorCount ống đầy 1 màu + empty ống trống.
-  const tubes: Liquid[][] = [];
-  const colors: Liquid[] = palette.slice(0, colorCount).map(c => c.hex);
-  for (let c = 0; c < colorCount; c++) {
-    const arr: Liquid[] = [];
-    for (let k = 0; k < capacity; k++) arr.push(colors[c]);
-    tubes.push(arr);
-  }
-  for (let e = 0; e < emptyTubes; e++) tubes.push([]);
-  while (tubes.length < totalTubes) tubes.push([]);
-
-  // BƯỚC 2: trộn N bước bằng scramble moves (reversible).
   const scrambleMoves = (tubes: Liquid[][], cap: number): Move[] => {
     const out: Move[] = [];
     for (let i = 0; i < tubes.length; i++) {
@@ -259,72 +247,111 @@ export function generateBoard(
     return out;
   };
 
-  const solutionPath: Move[] = [];
-  let lastMove: Move | null = null;
-  for (let step_i = 0; step_i < cfg.shuffleBackSteps; step_i++) {
-    const moves = scrambleMoves(tubes, capacity);
-    if (moves.length === 0) {
-      const lm = legalMoves(tubes, capacity);
-      if (lm.length === 0) break;
-      const pick = lm[Math.floor(rng() * lm.length)];
-      applyMove(tubes, pick);
-      solutionPath.push(pick);
-      lastMove = pick;
-      continue;
+  let currentSeed = seed;
+  let fallbackBoard: BoardState | null = null;
+
+  for (let attempt = 0; attempt < 25; attempt++) {
+    const rng = mulberry32(currentSeed);
+
+    // BƯỚC 1: solved state
+    const tubes: Liquid[][] = [];
+    const colors: Liquid[] = palette.slice(0, colorCount).map(c => c.hex);
+    for (let c = 0; c < colorCount; c++) {
+      const arr: Liquid[] = [];
+      for (let k = 0; k < capacity; k++) arr.push(colors[c]);
+      tubes.push(arr);
     }
-    let candidates = moves;
-    if (lastMove) {
-      const filtered = moves.filter(m => !(m.from === lastMove!.to && m.to === lastMove!.from));
-      if (filtered.length > 0) candidates = filtered;
+    for (let e = 0; e < emptyTubes; e++) tubes.push([]);
+    while (tubes.length < totalTubes) tubes.push([]);
+
+    // BƯỚC 2: trộn N bước bằng scramble moves (reversible)
+    const solutionPath: Move[] = [];
+    let lastMove: Move | null = null;
+    for (let step_i = 0; step_i < maxScramble; step_i++) {
+      const moves = scrambleMoves(tubes, capacity);
+      if (moves.length === 0) {
+        const lm = legalMoves(tubes, capacity);
+        if (lm.length === 0) break;
+        const pick = lm[Math.floor(rng() * lm.length)];
+        applyMove(tubes, pick);
+        solutionPath.push(pick);
+        lastMove = pick;
+        continue;
+      }
+      let candidates = moves;
+      if (lastMove) {
+        const filtered = moves.filter(m => !(m.from === lastMove!.to && m.to === lastMove!.from));
+        if (filtered.length > 0) candidates = filtered;
+      }
+      const pick = candidates[Math.floor(rng() * candidates.length)];
+      const maxC = Math.max(1, pick.count);
+      const cnt = 1 + Math.floor(rng() * maxC);
+      const realMove: Move = { from: pick.from, to: pick.to, layers: pick.layers, count: cnt };
+      applyMove(tubes, realMove);
+      solutionPath.push(realMove);
+      lastMove = realMove;
     }
-    const pick = candidates[Math.floor(rng() * candidates.length)];
-    const maxC = Math.max(1, pick.count);
-    const cnt = 1 + Math.floor(rng() * maxC);
-    const realMove: Move = { from: pick.from, to: pick.to, layers: pick.layers, count: cnt };
-    applyMove(tubes, realMove);
-    solutionPath.push(realMove);
-    lastMove = realMove;
+
+    let guard = 0;
+    while (isWin(tubes) && guard < 30) {
+      const moves = scrambleMoves(tubes, capacity);
+      if (moves.length === 0) break;
+      const pick = moves[Math.floor(rng() * moves.length)];
+      const cnt = 1 + Math.floor(rng() * Math.max(1, pick.count));
+      const realMove: Move = { from: pick.from, to: pick.to, layers: pick.layers, count: cnt };
+      applyMove(tubes, realMove);
+      solutionPath.push(realMove);
+      guard++;
+    }
+
+    const forward: Move[] = [];
+    for (let i = solutionPath.length - 1; i >= 0; i--) {
+      const m = solutionPath[i];
+      forward.push({ from: m.to, to: m.from, layers: m.count, count: m.count });
+    }
+
+    // TÍNH SỐ BƯỚC TỐI ƯU & KIỂM TRA ĐỘ GIẢI ĐƯỢC
+    const shortestSolution = solveBoard(tubes, capacity, 15000);
+    if (!isWin(tubes) && legalMoves(tubes, capacity).length > 0 && shortestSolution !== null && shortestSolution.length > 0) {
+      return {
+        level,
+        capacity,
+        tubes,
+        tubeCount: totalTubes,
+        colors,
+        moveCount: 0,
+        history: [],
+        extraTubeUsed: 0,
+        win: false,
+        stuck: false,
+        seed: currentSeed,
+        solutionPath: shortestSolution,
+        optimalMoves: shortestSolution.length,
+      };
+    }
+
+    if (!fallbackBoard && !isWin(tubes) && legalMoves(tubes, capacity).length > 0) {
+      fallbackBoard = {
+        level,
+        capacity,
+        tubes,
+        tubeCount: totalTubes,
+        colors,
+        moveCount: 0,
+        history: [],
+        extraTubeUsed: 0,
+        win: false,
+        stuck: false,
+        seed: currentSeed,
+        solutionPath: shortestSolution || forward,
+        optimalMoves: shortestSolution ? shortestSolution.length : Math.max(3, Math.min(10, forward.length)),
+      };
+    }
+
+    currentSeed = (currentSeed * 1664525 + 1013904223) >>> 0;
   }
 
-  let guard = 0;
-  while (isWin(tubes) && guard < 30) {
-    const moves = scrambleMoves(tubes, capacity);
-    if (moves.length === 0) break;
-    const pick = moves[Math.floor(rng() * moves.length)];
-    const cnt = 1 + Math.floor(rng() * Math.max(1, pick.count));
-    const realMove: Move = { from: pick.from, to: pick.to, layers: pick.layers, count: cnt };
-    applyMove(tubes, realMove);
-    solutionPath.push(realMove);
-    guard++;
-  }
-
-  const forward: Move[] = [];
-  for (let i = solutionPath.length - 1; i >= 0; i--) {
-    const m = solutionPath[i];
-    forward.push({ from: m.to, to: m.from, layers: m.count, count: m.count });
-  }
-
-  // TÍNH SỐ BƯỚC TỐI ƯU THỰC SỰ
-  const shortestSolution = solveBoard(tubes, capacity, 10000);
-  const optimalMoves = (shortestSolution && shortestSolution.length > 0)
-    ? shortestSolution.length
-    : Math.min(12, Math.max(4, Math.ceil(colorCount * 1.5 + level * 0.3)));
-
-  return {
-    level,
-    capacity,
-    tubes,
-    tubeCount: totalTubes,
-    colors,
-    moveCount: 0,
-    history: [],
-    extraTubeUsed: 0,
-    win: isWin(tubes),
-    stuck: false,
-    seed,
-    solutionPath: shortestSolution || forward,
-    optimalMoves,
-  };
+  return fallbackBoard!;
 }
 
 // ---------- Board controller (move/undo/restart/hint) ----------

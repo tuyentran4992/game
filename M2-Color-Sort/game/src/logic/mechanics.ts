@@ -9,6 +9,7 @@ export interface RampStep {
   colors: number;    // số màu (mỗi màu chiếm đúng capacity lát)
   capacity: number;  // số lát tối đa mỗi ống
   empty: number;     // số ống trống workspace
+  scramble?: number; // số bước xáo trộn (độ sâu)
 }
 
 export interface MechanicsConfig {
@@ -26,7 +27,7 @@ export interface MechanicsConfig {
 }
 
 export const MECHANICS: MechanicsConfig = {
-  tubeCountStart: 4,
+  tubeCountStart: 3,
   capacity: 4,
   emptyTubesStart: 1,
   palette: [
@@ -44,12 +45,29 @@ export const MECHANICS: MechanicsConfig = {
     { id: 'neon_lavender',  hex: '#A6B8FF' }, // 12. Sky Lavender
   ],
   levelRamp: [
-    { atLevel: 1,  tubes: 4,  colors: 3, capacity: 4, empty: 1 },
-    { atLevel: 3,  tubes: 5,  colors: 4, capacity: 4, empty: 1 },
-    { atLevel: 6,  tubes: 6,  colors: 5, capacity: 4, empty: 1 },
-    { atLevel: 10, tubes: 8,  colors: 6, capacity: 5, empty: 1 },
-    { atLevel: 15, tubes: 10, colors: 7, capacity: 5, empty: 2 },
-    { atLevel: 22, tubes: 12, colors: 9, capacity: 5, empty: 2 },
+    // 🟢 Level 1–2: Khởi động siêu dễ (2 màu, 3 ống, 1 trống) -> Giải ~2-3 bước
+    { atLevel: 1,  tubes: 3,  colors: 2, capacity: 4, empty: 1, scramble: 5 },
+
+    // 🟢 Level 3–5: Làm quen gom màu (3 màu, 4 ống, 1 trống) -> Giải ~4-5 bước
+    { atLevel: 3,  tubes: 4,  colors: 3, capacity: 4, empty: 1, scramble: 10 },
+
+    // 🟡 Level 6–8: Bắt đầu tính toán thứ tự (4 màu, 5 ống, 1 trống) -> Giải ~7-9 bước
+    { atLevel: 6,  tubes: 5,  colors: 4, capacity: 4, empty: 1, scramble: 18 },
+
+    // 🟠 Level 9–11: Thử thách trung cấp (5 màu, 6 ống, 1 trống) -> Giải ~10-13 bước
+    { atLevel: 9,  tubes: 6,  colors: 5, capacity: 4, empty: 1, scramble: 28 },
+
+    // 🔴 Level 12–15: "BẮT ĐẦU NHỨC ĐẦU" (6 màu, 7 ống, CHỈ 1 TRỐNG) -> Cực kỳ thử thách, giải ~14-18 bước
+    { atLevel: 12, tubes: 7,  colors: 6, capacity: 4, empty: 1, scramble: 40 },
+
+    // 🔴 Level 16–20: Rất khó (7 màu, 9 ống, 2 trống) -> Đa tầng phức tạp, giải ~16-22 bước
+    { atLevel: 16, tubes: 9,  colors: 7, capacity: 4, empty: 2, scramble: 50 },
+
+    // 🟣 Level 21–29: Cấp độ Master (8 màu, 10 ống, 2 trống, capacity 5) -> Giải ~20-28 bước
+    { atLevel: 21, tubes: 10, colors: 8, capacity: 5, empty: 2, scramble: 60 },
+
+    // 🟣 Level 30+: Insane Challenge (10 màu, 12 ống, 2 trống, capacity 5) -> Giải ~25-35 bước
+    { atLevel: 30, tubes: 12, colors: 10, capacity: 5, empty: 2, scramble: 70 },
   ],
   shuffleBackSteps: 60,
   reward: {

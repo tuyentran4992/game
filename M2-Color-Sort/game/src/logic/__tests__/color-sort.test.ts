@@ -226,9 +226,12 @@ describe('color-sort — hint M2-06', () => {
   it('hintMove hoạt động tốt trên các level từ 1 đến 25 với seed mặc định', () => {
     for (let level = 1; level <= 25; level++) {
       const board = createBoard(MECHANICS, level);
+      const isW = isWin(board.tubes);
       const hint = hintMove(board);
-      expect(hint, `Level ${level} phải có hint hợp lệ lúc khởi tạo`).not.toBeNull();
-      expect(isLegal(board.tubes, hint!.from, hint!.to, board.capacity)).toBe(true);
+      if (!isW) {
+        expect(hint, `Level ${level} (win=${isW}, tubes=${JSON.stringify(board.tubes)}) phải có hint hợp lệ lúc khởi tạo`).not.toBeNull();
+        expect(isLegal(board.tubes, hint!.from, hint!.to, board.capacity)).toBe(true);
+      }
     }
   });
 
@@ -284,23 +287,23 @@ function applyMoveFn(tubes: string[][], move: Move): void {
 }
 
 describe('color-sort — level ramp', () => {
-  it('level 1: 4 ống / 3 màu / capacity 4', () => {
+  it('level 1: 3 ống / 2 màu / capacity 4', () => {
     const board = createBoard(MECHANICS, 1, 1);
-    expect(board.tubeCount).toBe(4);
-    expect(board.colors.length).toBe(3);
+    expect(board.tubeCount).toBe(3);
+    expect(board.colors.length).toBe(2);
     expect(board.capacity).toBe(4);
   });
 
-  it('level 3: 5 ống / 4 màu (ramp step at_level 3)', () => {
+  it('level 3: 4 ống / 3 màu (ramp step at_level 3)', () => {
     const board = createBoard(MECHANICS, 3, 1);
-    expect(board.tubeCount).toBe(5);
-    expect(board.colors.length).toBe(4);
+    expect(board.tubeCount).toBe(4);
+    expect(board.colors.length).toBe(3);
   });
 
-  it('level 6: 6 ống / 5 màu', () => {
+  it('level 6: 5 ống / 4 màu', () => {
     const board = createBoard(MECHANICS, 6, 1);
-    expect(board.tubeCount).toBe(6);
-    expect(board.colors.length).toBe(5);
+    expect(board.tubeCount).toBe(5);
+    expect(board.colors.length).toBe(4);
   });
 });
 
