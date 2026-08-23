@@ -107,6 +107,67 @@ describe('GC-10: cumulative score = sum(scorePerTier) across merges', () => {
   });
 });
 
+describe('GC-11: drop cooldown gate (M3-01, config-driven)', () => {
+  it('uses CONFIG.dropCooldownMs (not a hardcoded literal)', () => {
+    expect(CONFIG.dropCooldownMs).toBe(250);
+  });
+
+  it('first drop is always allowed (no prior drop recorded)', () => {
+    const e = new MergeEngine();
+    expect(e.canDrop(0)).toBe(true);
+    expect(e.canDrop(100)).toBe(true);
+  });
+
+  it('a second drop within dropCooldownMs is blocked', () => {
+    const e = new MergeEngine();
+    e.recordDrop(0);
+    expect(e.canDrop(100)).toBe(false);   // 100 < 250
+    expect(e.canDrop(249)).toBe(false);   // 249 < 250
+  });
+
+  it('a second drop at >= dropCooldownMs is allowed', () => {
+    const e = new MergeEngine();
+    e.recordDrop(0);
+    expect(e.canDrop(250)).toBe(true);    // 250 >= 250
+    expect(e.canDrop(1000)).toBe(true);   // well past cooldown
+  });
+
+  it('cooldown is measured from the most recent drop, not the first', () => {
+    const e = new MergeEngine();
+    e.recordDrop(0);
+    e.recordDrop(500);                    // second drop resets the timer
+    expect(e.canDrop(600)).toBe(false);    // 100ms since last drop → blocked
+    expect(e.canDrop(750)).toBe(true);     // 250ms since last drop → ok
+  });
+
+  it('blocks all drops once gameOver is set', () => {
+    const e = new MergeEngine();
+    e.recordDrop(0);
+    e.setGameOver(true, true);
+    expect(e.state.gameOver).toBe(true);
+    // even well past the cooldown, gameOver locks the gate
+    expect(e.canDrop(99999)).toBe(false);
+  });
+
+  it('unblocks after continue clears gameOver', () => {
+    const e = new MergeEngine();
+    e.recordDrop(0);
+    e.setGameOver(true, true);
+    expect(e.canDrop(99999)).toBe(false);
+    e.useContinue();                       // clears gameOver (M3-05)
+    expect(e.state.gameOver).toBe(false);
+    // cooldown still applies to the pre-continue drop, but far future is ok
+    expect(e.canDrop(99999)).toBe(true);
+  });
+
+  it('recordDrop has no score side effect (pure timer bookkeeping)', () => {
+    const e = new MergeEngine();
+    const before = e.state.score;
+    e.recordDrop(123);
+    expect(e.state.score).toBe(before);
+  });
+});
+
 describe('Combo: consecutive merges within comboWindowMs (config-driven, M3 §4.3)', () => {
   it('uses CONFIG.comboWindowMs (not a hardcoded literal)', () => {
     expect(CONFIG.comboWindowMs).toBe(2000);

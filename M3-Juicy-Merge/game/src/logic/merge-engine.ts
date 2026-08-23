@@ -21,6 +21,7 @@ export interface MergeState {
   bestScore: number;
   comboCount: number;
   lastMergeTime: number;
+  lastDropTime: number;  // timestamp of the most recent drop (ms); -Infinity = never
   gameOver: boolean;
   continueUsed: boolean;
   continueMax: number; // <=1 rewards tiếp tục/lượt (M3-05)
@@ -37,6 +38,7 @@ export class MergeEngine {
   constructor(seed = 1) {
     this.state = {
       score: 0, bestScore: 0, comboCount: 0, lastMergeTime: 0,
+      lastDropTime: Number.NEGATIVE_INFINITY,
       gameOver: false, continueUsed: false, continueMax: 1, playCount: 0, seed,
     };
     this.dropQueue = new DropQueue(seed);
@@ -48,6 +50,17 @@ export class MergeEngine {
 
   /** Consume the next fruit tier to drop and refill the queue. */
   nextFruit(): number { return this.dropQueue.nextFruit(); }
+
+  // --- Drop cooldown gate (M3-01) -------------------------------------------
+  /** Pure gate: true iff enough time has passed since the last drop AND not game-over.
+   *  No side effect — caller must call {@link recordDrop} when it actually drops. */
+  canDrop(nowMs: number): boolean {
+    if (this.state.gameOver) return false;
+    return nowMs - this.state.lastDropTime >= CONFIG.dropCooldownMs;
+  }
+
+  /** Record that a drop happened at {@link nowMs} (advances the cooldown timer). */
+  recordDrop(nowMs: number): void { this.state.lastDropTime = nowMs; }
 
   /** New run with a fresh seed (Retry, M3 §7). Defaults to the stored seed. */
   reseed(seed = this.state.seed): void {
@@ -88,6 +101,7 @@ export class MergeEngine {
   startNewGame(): void {
     this.state.score = 0;
     this.state.comboCount = 0;
+    this.state.lastDropTime = Number.NEGATIVE_INFINITY;
     this.state.continueUsed = false;
     this.state.gameOver = false;
     this.state.playCount = 0; // lượt mới → interstitial lại từ đầu
