@@ -126,9 +126,7 @@ export class GameOverScene extends Phaser.Scene {
     // interstitial resolves (M3-07) so the player never sees the panel mid-ad.
     panel.setScale(0.85).setAlpha(0);
     const reveal = (): void => {
-      // The scene may have been stopped (Retry during a pending interstitial)
-      // by the time the ad promise settles — bail before touching a dead scene.
-      if (!this.scene.isActive()) return;
+      if (this.sys.settings.status >= Phaser.Scenes.SHUTDOWN) return;
       this.continueBtn?.container.setInteractive({ useHandCursor: true });
       this.retryBtn?.setInteractive({ useHandCursor: true });
       this.tweens.add({

@@ -13,14 +13,14 @@ describe('computeBucketLayout (mobile-first 720×1280)', () => {
     expect(L.bucketX1 - L.bucketX0).toBe(CONFIG.bucketWidth);
   });
 
-  it('occupies 70% of the height, flush to the bottom', () => {
-    expect(L.bucketHeight).toBe(Math.round(1280 * CONFIG.bucketHeightRatio));
-    expect(L.bucketBottomY).toBe(1280);
-    expect(L.bucketTopY).toBe(1280 - L.bucketHeight);
+  it('occupies ratio of the height with bottom margin', () => {
+    expect(L.bucketBottomY).toBe(1200);
+    expect(L.bucketHeight).toBe(Math.round(1200 * CONFIG.bucketHeightRatio));
+    expect(L.bucketTopY).toBe(1200 - L.bucketHeight);
   });
 
-  it('spawns at the bucket mouth (dropStartRatio = 0)', () => {
-    expect(L.spawnY).toBe(L.bucketTopY);
+  it('spawns above the bucket mouth based on dropStartRatio', () => {
+    expect(L.spawnY).toBe(L.bucketTopY + Math.round(L.bucketHeight * CONFIG.dropStartRatio));
   });
 
   it('places the danger line ~20% into the bucket, below the spawn', () => {

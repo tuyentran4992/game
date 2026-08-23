@@ -1,11 +1,11 @@
 import Phaser from 'phaser';
 import { CONFIG } from '../logic/config';
 import { ctx } from '../context';
-import { color, z, type, fontStyle, toColor, dur } from '../tokens';
+import { color, z, type, fontStyle, toColor, dur, radius } from '../tokens';
 import { drawBackground, drawMuteButton } from '../ui';
 import { computeBucketLayout, type BucketLayout } from '../gameplay/physics-layout';
 import { resolveFruitTexture, fruitRadius, fruitDiameter } from '../gameplay/fruit-sprite';
-import { resolveMergeBatch, type CollidingFruit, type MergePlan } from '../gameplay/merge-handler';
+import { type CollidingFruit, type MergePlan } from '../gameplay/merge-handler';
 import { checkGameOver } from '../logic/game-over';
 import { isWorldSettled } from '../logic/settle';
 import { fruitsAboveLine } from '../logic/continue';
@@ -16,72 +16,50 @@ interface DroppedFruit {
   tier: number;
 }
 
-// Structural read-shape of a Matter body for settle detection. `obj.body` is
-// typed as a broad union (Arcade/Matter), but only the Matter `BodyType` carries
-// `isSleeping` + `speed`; we cast through `unknown` to read those safely without
-// changing runtime behavior (only dropped fruits — non-static Matter bodies —
-// ever reach `isBodyAtRest`).
 interface RestBody {
   isSleeping?: boolean;
   speed?: number;
 }
 
-// Minimal Matter body shape used to read the collision event's pairs. The real
-// Matter body carries `gameObject` (the Phaser image it wraps); we only need
-// that link + nothing else, so a structural type keeps the scene decoupled from
-// `phaser-matterjs` internals (and survived the MatterImage API pitfalls).
 interface MatterBodyHandle {
-  gameObject: unknown;
+  gameObject?: unknown;
+  parent?: { gameObject?: unknown };
 }
+
 interface CollisionPairHandle {
   bodyA: MatterBodyHandle;
   bodyB: MatterBodyHandle;
 }
+
 interface CollisionEventHandle {
   pairs: CollisionPairHandle[];
 }
 
-// --- Settle / game-over tuning (M3-03, the Suika trap) ---------------------
-// A fruit is "at rest" when Matter has put it to sleep OR its speed is below a
-// small epsilon. The world is "settled" only after every fruit is at rest AND a
-// 500ms grace period has passed since the last motion — the grace rejects a
-// fruit momentarily at a bounce apex right above the line, and covers the lag
-// between Matter's sleep flag flipping and the pile being truly stable.
-const MOVE_SPEED_EPS = 0.5; // px/step below which a body counts as motionless
-const SETTLE_GRACE_MS = 500; // calm time required after last motion
-// How far below the line a fruit can sit while still pulsing the warning band.
+const MOVE_SPEED_EPS = 0.5;
+const SETTLE_GRACE_MS = 500;
 const DANGER_NEAR_BAND = 90;
 
-// Gameplay scene — physics core (step 9) + merge on collision (step 10).
-// A Matter bucket with two static walls + a floor, a translucent "ghost" fruit
-// that follows the pointer along the mouth (clamped inside the bucket), and a
-// tap/drag-to-drop that spawns a Matter body gated by the engine cooldown
-// (Bước 4 canDrop/recordDrop). On `collisionstart`, same-tier fruits merge via
-// the engine (GC-02): the two bodies are destroyed, a tier+1 fruit spawns at
-// the contact midpoint with a gentle nudge, a back-pop tween + "+N" float +
-// "Combo xN" popup play, and an sfx hook fires (silent until audio lands).
-//
-// Mobile-first: pointer (touch) is the primary input — pointermove drives the
-// ghost, pointerup drops. No hover dependency. The world is a fixed 720×1280
-// portrait; Scale.FIT pillarboxes it on desktop so the layout is constant.
 export class GameplayScene extends Phaser.Scene {
   private layout!: BucketLayout;
   private ghost!: Phaser.GameObjects.Image;
   private ghostTier = 0;
   private ghostX = 0;
+  private aimLine!: Phaser.GameObjects.Graphics;
   private fruits: DroppedFruit[] = [];
   private fruitsById = new Map<number, DroppedFruit>();
   private nextFruitId = 1;
   private scoreText!: Phaser.GameObjects.Text;
+  private nextPreview1!: Phaser.GameObjects.Image;
+  private nextPreview2!: Phaser.GameObjects.Image;
   private comboPopup!: Phaser.GameObjects.Text;
   private dangerLine!: Phaser.GameObjects.Graphics;
-  /** Scene time (ms) of the last frame in which any fruit was observed moving. */
   private lastMotionMs = 0;
-  /** Latch: once game-over fires, stop re-checking until the scene restarts/resumes. */
   private gameOverTriggered = false;
-  /** Tracks the previous-frame danger-band state so sfx_danger only fires on a
-   *  false -> true entry (re-arms when the band is vacated, no per-frame spam). */
   private wasNearDanger = false;
+
+  /** Deferred merge queue processed outside the Matter solver loop. */
+  private pendingMerges: MergePlan[] = [];
+  private mergingFruitIds = new Set<number>();
 
   constructor() { super({ key: 'GameplayScene' }); }
 
@@ -90,11 +68,11 @@ export class GameplayScene extends Phaser.Scene {
     this.layout = computeBucketLayout(width, height);
     drawBackground(this);
 
-    // Reset scene-local fruit bookkeeping on every (re)start so a Retry
-    // (scene.restart, Bước 12) does not carry references to destroyed bodies.
     this.fruits = [];
     this.fruitsById.clear();
     this.nextFruitId = 1;
+    this.pendingMerges = [];
+    this.mergingFruitIds.clear();
     this.gameOverTriggered = false;
     this.lastMotionMs = 0;
     this.wasNearDanger = false;
@@ -102,85 +80,124 @@ export class GameplayScene extends Phaser.Scene {
     this.setupPhysics();
     this.drawBucket();
     this.drawDangerLine();
+    this.createAimLine();
     this.createHud();
     this.createComboPopup();
     this.createGhost();
     this.setupCollisions();
 
-    // In-canvas mute toggle (step 15). Top-right so it never covers the
-    // score (top-left) or the bucket. Survives into the GameOver overlay.
     drawMuteButton(this);
 
-    // Fresh run: zero score, reseeded fruit queue (Retry semantics handled in 12).
     ctx.engine.startNewGame();
     this.ghostTier = ctx.engine.peekNext()[0] ?? 0;
-    this.ghostX = Phaser.Math.Clamp(width / 2, this.layout.bucketX0, this.layout.bucketX1);
+    this.ghostX = Phaser.Math.Clamp(width / 2, this.layout.bucketX0 + fruitRadius(this.ghostTier), this.layout.bucketX1 - fruitRadius(this.ghostTier));
     this.refreshGhost();
+    this.updateNextFruitHud();
 
     this.bindInput();
   }
 
   // --- Physics world --------------------------------------------------------
   private setupPhysics(): void {
-    // Gravity from CONFIG (px/s^2). Matter applies force = mass * y * scale;
-    // scale 0.001 (Matter's default) on a gravityY of 1400 ≈ 1.4× default fall.
     this.matter.world.setGravity(0, CONFIG.physics.gravityY, 0.001);
-    // The bucket provides its own container; disable Phaser world-bound walls so
-    // fruits can only be contained by the bucket (open top = where danger lives).
-    this.matter.world.setBounds(0, 0, this.scale.width, this.scale.height, 64, false, false, false, false);
+    this.matter.world.setBounds(0, 0, this.scale.width, this.scale.height, 100, true, true, false, true);
     this.buildBucketWalls();
-    // Defensive: a prior game-over paused the Matter step. On (re)start the
-    // world must step again — resume() is idempotent on a fresh scene.
     this.matter.world.resume();
   }
 
-  /** Static Matter walls + floor for the bucket. The rectangles are physics-only
-   *  (alpha 0): the wooden bucket is drawn as a sprite in {@link drawBucket}, so
-   *  we keep the collision bodies but hide their debug-colored fill. */
   private buildBucketWalls(): void {
     const L = this.layout;
-    const t = L.wallThickness;
-    const H = L.bucketBottomY - L.bucketTopY;
-    const midY = (L.bucketTopY + L.bucketBottomY) / 2;
+    const wallThick = 60;
+    const floorThick = 80;
+    const topY = L.spawnY - 40;
+    const H = L.bucketBottomY - topY;
+    const midY = (topY + L.bucketBottomY) / 2;
     const opt = { isStatic: true, restitution: CONFIG.physics.restitution, friction: CONFIG.physics.friction };
 
-    const left = this.add.rectangle(L.bucketX0 - t / 2, midY, t, H, 0xffffff).setAlpha(0).setDepth(z.actor);
-    const right = this.add.rectangle(L.bucketX1 + t / 2, midY, t, H, 0xffffff).setAlpha(0).setDepth(z.actor);
-    const floor = this.add.rectangle((L.bucketX0 + L.bucketX1) / 2, L.bucketBottomY + t / 2, L.bucketWidth + 2 * t, t, 0xffffff).setAlpha(0).setDepth(z.actor);
-    this.matter.add.gameObject(left, opt);
-    this.matter.add.gameObject(right, opt);
-    this.matter.add.gameObject(floor, opt);
+    // Left wall
+    this.matter.add.rectangle(L.bucketX0 - wallThick / 2, midY, wallThick, H, opt);
+    // Right wall
+    this.matter.add.rectangle(L.bucketX1 + wallThick / 2, midY, wallThick, H, opt);
+    // Floor (thick 80px static block whose top surface sits exactly at bucketBottomY)
+    this.matter.add.rectangle(
+      (L.bucketX0 + L.bucketX1) / 2,
+      L.bucketBottomY + floorThick / 2,
+      L.bucketWidth + 2 * wallThick,
+      floorThick,
+      opt,
+    );
   }
 
-  // --- Bucket visual ---------------------------------------------------------
-  /** Draw the wooden bucket sprite stretched to the playfield (step 14b). The
-   *  sprite is transparent (white stripped) and placed behind the fruits; the
-   *  physics walls remain invisible collision bodies. A QA test container marks
-   *  the bucket bounds. */
+  // --- Bucket visual (Clean container with transparent interior) ------------
   private drawBucket(): void {
     const L = this.layout;
     const H = L.bucketBottomY - L.bucketTopY;
-    if (this.textures.exists('bucket')) {
-      this.add.image(L.bucketX0, L.bucketTopY, 'bucket')
-        .setOrigin(0, 0)
-        .setDisplaySize(L.bucketWidth, H)
-        .setDepth(z.bg + 1);
-    } else {
-      // Fallback: a translucent inner fill so the playfield is readable pre-asset.
-      const g = this.add.graphics().setDepth(z.bg + 1);
-      g.fillStyle(toColor(color.surface), 0.12);
-      g.fillRect(L.bucketX0, L.bucketTopY, L.bucketWidth, H);
-    }
+    const g = this.add.graphics().setDepth(z.bg + 1);
 
-    // Bucket anchor for QA/test: a container sized to the playfield.
+    // Subtle clear glass interior fill
+    g.fillStyle(0xffffff, 0.18);
+    g.fillRoundedRect(L.bucketX0, L.bucketTopY, L.bucketWidth, H, { tl: 0, tr: 0, bl: radius.md, br: radius.md });
+
+    // Inner subtle shadow & sheen
+    g.fillStyle(0x000000, 0.04);
+    g.fillRect(L.bucketX0, L.bucketTopY, 12, H);
+    g.fillRect(L.bucketX1 - 12, L.bucketTopY, 12, H);
+
+    // Left wooden pillar
+    g.fillStyle(0x8B5A2B, 1);
+    g.fillRoundedRect(L.bucketX0 - 14, L.bucketTopY - 10, 14, H + 10, { tl: 6, tr: 6, bl: 0, br: 0 });
+    g.fillStyle(0xA67039, 1);
+    g.fillRect(L.bucketX0 - 12, L.bucketTopY - 6, 4, H + 4);
+
+    // Right wooden pillar
+    g.fillStyle(0x8B5A2B, 1);
+    g.fillRoundedRect(L.bucketX1, L.bucketTopY - 10, 14, H + 10, { tl: 6, tr: 6, bl: 0, br: 0 });
+    g.fillStyle(0xA67039, 1);
+    g.fillRect(L.bucketX1 + 2, L.bucketTopY - 6, 4, H + 4);
+
+    // Bottom wooden base & floor beam
+    g.fillStyle(0x4A2800, 0.3);
+    g.fillRoundedRect(L.bucketX0 - 20, L.bucketBottomY + 4, L.bucketWidth + 40, 28, radius.sm);
+    g.fillStyle(0x6D4018, 1);
+    g.fillRoundedRect(L.bucketX0 - 20, L.bucketBottomY, L.bucketWidth + 40, 26, radius.sm);
+    g.fillStyle(0x8B5A2B, 1);
+    g.fillRect(L.bucketX0 - 18, L.bucketBottomY + 2, L.bucketWidth + 36, 6);
+    g.fillStyle(0xA67039, 1);
+    g.fillRect(L.bucketX0 - 18, L.bucketBottomY + 3, L.bucketWidth + 36, 2);
+
+    // Container anchor for QA
     const bucket = this.add.container(L.bucketX0, L.bucketTopY).setDepth(z.actor);
     bucket.setSize(L.bucketWidth, H);
     bucket.setData('testid', 'bucket');
   }
 
-  // --- Danger line (M3-03, UI-05) -------------------------------------------
-  /** Dashed danger line at ~20% into the bucket from the mouth. Pulses (alpha
-   *  yoyo) when a fruit is near/above it so the player reads the threat. */
+  // --- Aim Line (Drop guide line) --------------------------------------------
+  private createAimLine(): void {
+    this.aimLine = this.add.graphics().setDepth(z.bg + 2);
+    this.refreshAimLine();
+  }
+
+  private refreshAimLine(): void {
+    if (!this.aimLine) return;
+    this.aimLine.clear();
+    if (this.gameOverTriggered) return;
+
+    const r = fruitRadius(this.ghostTier);
+    const startY = this.layout.spawnY + r + 4;
+    const endY = this.layout.bucketBottomY - 10;
+
+    this.aimLine.lineStyle(2, 0x8B5A2B, 0.35);
+    const dash = 12, gap = 8;
+    for (let y = startY; y < endY; y += dash + gap) {
+      const y2 = Math.min(y + dash, endY);
+      this.aimLine.beginPath();
+      this.aimLine.moveTo(this.ghostX, y);
+      this.aimLine.lineTo(this.ghostX, y2);
+      this.aimLine.strokePath();
+    }
+  }
+
+  // --- Danger line -----------------------------------------------------------
   private drawDangerLine(): void {
     const L = this.layout;
     const g = this.add.graphics().setDepth(z.hud);
@@ -189,8 +206,6 @@ export class GameplayScene extends Phaser.Scene {
     this.dangerLine = g;
   }
 
-  /** (Re)draw the dashed stroke at a given alpha. Dashed because Phaser graphics
-   *  has no native dash — we lay short segments along the bucket width. */
   private drawDangerLineStroke(g: Phaser.GameObjects.Graphics, alpha: number): void {
     const L = this.layout;
     g.clear();
@@ -205,10 +220,8 @@ export class GameplayScene extends Phaser.Scene {
     }
   }
 
-  /** Pulse the danger line while a fruit sits in the near/above band; steady otherwise. */
   private refreshDangerLine(nearDanger: boolean): void {
     if (nearDanger) {
-      // (Re)start a yoyo pulse only when entering the danger band.
       if (!this.dangerLine.getData('pulsing')) {
         this.dangerLine.setData('pulsing', true);
         this.tweens.add({
@@ -228,12 +241,12 @@ export class GameplayScene extends Phaser.Scene {
     }
   }
 
-  // --- Settle -> game over (M3-03, the Suika trap) --------------------------
-  /** Per-frame: track motion, pulse the danger line, and when the world settles
-   *  run the pure game-over check. Game over ⟺ settled AND ≥1 fruit center
-   *  above the line (y < dangerY). A fruit still FALLING across the line is not
-   *  settled → no false game over. */
+  // --- Update loop & Settle detection ----------------------------------------
   update(time: number): void {
+    if (this.pendingMerges.length > 0) {
+      this.processPendingMerges();
+    }
+
     if (this.gameOverTriggered) return;
     if (this.fruits.length === 0) {
       this.lastMotionMs = time;
@@ -241,96 +254,122 @@ export class GameplayScene extends Phaser.Scene {
       return;
     }
 
-    // A body is at rest when Matter has slept it or its speed is negligible.
     const atRest = this.fruits.map((f) => this.isBodyAtRest(f.obj));
     const anyMoving = atRest.some((r) => !r);
     if (anyMoving) this.lastMotionMs = time;
 
-    // Pulse the line while any fruit is in/near the danger band (y < line + band).
     const nearDanger = this.fruits.some((f) => f.obj.y < this.layout.dangerY + DANGER_NEAR_BAND);
     this.refreshDangerLine(nearDanger);
-    // Danger sfx on the leading edge only (false -> true); re-arms once the
-    // band clears, so a lingering pile does not replay it every frame.
     if (nearDanger && !this.wasNearDanger) this.playSfx('sfx_danger');
     this.wasNearDanger = nearDanger;
 
     const settled = isWorldSettled(atRest, time, this.lastMotionMs, SETTLE_GRACE_MS);
     if (!settled) return;
 
-    // checkGameOver is the pure gate (Bước 5): settled AND a fruit above the line.
     const positions = this.fruits.map((f) => ({ y: f.obj.y }));
     if (!checkGameOver(positions, this.layout.dangerY, true)) return;
 
     this.triggerGameOver();
   }
 
-  /** A fruit body is at rest when Matter has put it to sleep OR its speed is
-   *  below a small epsilon (covers bodies Matter hasn't slept yet). */
   private isBodyAtRest(obj: Phaser.Physics.Matter.Image): boolean {
+    const spawnTime = obj.getData('spawnTime') as number | undefined;
+    if (typeof spawnTime === 'number' && this.time.now - spawnTime < 1000) {
+      return false;
+    }
     const b = obj.body as unknown as RestBody | null;
     if (!b) return true;
     if (b.isSleeping) return true;
     return typeof b.speed === 'number' && b.speed < MOVE_SPEED_EPS;
   }
 
-  /** Whether game-over has fired this turn. Read by main's SDK onResume so a
-   *  host resume during the GameOver overlay does NOT unfreeze the frozen pile
-   *  (the overlay sits on a paused Gameplay — resuming physics would un-pause
-   *  it under the panel). */
   isGameOver(): boolean { return this.gameOverTriggered; }
 
-  /** Lock input, freeze physics, mutate engine state, and launch the GameOver
-   *  overlay on top. First game-over this turn → no interstitial (M3-07). */
   private triggerGameOver(): void {
     this.gameOverTriggered = true;
     this.input.enabled = false;
+    this.aimLine.clear();
     this.matter.world.pause();
-    // Game-over sting plays before the scene pauses (SoundManager is global,
-    // so the one-shot keeps playing under the GameOver overlay).
     this.playSfx('sfx_gameover');
-    // setGameOver mutates: gameOver=true, playCount++, bestScore mirror.
     ctx.engine.setGameOver(true, true);
-    // Pause this scene's update loop; GameOver runs on top with the pile frozen
-    // visible behind its panel. Resume happens on Continue (step 12) / Retry.
     this.scene.pause();
     this.scene.launch('GameOverScene');
   }
 
-  /** Rewarded "Continue" earned (M3-05): remove every fruit above the danger line
-   *  (Bước 6 helper), clear the game-over latch, and resume physics. Step 12
-   *  wraps this in `requestRewardedAd` + handles the not-earned branch; the
-   *  mechanical clear-the-line resume lives here so the Gameplay scene owns its
-   *  bodies. Called by GameOverScene on a granted continue. */
   clearFruitsAboveDanger(): void {
     const above = fruitsAboveLine(
       this.fruits.map((f) => ({ y: f.obj.y, df: f })),
       this.layout.dangerY,
     );
     for (const item of above) this.removeFruit(item.df);
-    // Nudge the survivors down so they drop away from the line.
     for (const f of this.fruits) {
       f.obj.setVelocity(f.obj.body?.velocity.x ?? 0, 2);
     }
     this.gameOverTriggered = false;
     this.input.enabled = true;
     this.lastMotionMs = this.time.now;
+    this.refreshAimLine();
     this.matter.world.resume();
     this.updateHud();
   }
 
   // --- HUD -------------------------------------------------------------------
   private createHud(): void {
-    this.scoreText = this.add.text(this.layout.bucketX0, 36, 'SCORE 0', fontStyle(type.score, color.textPrimary))
-      .setOrigin(0, 0.5).setDepth(z.hud);
+    // Score Badge
+    const scoreBg = this.add.graphics().setDepth(z.hud);
+    scoreBg.fillStyle(toColor(color.surface), 0.9);
+    scoreBg.fillRoundedRect(this.layout.bucketX0, 20, 180, 56, radius.md);
+    scoreBg.lineStyle(2, toColor(color.primary), 0.5);
+    scoreBg.strokeRoundedRect(this.layout.bucketX0, 20, 180, 56, radius.md);
+
+    this.scoreText = this.add.text(this.layout.bucketX0 + 16, 48, 'SCORE 0', fontStyle(type.score, color.textPrimary))
+      .setOrigin(0, 0.5).setDepth(z.hud + 1);
     this.scoreText.setData('testid', 'score-label');
+
+    // Next Fruit Badge
+    const nextX = this.layout.bucketX1 - 240;
+    const nextBg = this.add.graphics().setDepth(z.hud);
+    nextBg.fillStyle(toColor(color.surface), 0.9);
+    nextBg.fillRoundedRect(nextX, 20, 160, 56, radius.md);
+    nextBg.lineStyle(2, toColor(color.primary), 0.5);
+    nextBg.strokeRoundedRect(nextX, 20, 160, 56, radius.md);
+
+    this.add.text(nextX + 12, 48, 'NEXT', {
+      fontFamily: 'sans-serif',
+      fontSize: '16px',
+      fontStyle: 'bold',
+      color: color.textSecondary,
+    }).setOrigin(0, 0.5).setDepth(z.hud + 1);
+
+    const nextContainer = this.add.container(nextX, 20).setDepth(z.hud);
+    nextContainer.setData('testid', 'next-fruit');
+
+    const key0 = resolveFruitTexture(this, 0);
+    this.nextPreview1 = this.add.image(nextX + 85, 48, key0).setDisplaySize(32, 32).setDepth(z.hud + 1);
+    this.nextPreview2 = this.add.image(nextX + 125, 48, key0).setDisplaySize(24, 24).setDepth(z.hud + 1).setAlpha(0.8);
+
     this.updateHud();
   }
 
   private updateHud(): void {
     this.scoreText.setText(`SCORE ${ctx.engine.state.score}`);
+    this.updateNextFruitHud();
   }
 
-  // --- Combo popup (Combo xN) -----------------------------------------------
+  private updateNextFruitHud(): void {
+    if (!this.nextPreview1 || !this.nextPreview2) return;
+    const nextTiers = ctx.engine.peekNext();
+    const t1 = nextTiers[0] ?? 0;
+    const t2 = nextTiers[1] ?? 0;
+
+    const key1 = resolveFruitTexture(this, t1);
+    const key2 = resolveFruitTexture(this, t2);
+
+    this.nextPreview1.setTexture(key1);
+    this.nextPreview2.setTexture(key2);
+  }
+
+  // --- Combo popup -----------------------------------------------------------
   private createComboPopup(): void {
     const cx = (this.layout.bucketX0 + this.layout.bucketX1) / 2;
     const cy = this.layout.bucketTopY + this.layout.bucketHeight * 0.12;
@@ -339,10 +378,9 @@ export class GameplayScene extends Phaser.Scene {
     this.comboPopup.setData('testid', 'combo-popup');
   }
 
-  /** Show "Combo xN" (N = engine comboCount) when a chain builds; fade after a beat. */
   private flashCombo(): void {
     const n = ctx.engine.state.comboCount;
-    if (n < 2) return; // a single merge is not a combo yet
+    if (n < 2) return;
     this.comboPopup.setText(`Combo x${n}`);
     this.comboPopup.setAlpha(1);
     this.tweens.killTweensOf(this.comboPopup);
@@ -355,7 +393,6 @@ export class GameplayScene extends Phaser.Scene {
     });
   }
 
-  /** Float "+N" above the merge point, rising + fading, then auto-destroy. */
   private floatScorePopup(gain: number, x: number, y: number): void {
     const txt = this.add.text(x, y, `+${gain}`, fontStyle(type.score, color.success))
       .setOrigin(0.5).setDepth(z.hud).setStroke(color.textStroke, 6);
@@ -374,12 +411,11 @@ export class GameplayScene extends Phaser.Scene {
     const key = resolveFruitTexture(this, this.ghostTier);
     const d = fruitDiameter(this.ghostTier);
     this.ghost = this.add.image(this.ghostX, this.layout.spawnY, key)
-      .setDisplaySize(d, d).setAlpha(0.45).setDepth(z.hud);
+      .setDisplaySize(d, d).setAlpha(0.88).setDepth(z.hud);
     this.ghost.setData('testid', 'drop-ghost');
     this.refreshGhost();
   }
 
-  /** Refresh the ghost's texture/size to the current queued tier and clamp its X. */
   private refreshGhost(): void {
     const key = resolveFruitTexture(this, this.ghostTier);
     const d = fruitDiameter(this.ghostTier);
@@ -387,164 +423,176 @@ export class GameplayScene extends Phaser.Scene {
     this.ghost.setDisplaySize(d, d);
     this.ghostX = this.clampGhostX(this.ghostX);
     this.ghost.setPosition(this.ghostX, this.layout.spawnY);
-    this.ghost.setAlpha(0.45);
+    this.ghost.setAlpha(0.88);
+    this.refreshAimLine();
   }
 
-  /** Clamp a pointer X so the ghost (radius of current tier) stays inside the bucket. */
   private clampGhostX(x: number): number {
     const r = fruitRadius(this.ghostTier);
     const L = this.layout;
     return Phaser.Math.Clamp(x, L.bucketX0 + r, L.bucketX1 - r);
   }
 
-  // --- Input (touch-first) ---------------------------------------------------
+  // --- Input -----------------------------------------------------------------
   private bindInput(): void {
-    // pointermove drives the ghost on both touch (while pressed) and desktop (hover).
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
       this.ghostX = this.clampGhostX(p.worldX);
       this.ghost.x = this.ghostX;
+      this.refreshAimLine();
     });
-    // Tap/drag start: snap ghost under the finger.
+
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       this.ghostX = this.clampGhostX(p.worldX);
       this.ghost.x = this.ghostX;
+      this.refreshAimLine();
     });
-    // Release: drop the fruit at the ghost position (cooldown-gated).
+
     this.input.on('pointerup', () => this.tryDrop());
   }
 
   private tryDrop(): void {
     const now = this.time.now;
-    if (!ctx.engine.canDrop(now)) return; // M3-01 cooldown gate
+    if (!ctx.engine.canDrop(now)) return;
     const tier = ctx.engine.nextFruit();
     ctx.engine.recordDrop(now);
+    this.lastMotionMs = now;
     this.spawnFruit(tier, this.ghostX, this.layout.spawnY);
     this.playSfx('sfx_drop');
 
-    // Advance the ghost to the next queued fruit and keep it clamped.
     this.ghostTier = ctx.engine.peekNext()[0] ?? 0;
     this.refreshGhost();
     this.updateHud();
   }
 
-  /** Spawn a circular Matter body for a fruit at (x, y) and register it for
-   *  collision-merge lookup. Returns the dropped-fruit handle. */
   private spawnFruit(tier: number, x: number, y: number): DroppedFruit {
     const key = resolveFruitTexture(this, tier);
     const r = fruitRadius(tier);
     const d = fruitDiameter(tier);
     const fruit = this.matter.add.image(x, y, key);
     fruit.setDisplaySize(d, d);
-    // Circular body sized to the tier (physics independent of texture size).
     fruit.setCircle(r, {
       restitution: CONFIG.physics.restitution,
       friction: CONFIG.physics.friction,
     });
+    fruit.setOrigin(0.5, 0.5);
     fruit.setDepth(z.actor);
     const id = this.nextFruitId++;
     fruit.setData('id', id);
     fruit.setData('tier', tier);
+    fruit.setData('spawnTime', this.time.now);
     const df: DroppedFruit = { id, obj: fruit, tier };
     this.fruits.push(df);
     this.fruitsById.set(id, df);
     return df;
   }
 
-  /** Destroy a fruit's body + remove it from the scene's bookkeeping. */
   private removeFruit(df: DroppedFruit): void {
+    this.mergingFruitIds.delete(df.id);
     this.fruitsById.delete(df.id);
     const i = this.fruits.indexOf(df);
     if (i >= 0) this.fruits.splice(i, 1);
-    df.obj.destroy(); // also removes the Matter body from the world
+    df.obj.destroy();
   }
 
-  // --- Collision -> merge (step 10) -----------------------------------------
+  // --- Collision -> Safe Deferred Merge -------------------------------------
   private setupCollisions(): void {
-    // `collisionstart` fires once per contacting pair at the moment of contact.
-    // event.pairs holds ALL pairs that began contact this step; iterating it
-    // (instead of relying on bodyA/bodyB = first pair only) covers multi-fruit
-    // pile-ups. Same-tier fruits merge on first contact (Suika-style).
     this.matter.world.on('collisionstart', (event: CollisionEventHandle) => {
-      this.handleCollisions(event);
+      this.collectCollisions(event);
+    });
+    this.matter.world.on('collisionactive', (event: CollisionEventHandle) => {
+      this.collectCollisions(event);
     });
   }
 
-  private handleCollisions(event: CollisionEventHandle): void {
-    // Snapshot every pair into a pure {id, tier} tuple BEFORE resolving, so the
-    // resolve step never touches a body we are about to destroy this same tick.
-    const pairs: [CollidingFruit, CollidingFruit][] = [];
+  private collectCollisions(event: CollisionEventHandle): void {
+    if (this.gameOverTriggered) return;
     for (const pair of event.pairs) {
       const a = fruitOf(pair.bodyA);
       const b = fruitOf(pair.bodyB);
-      if (a && b) pairs.push([a, b]);
+      if (!a || !b) continue;
+      if (a.id === b.id) continue;
+      if (a.tier !== b.tier) continue;
+      if (this.mergingFruitIds.has(a.id) || this.mergingFruitIds.has(b.id)) continue;
+
+      const now = this.time.now;
+      const result = ctx.engine.merge(a.tier, b.tier, now);
+      if (!result) continue;
+
+      this.mergingFruitIds.add(a.id);
+      this.mergingFruitIds.add(b.id);
+      this.pendingMerges.push({
+        aId: a.id,
+        bId: b.id,
+        newTier: result.tier,
+        scoreGain: result.scoreGain,
+      });
     }
-    if (pairs.length === 0) return;
-    const now = this.time.now;
-    const plans = resolveMergeBatch(pairs, now, ctx.engine);
-    // A high-tier merge (melon+; tier >= maxTier-1) plays the bigger "merge_big"
-    // sting instead of the plain pop, one sfx per batch.
+  }
+
+  private processPendingMerges(): void {
+    const plans = [...this.pendingMerges];
+    this.pendingMerges = [];
     let bigMerge = false;
+
     for (const plan of plans) {
-      this.executeMerge(plan);
+      const a = this.fruitsById.get(plan.aId);
+      const b = this.fruitsById.get(plan.bId);
+      if (!a || !b) continue;
+
+      const midX = (a.obj.x + b.obj.x) / 2;
+      const midY = (a.obj.y + b.obj.y) / 2;
+
+      this.removeFruit(a);
+      this.removeFruit(b);
+
+      const merged = this.spawnFruit(plan.newTier, midX, midY);
+      merged.obj.setVelocity(0, -1.5);
+
+      this.playPopJuice(midX, midY, plan.newTier);
+      this.floatScorePopup(plan.scoreGain, midX, midY - 12);
+      this.flashCombo();
+
       if (plan.newTier >= CONFIG.maxTier - 1) bigMerge = true;
     }
+
     if (plans.length > 0) {
+      this.lastMotionMs = this.time.now;
       this.updateHud();
       this.playSfx(bigMerge ? 'sfx_merge_big' : 'sfx_merge');
     }
   }
 
-  /** Consume the two planned fruits, spawn the tier+1 fruit at the contact
-   *  midpoint, and play the pop + score + combo juice. */
-  private executeMerge(plan: MergePlan): void {
-    const a = this.fruitsById.get(plan.aId);
-    const b = this.fruitsById.get(plan.bId);
-    if (!a || !b) return; // already consumed (shouldn't happen — batch dedups)
-    const midX = (a.obj.x + b.obj.x) / 2;
-    const midY = (a.obj.y + b.obj.y) / 2;
-    this.removeFruit(a);
-    this.removeFruit(b);
+  private playPopJuice(x: number, y: number, tier: number): void {
+    const r = fruitRadius(tier);
+    const burst = this.add.graphics().setDepth(z.actor + 5);
+    burst.lineStyle(4, 0xFFFFFF, 0.9);
+    burst.strokeCircle(x, y, r * 0.6);
+    burst.fillStyle(0xFFD700, 0.4);
+    burst.fillCircle(x, y, r * 0.4);
 
-    const merged = this.spawnFruit(plan.newTier, midX, midY);
-    // Gentle upward nudge so the fresh fruit separates from the pile and does
-    // not instantly re-collide into another merge / stack explosion.
-    merged.obj.setVelocity(0, -2);
-    this.playPop(merged.obj);
-
-    // "+N" = the points this merge actually granted (engine.merge already ran
-    // inside resolveMergeBatch, so plan carries the captured gain — never derive
-    // it from a before/after score delta, which would be 0 here).
-    this.floatScorePopup(plan.scoreGain, midX, midY - 8);
-    this.flashCombo();
-  }
-
-  /** Back-ease-out scale pop on the freshly merged fruit (250ms, DESIGN-SPEC §1.6). */
-  private playPop(obj: Phaser.Physics.Matter.Image): void {
-    const finalScale = obj.scaleX; // setDisplaySize already fixed the resting scale
-    obj.setScale(finalScale * 0.3);
     this.tweens.add({
-      targets: obj,
-      scale: finalScale,
-      duration: dur.pop,
-      ease: 'Back.easeOut',
+      targets: burst,
+      scaleX: 1.6,
+      scaleY: 1.6,
+      alpha: 0,
+      duration: 220,
+      ease: 'Cubic.easeOut',
+      onComplete: () => burst.destroy(),
     });
   }
 
   // --- Audio hook ----------------------------------------------------------
-  /** Play an sfx by key if its audio is loaded; no-op (silent) otherwise so the
-   *  scene never errors on a missing asset. Volume defaults to 0.5 — present but
-   *  not harsh on mobile speakers; the global mute flag silences it entirely. */
   private playSfx(key: string, volume = 0.5): void {
     if (!this.cache.audio.exists(key)) return;
     this.sound.play(key, { volume });
   }
 }
 
-/** Read a fruit's collision tuple (id + tier) from a Matter body, or null if the
- *  body is not a dropped fruit (bucket walls have no `tier` data). */
-function fruitOf(body: MatterBodyHandle): CollidingFruit | null {
-  const go = body.gameObject as Phaser.Physics.Matter.Image | null;
-  if (!go || !go.getData) return null;
+function fruitOf(body: MatterBodyHandle | null | undefined): CollidingFruit | null {
+  if (!body) return null;
+  const anyBody = body as { gameObject?: unknown; parent?: { gameObject?: unknown } };
+  const go = (anyBody.gameObject ?? anyBody.parent?.gameObject) as Phaser.Physics.Matter.Image | null;
+  if (!go || typeof go.getData !== 'function') return null;
   const id = go.getData('id');
   const tier = go.getData('tier');
   if (typeof id !== 'number' || typeof tier !== 'number') return null;

@@ -73,12 +73,12 @@ export const CONFIG: MechanicsConfig = {
   bucketHeightRatio: 0.70,
   dangerLineRatio: 0.20,
   dropCooldownMs: 250,
-  dropStartRatio: 0.0,
+  dropStartRatio: -0.12,
   comboWindowMs: 2000,
   physics: {
-    gravityY: 1400,
-    restitution: 0.3,
-    friction: 0.005,
+    gravityY: 1.2,
+    restitution: 0.15,
+    friction: 0.05,
     sleepThreshold: 60,
   },
   // Drop spawn pool (M3-04, DATA-MODEL §1.3/§5). Bands scale by fruits dropped

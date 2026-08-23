@@ -40,10 +40,11 @@ export function computeBucketLayout(
   cfg: MechanicsConfig = CONFIG,
 ): BucketLayout {
   const bucketWidth = Math.min(cfg.bucketWidth, width);
-  const bucketHeight = Math.round(height * cfg.bucketHeightRatio);
+  const bottomMargin = 80;
+  const bucketBottomY = height - bottomMargin;
+  const bucketHeight = Math.round(bucketBottomY * cfg.bucketHeightRatio);
   const bucketX0 = Math.round((width - bucketWidth) / 2);
   const bucketX1 = bucketX0 + bucketWidth;
-  const bucketBottomY = height;
   const bucketTopY = bucketBottomY - bucketHeight;
   const spawnY = bucketTopY + Math.round(bucketHeight * cfg.dropStartRatio);
   const dangerY = bucketTopY + Math.round(bucketHeight * cfg.dangerLineRatio);
