@@ -8,6 +8,7 @@ import { FRUIT_KEYS, AUDIO_KEYS } from './assets';
 import { StartScene } from './scenes/Start';
 import { GameplayScene } from './scenes/Gameplay';
 import { GameOverScene } from './scenes/GameOver';
+import { AlbumScene } from './scenes/Album';
 
 // Boot scene — preload every asset key declared in `games/juicy-merge.yaml`
 // §assets (baseURL `./raw/`). Raw files are generated in Phase C (steps 13-14);
@@ -68,7 +69,7 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  scene: [BootScene, StartScene, GameplayScene, GameOverScene],
+  scene: [BootScene, StartScene, GameplayScene, GameOverScene, AlbumScene],
   render: { antialias: true, roundPixels: true },
 };
 

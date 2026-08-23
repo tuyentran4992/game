@@ -13,9 +13,12 @@ export interface SaveAdapter {
   sendScore(score: number): void;
 }
 
-/** Persisted save payload (M3-08). Bumping schema_version enables migration later. */
+/** Persisted save payload (M3-08 + Phase 3). Bumping schema_version enables migration later. */
 export interface SavePayload {
   best_score: number;
+  unlocked_tiers?: number[];
+  daily_completed_date?: string;
+  daily_best_score?: number;
   schema_version: number;
 }
 
@@ -23,29 +26,35 @@ export interface SavePayload {
 export const SAVE_SCHEMA_VERSION = 1;
 
 /**
- * Best-score store backed by an injectable {@link SaveAdapter}.
- *
- * - `load()` reads the stored best_score; any error → default 0 (no crash, M3-08).
- * - `onGameOver(score)` applies the strictly-greater rule: if `score` beats the
- *   best, it persists the new best and reports it via `sendScore` (M3-08). This is
- *   the single place a save/score-report happens, so it fires exactly once per beat.
+ * Best-score & Retention Progress store backed by an injectable {@link SaveAdapter}.
  */
 export class ScoreStore {
   bestScore = 0;
+  unlockedTiers?: Set<number>;
+  dailyCompletedDate?: string | null;
+  dailyBestScore?: number;
   private loaded = false;
 
   constructor(private readonly adapter: SaveAdapter) {}
 
-  /** Load best score from storage. Idempotent. Never throws (M3-08). */
+  /** Load save payload from storage. Idempotent. Never throws (M3-08). */
   async load(): Promise<void> {
     if (this.loaded) return;
     try {
       const data = await this.adapter.loadData() as Partial<SavePayload> | null;
       this.bestScore = data && typeof data.best_score === 'number' ? data.best_score : 0;
+      if (data && Array.isArray(data.unlocked_tiers)) {
+        this.unlockedTiers = new Set(data.unlocked_tiers);
+      }
+      this.dailyCompletedDate = data && typeof data.daily_completed_date === 'string' ? data.daily_completed_date : null;
+      this.dailyBestScore = data && typeof data.daily_best_score === 'number' ? data.daily_best_score : 0;
     } catch (e) {
-      // Corrupt storage / adapter error → start fresh at 0, never crash (M3-08).
+      // Corrupt storage / adapter error → start fresh, never crash (M3-08).
       console.warn('loadData failed, starting fresh', e);
       this.bestScore = 0;
+      this.unlockedTiers = undefined;
+      this.dailyCompletedDate = null;
+      this.dailyBestScore = 0;
     }
     this.loaded = true;
   }
@@ -56,9 +65,39 @@ export class ScoreStore {
     this.loaded = false;
   }
 
-  /** Called on game over. If score strictly beats best → persist + sendScore once.
-   *  Returns the (possibly updated) best score. Never throws — a save failure just
-   *  keeps the in-memory best so the player still sees their record this session. */
+  getUnlockedTiers(): Set<number> {
+    if (!this.unlockedTiers) {
+      this.unlockedTiers = new Set<number>([0, 1]);
+    }
+    return this.unlockedTiers;
+  }
+
+  /**
+   * Persist entire game progress (best score, album unlocked tiers, daily challenge).
+   */
+  async saveProgress(): Promise<boolean> {
+    const payload: SavePayload = {
+      best_score: this.bestScore,
+      schema_version: SAVE_SCHEMA_VERSION,
+    };
+    if (this.unlockedTiers && this.unlockedTiers.size > 0) {
+      payload.unlocked_tiers = Array.from(this.unlockedTiers);
+    }
+    if (this.dailyCompletedDate) {
+      payload.daily_completed_date = this.dailyCompletedDate;
+    }
+    if (typeof this.dailyBestScore === 'number' && this.dailyBestScore > 0) {
+      payload.daily_best_score = this.dailyBestScore;
+    }
+    try {
+      return await this.adapter.saveData(payload);
+    } catch (e) {
+      console.warn('saveData failed, keeping session state', e);
+      return false;
+    }
+  }
+
+  /** Called on game over. If score strictly beats best → persist + sendScore once. */
   async onGameOver(score: number): Promise<number> {
     if (score > this.bestScore) {
       this.bestScore = score;
@@ -66,6 +105,15 @@ export class ScoreStore {
         best_score: this.bestScore,
         schema_version: SAVE_SCHEMA_VERSION,
       };
+      if (this.unlockedTiers && this.unlockedTiers.size > 0) {
+        payload.unlocked_tiers = Array.from(this.unlockedTiers);
+      }
+      if (this.dailyCompletedDate) {
+        payload.daily_completed_date = this.dailyCompletedDate;
+      }
+      if (typeof this.dailyBestScore === 'number' && this.dailyBestScore > 0) {
+        payload.daily_best_score = this.dailyBestScore;
+      }
       try {
         await this.adapter.saveData(payload);
       } catch (e) {

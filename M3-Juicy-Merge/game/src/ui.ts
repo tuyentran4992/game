@@ -5,11 +5,10 @@ import { sdk } from './sdk-instance';
 
 export interface ButtonOpts {
   testid?: string;
-  variant?: 'primary' | 'ghost';
+  variant?: 'primary' | 'ghost' | 'amber' | 'emerald' | 'purple';
   width?: number;
-  /** Button height in px. Mobile-first rule: Continue/Retry ≥ 96px. Defaults 72. */
   height?: number;
-  textType?: typeof type.display;
+  fontSize?: number;
   textColor?: string;
 }
 
@@ -27,41 +26,81 @@ export function drawButton(
   opts: ButtonOpts = {},
 ): ButtonResult {
   const variant = opts.variant ?? 'primary';
-  const w = opts.width ?? Math.max(280, label.length * (opts.textType?.size ?? type.display.size) * 0.6);
+  const w = opts.width ?? 380;
   const h = opts.height ?? 72;
-  const t = opts.textType ?? type.display;
+  const fontSize = opts.fontSize ?? 26;
   const container = scene.add.container(x, y).setDepth(50);
 
   const g = scene.add.graphics();
-  // shadow trước (đặt sau trong z → đổ lên) — vẽ trước để nằm sau fill
-  g.fillStyle(toColor(color.shadow), 0.30);
-  g.fillRoundedRect(-w / 2, -h / 2 + 6, w, h, radius.lg);
-  // nền nút
+  // Shadow
+  g.fillStyle(0x000000, 0.20);
+  g.fillRoundedRect(-w / 2, -h / 2 + 5, w, h, radius.md);
+
+  let fillColor = 0xFF6B81;
+  let darkColor = 0xE8556F;
+  let textColor = '#FFFFFF';
+
   if (variant === 'primary') {
-    g.fillStyle(toColor(color.primary), 1);
-    g.fillRoundedRect(-w / 2, -h / 2, w, h, radius.lg);
-    // viền đậm dưới (nút nổi chibi)
-    g.fillStyle(toColor(color.primaryDark), 1);
-    g.fillRoundedRect(-w / 2, h / 2 - 8, w, 8, { tl: 0, tr: 0, bl: radius.lg, br: radius.lg });
+    fillColor = 0xFF6B81;
+    darkColor = 0xE8556F;
+  } else if (variant === 'amber') {
+    fillColor = 0xF59E0B;
+    darkColor = 0xD97706;
+  } else if (variant === 'emerald') {
+    fillColor = 0x10B981;
+    darkColor = 0x059669;
+  } else if (variant === 'purple') {
+    fillColor = 0x8B5CF6;
+    darkColor = 0x7C3AED;
+  } else if (variant === 'ghost') {
+    fillColor = 0xFFFFFF;
+    darkColor = 0xE2E8F0;
+    textColor = '#4A2C2A';
+  }
+
+  // Nền nút
+  g.fillStyle(fillColor, 1);
+  g.fillRoundedRect(-w / 2, -h / 2, w, h, radius.md);
+
+  if (variant !== 'ghost') {
+    // 3D bottom bevel nổi chibi
+    g.fillStyle(darkColor, 1);
+    g.fillRoundedRect(-w / 2, h / 2 - 6, w, 6, { tl: 0, tr: 0, bl: radius.md, br: radius.md });
   } else {
-    g.fillStyle(toColor(color.surface), 0.95);
-    g.fillRoundedRect(-w / 2, -h / 2, w, h, radius.lg);
-    g.lineStyle(4, toColor(color.primary), 1);
-    g.strokeRoundedRect(-w / 2, -h / 2, w, h, radius.lg);
+    g.lineStyle(3, 0xFF6B81, 1);
+    g.strokeRoundedRect(-w / 2, -h / 2, w, h, radius.md);
   }
   container.add(g);
 
-  const textObj = scene.add.text(0, 0, label, {
+  // Label text with auto-fit calculation (đảm bảo text luôn nằm gọn 100% trong khung)
+  const textObj = scene.add.text(0, -1, label, {
     fontFamily: 'sans-serif',
-    fontSize: `${t.size}px`,
+    fontSize: `${fontSize}px`,
     fontStyle: 'bold',
-    color: variant === 'primary' ? color.textOnPrimary : color.textPrimary,
+    color: opts.textColor ?? textColor,
   }).setOrigin(0.5);
+
+  const maxTextW = w - 36;
+  if (textObj.width > maxTextW) {
+    const fitScale = maxTextW / textObj.width;
+    textObj.setScale(fitScale);
+  }
   container.add(textObj);
 
   if (opts.testid) textObj.setData('testid', opts.testid);
   container.setSize(w, h);
   container.setInteractive({ useHandCursor: true });
+
+  container.on('pointerdown', () => {
+    scene.tweens.add({
+      targets: container,
+      scaleX: 0.96,
+      scaleY: 0.96,
+      duration: 60,
+      yoyo: true,
+    });
+  });
+
   return { container, textObj };
 }
 

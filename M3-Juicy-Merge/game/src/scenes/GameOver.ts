@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { ctx } from '../context';
 import { color, type, z, dur, fontStyle, toColor, radius } from '../tokens';
 import { drawButton, drawMuteButton, type ButtonResult } from '../ui';
+import { DAILY_TARGET_SCORE } from '../logic/daily-challenge';
 
 // GameOver scene — overlay panel launched on top of a paused Gameplay scene
 // (Bước 11). Bước 12 wires the full game-over flow:
@@ -73,8 +74,11 @@ export class GameOverScene extends Phaser.Scene {
     panel.add(card);
 
     // --- Title + NEW RECORD badge (M3-08) -----------------------------------
+    const isDailyWin = ctx.isDailyMode && score >= DAILY_TARGET_SCORE;
+    const titleText = isDailyWin ? 'DAILY VICTORY' : 'GAME OVER';
+    const titleColor = isDailyWin ? color.warning : color.danger;
     const titleY = isNewRecord ? -215 : -240;
-    const title = this.add.text(0, titleY, 'GAME OVER', fontStyle(type.display, color.danger))
+    const title = this.add.text(0, titleY, titleText, fontStyle(type.display, titleColor))
       .setOrigin(0.5).setStroke(color.textStroke, 6);
     panel.add(title);
     title.setData('testid', 'gameover-title');
@@ -122,11 +126,12 @@ export class GameOverScene extends Phaser.Scene {
     // --- Buttons -------------------------------------------------------------
     const canContinue = ctx.engine.canContinue();
     const btnW = panelW - 72;
-    const btnH = 92;
+    const btnH = 80;
 
     if (canContinue) {
-      const continueY = 55;
-      const retryY = 175;
+      const continueY = 45;
+      const retryY = 145;
+      const homeY = 230;
 
       const res = drawButton(this, 0, continueY, 'Continue', {
         testid: 'continue-btn', width: btnW, height: btnH,
@@ -135,21 +140,42 @@ export class GameOverScene extends Phaser.Scene {
       panel.add(res.container);
       res.container.on('pointerdown', () => { void this.onContinue(); });
 
-      const { container: retryBtn } = drawButton(this, 0, retryY, 'Retry', {
+      const { container: retryBtn } = drawButton(this, 0, retryY, 'Chơi Lại', {
         testid: 'retry-btn', width: btnW, height: btnH, variant: 'ghost',
       });
       this.retryBtn = retryBtn;
       panel.add(retryBtn);
       retryBtn.on('pointerdown', () => this.onRetry());
+
+      const { container: homeBtn } = drawButton(this, 0, homeY, '🏠 Menu Chính', {
+        testid: 'home-btn', width: btnW, height: 60, variant: 'ghost',
+      });
+      panel.add(homeBtn);
+      homeBtn.on('pointerdown', () => {
+        this.scene.stop('GameplayScene');
+        this.scene.stop('GameOverScene');
+        this.scene.start('StartScene');
+      });
     } else {
-      // Single button centered when continue is no longer available
-      const retryY = 110;
-      const { container: retryBtn } = drawButton(this, 0, retryY, 'Retry', {
+      const retryY = 85;
+      const homeY = 185;
+
+      const { container: retryBtn } = drawButton(this, 0, retryY, 'Chơi Lại', {
         testid: 'retry-btn', width: btnW, height: btnH,
       });
       this.retryBtn = retryBtn;
       panel.add(retryBtn);
       retryBtn.on('pointerdown', () => this.onRetry());
+
+      const { container: homeBtn } = drawButton(this, 0, homeY, '🏠 Menu Chính', {
+        testid: 'home-btn', width: btnW, height: 60, variant: 'ghost',
+      });
+      panel.add(homeBtn);
+      homeBtn.on('pointerdown', () => {
+        this.scene.stop('GameplayScene');
+        this.scene.stop('GameOverScene');
+        this.scene.start('StartScene');
+      });
     }
 
     // Animate the panel in (scale + fade) for a soft landing. Held until any

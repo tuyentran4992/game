@@ -20,11 +20,13 @@ declare global {
   interface Window { ytgame?: YtGame; }
 }
 
+const LOCAL_STORAGE_KEY = 'juicy_merge_save_v1';
+
 export class SdkHandler {
   private ytgame: YtGame | null;
 
   constructor() {
-    this.ytgame = window.ytgame ?? null;
+    this.ytgame = typeof window !== 'undefined' ? (window.ytgame ?? null) : null;
   }
 
   gameReady(): void {
@@ -47,27 +49,61 @@ export class SdkHandler {
     this.ytgame?.onAudioEnabledChange?.(cb);
   }
 
-  // BR-11: saveData with error fallback (no crash on failure)
+  // BR-11: saveData with local storage fallback (hoạt động hoàn hảo cả trên YouTube lẫn Web thường)
   async saveData(data: unknown): Promise<boolean> {
+    const jsonStr = JSON.stringify(data);
+    // Luôn ghi một bản cache vào localStorage để không bao giờ bị mất dữ liệu khi test trên web
     try {
-      await this.ytgame?.saveData?.(JSON.stringify(data));
-      return true;
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(LOCAL_STORAGE_KEY, jsonStr);
+      }
     } catch (e) {
-      console.warn('saveData failed, using current session', e);
-      return false;
+      console.warn('localStorage save failed', e);
     }
+
+    if (this.ytgame && typeof this.ytgame.saveData === 'function') {
+      try {
+        await this.ytgame.saveData(jsonStr);
+        return true;
+      } catch (e) {
+        console.warn('ytgame.saveData failed, using local storage cache', e);
+        return false;
+      }
+    }
+    return true;
   }
 
-  // BR-11: loadData with error fallback
+  // BR-11: loadData with local storage fallback
   async loadData(): Promise<unknown | null> {
-    try {
-      const raw = await this.ytgame?.loadData?.();
-      if (!raw) return null;
-      return JSON.parse(raw);
-    } catch (e) {
-      console.warn('loadData failed, starting fresh', e);
-      return null;
+    if (this.ytgame && typeof this.ytgame.loadData === 'function') {
+      try {
+        const raw = await this.ytgame.loadData();
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          try {
+            if (typeof window !== 'undefined' && window.localStorage) {
+              window.localStorage.setItem(LOCAL_STORAGE_KEY, raw);
+            }
+          } catch {}
+          return parsed;
+        }
+      } catch (e) {
+        console.warn('ytgame.loadData failed, trying local storage', e);
+      }
     }
+
+    // Fallback đọc từ localStorage khi chạy trên trình duyệt web thường
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const localRaw = window.localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (localRaw) {
+          return JSON.parse(localRaw);
+        }
+      }
+    } catch (e) {
+      console.warn('localStorage load failed', e);
+    }
+    return null;
   }
 
   sendScore(score: number): void {

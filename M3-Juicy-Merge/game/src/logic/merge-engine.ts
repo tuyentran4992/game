@@ -40,6 +40,8 @@ export interface MergeState {
   continueMax: number; // <=1 rewards tiếp tục/lượt (M3-05)
   playCount: number;   // số lượt (cho interstitial từ lần 2+)
   seed: number;
+  isDailyMode: boolean;
+  dailyDropsRemaining: number;
 }
 
 export class MergeEngine {
@@ -54,6 +56,7 @@ export class MergeEngine {
       score: 0, bestScore: 0, comboCount: 0, lastMergeTime: 0,
       lastDropTime: Number.NEGATIVE_INFINITY,
       gameOver: false, continueUsed: false, continueMax: 1, playCount: 0, seed,
+      isDailyMode: false, dailyDropsRemaining: 50,
     };
     this.powerups = createInitialPowerupState();
     this.dropQueue = new DropQueue(seed);
@@ -75,7 +78,17 @@ export class MergeEngine {
   }
 
   /** Record that a drop happened at {@link nowMs} (advances the cooldown timer). */
-  recordDrop(nowMs: number): void { this.state.lastDropTime = nowMs; }
+  recordDrop(nowMs: number): void {
+    this.state.lastDropTime = nowMs;
+    if (this.state.isDailyMode && this.state.dailyDropsRemaining > 0) {
+      this.state.dailyDropsRemaining--;
+    }
+  }
+
+  setDailyMode(enabled: boolean): void {
+    this.state.isDailyMode = enabled;
+    this.state.dailyDropsRemaining = 50;
+  }
 
   /** New run with a fresh seed (Retry, M3 §7). Defaults to the stored seed. */
   reseed(seed = this.state.seed): void {

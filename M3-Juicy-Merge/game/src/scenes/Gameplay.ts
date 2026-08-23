@@ -11,6 +11,7 @@ import { isWorldSettled } from '../logic/settle';
 import { fruitsAboveLine } from '../logic/continue';
 import { playJuiceSplash, playJackpotClimax, computeComboDetune } from '../gameplay/juice-effects';
 import { computeShakeImpulse } from '../logic/powerups';
+import { DAILY_TARGET_SCORE } from '../logic/daily-challenge';
 
 interface DroppedFruit {
   id: number;
@@ -69,6 +70,8 @@ export class GameplayScene extends Phaser.Scene {
   private wasNearDanger = false;
   private dangerStartTime: number | null = null;
   private dangerCountdownText!: Phaser.GameObjects.Text;
+  private dailyBannerText?: Phaser.GameObjects.Text;
+  private dailyVictoryCelebrated = false;
 
   /** Deferred merge queue processed outside the Matter solver loop. */
   private pendingMerges: MergePlan[] = [];
@@ -391,99 +394,137 @@ export class GameplayScene extends Phaser.Scene {
     const { width } = this.scale;
 
     // 1. Score & Best Score Card
-    const scoreX = 35;
+    const scoreX = 24;
     const scoreBg = this.add.graphics().setDepth(z.hud);
-    scoreBg.fillStyle(toColor(color.surface), 0.92);
-    scoreBg.fillRoundedRect(scoreX, 20, 180, 62, radius.md);
+    scoreBg.fillStyle(toColor(color.surface), 0.94);
+    scoreBg.fillRoundedRect(scoreX, 16, 166, 56, radius.md);
     scoreBg.lineStyle(2, toColor(color.primary), 0.5);
-    scoreBg.strokeRoundedRect(scoreX, 20, 180, 62, radius.md);
+    scoreBg.strokeRoundedRect(scoreX, 16, 166, 56, radius.md);
 
-    this.scoreText = this.add.text(scoreX + 16, 38, 'SCORE 0', {
+    this.scoreText = this.add.text(scoreX + 14, 33, 'SCORE 0', {
       fontFamily: 'sans-serif',
-      fontSize: '16px',
+      fontSize: '15px',
       fontStyle: 'bold',
       color: '#1F2937',
     }).setOrigin(0, 0.5).setDepth(z.hud + 1);
     this.scoreText.setData('testid', 'score-label');
 
-    this.bestScoreText = this.add.text(scoreX + 16, 60, `BEST ${ctx.engine.state.bestScore}`, {
+    this.bestScoreText = this.add.text(scoreX + 14, 55, `BEST ${ctx.engine.state.bestScore}`, {
       fontFamily: 'sans-serif',
-      fontSize: '13px',
+      fontSize: '12px',
       fontStyle: 'bold',
       color: '#D97706',
     }).setOrigin(0, 0.5).setDepth(z.hud + 1);
 
     // 2. Next Fruit & Swap Button
-    this.swapButtonBaseX = 230;
-    const swapContainer = this.add.container(this.swapButtonBaseX, 20).setDepth(z.hud);
+    this.swapButtonBaseX = 198;
+    const swapContainer = this.add.container(this.swapButtonBaseX, 16).setDepth(z.hud);
     this.swapButtonContainer = swapContainer;
     swapContainer.setData('testid', 'next-fruit');
 
     const swapBg = this.add.graphics();
-    swapBg.fillStyle(toColor(color.surface), 0.92);
-    swapBg.fillRoundedRect(0, 0, 225, 62, radius.md);
+    swapBg.fillStyle(toColor(color.surface), 0.94);
+    swapBg.fillRoundedRect(0, 0, 200, 56, radius.md);
     swapBg.lineStyle(2, 0x3B82F6, 0.6);
-    swapBg.strokeRoundedRect(0, 0, 225, 62, radius.md);
+    swapBg.strokeRoundedRect(0, 0, 200, 56, radius.md);
     swapContainer.add(swapBg);
 
-    const swapTitle = this.add.text(12, 18, 'NEXT 🔄', {
+    const swapTitle = this.add.text(10, 16, 'NEXT 🔄', {
       fontFamily: 'sans-serif',
-      fontSize: '13px',
+      fontSize: '12px',
       fontStyle: 'bold',
       color: '#2563EB',
     }).setOrigin(0, 0.5);
     swapContainer.add(swapTitle);
 
-    this.swapCountText = this.add.text(12, 40, `x${ctx.engine.powerups.swapCount} Swap`, {
+    this.swapCountText = this.add.text(10, 38, `x${ctx.engine.powerups.swapCount} Swap`, {
       fontFamily: 'sans-serif',
-      fontSize: '12px',
+      fontSize: '11px',
       fontStyle: 'bold',
       color: '#10B981',
     }).setOrigin(0, 0.5);
     swapContainer.add(this.swapCountText);
 
     const key0 = resolveFruitTexture(this, 0);
-    this.nextPreview1 = this.add.image(125, 31, key0).setDisplaySize(36, 36);
-    this.nextPreview2 = this.add.image(180, 31, key0).setDisplaySize(26, 26).setAlpha(0.75);
+    this.nextPreview1 = this.add.image(110, 28, key0).setDisplaySize(34, 34);
+    this.nextPreview2 = this.add.image(160, 28, key0).setDisplaySize(24, 24).setAlpha(0.75);
     swapContainer.add(this.nextPreview1);
     swapContainer.add(this.nextPreview2);
 
-    swapContainer.setSize(225, 62);
+    swapContainer.setSize(200, 56);
     swapContainer.setInteractive({ useHandCursor: true });
     swapContainer.on('pointerdown', () => this.onSwapFruit());
 
     // 3. Bucket Shake Button
-    this.shakeButtonBaseX = 470;
-    const shakeContainer = this.add.container(this.shakeButtonBaseX, 20).setDepth(z.hud);
+    this.shakeButtonBaseX = 406;
+    const shakeContainer = this.add.container(this.shakeButtonBaseX, 16).setDepth(z.hud);
     this.shakeButtonContainer = shakeContainer;
     shakeContainer.setData('testid', 'shake-btn');
 
     const shakeBg = this.add.graphics();
-    shakeBg.fillStyle(toColor(color.surface), 0.92);
-    shakeBg.fillRoundedRect(0, 0, 130, 62, radius.md);
+    shakeBg.fillStyle(toColor(color.surface), 0.94);
+    shakeBg.fillRoundedRect(0, 0, 110, 56, radius.md);
     shakeBg.lineStyle(2, 0x8B5CF6, 0.6);
-    shakeBg.strokeRoundedRect(0, 0, 130, 62, radius.md);
+    shakeBg.strokeRoundedRect(0, 0, 110, 56, radius.md);
     shakeContainer.add(shakeBg);
 
-    const shakeTitle = this.add.text(65, 20, '📳 SHAKE', {
+    const shakeTitle = this.add.text(55, 18, '📳 SHAKE', {
       fontFamily: 'sans-serif',
-      fontSize: '13px',
+      fontSize: '12px',
       fontStyle: 'bold',
       color: '#7C3AED',
     }).setOrigin(0.5);
     shakeContainer.add(shakeTitle);
 
-    this.shakeCountText = this.add.text(65, 42, `x${ctx.engine.powerups.shakeCount}`, {
+    this.shakeCountText = this.add.text(55, 38, `x${ctx.engine.powerups.shakeCount}`, {
       fontFamily: 'sans-serif',
-      fontSize: '13px',
+      fontSize: '12px',
       fontStyle: 'bold',
       color: '#8B5CF6',
     }).setOrigin(0.5);
     shakeContainer.add(this.shakeCountText);
 
-    shakeContainer.setSize(130, 62);
+    shakeContainer.setSize(110, 56);
     shakeContainer.setInteractive({ useHandCursor: true });
     shakeContainer.on('pointerdown', () => this.onShakeBucket());
+
+    // 4. Fruit Album Button 📖
+    const albumContainer = this.add.container(524, 16).setDepth(z.hud);
+    const albumBg = this.add.graphics();
+    albumBg.fillStyle(toColor(color.surface), 0.94);
+    albumBg.fillRoundedRect(0, 0, 56, 56, radius.md);
+    albumBg.lineStyle(2, 0x10B981, 0.6);
+    albumBg.strokeRoundedRect(0, 0, 56, 56, radius.md);
+    albumContainer.add(albumBg);
+
+    const albumIcon = this.add.text(28, 28, '📖', { fontSize: '24px' }).setOrigin(0.5);
+    albumContainer.add(albumIcon);
+    albumContainer.setSize(56, 56);
+    albumContainer.setInteractive({ useHandCursor: true });
+    albumContainer.on('pointerdown', () => {
+      this.lastUiClickTime = this.time.now;
+      this.scene.pause();
+      this.scene.launch('AlbumScene', { returnScene: 'GameplayScene' });
+    });
+
+    // 5. Daily Challenge Sub-Header Banner (if active)
+    if (ctx.isDailyMode) {
+      const bannerW = 500;
+      const bannerH = 40;
+      const bannerY = 88;
+      const bannerBg = this.add.graphics().setDepth(z.hud);
+      bannerBg.fillStyle(0xFFFFFF, 0.96);
+      bannerBg.fillRoundedRect(width / 2 - bannerW / 2, bannerY, bannerW, bannerH, 20);
+      bannerBg.lineStyle(2, 0xF59E0B, 0.9);
+      bannerBg.strokeRoundedRect(width / 2 - bannerW / 2, bannerY, bannerW, bannerH, 20);
+
+      this.dailyBannerText = this.add.text(width / 2, bannerY + bannerH / 2, `📅 Thử Thách: Còn 50 quả   •   Mục tiêu: ${DAILY_TARGET_SCORE}đ 🎯`, {
+        fontFamily: 'sans-serif',
+        fontSize: '14px',
+        fontStyle: 'bold',
+        color: '#B45309',
+      }).setOrigin(0.5).setDepth(z.hud + 1);
+    }
 
     this.updateHud();
   }
@@ -498,6 +539,17 @@ export class GameplayScene extends Phaser.Scene {
     if (this.shakeCountText) {
       this.shakeCountText.setText(`x${ctx.engine.powerups.shakeCount}`);
       this.shakeCountText.setColor(ctx.engine.powerups.shakeCount > 0 ? '#8B5CF6' : '#9CA3AF');
+    }
+    if (this.dailyBannerText && ctx.isDailyMode) {
+      const remaining = ctx.engine.state.dailyDropsRemaining;
+      const reached = ctx.engine.state.score >= DAILY_TARGET_SCORE;
+      if (reached) {
+        this.dailyBannerText.setText(`🎉 HOÀN THÀNH: ${ctx.engine.state.score}/${DAILY_TARGET_SCORE}đ (Còn ${remaining} quả) 🏆`);
+        this.dailyBannerText.setColor('#059669');
+      } else {
+        this.dailyBannerText.setText(`📅 Thử Thách: Còn ${remaining}/50 quả   •   Mục tiêu: ${DAILY_TARGET_SCORE}đ 🎯`);
+        this.dailyBannerText.setColor('#B45309');
+      }
     }
     this.updateNextFruitHud();
   }
@@ -673,6 +725,82 @@ export class GameplayScene extends Phaser.Scene {
     });
   }
 
+  private celebrateNewFruitDiscovery(name: string): void {
+    const { width } = this.scale;
+    const cy = this.layout.dangerY - 50;
+
+    playJackpotClimax(this, width / 2, cy);
+    this.playSfx('sfx_merge_big', 0.9, 300);
+
+    const banner = this.add.text(width / 2, cy, `🌟 MỞ KHÓA MỚI: ${name.toUpperCase()}! 🌟`, {
+      fontFamily: 'sans-serif',
+      fontSize: '24px',
+      fontStyle: 'bold',
+      color: '#10B981',
+    }).setOrigin(0.5).setDepth(z.overlay + 10).setStroke('#FFFFFF', 8).setScale(0.4).setAlpha(0);
+
+    const subBanner = this.add.text(width / 2, cy + 32, '+1 Swap 🔄 & +1 Shake 📳', {
+      fontFamily: 'sans-serif',
+      fontSize: '18px',
+      fontStyle: 'bold',
+      color: '#3B82F6',
+    }).setOrigin(0.5).setDepth(z.overlay + 10).setStroke('#FFFFFF', 6).setScale(0.4).setAlpha(0);
+
+    this.tweens.add({
+      targets: [banner, subBanner],
+      scale: 1.15,
+      alpha: 1,
+      duration: dur.pop,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        this.tweens.add({
+          targets: [banner, subBanner],
+          alpha: 0,
+          y: '-=50',
+          duration: dur.slow,
+          delay: 1400,
+          onComplete: () => {
+            banner.destroy();
+            subBanner.destroy();
+          },
+        });
+      },
+    });
+  }
+
+  private celebrateDailyVictory(): void {
+    const { width } = this.scale;
+    const cy = this.layout.dangerY - 50;
+
+    playJackpotClimax(this, width / 2, cy);
+    this.playSfx('sfx_merge_big', 0.9, 200);
+
+    const banner = this.add.text(width / 2, cy, `🏆 ĐẠT MỤC TIÊU NGÀY (${DAILY_TARGET_SCORE}đ)! 🏆`, {
+      fontFamily: 'sans-serif',
+      fontSize: '24px',
+      fontStyle: 'bold',
+      color: '#F59E0B',
+    }).setOrigin(0.5).setDepth(z.overlay + 10).setStroke('#FFFFFF', 8).setScale(0.4).setAlpha(0);
+
+    this.tweens.add({
+      targets: banner,
+      scale: 1.2,
+      alpha: 1,
+      duration: dur.pop,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        this.tweens.add({
+          targets: banner,
+          alpha: 0,
+          y: cy - 60,
+          duration: dur.slow,
+          delay: 1200,
+          onComplete: () => banner.destroy(),
+        });
+      },
+    });
+  }
+
   // --- Combo popup -----------------------------------------------------------
   private createComboPopup(): void {
     const cx = (this.layout.bucketX0 + this.layout.bucketX1) / 2;
@@ -795,6 +923,14 @@ export class GameplayScene extends Phaser.Scene {
     this.ghostTier = ctx.engine.nextFruit();
     this.refreshGhost();
     this.updateHud();
+
+    if (ctx.isDailyMode && ctx.engine.state.dailyDropsRemaining <= 0) {
+      this.time.delayedCall(2000, () => {
+        if (!this.gameOverTriggered) {
+          this.triggerGameOver();
+        }
+      });
+    }
   }
 
   private spawnFruit(tier: number, x: number, y: number): DroppedFruit {
@@ -896,7 +1032,19 @@ export class GameplayScene extends Phaser.Scene {
     if (plans.length > 0) {
       this.lastMotionMs = this.time.now;
       
-      // Process Milestone rewards and New Record
+      // 1. Process Fruit Discovery in Album
+      for (const plan of plans) {
+        ctx.discoverFruit(plan.newTier).then(({ isNew, info }) => {
+          if (isNew) {
+            this.celebrateNewFruitDiscovery(info.name);
+            ctx.engine.addSwap(1);
+            ctx.engine.addShake(1);
+            this.updateHud();
+          }
+        });
+      }
+
+      // 2. Process Milestone rewards and New Record
       const { reward, isNewRecordBroken } = ctx.engine.processMergeMilestones();
       const lastPlan = plans[plans.length - 1];
       const popX = lastPlan ? (this.fruitsById.get(lastPlan.aId)?.obj.x ?? this.scale.width / 2) : this.scale.width / 2;
@@ -910,6 +1058,13 @@ export class GameplayScene extends Phaser.Scene {
 
       if (isNewRecordBroken) {
         this.celebrateNewRecord();
+      }
+
+      // 3. Process Daily Challenge Victory
+      if (ctx.isDailyMode && ctx.engine.state.score >= DAILY_TARGET_SCORE && !this.dailyVictoryCelebrated) {
+        this.dailyVictoryCelebrated = true;
+        ctx.recordDailyVictory(ctx.engine.state.score);
+        this.celebrateDailyVictory();
       }
 
       this.updateHud();

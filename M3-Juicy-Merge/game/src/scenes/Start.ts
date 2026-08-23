@@ -3,6 +3,8 @@ import { color, type, z, dur, fontStyle } from '../tokens';
 import { drawButton, drawBackground, drawMuteButton } from '../ui';
 import { fruitKey } from '../assets';
 import { fruitDiameter } from '../gameplay/fruit-sprite';
+import { ctx } from '../context';
+import { getAlbumProgress } from '../logic/album';
 
 // Start scene (step 14b) — title + decorative fruit chain + Play button, per
 // DESIGN-SPEC §3.1 mockup. The real `logo` PNG was not generated (image API
@@ -21,38 +23,70 @@ export class StartScene extends Phaser.Scene {
     drawBackground(this);
 
     // --- Title (fallback for the un-gen'd logo) -----------------------------
-    // type.display 64px per mockup; bumped here so the title reads as a logo.
-    const title = this.add.text(width / 2, height * 0.30, 'JUICE MERGE', {
+    const title = this.add.text(width / 2, height * 0.26, 'JUICE MERGE', {
       ...fontStyle(type.display, color.primaryDark),
-      fontSize: '64px',
+      fontSize: '60px',
     })
       .setOrigin(0.5).setDepth(z.hud)
       .setStroke(color.textStroke, 8);
     title.setData('testid', 'start-title');
 
     // --- Decorative fruit chain (cherry -> watermelon, mockup §3.1) ---------
-    this.drawFruitChain(width / 2, height * 0.46);
+    this.drawFruitChain(width / 2, height * 0.40);
 
-    // --- Play button (btn-primary 320x96, mockup §3.1) ----------------------
-    const { container } = drawButton(this, width / 2, height * 0.66, 'Play', {
+    const btnW = Math.min(440, width - 64);
+
+    // --- 1. Play Classic Mode Button ----------------------------------------
+    const { container: playBtn } = drawButton(this, width / 2, height * 0.54, '▶  Chơi Cổ Điển', {
       testid: 'start-btn',
-      width: 320,
-      height: 96,
+      variant: 'primary',
+      width: btnW,
+      height: 76,
+      fontSize: 26,
     });
-    container.on('pointerdown', () => {
-      // Start BGM on the user's Play tap (browsers block autoplay without a
-      // gesture). Phaser's SoundManager is global, so the track keeps looping
-      // across Start -> Gameplay -> GameOver.
+    playBtn.on('pointerdown', () => {
       this.startBgm();
+      ctx.startClassicMode();
       this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
       this.time.delayedCall(dur.scene, () => this.scene.start('GameplayScene'));
+    });
+
+    // --- 2. Daily Challenge Mode Button -------------------------------------
+    const isCompletedToday = ctx.isDailyCompletedToday();
+    const dailyLabel = isCompletedToday ? '📅  Thử Thách Ngày (✓)' : '📅  Thử Thách Ngày';
+    const { container: dailyBtn } = drawButton(this, width / 2, height * 0.63, dailyLabel, {
+      testid: 'daily-btn',
+      variant: 'amber',
+      width: btnW,
+      height: 70,
+      fontSize: 24,
+    });
+    dailyBtn.on('pointerdown', () => {
+      this.startBgm();
+      ctx.startDailyChallenge();
+      this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
+      this.time.delayedCall(dur.scene, () => this.scene.start('GameplayScene'));
+    });
+
+    // --- 3. Fruit Album / Encyclopedia Button -------------------------------
+    const unlocked = ctx.score.getUnlockedTiers();
+    const albumProgress = getAlbumProgress(unlocked);
+    const { container: albumBtn } = drawButton(this, width / 2, height * 0.72, `📖  Bộ Sưu Tập (${albumProgress.unlockedCount}/12)`, {
+      testid: 'album-btn',
+      variant: 'emerald',
+      width: btnW,
+      height: 66,
+      fontSize: 24,
+    });
+    albumBtn.on('pointerdown', () => {
+      this.scene.pause();
+      this.scene.launch('AlbumScene', { returnScene: 'StartScene' });
     });
 
     // --- Corner watermelon decoration (alpha 0.5, mockup §3.1) ---------------
     this.drawCornerDecor(width, height);
 
-    // Mute toggle in the top-right corner (step 15) — available from the title
-    // screen so the player can silence the BGM before it even starts.
+    // Mute toggle in the top-right corner
     drawMuteButton(this);
 
     this.scale.on('resize', (g: Phaser.Structs.Size) => {
