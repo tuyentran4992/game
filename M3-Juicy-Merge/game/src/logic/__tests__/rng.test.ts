@@ -46,6 +46,18 @@ describe('GC-08: RNG deterministic — same seed ⇒ same sequence', () => {
     expect(q.nextFruit()).toBe(peeked[1]);
   });
 
+  it('DropQueue: swapFront swaps front item with current tier and updates peek()', () => {
+    const q = new DropQueue(99, CONFIG.dropSpawnPool);
+    const initialFront = q.peek()[0];
+    const initialSecond = q.peek()[1];
+    const myCurrentTier = 4; // Dekopon
+    const returnedTier = q.swapFront(myCurrentTier);
+
+    expect(returnedTier).toBe(initialFront);
+    expect(q.peek()[0]).toBe(myCurrentTier);
+    expect(q.peek()[1]).toBe(initialSecond);
+  });
+
   it('MergeEngine wires seed → DropQueue: two engines same seed ⇒ identical next-fruit chain', () => {
     const e1 = new MergeEngine(42);
     const e2 = new MergeEngine(42);

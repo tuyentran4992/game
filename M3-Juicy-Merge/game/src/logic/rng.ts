@@ -68,6 +68,17 @@ export class DropQueue {
     return [...this.queue];
   }
 
+  /**
+   * Swap the front upcoming fruit with the currently held fruit.
+   * Returns the new fruit tier to be held.
+   */
+  swapFront(currentTier: number): number {
+    if (this.queue.length === 0) return currentTier;
+    const nextTier = this.queue[0];
+    this.queue[0] = currentTier;
+    return nextTier;
+  }
+
   /** Consume the front fruit and refill the back; returns the dropped tier. */
   nextFruit(): number {
     const tier = this.queue.shift() as number;

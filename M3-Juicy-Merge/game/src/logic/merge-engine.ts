@@ -5,6 +5,19 @@
 
 import { CONFIG } from './config';
 import { DropQueue } from './rng';
+import {
+  type PowerupState,
+  createInitialPowerupState,
+  canSwapFruit,
+  consumeSwap,
+  canShakeBucket,
+  consumeShake,
+  grantSwap,
+  grantShake,
+  evaluateComboReward,
+  evaluateScoreMilestoneReward,
+  evaluateRecordBroken,
+} from './powerups';
 
 export interface FruitSpec {
   tier: number;      // 0..11 (bậc 1..12)
@@ -31,6 +44,7 @@ export interface MergeState {
 
 export class MergeEngine {
   state: MergeState;
+  powerups: PowerupState;
   // Seeded RNG + next-fruit queue — one instance per session (M3-04). Same seed
   // ⇒ same fruit sequence, so the run is replayable/deterministic.
   private dropQueue: DropQueue;
@@ -41,6 +55,7 @@ export class MergeEngine {
       lastDropTime: Number.NEGATIVE_INFINITY,
       gameOver: false, continueUsed: false, continueMax: 1, playCount: 0, seed,
     };
+    this.powerups = createInitialPowerupState();
     this.dropQueue = new DropQueue(seed);
   }
 
@@ -109,6 +124,71 @@ export class MergeEngine {
    *  with an interstitial. */
   shouldShowInterstitial(): boolean { return this.state.playCount >= 2; }
 
+  // --- Strategic Power-ups & Enhancements (Phase 2) --------------------------
+  canSwap(): boolean {
+    return canSwapFruit(this.powerups);
+  }
+
+  swapGhost(currentGhostTier: number): { success: boolean; newGhostTier: number } {
+    if (!consumeSwap(this.powerups)) {
+      return { success: false, newGhostTier: currentGhostTier };
+    }
+    const newGhostTier = this.dropQueue.swapFront(currentGhostTier);
+    return { success: true, newGhostTier };
+  }
+
+  canShake(): boolean {
+    return canShakeBucket(this.powerups);
+  }
+
+  useShake(): boolean {
+    return consumeShake(this.powerups);
+  }
+
+  addSwap(count = 1): number {
+    return grantSwap(this.powerups, count);
+  }
+
+  addShake(count = 1): number {
+    return grantShake(this.powerups, count);
+  }
+
+  /**
+   * Process rewards after each merge:
+   * - Combo reward (x3 -> Swap, x5 -> Shake)
+   * - Score milestone reward (every 1000 pts -> Shake)
+   * - High Score milestone check (first time current score > past best score)
+   */
+  processMergeMilestones(): {
+    reward: 'swap' | 'shake' | null;
+    isNewRecordBroken: boolean;
+  } {
+    // 1. Combo reward
+    let reward = evaluateComboReward(this.state.comboCount);
+    if (reward === 'swap') grantSwap(this.powerups, 1);
+    else if (reward === 'shake') grantShake(this.powerups, 1);
+
+    // 2. Score milestone reward
+    const milestoneRes = evaluateScoreMilestoneReward(
+      this.state.score,
+      this.powerups.lastScoreMilestone,
+    );
+    if (milestoneRes.reward) {
+      this.powerups.lastScoreMilestone = milestoneRes.newMilestone;
+      grantShake(this.powerups, 1);
+      reward = reward ?? 'shake';
+    }
+
+    // 3. New record broken
+    let isNewRecordBroken = false;
+    if (evaluateRecordBroken(this.state.score, this.state.bestScore, this.powerups.hasBrokenRecordThisGame)) {
+      this.powerups.hasBrokenRecordThisGame = true;
+      isNewRecordBroken = true;
+    }
+
+    return { reward, isNewRecordBroken };
+  }
+
   startNewGame(): void {
     this.state.score = 0;
     this.state.comboCount = 0;
@@ -116,6 +196,7 @@ export class MergeEngine {
     this.state.continueUsed = false;
     this.state.gameOver = false;
     this.state.playCount = 0; // lượt mới → interstitial lại từ đầu
+    this.powerups = createInitialPowerupState();
     // Reset the fruit queue so a fresh run starts from the beginning of the
     // seed's sequence. Caller may pass a new seed via reseed() for true variety.
     this.dropQueue.reseed(this.state.seed);

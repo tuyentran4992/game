@@ -10,6 +10,7 @@ import { checkGameOver } from '../logic/game-over';
 import { isWorldSettled } from '../logic/settle';
 import { fruitsAboveLine } from '../logic/continue';
 import { playJuiceSplash, playJackpotClimax, computeComboDetune } from '../gameplay/juice-effects';
+import { computeShakeImpulse } from '../logic/powerups';
 
 interface DroppedFruit {
   id: number;
@@ -50,8 +51,17 @@ export class GameplayScene extends Phaser.Scene {
   private fruitsById = new Map<number, DroppedFruit>();
   private nextFruitId = 1;
   private scoreText!: Phaser.GameObjects.Text;
+  private bestScoreText!: Phaser.GameObjects.Text;
   private nextPreview1!: Phaser.GameObjects.Image;
   private nextPreview2!: Phaser.GameObjects.Image;
+  private swapButtonContainer!: Phaser.GameObjects.Container;
+  private swapCountText!: Phaser.GameObjects.Text;
+  private swapButtonBaseX = 0;
+  private shakeButtonContainer!: Phaser.GameObjects.Container;
+  private shakeCountText!: Phaser.GameObjects.Text;
+  private shakeButtonBaseX = 0;
+  private isShakingBucket = false;
+  private lastUiClickTime = 0;
   private comboPopup!: Phaser.GameObjects.Text;
   private dangerLine!: Phaser.GameObjects.Graphics;
   private lastMotionMs = 0;
@@ -100,7 +110,7 @@ export class GameplayScene extends Phaser.Scene {
     drawMuteButton(this);
 
     ctx.engine.startNewGame();
-    this.ghostTier = ctx.engine.peekNext()[0] ?? 0;
+    this.ghostTier = ctx.engine.nextFruit();
     this.ghostX = Phaser.Math.Clamp(width / 2, this.layout.bucketX0 + fruitRadius(this.ghostTier), this.layout.bucketX1 - fruitRadius(this.ghostTier));
     this.refreshGhost();
     this.updateNextFruitHud();
@@ -259,7 +269,7 @@ export class GameplayScene extends Phaser.Scene {
     }
 
     if (this.gameOverTriggered) return;
-    if (this.fruits.length === 0) {
+    if (this.fruits.length === 0 || this.isShakingBucket) {
       this.lastMotionMs = time;
       this.dangerStartTime = null;
       this.dangerCountdownText?.setAlpha(0);
@@ -376,46 +386,119 @@ export class GameplayScene extends Phaser.Scene {
     this.updateHud();
   }
 
-  // --- HUD -------------------------------------------------------------------
+  // --- HUD & Strategic Power-ups --------------------------------------------
   private createHud(): void {
-    // Score Badge
+    const { width } = this.scale;
+
+    // 1. Score & Best Score Card
+    const scoreX = 35;
     const scoreBg = this.add.graphics().setDepth(z.hud);
-    scoreBg.fillStyle(toColor(color.surface), 0.9);
-    scoreBg.fillRoundedRect(this.layout.bucketX0, 20, 180, 56, radius.md);
+    scoreBg.fillStyle(toColor(color.surface), 0.92);
+    scoreBg.fillRoundedRect(scoreX, 20, 180, 62, radius.md);
     scoreBg.lineStyle(2, toColor(color.primary), 0.5);
-    scoreBg.strokeRoundedRect(this.layout.bucketX0, 20, 180, 56, radius.md);
+    scoreBg.strokeRoundedRect(scoreX, 20, 180, 62, radius.md);
 
-    this.scoreText = this.add.text(this.layout.bucketX0 + 16, 48, 'SCORE 0', fontStyle(type.score, color.textPrimary))
-      .setOrigin(0, 0.5).setDepth(z.hud + 1);
-    this.scoreText.setData('testid', 'score-label');
-
-    // Next Fruit Badge
-    const nextX = this.layout.bucketX1 - 240;
-    const nextBg = this.add.graphics().setDepth(z.hud);
-    nextBg.fillStyle(toColor(color.surface), 0.9);
-    nextBg.fillRoundedRect(nextX, 20, 160, 56, radius.md);
-    nextBg.lineStyle(2, toColor(color.primary), 0.5);
-    nextBg.strokeRoundedRect(nextX, 20, 160, 56, radius.md);
-
-    this.add.text(nextX + 12, 48, 'NEXT', {
+    this.scoreText = this.add.text(scoreX + 16, 38, 'SCORE 0', {
       fontFamily: 'sans-serif',
       fontSize: '16px',
       fontStyle: 'bold',
-      color: color.textSecondary,
+      color: '#1F2937',
+    }).setOrigin(0, 0.5).setDepth(z.hud + 1);
+    this.scoreText.setData('testid', 'score-label');
+
+    this.bestScoreText = this.add.text(scoreX + 16, 60, `BEST ${ctx.engine.state.bestScore}`, {
+      fontFamily: 'sans-serif',
+      fontSize: '13px',
+      fontStyle: 'bold',
+      color: '#D97706',
     }).setOrigin(0, 0.5).setDepth(z.hud + 1);
 
-    const nextContainer = this.add.container(nextX, 20).setDepth(z.hud);
-    nextContainer.setData('testid', 'next-fruit');
+    // 2. Next Fruit & Swap Button
+    this.swapButtonBaseX = 230;
+    const swapContainer = this.add.container(this.swapButtonBaseX, 20).setDepth(z.hud);
+    this.swapButtonContainer = swapContainer;
+    swapContainer.setData('testid', 'next-fruit');
+
+    const swapBg = this.add.graphics();
+    swapBg.fillStyle(toColor(color.surface), 0.92);
+    swapBg.fillRoundedRect(0, 0, 225, 62, radius.md);
+    swapBg.lineStyle(2, 0x3B82F6, 0.6);
+    swapBg.strokeRoundedRect(0, 0, 225, 62, radius.md);
+    swapContainer.add(swapBg);
+
+    const swapTitle = this.add.text(12, 18, 'NEXT 🔄', {
+      fontFamily: 'sans-serif',
+      fontSize: '13px',
+      fontStyle: 'bold',
+      color: '#2563EB',
+    }).setOrigin(0, 0.5);
+    swapContainer.add(swapTitle);
+
+    this.swapCountText = this.add.text(12, 40, `x${ctx.engine.powerups.swapCount} Swap`, {
+      fontFamily: 'sans-serif',
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: '#10B981',
+    }).setOrigin(0, 0.5);
+    swapContainer.add(this.swapCountText);
 
     const key0 = resolveFruitTexture(this, 0);
-    this.nextPreview1 = this.add.image(nextX + 85, 48, key0).setDisplaySize(32, 32).setDepth(z.hud + 1);
-    this.nextPreview2 = this.add.image(nextX + 125, 48, key0).setDisplaySize(24, 24).setDepth(z.hud + 1).setAlpha(0.8);
+    this.nextPreview1 = this.add.image(125, 31, key0).setDisplaySize(36, 36);
+    this.nextPreview2 = this.add.image(180, 31, key0).setDisplaySize(26, 26).setAlpha(0.75);
+    swapContainer.add(this.nextPreview1);
+    swapContainer.add(this.nextPreview2);
+
+    swapContainer.setSize(225, 62);
+    swapContainer.setInteractive({ useHandCursor: true });
+    swapContainer.on('pointerdown', () => this.onSwapFruit());
+
+    // 3. Bucket Shake Button
+    this.shakeButtonBaseX = 470;
+    const shakeContainer = this.add.container(this.shakeButtonBaseX, 20).setDepth(z.hud);
+    this.shakeButtonContainer = shakeContainer;
+    shakeContainer.setData('testid', 'shake-btn');
+
+    const shakeBg = this.add.graphics();
+    shakeBg.fillStyle(toColor(color.surface), 0.92);
+    shakeBg.fillRoundedRect(0, 0, 130, 62, radius.md);
+    shakeBg.lineStyle(2, 0x8B5CF6, 0.6);
+    shakeBg.strokeRoundedRect(0, 0, 130, 62, radius.md);
+    shakeContainer.add(shakeBg);
+
+    const shakeTitle = this.add.text(65, 20, '📳 SHAKE', {
+      fontFamily: 'sans-serif',
+      fontSize: '13px',
+      fontStyle: 'bold',
+      color: '#7C3AED',
+    }).setOrigin(0.5);
+    shakeContainer.add(shakeTitle);
+
+    this.shakeCountText = this.add.text(65, 42, `x${ctx.engine.powerups.shakeCount}`, {
+      fontFamily: 'sans-serif',
+      fontSize: '13px',
+      fontStyle: 'bold',
+      color: '#8B5CF6',
+    }).setOrigin(0.5);
+    shakeContainer.add(this.shakeCountText);
+
+    shakeContainer.setSize(130, 62);
+    shakeContainer.setInteractive({ useHandCursor: true });
+    shakeContainer.on('pointerdown', () => this.onShakeBucket());
 
     this.updateHud();
   }
 
   private updateHud(): void {
     this.scoreText.setText(`SCORE ${ctx.engine.state.score}`);
+    this.bestScoreText.setText(`BEST ${Math.max(ctx.engine.state.bestScore, ctx.engine.state.score)}`);
+    if (this.swapCountText) {
+      this.swapCountText.setText(`x${ctx.engine.powerups.swapCount} Swap`);
+      this.swapCountText.setColor(ctx.engine.powerups.swapCount > 0 ? '#10B981' : '#9CA3AF');
+    }
+    if (this.shakeCountText) {
+      this.shakeCountText.setText(`x${ctx.engine.powerups.shakeCount}`);
+      this.shakeCountText.setColor(ctx.engine.powerups.shakeCount > 0 ? '#8B5CF6' : '#9CA3AF');
+    }
     this.updateNextFruitHud();
   }
 
@@ -430,6 +513,164 @@ export class GameplayScene extends Phaser.Scene {
 
     this.nextPreview1.setTexture(key1);
     this.nextPreview2.setTexture(key2);
+  }
+
+  // --- Swap & Shake Handlers -------------------------------------------------
+  private onSwapFruit(): void {
+    this.lastUiClickTime = this.time.now;
+    if (this.gameOverTriggered) return;
+    if (!ctx.engine.canSwap()) {
+      // Gentle reject wobble
+      this.tweens.add({
+        targets: this.swapButtonContainer,
+        x: { from: this.swapButtonBaseX - 5, to: this.swapButtonBaseX + 5 },
+        duration: 40,
+        yoyo: true,
+        repeat: 2,
+        onComplete: () => this.swapButtonContainer.setX(this.swapButtonBaseX),
+      });
+      return;
+    }
+
+    const { success, newGhostTier } = ctx.engine.swapGhost(this.ghostTier);
+    if (!success) return;
+
+    this.ghostTier = newGhostTier;
+    this.refreshGhost();
+    this.updateHud();
+
+    // Visual & audio feedback
+    this.playSfx('sfx_drop', 0.6, 500);
+    this.tweens.add({
+      targets: this.ghost,
+      scaleX: { from: 0.2, to: 1 },
+      scaleY: { from: 1.4, to: 1 },
+      duration: dur.pop,
+      ease: 'Back.easeOut',
+    });
+    this.tweens.add({
+      targets: this.swapButtonContainer,
+      scaleX: { from: 0.95, to: 1 },
+      scaleY: { from: 0.95, to: 1 },
+      duration: dur.fast,
+      ease: 'Back.easeOut',
+    });
+  }
+
+  private onShakeBucket(): void {
+    this.lastUiClickTime = this.time.now;
+    if (this.gameOverTriggered || this.isShakingBucket) return;
+    if (!ctx.engine.canShake()) {
+      // Gentle reject wobble
+      this.tweens.add({
+        targets: this.shakeButtonContainer,
+        x: { from: this.shakeButtonBaseX - 5, to: this.shakeButtonBaseX + 5 },
+        duration: 40,
+        yoyo: true,
+        repeat: 2,
+        onComplete: () => this.shakeButtonContainer.setX(this.shakeButtonBaseX),
+      });
+      return;
+    }
+
+    if (!ctx.engine.useShake()) return;
+    this.isShakingBucket = true;
+    this.updateHud();
+
+    // Camera shake + audio
+    this.cameras.main.shake(1200, 0.005);
+    this.playSfx('sfx_pop', 0.8, -300);
+
+    const startTime = this.time.now;
+    const shakeDurationMs = 1200;
+
+    const timer = this.time.addEvent({
+      delay: 16,
+      repeat: Math.floor(shakeDurationMs / 16),
+      callback: () => {
+        const elapsed = (this.time.now - startTime) / 1000;
+        for (let i = 0; i < this.fruits.length; i++) {
+          const f = this.fruits[i];
+          const b = f.obj.body as MatterJS.BodyType | undefined;
+          if (!b) continue;
+          const { fx, fy } = computeShakeImpulse(b.mass ?? 1, elapsed, i);
+          f.obj.applyForce(new Phaser.Math.Vector2(fx, fy));
+        }
+      },
+    });
+
+    this.time.delayedCall(shakeDurationMs + 50, () => {
+      this.isShakingBucket = false;
+      this.lastMotionMs = this.time.now;
+    });
+
+    this.tweens.add({
+      targets: this.shakeButtonContainer,
+      scaleX: { from: 0.95, to: 1 },
+      scaleY: { from: 0.95, to: 1 },
+      duration: dur.fast,
+      ease: 'Back.easeOut',
+    });
+  }
+
+  private floatPowerupPopup(text: string, x: number, y: number, colorHex: string): void {
+    const txt = this.add.text(x, y, text, {
+      fontFamily: 'sans-serif',
+      fontSize: '22px',
+      fontStyle: 'bold',
+      color: colorHex,
+    }).setOrigin(0.5).setDepth(z.overlay + 5).setStroke('#FFFFFF', 6).setScale(0.5);
+
+    this.tweens.add({
+      targets: txt,
+      scale: 1.25,
+      duration: dur.pop,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        this.tweens.add({
+          targets: txt,
+          alpha: 0,
+          y: y - 50,
+          duration: dur.base + 100,
+          ease: 'Cubic.easeOut',
+          onComplete: () => txt.destroy(),
+        });
+      },
+    });
+  }
+
+  private celebrateNewRecord(): void {
+    const { width } = this.scale;
+    const cy = this.layout.dangerY - 50;
+
+    // Golden sparks
+    playJackpotClimax(this, width / 2, cy);
+    this.playSfx('sfx_merge_big', 0.8, 200);
+
+    const banner = this.add.text(width / 2, cy, '🎉 NEW RECORD! 🎉', {
+      fontFamily: 'sans-serif',
+      fontSize: '32px',
+      fontStyle: 'bold',
+      color: '#F59E0B',
+    }).setOrigin(0.5).setDepth(z.overlay + 10).setStroke('#FFFFFF', 8).setScale(0.4).setAlpha(0);
+
+    this.tweens.add({
+      targets: banner,
+      scale: 1.2,
+      alpha: 1,
+      duration: dur.pop,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        this.tweens.add({
+          targets: banner,
+          alpha: 0,
+          y: cy - 60,
+          duration: dur.slow,
+          delay: 800,
+          onComplete: () => banner.destroy(),
+        });
+      },
+    });
   }
 
   // --- Combo popup -----------------------------------------------------------
@@ -522,30 +763,36 @@ export class GameplayScene extends Phaser.Scene {
   // --- Input -----------------------------------------------------------------
   private bindInput(): void {
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (p.worldY < this.layout.spawnY - 30) return;
       this.ghostX = this.clampGhostX(p.worldX);
       this.ghost.x = this.ghostX;
       this.refreshAimLine();
     });
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      if (p.worldY < this.layout.spawnY - 30) return;
       this.ghostX = this.clampGhostX(p.worldX);
       this.ghost.x = this.ghostX;
       this.refreshAimLine();
     });
 
-    this.input.on('pointerup', () => this.tryDrop());
+    this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if (p.worldY < this.layout.spawnY - 30) return;
+      if (this.time.now - this.lastUiClickTime < 350) return;
+      this.tryDrop();
+    });
   }
 
   private tryDrop(): void {
     const now = this.time.now;
     if (!ctx.engine.canDrop(now)) return;
-    const tier = ctx.engine.nextFruit();
+    const tier = this.ghostTier;
     ctx.engine.recordDrop(now);
     this.lastMotionMs = now;
     this.spawnFruit(tier, this.ghostX, this.layout.spawnY);
     this.playSfx('sfx_drop');
 
-    this.ghostTier = ctx.engine.peekNext()[0] ?? 0;
+    this.ghostTier = ctx.engine.nextFruit();
     this.refreshGhost();
     this.updateHud();
   }
@@ -648,6 +895,23 @@ export class GameplayScene extends Phaser.Scene {
 
     if (plans.length > 0) {
       this.lastMotionMs = this.time.now;
+      
+      // Process Milestone rewards and New Record
+      const { reward, isNewRecordBroken } = ctx.engine.processMergeMilestones();
+      const lastPlan = plans[plans.length - 1];
+      const popX = lastPlan ? (this.fruitsById.get(lastPlan.aId)?.obj.x ?? this.scale.width / 2) : this.scale.width / 2;
+      const popY = this.layout.bucketTopY + 80;
+
+      if (reward === 'swap') {
+        this.floatPowerupPopup('+1 SWAP 🔄', popX, popY, '#10B981');
+      } else if (reward === 'shake') {
+        this.floatPowerupPopup('+1 SHAKE 📳', popX, popY, '#8B5CF6');
+      }
+
+      if (isNewRecordBroken) {
+        this.celebrateNewRecord();
+      }
+
       this.updateHud();
       const combo = ctx.engine.state.comboCount;
       const detune = computeComboDetune(combo);
