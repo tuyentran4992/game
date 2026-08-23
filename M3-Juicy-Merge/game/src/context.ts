@@ -2,6 +2,7 @@
 import { sdk } from './sdk-instance';
 import { MergeEngine } from './logic/merge-engine';
 import { ScoreStore, type SaveAdapter } from './logic/save';
+import { CONFIG } from './logic/config';
 
 /** SaveAdapter backed by the Playables SDK (BR-11). Injected into ScoreStore so
  *  the logic layer has no SDK import — tests inject a mock adapter instead. */
@@ -17,7 +18,9 @@ class GameContext {
   readonly score: ScoreStore;
 
   constructor() {
-    this.engine = new MergeEngine();
+    // Seed from config (M3-04): deterministic when set, else default 1.
+    const seed = CONFIG.seed ?? 1;
+    this.engine = new MergeEngine(seed);
     this.score = new ScoreStore(new SdkSaveAdapter());
   }
 
