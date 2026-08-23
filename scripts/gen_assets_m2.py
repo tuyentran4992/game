@@ -21,12 +21,13 @@ PUB = Path("/data/youtube-playables/M2-Color-Sort/game/public/raw")
 for d in (RAW, PUB): d.mkdir(parents=True, exist_ok=True)
 
 SPRITES = {
-    "bg_space": ("Deep space background for a casual puzzle game, dark navy-blue to deep violet vertical gradient, "
-                 "many tiny faint stars, soft cyan and magenta nebula wisps, subtle atmospheric glow, "
-                 "clean flat 2D mobile background, no objects no text no logo, beautiful and calm"),
-    "tube_base": ("Empty transparent glass laboratory test tube, straight vertical, rounded bottom, "
-                  "thin crystal glass rim with subtle glowing neon cyan edge, transparent interior (no liquid), "
-                  "isolated on plain pure white background, clean flat 2D mobile game asset, no text"),
+    "bg_space": ("Vibrant rich nebula galaxy background for a premium mobile puzzle game, glowing cyan magenta and violet "
+                 "nebula clouds across deep dark space, many bright stars and sparkles, stunning atmospheric depth, "
+                 "clean flat 2D mobile background, high detail, beautiful and eye-catching, no text no logo"),
+    "tube_base": ("Premium sleek empty transparent glass laboratory test tube, straight vertical, rounded bottom, "
+                  "bright glowing neon edge rim light around the glass, crystal clear glass refraction, "
+                  "transparent interior (no liquid), isolated on plain pure white background, "
+                  "clean crisp flat 2D mobile game asset, no text"),
 }
 
 def rm_white(img):

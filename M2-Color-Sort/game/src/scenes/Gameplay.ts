@@ -19,6 +19,8 @@ export class GameplayScene extends Phaser.Scene {
   private stuckTooltip: Phaser.GameObjects.Container | null = null;
   private hintUsedThisLevel = false;
   private isAnimating = false;
+  // Toolbar (undo/restart/hint) — lưu để re-layout responsive khi resize
+  private toolbarBtns: Phaser.GameObjects.Container[] = [];
 
   constructor() { super({ key: 'GameplayScene' }); }
 
@@ -226,20 +228,52 @@ export class GameplayScene extends Phaser.Scene {
     this.tweens.add({ targets: ui.views.glass, alpha: { from: 1, to: 0.5 }, duration: 60, yoyo: true, repeat: 5 });
   }
 
-  // ---------- Toolbar (undo/restart/hint) ----------
+  // ---------- Toolbar (undo/restart/hint) — DESIGN-SPEC §2.2/§3.4 ----------
+  // Responsive mọi aspect: tâm nút cách nhau (btnW + gapX) — KHÔNG bao giờ đè nhau.
+  // Co btnW (≥44 touch, §2.4) và gapX (≥ sp[2]=8) khi viewport hẹp; icon-only khi cần.
   private drawToolbar(width: number, height: number) {
-    const y = height - sp[5] - 36;
-    const gap = sp[6];
-    const positions = [width / 2 - gap, width / 2, width / 2 + gap];
+    // xóa nút cũ nếu có (re-layout khi resize — tránh giữ vị trí cũ gây chồng)
+    for (const b of this.toolbarBtns) b.destroy();
+    this.toolbarBtns = [];
+
+    const y = height - sp[5] - 36;          // hàng dưới, cách đáy sp.5 (safe area)
+    const margin = sp[4];                    // safe area 2 bên (DESIGN-SPEC §2.4)
+    const availW = Math.max(0, width - margin * 2);
+
+    // Kích thước lý tưởng (pill 88 — icon + padding, §3.4) → co xuống khi thiếu
+    const idealBtnW = 88;
+    const idealGapX = sp[5];                 // 24
+    const minBtnW = 44;                      // touch tối thiểu (§2.4)
+    const minGapX = sp[2];                   // 8
+
+    let btnW: number = idealBtnW;
+    let gapX: number = idealGapX;
+    let total = 3 * btnW + 2 * gapX;
+    if (total > availW) {
+      // giảm gap trước (giữ nút to nhất có thể)
+      gapX = minGapX;
+      total = 3 * btnW + 2 * gapX;
+      if (total > availW) {
+        // co btnW (≥ minBtnW) — icon-only khi viewport cực hẹp
+        btnW = Math.max(minBtnW, Math.floor((availW - 2 * minGapX) / 3));
+        gapX = Math.max(minGapX, Math.floor((availW - 3 * btnW) / 2));
+      }
+    }
+    total = 3 * btnW + 2 * gapX;
+    const startX = (width - total) / 2 + btnW / 2;   // căn giữa toolbar
+
     const defs = [
-      { testid: 'undo-btn',    text: '↺',  action: () => this.onUndo() },
-      { testid: 'restart-btn', text: '⟳',  action: () => this.onRestart() },
-      { testid: 'hint-btn',    text: '💡', action: () => this.onHint() },
+      { testid: 'undo-btn',    text: '↺',  action: () => this.onUndo(),    icon: 'undo' as const },
+      { testid: 'restart-btn', text: '⟳',  action: () => this.onRestart(), icon: 'restart' as const },
+      { testid: 'hint-btn',    text: '💡', action: () => this.onHint(),    icon: null as null },
     ];
     defs.forEach((d, i) => {
-      const btn = drawButton(this, positions[i], y, d.text, { variant: 'ghost', width: 88, textType: type.h2, testid: d.testid });
+      // tâm nút i cách tâm nút 0 = i*(btnW + gapX) → mép-mép luôn cách gapX, KHÔNG chồng
+      const x = startX + i * (btnW + gapX);
+      const btn = drawButton(this, x, y, d.text, { variant: 'ghost', width: btnW, textType: type.h2, testid: d.testid, icon: d.icon });
       btn.container.on('pointerdown', ( (_p: Phaser.Input.Pointer, _lx: number, _ly: number, event: Phaser.Types.Input.EventData) => { event.stopPropagation(); }) as any);
       btn.container.on('pointerdown', () => { d.action(); });
+      this.toolbarBtns.push(btn.container);
     });
   }
 
@@ -365,6 +399,8 @@ export class GameplayScene extends Phaser.Scene {
     this.bgStars.g.destroy(); for (const s of this.bgStars.stars) s.destroy();
     this.bgStars = drawGalaxyBg(this);
     this.layoutBoard(g.width, g.height);
+    // Toolbar re-layout responsive (tránh nút giữ vị trí cũ → chồng khi đổi aspect)
+    this.drawToolbar(g.width, g.height);
     // HUD re-position đơn giản
     this.children.list.filter(c => c instanceof Phaser.GameObjects.Text && c.getData('testid') === 'audio-toggle')
       .forEach(c => (c as Phaser.GameObjects.Text).setPosition(g.width - sp[4] - 20, sp[4] + 24));

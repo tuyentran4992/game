@@ -50,6 +50,7 @@ export interface TubeViews {
   glass: Phaser.GameObjects.Graphics;
   liquidG: Phaser.GameObjects.Graphics;
   glowRing: Phaser.GameObjects.Graphics;
+  ambientGlow: Phaser.GameObjects.Graphics;
   width: number; height: number; capacity: number;
 }
 
@@ -58,6 +59,11 @@ export function drawTube(
   tubeW: number, tubeH: number, capacity: number,
 ): TubeViews {
   const container = scene.add.container(0, 0).setDepth(z.actor);
+  // ambient neon glow quanh viền ống (DESIGN-SPEC §1.4 nz.glow — phụ trợ phát sáng trên nền tối)
+  // vẽ dưới tất cả, blend ADD; màu cập nhật trong renderLiquid theo chất lỏng đỉnh / trắng neon.
+  const ambientGlow = scene.add.graphics().setDepth(z.actor - 1).setBlendMode(Phaser.BlendModes.ADD);
+  container.add(ambientGlow);
+
   // glow ring ngoài (ẩn mặc định, hiện khi selected — DESIGN-SPEC §3.1 selected)
   const glowRing = scene.add.graphics().setDepth(z.actor + 0);
   glowRing.lineStyle(3, toColor(glow.tube.color), glow.tube.alpha);
@@ -98,7 +104,7 @@ export function drawTube(
   glass.fillEllipse(0, halfH - 4, tubeW * 0.7, 10);
   container.add(glass);
 
-  return { container, glass, liquidG, glowRing, width: tubeW, height: tubeH, capacity };
+  return { container, glass, liquidG, glowRing, ambientGlow, width: tubeW, height: tubeH, capacity };
 }
 
 // Vẽ lại chất lỏng trong ống theo content (mảng màu từ đáy). DESIGN-SPEC §3.2 glow 3 lớp.
@@ -106,8 +112,22 @@ export function renderLiquid(
   views: TubeViews,
   content: string[],
 ): void {
-  const { liquidG, width: tubeW, height: tubeH, capacity } = views;
+  const { liquidG, ambientGlow, width: tubeW, height: tubeH, capacity } = views;
   liquidG.clear();
+  // Ambient neon glow quanh viền ống (DESIGN-SPEC §1.4 + §3.2 glow) — màu theo chất lỏng đỉnh,
+  // trắng neon nếu ống trống. Multi-stroke mở rộng dần, alpha giảm → giả blur halo (blend ADD).
+  // Giữ alpha thấp để chất lỏng/ống không bị chói quá (§3.2).
+  const glowHex = content.length > 0 ? content[content.length - 1] : '#FFFFFF';
+  const glowC = toColor(glowHex);
+  ambientGlow.clear();
+  const halfWG = tubeW / 2, halfHG = tubeH / 2;
+  const haloLayers = 4;
+  for (let l = 0; l < haloLayers; l++) {
+    const pad = 2 + l * 4;
+    const a = 0.18 - l * 0.04;   // 0.18 → 0.14 → 0.10 → 0.06
+    ambientGlow.lineStyle(3, glowC, a);
+    ambientGlow.strokeRoundedRect(-halfWG - pad, -halfHG - pad, tubeW + pad * 2, tubeH + pad * 2, 40 + pad);
+  }
   if (content.length === 0) return;
   const innerPad = 3; // khe 3px giữa chất lỏng và thành (§3.2)
   const layerH = (tubeH - innerPad * 2) / capacity;
@@ -147,16 +167,82 @@ export function renderLiquid(
   }
 }
 
+// ---------- Icon glyphs cho nút toolbar (DESIGN-SPEC §3.4 — vẽ bằng Graphics, KHÔNG sprite) ----------
+// undo = mũi tên cong quay ngược; restart = vòng tròn + mũi tên.
+function drawArcArrow(
+  g: Phaser.GameObjects.Graphics,
+  r: number, startAngle: number, endAngle: number, anticlockwise: boolean,
+  col: number, lineWidth: number, arrowAt: 'start' | 'end', ah: number, aw: number,
+): void {
+  // Tính sweep (góc quét thực tế)
+  let sweep = endAngle - startAngle;
+  if (!anticlockwise) {
+    // clockwise = góc tăng; nếu end ≤ start thì cộng 2π
+    if (sweep <= 0) sweep += Math.PI * 2;
+  } else {
+    // counter-clockwise = góc giảm; nếu end ≥ start thì trừ 2π
+    if (sweep >= 0) sweep -= Math.PI * 2;
+  }
+  // Vẽ cung bằng nhiều đoạn thẳng (lineTo) — đáng tin cậy hơn arc() trong Phaser Graphics
+  const segs = 40;
+  g.lineStyle(lineWidth, col, 1);
+  g.beginPath();
+  for (let i = 0; i <= segs; i++) {
+    const a = startAngle + sweep * (i / segs);
+    const x = Math.cos(a) * r;
+    const y = Math.sin(a) * r;
+    if (i === 0) g.moveTo(x, y);
+    else g.lineTo(x, y);
+  }
+  g.strokePath();
+  // Mũi tên tại đầu hoặc cuối cung
+  const ang = arrowAt === 'start' ? startAngle : endAngle;
+  const px = Math.cos(ang) * r, py = Math.sin(ang) * r;
+  const dir = anticlockwise ? -1 : 1;   // +1 = clockwise (tăng góc), -1 = anticlockwise
+  const tdx = -Math.sin(ang) * dir, tdy = Math.cos(ang) * dir;
+  const tipx = px, tipy = py;
+  const bcx = px - tdx * ah, bcy = py - tdy * ah;
+  const nx = -tdy, ny = tdx;
+  g.fillStyle(col, 1);
+  g.fillTriangle(tipx, tipy, bcx + nx * aw, bcy + ny * aw, bcx - nx * aw, bcy - ny * aw);
+}
+
+export function drawToolbarIcon(
+  scene: Phaser.Scene,
+  kind: 'undo' | 'restart',
+  col: number,
+  size = 30,
+): Phaser.GameObjects.Graphics {
+  const g = scene.add.graphics();
+  const r = size * 0.45;
+  const lw = Math.max(2.5, size * 0.11);
+  const ah = size * 0.32;   // chiều dài mũi tên
+  const aw = size * 0.22;   // nửa rộng đáy mũi tên
+  if (kind === 'undo') {
+    // mũi tên cong quay ngược: cung 270°, hở đáy (90°), mũi tên ở đầu (lower-left) chỉ chéo lên-trái
+    const start = Phaser.Math.DegToRad(135);
+    const end = Phaser.Math.DegToRad(45);   // clockwise → Phaser cộng 2π, vẽ đường dài qua đỉnh
+    drawArcArrow(g, r, start, end, false, col, lw, 'start', ah, aw);
+  } else {
+    // restart: cung 300°, hở 60° góc trên-phải, mũi tên ở cuối (upper-right) chỉ tiếp tuyến
+    const start = Phaser.Math.DegToRad(30);
+    const end = Phaser.Math.DegToRad(330);   // clockwise 30→90→180→270→330 = 300°
+    drawArcArrow(g, r, start, end, false, col, lw, 'end', ah, aw);
+  }
+  return g;
+}
+
 // ---------- btn-primary (DESIGN-SPEC §3.5) + btn-ghost toolbar (§3.4) ----------
 export function drawButton(
   scene: Phaser.Scene,
   x: number, y: number, text: string,
-  opts: { width?: number; variant?: 'primary' | 'ghost'; testid?: string; textType?: { size: string; weight: string; lh: number } } = {},
+  opts: { width?: number; variant?: 'primary' | 'ghost'; testid?: string; textType?: { size: string; weight: string; lh: number }; icon?: 'undo' | 'restart' | null } = {},
 ): { container: Phaser.GameObjects.Container; textObj: Phaser.GameObjects.Text } {
   const width = opts.width ?? 280;
   const height = 72;
   const variant = opts.variant ?? 'primary';
   const textType = opts.textType ?? type.display;
+  const useIcon = opts.icon === 'undo' || opts.icon === 'restart';
   const g = scene.add.graphics();
   const fill = variant === 'primary' ? color.primary : color.surface;
   const txtColor = variant === 'primary' ? color.textOnAccent : color.textOnPrimary;
@@ -183,12 +269,21 @@ export function drawButton(
     g.fillRect(-width / 2, height / 2 - 6, width, 6);
   }
   g.setDepth(z.panel);
-  const t = scene.add.text(0, 0, text, fontStyle(textType, txtColor)).setOrigin(0.5).setDepth(z.panel + 1);
-  const container = scene.add.container(x, y, [g, t]).setSize(width, height).setDepth(z.panel);
+  const t = scene.add.text(0, 0, useIcon ? '' : text, fontStyle(textType, txtColor)).setOrigin(0.5).setDepth(z.panel + 1);
+  const children: Phaser.GameObjects.GameObject[] = [g, t];
+  // icon glyph thay text cho undo/restart (DESIGN-SPEC §3.4 — vẽ Graphics)
+  let iconG: Phaser.GameObjects.Graphics | null = null;
+  if (useIcon) {
+    iconG = drawToolbarIcon(scene, opts.icon as 'undo' | 'restart', (variant === 'ghost' ? toColor(color.primary) : toColor(txtColor)), Math.min(30, height - 24));
+    iconG.setPosition(0, 0).setDepth(z.panel + 1);
+    children.push(iconG);
+  }
+  const container = scene.add.container(x, y, children).setSize(width, height).setDepth(z.panel);
   if (opts.testid) {
     g.setData('testid', opts.testid);
     t.setData('testid', opts.testid);
     container.setData('testid', opts.testid);
+    if (iconG) iconG.setData('testid', opts.testid);
   }
   container.setInteractive({ useHandCursor: true });
   const playClick = () => {
