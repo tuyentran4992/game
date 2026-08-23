@@ -87,6 +87,34 @@ Lưu ý: `scaffold.py`/`validate.py` vốn viết riêng cho M1 (độ cứng la
 ## 6e. GIAO CLAUDE — QUY TẮC VÀNG: PLAN TRƯỚC + CHIA BƯỚC VERIFY (2026-08-23, anh Tuyền yêu cầu)
 > Giao Claude code 1 lèo → đổ 1 đống lỗi. **BẮT BUỘC:** (1) ép Claude lên plan trước, KHÔNG code — chia thành BƯỚC nhỏ, mỗi bước có mục tiêu/file đổi/cách verify (typecheck/test/build/browser); (2) Hermes review plan → trình anh nếu cần chốt; (3) giao code THEO TỪNG BƯỚC, sau mỗi bước Hermes chạy `scripts/verify_game.sh` + QA vision → PASS mới sang bước kế; (4) KHÔNG gộp plan vào 1 prompt code. Chi tiết: skill `claude-code-orchestration` §Quy tắc vàng.
 
+## 6f. RESEARCH: CÁC NỀN TẢNG PHÂN PHỐI HTML5 GAME (thêm 2026-08-23 — CHƯA QUYẾT, chỉ lưu tham khảo)
+> Anh hỏi "ngoài CrazyGames còn platform nào hợp" → research. **Chưa quyết định gì, tìm hiểu sau.**
+
+### Top tier (traffic lớn)
+- **Poki** (`poki.com`) — số 1 web gaming (~54-90M MAU, 100 tỷ gameplay/tháng). ⚠️ **Yêu cầu web-exclusivity** (chỉ mình Poki trên web, mobile/Steam vẫn được) → MÂU THUẪN chiến lược đa nguồn. Revshare 50/50 (player từ Poki) / 100% (player tự đến). Khó nộp (chọn lọc thủ công, chuẩn chất lượng cao). **Chỉ bàn khi có game đỉnh, không mặc định.**
+- **Yandex Games** — 30-50M MAU, **barrier THẤP nhất** (gần như chỉ cần game chạy). Ads+IAP, dev kiếm $20k+/tháng. Non-exclusive. 💸 **LƯU Ý ĐẠO ĐỨC:** thuộc tập đoàn Nga (HQ Moscow), một số dev tẩy chay — **để anh quyết chính kiến** trước khi nộp.
+
+### Aggregator (broker → phân phối tới nghìn portal)
+- **GameDistribution (Azerion)** + **GamePix** + **GameMonetize** + **Y8** (~19M). Nộp 1 lần → phân phối tới **~4.000 portal** (GD tuyên bố 350M user/ngày). **Non-exclusive ✅** hợp đa nguồn. Revshare GamePix **45%**, GD theo chất lượng/độ phủ. eCPM thấp hơn top nhưng tiền đều. **Rất hợp mô hình factory** (nhiều game vừa phải).
+
+### Community / tiền nhiệm (low volume — build fan/feedback hơn kiếm tiền)
+- **Kongregate** (70% revshare, free) · **Newgrounds** (70%) · **itch.io** (chơi ngay trên web).
+
+### Bảng so sánh nhanh
+| Nền tảng | Nộp | Độc quyền | Revshare | Traffic |
+|---|---|---|---|---|
+| Mediacube→YouTube Playables (đang làm) | TB | pilot | ~80% | trong YouTube |
+| **CrazyGames** (đã chọn) | dễ Basic | non-excl | theo mức | ~28M |
+| **GameDistribution/GamePix** | dễ | **non-excl ✅** | 45-70% | qua portal |
+| **Yandex** | rất dễ | non-excl | ads+IAP | 30-50M |
+| **Poki** | khó | **phải exclusivity** ⚠️ | 50/50 | 54-90M |
+
+### Khuyến nghị (chỉ note, chưa hành động)
+1. **Tier 1 mặc định: CrazyGames + GameDistribution/GamePix** — rẻ, non-excl, hợp factory đa nguồn.
+2. **Tier 2: Poki** — chỉ khi có game thật chất lượng cao, chấp nhận độc quyền web đổi traffic lớn.
+3. **Yandex** — tùy chính kiến anh.
+4. Mỗi nền tảng 1 layer SDK/ad riêng, **giữ bản Playables thuần (đúng luật CẤM tự nhét ads self-serve)**.
+
 ## 7. CHI PHÍ (của Claude Code GLM, AI-Box) — cộng dồn
 - M1: pipeline $2.23 + game $1.96 + qafixes $1.62 + UX-fixes ~$? ≈ ~$6-8
 - M2: code $3.04 + fix layout $0.44 + icon/glow + icon-final ≈ ~$4-5
