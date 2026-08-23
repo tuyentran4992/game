@@ -16,7 +16,6 @@ class BootScene extends Phaser.Scene {
   preload() {
     this.load.baseURL = './raw/';
     this.load.image('tube_base', 'tube_base.png');
-    this.load.image('liquid_neon', 'liquid_neon.png');
     this.load.image('bg_space', 'bg_space.png');
     this.load.audio('bgm_main', 'bgm_main.mp3');
     this.load.audio('sfx_pour', 'sfx_pour.mp3');
