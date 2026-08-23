@@ -9,10 +9,14 @@ export class TutorialScene extends Phaser.Scene {
     const { width, height } = this.scale;
     drawGradientBg(this, color.bg.top, color.bg.bottom, color.grass);
 
+    const isPortrait = height > width;
+    const catX = isPortrait ? Math.max(70, Math.min(110, width * 0.20)) : width / 2;
+    const catY = isPortrait ? height * 0.66 : height * 0.72;
+
     // Bong bóng tutorial (DESIGN-SPEC 3.4) — data-testid=tutorial-text
     const padX = sp[6], padY = sp[4];
-    // SPEC 4.3: copy "Chạm để né ong" / EN "Tap to dodge bees" — cơ chế 1 chạm, KHÔNG giữ
-    const t = this.add.text(width / 2, height * 0.35, 'Tap to dodge the bee', fontStyle(type.body, color.textPrimary))
+    // SPEC 4.3: copy hỗ trợ cả chạm lẫn vuốt
+    const t = this.add.text(width / 2, height * 0.35, 'Tap or swipe to dodge', fontStyle(type.body, color.textPrimary))
       .setOrigin(0.5).setDepth(z.tutorial + 1);
     t.setData('testid', 'tutorial-text');
     const tw = t.width + padX * 2, th = t.height + padY * 2;
@@ -21,10 +25,11 @@ export class TutorialScene extends Phaser.Scene {
     bubble.fillRoundedRect(width / 2 - tw / 2, height * 0.35 - th / 2, tw, th, radius.md);
 
     // Demo nhẹ: mèo + ong
-    const cat = this.add.image(width / 2, height * 0.72, 'cat_idle').setDisplaySize(160, 160).setDepth(z.actor);
-    const bee = this.add.image(width, height * 0.72, 'bee_wasp').setDisplaySize(80, 80).setDepth(z.actor);
-    this.tweens.add({ targets: bee, x: cat.x - 200, duration: 1400, yoyo: true, repeat: -1, ease: 'sine.inout' });
-    this.tweens.add({ targets: cat, y: height * 0.62, duration: 300, yoyo: true, repeat: 2, ease: 'cubic.inout', delay: 700 });
+    const cat = this.add.image(catX, catY, 'cat_idle').setDisplaySize(160, 160).setDepth(z.actor);
+    cat.setFlipX(true);
+    const bee = this.add.image(width, catY, 'bee_wasp').setDisplaySize(80, 80).setDepth(z.actor);
+    this.tweens.add({ targets: bee, x: cat.x - 80, duration: 1400, yoyo: true, repeat: -1, ease: 'sine.inout' });
+    this.tweens.add({ targets: cat, y: catY - (isPortrait ? height * 0.15 : height * 0.12), duration: 300, yoyo: true, repeat: 2, ease: 'cubic.inout', delay: 700 });
 
     // Auto-advance sau 3 giây (SPEC 7)
     this.time.delayedCall(3000, () => {
@@ -33,7 +38,10 @@ export class TutorialScene extends Phaser.Scene {
     });
 
     this.scale.on('resize', (g: Phaser.Structs.Size) => {
-      cat.setPosition(g.width / 2, g.height * 0.72);
+      const port = g.height > g.width;
+      const rx = port ? Math.max(70, Math.min(110, g.width * 0.20)) : g.width / 2;
+      const ry = port ? g.height * 0.66 : g.height * 0.72;
+      cat.setPosition(rx, ry);
     });
   }
 }

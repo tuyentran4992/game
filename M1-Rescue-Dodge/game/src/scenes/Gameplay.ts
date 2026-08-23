@@ -28,6 +28,20 @@ export class GameplayScene extends Phaser.Scene {
 
   constructor() { super({ key: 'GameplayScene' }); }
 
+  private getCatX(width: number, height: number): number {
+    const isPortrait = height > width;
+    return isPortrait
+      ? Math.max(70, Math.min(110, width * 0.20))
+      : width / 2;
+  }
+
+  private computeLanes(width: number, height: number): number[] {
+    const isPortrait = height > width;
+    const laneSpan = isPortrait ? Math.min(180, height * 0.15) : Math.min(160, height * 0.12);
+    const laneCenter = isPortrait ? height * 0.66 : height * 0.72;
+    return [laneCenter - laneSpan, laneCenter, laneCenter + laneSpan];
+  }
+
   async create() {
     const { width, height } = this.scale;
     ctx.engine.startNewGame();
@@ -35,10 +49,8 @@ export class GameplayScene extends Phaser.Scene {
     this.moveSeq = 0;
     this.running = false; this.muted = !sdk.isAudioEnabled();
 
-    // 3 lane dọc (DESIGN-SPEC 2.3): y từ h*0.55 đến h*0.80, cách 160px (co theo viewport)
-    const laneSpan = Math.min(160, height * 0.12);
-    const laneCenter = height * 0.72;
-    this.lanes = [laneCenter - laneSpan, laneCenter, laneCenter + laneSpan];
+    // 3 lane (DESIGN-SPEC 2.3): responsive theo tỷ lệ màn hình
+    this.lanes = this.computeLanes(width, height);
 
     this.drawLevelBg(1);
 
@@ -60,22 +72,52 @@ export class GameplayScene extends Phaser.Scene {
     this.recordPopup = this.add.container(width / 2, height * 0.28).setDepth(z.tutorial).setAlpha(0);
     this.recordPopup.setData('testid', 'record-popup');
 
-    // Mèo
-    this.cat = this.add.image(width / 2, this.lanes[this.currentLane], 'cat_idle')
+    // Mèo — vị trí cánh trái để tối ưu góc nhìn và tăng thời gian phản xạ (Phương án 1)
+    const catX = this.getCatX(width, height);
+    this.cat = this.add.image(catX, this.lanes[this.currentLane], 'cat_idle')
       .setDisplaySize(120, 120).setDepth(z.actor);
     this.cat.setData('testid', 'cat');
     // F5: ong spawn bên phải (x = width+60) bay sang trái → mèo quay mặt PHẢI về phía ong.
-    // Sprite cat_idle mặc định quay TRÁI (khối lượng đầu/râu nằm bên trái) → lật ngang.
     this.cat.setFlipX(true);
 
-    // Input (SPEC 4.1): chạm/click về phía lane muốn né — mèo đi tới lane GẦN vị trí chạm nhất
-    // (từng lane một, tween ~120ms/lane). Trùng lane hiện tại → không di chuyển (đỡ giật).
+    // Input: Mỗi lần chạm hoặc vuốt chỉ di chuyển ĐÚNG 1 LANE duy nhất (Step-by-Step)
+    let pointerDownY = 0;
+    let pointerDownX = 0;
+    let pointerDownTime = 0;
+
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (!this.running) return;
-      this.moveToNearestLane(p.y);
+      pointerDownY = p.y;
+      pointerDownX = p.x;
+      pointerDownTime = this.time.now;
     });
 
-    // Bàn phím desktop (SPEC 4.1): ↑/W → lane trên, ↓/S → lane dưới (clamp 3 lane)
+    this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if (!this.running) return;
+      const dy = p.y - pointerDownY;
+      const dx = p.x - pointerDownX;
+      const elapsedMs = this.time.now - pointerDownTime;
+
+      // 1. Vuốt dứt khoát theo trục dọc (> 25px, < 500ms)
+      if (Math.abs(dy) > 25 && Math.abs(dy) > Math.abs(dx) && elapsedMs < 500) {
+        if (dy < 0) {
+          this.moveLane(-1); // Vuốt lên -> Lên 1 lane
+        } else {
+          this.moveLane(1);  // Vuốt xuống -> Xuống 1 lane
+        }
+        return;
+      }
+
+      // 2. Chạm (Tap) theo hướng tương đối so với vị trí hiện tại của Mèo
+      const deadZone = 20; // Vùng an toàn quanh tâm Y của mèo
+      if (p.y < this.cat.y - deadZone) {
+        this.moveLane(-1); // Chạm phía trên con Mèo -> Nhảy lên 1 lane
+      } else if (p.y > this.cat.y + deadZone) {
+        this.moveLane(1);  // Chạm phía dưới con Mèo -> Nhảy xuống 1 lane
+      }
+    });
+
+    // Bàn phím desktop (SPEC 4.1): ↑/W → lên 1 lane, ↓/S → xuống 1 lane (clamp 3 lane)
     this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
       if (!this.running) return;
       if (e.code === 'ArrowUp' || e.code === 'KeyW') {
@@ -95,7 +137,6 @@ export class GameplayScene extends Phaser.Scene {
     this.cameras.main.once('camerafadeincomplete', () => { this.running = true; });
 
     // F9 (ĐỢT 8): BGM loop khi vào Gameplay (setLoop true, volume 0.3).
-    // Tôn trọng mute toàn cục (game.sound.mute do sdk.onAudioEnabledChange set).
     this.startBgm();
 
     this.scale.on('resize', (g: Phaser.Structs.Size) => this.onResize(g));
@@ -129,44 +170,25 @@ export class GameplayScene extends Phaser.Scene {
     }
   }
 
-  // SPEC 4.1: lane gần vị trí chạm/click nhất (trong this.lanes)
-  private laneAt(y: number): number {
-    let best = this.currentLane;
-    for (let i = 0; i < this.lanes.length; i++) {
-      if (Math.abs(this.lanes[i] - y) < Math.abs(this.lanes[best] - y)) best = i;
-    }
-    return best;
-  }
-
-  // SPEC 4.1: chạm/click → mèo đi TỪNG LANE (tween ~120ms/lane) tới lane gần vị trí chạm nhất.
-  // Input mới bump moveSeq → chuỗi cũ tự hủy (không xếp đống tween giật nhau).
-  private moveToNearestLane(y: number) {
-    const seq = ++this.moveSeq;
-    this.stepTo(this.laneAt(y), seq);
-  }
-
-  // Bàn phím (SPEC 4.1): ↑/W → -1 (lên 1 lane), ↓/S → +1 (xuống 1 lane). Clamp trong stepTo.
+  // Di chuyển đúng 1 lane theo hướng dir (-1: lên, +1: xuống). Tuyệt đối không chuỗi nhiều lane.
   private moveLane(dir: number) {
-    const seq = ++this.moveSeq;
-    this.stepTo(this.currentLane + dir, seq);
-  }
-
-  // 1 bước tween sang lane kề; xong nối tiếp về target nếu chuỗi còn hợp lệ (seq khớp moveSeq).
-  private stepTo(target: number, seq: number) {
-    const clamped = Phaser.Math.Clamp(target, 0, MECHANICS.laneCount - 1);
-    if (clamped === this.currentLane) return; // trùng lane hiện tại → không di chuyển (đỡ giật)
-    const next = this.currentLane + Math.sign(clamped - this.currentLane);
+    const target = Phaser.Math.Clamp(this.currentLane + dir, 0, MECHANICS.laneCount - 1);
+    if (target === this.currentLane) return; // Đã ở lane biên -> không di chuyển
     const prev = this.currentLane;
-    this.currentLane = next;
-    this.tweens.killTweensOf(this.cat); // hủy tween lane cũ tránh 2 tween giật nhau
-    // tween đổi lane (5.3) — F5: lật flipX nên đảo dấu rotate giữ hướng nghiêng đúng (lên = -15°, xuống = +15°)
+    this.currentLane = target;
+    this.moveSeq++;
+    this.tweens.killTweensOf(this.cat);
+    // tween đổi 1 lane (5.3)
     this.tweens.add({
-      targets: this.cat, y: this.lanes[next],
-      duration: dur.tn, ease: 'cubic.inout',
-      onUpdate: () => { this.cat.setRotation(-(next - prev) * 0.26); },
+      targets: this.cat,
+      y: this.lanes[target],
+      duration: dur.tn,
+      ease: 'cubic.inout',
+      onUpdate: () => {
+        this.cat.setRotation(-(target - prev) * 0.26);
+      },
       onComplete: () => {
         this.cat.setRotation(0);
-        if (seq === this.moveSeq && this.currentLane !== clamped) this.stepTo(clamped, seq);
       },
     });
   }
@@ -300,15 +322,18 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private onResize(g: Phaser.Structs.Size) {
-    const laneSpan = Math.min(160, g.height * 0.12);
-    const laneCenter = g.height * 0.72;
-    this.lanes = [laneCenter - laneSpan, laneCenter, laneCenter + laneSpan];
+    this.lanes = this.computeLanes(g.width, g.height);
     // resize giữa chừng tween lane → snap thẳng về lane hiện tại (BR-05 giữ state)
     this.moveSeq++;
     this.tweens.killTweensOf(this.cat);
-    if (this.cat) this.cat.x = g.width / 2, this.cat.y = this.lanes[this.currentLane];
+    const catX = this.getCatX(g.width, g.height);
+    if (this.cat) {
+      this.cat.x = catX;
+      this.cat.y = this.lanes[this.currentLane];
+    }
     if (this.scoreLabel) this.scoreLabel.setPosition(sp[4] + 50, sp[4] + 20);
     if (this.levelLabel) this.levelLabel.setPosition(sp[4] + 160, sp[4] + 20);
     if (this.levelPopup) this.levelPopup.setPosition(g.width / 2, g.height * 0.40);
+    this.drawLevelBg(ctx.engine.getLevel());
   }
 }

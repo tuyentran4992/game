@@ -62,8 +62,10 @@ export function drawPanel(scene: Phaser.Scene, x: number, y: number, width: numb
   return g;
 }
 
-export function drawGradientBg(scene: Phaser.Scene, top: string, bottom: string, grass: string): Phaser.GameObjects.Graphics {
+export function drawGradientBg(scene: Phaser.Scene, top: string, bottom: string, grass: string, grassRatio?: number): Phaser.GameObjects.Graphics {
   const { width, height } = scene.scale;
+  const isPortrait = height > width;
+  const splitRatio = grassRatio ?? (isPortrait ? 0.48 : 0.58);
   const g = scene.add.graphics();
   // gradient 2 lớp (trời)
   const steps = 24;
@@ -71,14 +73,14 @@ export function drawGradientBg(scene: Phaser.Scene, top: string, bottom: string,
   const botC = Phaser.Display.Color.HexStringToColor(bottom);
   for (let i = 0; i < steps; i++) {
     const c = Phaser.Display.Color.Interpolate.ColorWithColor(topC, botC, steps, i);
-    const y1 = (height * 0.62) * (i / steps);
-    const y2 = (height * 0.62) * ((i + 1) / steps);
+    const y1 = (height * splitRatio) * (i / steps);
+    const y2 = (height * splitRatio) * ((i + 1) / steps);
     g.fillStyle(Phaser.Display.Color.GetColor(c.r, c.g, c.b), 1);
     g.fillRect(0, y1, width, y2 - y1 + 1);
   }
-  // cỏ đáy 38%
+  // cỏ đáy
   g.fillStyle(toColor(grass), 1);
-  g.fillRect(0, height * 0.62, width, height * 0.38);
+  g.fillRect(0, height * splitRatio, width, height * (1 - splitRatio));
   g.setDepth(z.bg);
   return g;
 }
