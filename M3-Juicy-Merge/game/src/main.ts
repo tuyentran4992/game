@@ -47,6 +47,17 @@ const config: Phaser.Types.Core.GameConfig = {
     height: 1280,
   },
   backgroundColor: '#FFF8E7',
+  // Matter physics (SPEC §4): restitution/friction/sleep from CONFIG. Gravity
+  // is applied in Gameplay via world.setGravity(x, y, scale) because the config
+  // type only allows {x,y} (no scale) and a gravity object without scale makes
+  // Matter forces NaN. enableSleeping powers the settle check (step 11).
+  physics: {
+    default: 'matter',
+    matter: {
+      enableSleeping: true,
+      debug: false,
+    },
+  },
   scene: [BootScene, StartScene, GameplayScene, GameOverScene],
   render: { antialias: true, roundPixels: true },
 };
