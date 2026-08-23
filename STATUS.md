@@ -68,6 +68,7 @@ Lưu ý: `scaffold.py`/`validate.py` vốn viết riêng cho M1 (độ cứng la
 - **Status: PENDING** chờ admin MC Play duyệt (game management mở sau khi approval).
 - **Khi được duyệt → nộp M1:** dùng `build/cuu-meo.zip` + `build/metadata/` (đã sửa publisher name `ExcelToApp Games` + genre `Casual/Arcade`). Mediacube hỗ trợ integrate SDK + pre-cert.
 - Lưu ý an toàn: MCP Play link đúng domain `mediacube.io` (cẩn thận kẻ mạo danh `mediacubenetwork.com` giả). Review tiêu cực Reddit nói về Mediacube MCN (video), KHÔNG liên quan mảng Playables.
+- **Đã soát hợp đồng Mediacube** (đã lưu `docs/mediacube-agreement.md` + soát rủi ro `docs/mediacube-contract-review.md`): revshare 80% cố định (không đổi đơn phương) ✔, non-exclusive ✔, nhưng ràng 12 tháng/game + không rút trong 12 tháng đầu, tranh chấp ở tòa Cyprus, trần trách nhiệm $5k, tiền nhận ~70-90 ngày. **Chấp nhận được cho indie** — KHÔNG ký advance, rút tiền đều, đa nguồn publisher.
 
 ## 6c. M3 "Juicy Merge" — ĐÃ CÓ 5 FILE SPEC (2026-08-23, chờ duyệt + code)
 - Game 3 = **physics-merge kiểu Suika/Watermelon**: thả trái cây, 2 cùng loại chạm → gộp bậc lên (chain 12 trái cherry→watermelon), vạch danger + game over, rewarded "Tiếp tục" ≤1 lần. Đa dạng hóa factory: reflex(M1)—logic(M2)—physics-merge(M3).
