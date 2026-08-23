@@ -38,13 +38,13 @@ export class LevelClearScene extends Phaser.Scene {
     const panel = drawPanel(this, 0, 0, pw, ph);
     root.add(panel);
 
-    // Tiêu đề HOÀN THÀNH!
-    const title = this.add.text(0, -ph / 2 + sp[6] + 8, '🎉 HOÀN THÀNH!', fontStyle(type.h1, color.success))
+    // Title: LEVEL CLEAR!
+    const title = this.add.text(0, -ph / 2 + sp[6] + 8, '🎉 LEVEL CLEAR!', fontStyle(type.h1, color.success))
       .setOrigin(0.5).setDepth(z.panel + 1);
     title.setShadow(0, 0, color.success, 16, false, true);
     root.add(title);
 
-    // 4. Star Rating (3 Ngôi sao: <= optimal+2 -> 3 sao, <= optimal+6 -> 2 sao, còn lại 1 sao)
+    // 4. Star Rating (3 Stars: <= optimal+2 -> 3 stars, <= optimal+6 -> 2 stars, otherwise 1 star)
     const starContainer = this.add.container(0, -ph / 2 + sp[6] + 62).setDepth(z.panel + 1);
     root.add(starContainer);
 
@@ -77,9 +77,9 @@ export class LevelClearScene extends Phaser.Scene {
       });
     }
 
-    // 5. Thống kê Moves & Optimal & Best
+    // 5. Stats: Moves & Optimal & Best
     const movesObj = { count: 0 };
-    const movesT = this.add.text(0, -ph / 2 + sp[6] + 118, `Số bước: 0`, fontStyle(type.score, color.surface))
+    const movesT = this.add.text(0, -ph / 2 + sp[6] + 118, `Moves: 0`, fontStyle(type.score, color.surface))
       .setOrigin(0.5).setDepth(z.panel + 1);
     movesT.setShadow(0, 2, color.shadow, 4, false, true);
     root.add(movesT);
@@ -91,20 +91,20 @@ export class LevelClearScene extends Phaser.Scene {
       delay: 300,
       ease: 'cubic.out',
       onUpdate: () => {
-        movesT.setText(`Số bước: ${Math.round(movesObj.count)}`);
+        movesT.setText(`Moves: ${Math.round(movesObj.count)}`);
       },
     });
 
     const infoText = (best > 0 && best < moves)
-      ? `★ Tối ưu: ${optimal} bước  |  Kỷ lục: ${best}`
-      : `★ Tối ưu: ${optimal} bước`;
+      ? `★ Optimal: ${optimal} moves  |  Best: ${best}`
+      : `★ Optimal: ${optimal} moves`;
     const bestT = this.add.text(0, movesT.y + 36, infoText, fontStyle(type.body, color.accent))
       .setOrigin(0.5).setDepth(z.panel + 1);
     bestT.setShadow(0, 2, color.shadow, 4, false, true);
     root.add(bestT);
 
-    // 6. Nút "Level tiếp" (data-testid: next-level-btn)
-    const { container: nextBtn } = drawButton(this, 0, ph / 2 - sp[6] - 14, 'LEVEL TIẾP ▶', {
+    // 6. Next Level Button (data-testid: next-level-btn)
+    const { container: nextBtn } = drawButton(this, 0, ph / 2 - sp[6] - 14, 'NEXT LEVEL ▶', {
       testid: 'next-level-btn',
       width: 250,
       height: 64,

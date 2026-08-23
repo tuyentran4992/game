@@ -64,8 +64,8 @@ export class StartScene extends Phaser.Scene {
       ease: 'back.out',
     });
 
-    // 3. Nút Chơi Neon (data-testid: start-btn)
-    const { container } = drawButton(this, width / 2, height * 0.72, '▶ CHƠI', {
+    // 3. Neon Play Button (data-testid: start-btn)
+    const { container } = drawButton(this, width / 2, height * 0.72, '▶ PLAY', {
       testid: 'start-btn',
       width: 270,
       height: 72,
@@ -96,7 +96,7 @@ export class StartScene extends Phaser.Scene {
     this.caption = this.add.text(
       width / 2,
       height * 0.81,
-      `Bắt đầu Level ${startLevel}`,
+      `Start Level ${startLevel}`,
       fontStyle(type.small, color.accent),
     ).setOrigin(0.5).setDepth(z.hud).setAlpha(0);
     this.caption.setShadow(0, 2, color.shadow, 4, false, true);

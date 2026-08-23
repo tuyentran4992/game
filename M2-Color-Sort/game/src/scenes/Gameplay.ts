@@ -608,7 +608,7 @@ export class GameplayScene extends Phaser.Scene {
 
     const hint = hintMove(this.board);
     if (!hint) {
-      this.showStuckTooltip('Hết đường thắng! Dùng ↺ Undo hoặc ⟳ Restart nhé 💡');
+      this.showStuckTooltip('No moves left! Use ↺ Undo or ⟳ Restart 💡');
       return;
     }
 
@@ -619,11 +619,11 @@ export class GameplayScene extends Phaser.Scene {
 
     synthAudio.playHint();
 
-    // 1. Tự động nhấc ống nguồn
+    // 1. Lift source tube
     this.selected = hint.from;
     this.updateSelection();
 
-    // 2. Nhấp nháy ống đích
+    // 2. Pulse destination tube
     dstUI.views.glowRing.setAlpha(0.85);
     this.tweens.add({
       targets: dstUI.views.glowRing,
@@ -633,7 +633,7 @@ export class GameplayScene extends Phaser.Scene {
       repeat: 2,
     });
 
-    // 3. Vẽ đường chỉ nước đi
+    // 3. Draw energy hint arc
     const startX = srcPos.x;
     const startY = srcPos.y - srcUI.views.height * 0.45;
     const endX = dstPos.x;
@@ -660,7 +660,7 @@ export class GameplayScene extends Phaser.Scene {
     return true;
   }
 
-  private showStuckTooltip(msg = 'Hết đường thắng! Dùng ↺ Undo hoặc ⟳ Restart nhé 💡') {
+  private showStuckTooltip(msg = 'No moves left! Use ↺ Undo or ⟳ Restart 💡') {
     if (this.stuckTooltip) return;
     const { width, height } = this.scale;
     const y = height - sp[5] - 92;
@@ -700,7 +700,7 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private showTutorial(width: number, height: number) {
-    const t = this.add.text(width / 2, height * 0.36, 'Chọn ống rồi đổ màu ✨', fontStyle(type.body, color.surface))
+    const t = this.add.text(width / 2, height * 0.36, 'Tap a tube to pour liquid ✨', fontStyle(type.body, color.surface))
       .setOrigin(0.5).setDepth(z.tutorial).setAlpha(0);
     t.setShadow(0, 2, color.shadow, 4, false, true);
     this.tweens.add({
