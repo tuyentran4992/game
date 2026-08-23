@@ -25,9 +25,10 @@ class BootScene extends Phaser.Scene {
     for (const key of FRUIT_KEYS) this.load.image(key, `${key}.png`);
     this.load.image('bucket', 'bucket.png');
     this.load.image('bg_gradient', 'bg_gradient.png');
-    // Audio assets pending generation (no .mp3 yet). playSfx no-ops on missing
-    // audio, so we skip loading until sfx files land — silent-but-safe.
-    void AUDIO_KEYS;
+    // Audio (6 mp3 in raw/: sfx_drop/merge/merge_big/danger/gameover +
+    // bgm_main, step 14). Loaded unconditionally; playSfx/startBgm no-op when a
+    // cache entry is missing, so a failed/absent file stays silent (no crash).
+    for (const key of AUDIO_KEYS) this.load.audio(key, `${key}.mp3`);
     this.load.on('loaderror', (file: Phaser.Loader.File) => {
       console.warn(`asset missing (fallback geometric): ${file.key}`);
     });
@@ -71,6 +72,12 @@ const config: Phaser.Types.Core.GameConfig = {
 };
 
 const game = new Phaser.Game(config);
+
+// Obey the Playables SDK audio toggle from the very first frame: if the host
+// reports audio disabled, Phaser's global SoundManager is muted so every sfx
+// AND the looping BGM stay silent until the user unmutes (onAudioEnabledChange
+// keeps it in sync thereafter).
+game.sound.mute = !sdk.isAudioEnabled();
 
 // Playables SDK: pause/resume + mute obey (step 15 wires scene logic fully).
 sdk.onPause(() => { game.scene.pause('GameplayScene'); game.sound.mute = true; });

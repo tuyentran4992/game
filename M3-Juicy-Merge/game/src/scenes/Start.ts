@@ -40,6 +40,10 @@ export class StartScene extends Phaser.Scene {
       height: 96,
     });
     container.on('pointerdown', () => {
+      // Start BGM on the user's Play tap (browsers block autoplay without a
+      // gesture). Phaser's SoundManager is global, so the track keeps looping
+      // across Start -> Gameplay -> GameOver.
+      this.startBgm();
       this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
       this.time.delayedCall(dur.scene, () => this.scene.start('GameplayScene'));
     });
@@ -53,6 +57,15 @@ export class StartScene extends Phaser.Scene {
       container.setPosition(g.width / 2, g.height * 0.66);
       this.drawCornerDecor(g.width, g.height);
     });
+  }
+
+  /** Start the looping BGM (light volume so it never gets harsh on mobile).
+   *  Guarded: no-op if the asset is missing or already playing. The global mute
+   *  flag (set from sdk.isAudioEnabled in main) silences it automatically. */
+  private startBgm(): void {
+    if (!this.cache.audio.exists('bgm_main')) return;
+    if (this.sound.get('bgm_main')) return; // already playing
+    this.sound.play('bgm_main', { loop: true, volume: 0.4 });
   }
 
   /** Lay the 12-fruit chain (cherry -> watermelon) in a horizontal row, small

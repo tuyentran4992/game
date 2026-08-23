@@ -79,6 +79,9 @@ export class GameplayScene extends Phaser.Scene {
   private lastMotionMs = 0;
   /** Latch: once game-over fires, stop re-checking until the scene restarts/resumes. */
   private gameOverTriggered = false;
+  /** Tracks the previous-frame danger-band state so sfx_danger only fires on a
+   *  false -> true entry (re-arms when the band is vacated, no per-frame spam). */
+  private wasNearDanger = false;
 
   constructor() { super({ key: 'GameplayScene' }); }
 
@@ -94,6 +97,7 @@ export class GameplayScene extends Phaser.Scene {
     this.nextFruitId = 1;
     this.gameOverTriggered = false;
     this.lastMotionMs = 0;
+    this.wasNearDanger = false;
 
     this.setupPhysics();
     this.drawBucket();
@@ -241,6 +245,10 @@ export class GameplayScene extends Phaser.Scene {
     // Pulse the line while any fruit is in/near the danger band (y < line + band).
     const nearDanger = this.fruits.some((f) => f.obj.y < this.layout.dangerY + DANGER_NEAR_BAND);
     this.refreshDangerLine(nearDanger);
+    // Danger sfx on the leading edge only (false -> true); re-arms once the
+    // band clears, so a lingering pile does not replay it every frame.
+    if (nearDanger && !this.wasNearDanger) this.playSfx('sfx_danger');
+    this.wasNearDanger = nearDanger;
 
     const settled = isWorldSettled(atRest, time, this.lastMotionMs, SETTLE_GRACE_MS);
     if (!settled) return;
@@ -267,6 +275,9 @@ export class GameplayScene extends Phaser.Scene {
     this.gameOverTriggered = true;
     this.input.enabled = false;
     this.matter.world.pause();
+    // Game-over sting plays before the scene pauses (SoundManager is global,
+    // so the one-shot keeps playing under the GameOver overlay).
+    this.playSfx('sfx_gameover');
     // setGameOver mutates: gameOver=true, playCount++, bestScore mirror.
     ctx.engine.setGameOver(true, true);
     // Pause this scene's update loop; GameOver runs on top with the pile frozen
@@ -460,10 +471,16 @@ export class GameplayScene extends Phaser.Scene {
     if (pairs.length === 0) return;
     const now = this.time.now;
     const plans = resolveMergeBatch(pairs, now, ctx.engine);
-    for (const plan of plans) this.executeMerge(plan);
+    // A high-tier merge (melon+; tier >= maxTier-1) plays the bigger "merge_big"
+    // sting instead of the plain pop, one sfx per batch.
+    let bigMerge = false;
+    for (const plan of plans) {
+      this.executeMerge(plan);
+      if (plan.newTier >= CONFIG.maxTier - 1) bigMerge = true;
+    }
     if (plans.length > 0) {
       this.updateHud();
-      this.playSfx('sfx_merge');
+      this.playSfx(bigMerge ? 'sfx_merge_big' : 'sfx_merge');
     }
   }
 
@@ -503,12 +520,13 @@ export class GameplayScene extends Phaser.Scene {
     });
   }
 
-  // --- Audio hook (silent placeholder until assets land in step 14) -----------
+  // --- Audio hook ----------------------------------------------------------
   /** Play an sfx by key if its audio is loaded; no-op (silent) otherwise so the
-   *  scene never errors on a missing asset during logic development. */
-  private playSfx(key: string): void {
+   *  scene never errors on a missing asset. Volume defaults to 0.5 — present but
+   *  not harsh on mobile speakers; the global mute flag silences it entirely. */
+  private playSfx(key: string, volume = 0.5): void {
     if (!this.cache.audio.exists(key)) return;
-    this.sound.play(key);
+    this.sound.play(key, { volume });
   }
 }
 
