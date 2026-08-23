@@ -52,16 +52,16 @@ export class GameOverScene extends Phaser.Scene {
     // depth 60 > z.overlay); the player may want silence while reading scores.
     drawMuteButton(this);
 
-    const panelW = Math.min(560, width - 64);
-    const panelH = 620;
+    const panelW = Math.min(520, width - 48);
+    const panelH = 660;
     const cx = width / 2;
     const cy = height / 2;
     const panel = this.add.container(cx, cy).setDepth(z.panel);
 
     const card = this.add.graphics();
     // shadow
-    card.fillStyle(toColor(color.shadow), 0.3);
-    card.fillRoundedRect(-panelW / 2, -panelH / 2 + 8, panelW, panelH, radius.lg);
+    card.fillStyle(toColor(color.shadow), 0.35);
+    card.fillRoundedRect(-panelW / 2, -panelH / 2 + 10, panelW, panelH, radius.lg);
     // surface
     card.fillStyle(toColor(color.surface), 1);
     card.fillRoundedRect(-panelW / 2, -panelH / 2, panelW, panelH, radius.lg);
@@ -72,63 +72,92 @@ export class GameOverScene extends Phaser.Scene {
     });
     panel.add(card);
 
-    // --- Title + scores ------------------------------------------------------
-    const title = this.add.text(0, -panelH / 2 + 80, 'GAME OVER', fontStyle(type.display, color.danger))
+    // --- Title + NEW RECORD badge (M3-08) -----------------------------------
+    const titleY = isNewRecord ? -215 : -240;
+    const title = this.add.text(0, titleY, 'GAME OVER', fontStyle(type.display, color.danger))
       .setOrigin(0.5).setStroke(color.textStroke, 6);
     panel.add(title);
     title.setData('testid', 'gameover-title');
 
-    // engine.state.bestScore already mirrors the new best (setGameOver updated it
-    // to max(score, loadedBest) before this scene launched).
-    const best = ctx.engine.state.bestScore;
+    if (isNewRecord) {
+      this.showRecordBadge(panel, -270);
+    }
 
-    const finalLabel = this.add.text(0, -60, 'SCORE', fontStyle(type.small, color.textSecondary))
+    // --- Score section (2-column neat card) ----------------------------------
+    const best = ctx.engine.state.bestScore;
+    const scoreCardW = panelW - 56;
+    const scoreCardH = 110;
+    const scoreCardY = -105;
+
+    const scoreCardBg = this.add.graphics();
+    scoreCardBg.fillStyle(0xF1F5F9, 1);
+    scoreCardBg.fillRoundedRect(-scoreCardW / 2, scoreCardY - scoreCardH / 2, scoreCardW, scoreCardH, radius.md);
+    scoreCardBg.lineStyle(2, 0xE2E8F0, 1);
+    scoreCardBg.strokeRoundedRect(-scoreCardW / 2, scoreCardY - scoreCardH / 2, scoreCardW, scoreCardH, radius.md);
+    // Center divider
+    scoreCardBg.lineStyle(2, 0xCBD5E1, 0.8);
+    scoreCardBg.lineBetween(0, scoreCardY - scoreCardH / 2 + 16, 0, scoreCardY + scoreCardH / 2 - 16);
+    panel.add(scoreCardBg);
+
+    // Left Column: SCORE
+    const leftColX = -scoreCardW / 4;
+    const finalLabel = this.add.text(leftColX, scoreCardY - 24, 'SCORE', fontStyle(type.small, color.textSecondary))
       .setOrigin(0.5);
-    const finalVal = this.add.text(0, -28, `${score}`, fontStyle(type.h1, color.textPrimary))
+    const finalVal = this.add.text(leftColX, scoreCardY + 16, `${score}`, fontStyle(type.h1, color.textPrimary))
       .setOrigin(0.5);
-    panel.add(finalLabel); panel.add(finalVal);
+    panel.add(finalLabel);
+    panel.add(finalVal);
     finalVal.setData('testid', 'final-score');
 
-    const bestLabel = this.add.text(0, 36, 'BEST', fontStyle(type.small, color.textSecondary))
+    // Right Column: BEST
+    const rightColX = scoreCardW / 4;
+    const bestLabel = this.add.text(rightColX, scoreCardY - 24, 'BEST', fontStyle(type.small, color.textSecondary))
       .setOrigin(0.5);
-    const bestVal = this.add.text(0, 68, `${best}`, fontStyle(type.h2, color.warning))
+    const bestVal = this.add.text(rightColX, scoreCardY + 16, `${best}`, fontStyle(type.h1, color.warning))
       .setOrigin(0.5);
-    panel.add(bestLabel); panel.add(bestVal);
+    panel.add(bestLabel);
+    panel.add(bestVal);
     bestVal.setData('testid', 'best-score');
-
-    // --- NEW RECORD badge (M3-08) -------------------------------------------
-    // A celebratory ribbon above the title. Only when the run strictly beat the
-    // previous best — never on a tie or a 0-score game.
-    if (isNewRecord) this.showRecordBadge(panel);
 
     // --- Buttons -------------------------------------------------------------
     const canContinue = ctx.engine.canContinue();
-    const retryY = 175;
-    const continueY = retryY - 120;
+    const btnW = panelW - 72;
+    const btnH = 92;
 
     if (canContinue) {
+      const continueY = 55;
+      const retryY = 175;
+
       const res = drawButton(this, 0, continueY, 'Continue', {
-        testid: 'continue-btn', width: panelW - 96, height: 96,
+        testid: 'continue-btn', width: btnW, height: btnH,
       });
       this.continueBtn = res;
       panel.add(res.container);
       res.container.on('pointerdown', () => { void this.onContinue(); });
-    }
 
-    const { container: retryBtn } = drawButton(this, 0, retryY, 'Retry', {
-      testid: 'retry-btn', width: panelW - 96, height: 96, variant: 'ghost',
-    });
-    this.retryBtn = retryBtn;
-    panel.add(retryBtn);
-    retryBtn.on('pointerdown', () => this.onRetry());
+      const { container: retryBtn } = drawButton(this, 0, retryY, 'Retry', {
+        testid: 'retry-btn', width: btnW, height: btnH, variant: 'ghost',
+      });
+      this.retryBtn = retryBtn;
+      panel.add(retryBtn);
+      retryBtn.on('pointerdown', () => this.onRetry());
+    } else {
+      // Single button centered when continue is no longer available
+      const retryY = 110;
+      const { container: retryBtn } = drawButton(this, 0, retryY, 'Retry', {
+        testid: 'retry-btn', width: btnW, height: btnH,
+      });
+      this.retryBtn = retryBtn;
+      panel.add(retryBtn);
+      retryBtn.on('pointerdown', () => this.onRetry());
+    }
 
     // Animate the panel in (scale + fade) for a soft landing. Held until any
     // interstitial resolves (M3-07) so the player never sees the panel mid-ad.
     panel.setScale(0.85).setAlpha(0);
     const reveal = (): void => {
       if (this.sys.settings.status >= Phaser.Scenes.SHUTDOWN) return;
-      this.continueBtn?.container.setInteractive({ useHandCursor: true });
-      this.retryBtn?.setInteractive({ useHandCursor: true });
+      this.input.enabled = true;
       this.tweens.add({
         targets: panel,
         scale: 1, alpha: 1,
@@ -139,10 +168,9 @@ export class GameOverScene extends Phaser.Scene {
     // --- Interstitial gate (M3-07) ------------------------------------------
     // From the 2nd game-over this turn → play the SDK interstitial before reveal.
     // First game-over → straight to the panel. While the ad is pending, the
-    // panel is invisible but its buttons are disabled so no blind taps land.
+    // panel is invisible and scene input is disabled so no blind taps land.
     if (ctx.engine.shouldShowInterstitial()) {
-      this.continueBtn?.container.disableInteractive();
-      this.retryBtn?.disableInteractive();
+      this.input.enabled = false;
       void ctx.sdk.requestInterstitialAd().finally(reveal);
     } else {
       reveal();
@@ -150,8 +178,8 @@ export class GameOverScene extends Phaser.Scene {
   }
 
   /** "NEW RECORD" ribbon badge above the GAME OVER title (M3-08). */
-  private showRecordBadge(panel: Phaser.GameObjects.Container): void {
-    const badge = this.add.text(0, -260, 'NEW RECORD', fontStyle(type.h2, color.warning))
+  private showRecordBadge(panel: Phaser.GameObjects.Container, y: number): void {
+    const badge = this.add.text(0, y, '✨ NEW RECORD ✨', fontStyle(type.h2, color.warning))
       .setOrigin(0.5).setStroke(color.textStroke, 6);
     badge.setData('testid', 'record-popup');
     panel.add(badge);
@@ -192,7 +220,7 @@ export class GameOverScene extends Phaser.Scene {
     if (!this.continueBtn) return;
     this.continueBtn.container.disableInteractive();
     this.continueBtn.container.setAlpha(0.45);
-    const hint = this.add.text(0, 250, 'Ad not completed', fontStyle(type.small, color.textSecondary))
+    const hint = this.add.text(0, 260, 'Ad not completed', fontStyle(type.small, color.textSecondary))
       .setOrigin(0.5);
     this.tweens.add({
       targets: hint,

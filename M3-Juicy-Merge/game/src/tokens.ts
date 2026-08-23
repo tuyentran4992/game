@@ -1,7 +1,7 @@
 // M3 Juicy Merge — tokens (DESIGN-SPEC M3, art kawaii fruit)
 // THAM CHIẾU design-system chung; override art-theme kawaii theo DESIGN-SPEC M3 §1.
 
-import Phaser from 'phaser';
+import type Phaser from 'phaser';
 
 export type ColorKey =
   | 'bgTop' | 'bgBottom' | 'primary' | 'primaryDark' | 'primaryGrad'

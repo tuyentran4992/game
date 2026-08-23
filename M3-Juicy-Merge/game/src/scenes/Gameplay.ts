@@ -9,6 +9,7 @@ import { type CollidingFruit, type MergePlan } from '../gameplay/merge-handler';
 import { checkGameOver } from '../logic/game-over';
 import { isWorldSettled } from '../logic/settle';
 import { fruitsAboveLine } from '../logic/continue';
+import { playJuiceSplash, playJackpotClimax, computeComboDetune } from '../gameplay/juice-effects';
 
 interface DroppedFruit {
   id: number;
@@ -56,6 +57,8 @@ export class GameplayScene extends Phaser.Scene {
   private lastMotionMs = 0;
   private gameOverTriggered = false;
   private wasNearDanger = false;
+  private dangerStartTime: number | null = null;
+  private dangerCountdownText!: Phaser.GameObjects.Text;
 
   /** Deferred merge queue processed outside the Matter solver loop. */
   private pendingMerges: MergePlan[] = [];
@@ -76,12 +79,20 @@ export class GameplayScene extends Phaser.Scene {
     this.gameOverTriggered = false;
     this.lastMotionMs = 0;
     this.wasNearDanger = false;
+    this.dangerStartTime = null;
 
     this.setupPhysics();
     this.drawBucket();
     this.drawDangerLine();
     this.createAimLine();
     this.createHud();
+
+    this.dangerCountdownText = this.add.text(width / 2, this.layout.dangerY - 32, '', {
+      fontFamily: 'sans-serif',
+      fontSize: '28px',
+      fontStyle: 'bold',
+      color: '#FF1E56',
+    }).setOrigin(0.5).setStroke('#FFFFFF', 8).setDepth(z.overlay + 10).setAlpha(0);
     this.createComboPopup();
     this.createGhost();
     this.setupCollisions();
@@ -250,6 +261,8 @@ export class GameplayScene extends Phaser.Scene {
     if (this.gameOverTriggered) return;
     if (this.fruits.length === 0) {
       this.lastMotionMs = time;
+      this.dangerStartTime = null;
+      this.dangerCountdownText?.setAlpha(0);
       this.refreshDangerLine(false);
       return;
     }
@@ -258,18 +271,45 @@ export class GameplayScene extends Phaser.Scene {
     const anyMoving = atRest.some((r) => !r);
     if (anyMoving) this.lastMotionMs = time;
 
-    const nearDanger = this.fruits.some((f) => f.obj.y < this.layout.dangerY + DANGER_NEAR_BAND);
+    // Check which fruits are established (not fresh drops) and overflowing the danger line
+    const isAboveDanger = (f: DroppedFruit): boolean => {
+      const spawnTime = f.obj.getData('spawnTime') as number | undefined;
+      if (typeof spawnTime === 'number' && time - spawnTime < 1000) {
+        return false; // Still falling from drop
+      }
+      const r = fruitRadius(f.tier);
+      // Overflowing if center is above line OR top edge is significantly above line
+      return f.obj.y < this.layout.dangerY || (f.obj.y - r * 0.4) < this.layout.dangerY;
+    };
+
+    const hasDangerFruit = this.fruits.some(isAboveDanger);
+    const nearDanger = hasDangerFruit || this.fruits.some((f) => f.obj.y < this.layout.dangerY + DANGER_NEAR_BAND);
     this.refreshDangerLine(nearDanger);
-    if (nearDanger && !this.wasNearDanger) this.playSfx('sfx_danger');
-    this.wasNearDanger = nearDanger;
 
-    const settled = isWorldSettled(atRest, time, this.lastMotionMs, SETTLE_GRACE_MS);
-    if (!settled) return;
+    if (hasDangerFruit) {
+      if (this.dangerStartTime === null) {
+        this.dangerStartTime = time;
+        this.playSfx('sfx_danger');
+      }
 
-    const positions = this.fruits.map((f) => ({ y: f.obj.y }));
-    if (!checkGameOver(positions, this.layout.dangerY, true)) return;
+      const elapsed = time - this.dangerStartTime;
+      const remainingSec = Math.max(1, Math.ceil((3000 - elapsed) / 1000));
+      this.dangerCountdownText.setText(`⚠️ DANGER: ${remainingSec}s`).setAlpha(1);
 
-    this.triggerGameOver();
+      if (elapsed >= 3000) {
+        this.dangerCountdownText.setAlpha(0);
+        this.dangerStartTime = null;
+        this.wasNearDanger = false;
+        this.triggerGameOver();
+        return;
+      }
+    } else {
+      if (this.dangerStartTime !== null) {
+        this.dangerStartTime = null;
+        this.wasNearDanger = false;
+        this.dangerCountdownText.setAlpha(0);
+      }
+    }
   }
 
   private isBodyAtRest(obj: Phaser.Physics.Matter.Image): boolean {
@@ -287,6 +327,9 @@ export class GameplayScene extends Phaser.Scene {
 
   private triggerGameOver(): void {
     this.gameOverTriggered = true;
+    this.dangerStartTime = null;
+    this.dangerCountdownText?.setAlpha(0);
+    this.refreshDangerLine(false);
     this.input.enabled = false;
     this.aimLine.clear();
     this.matter.world.pause();
@@ -297,15 +340,35 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   clearFruitsAboveDanger(): void {
-    const above = fruitsAboveLine(
-      this.fruits.map((f) => ({ y: f.obj.y, df: f })),
-      this.layout.dangerY,
-    );
-    for (const item of above) this.removeFruit(item.df);
-    for (const f of this.fruits) {
-      f.obj.setVelocity(f.obj.body?.velocity.x ?? 0, 2);
+    // 1. Find all fruits whose top is overflowing or near the danger line
+    const overflowing = this.fruits.filter((f) => {
+      const r = fruitRadius(f.tier);
+      return f.obj.y - r < this.layout.dangerY + 40 || f.obj.y < this.layout.dangerY;
+    });
+
+    // 2. Ensure at least top 3 fruits in the bucket are cleared for plenty of breathing room
+    const sorted = [...this.fruits].sort((a, b) => a.obj.y - b.obj.y);
+    const toRemoveSet = new Set<DroppedFruit>(overflowing);
+    for (let i = 0; i < Math.min(3, sorted.length); i++) {
+      const topFruit = sorted[i];
+      if (topFruit) toRemoveSet.add(topFruit);
     }
+
+    // 3. Despawn selected fruits with satisfying juice burst
+    for (const f of toRemoveSet) {
+      playJuiceSplash(this, f.obj.x, f.obj.y, f.tier);
+      this.removeFruit(f);
+    }
+
+    // 4. Give remaining fruits a downward settling impulse
+    for (const f of this.fruits) {
+      f.obj.setVelocity(0, 3);
+    }
+
     this.gameOverTriggered = false;
+    this.dangerStartTime = null;
+    this.dangerCountdownText?.setAlpha(0);
+    this.refreshDangerLine(false);
     this.input.enabled = true;
     this.lastMotionMs = this.time.now;
     this.refreshAimLine();
@@ -381,28 +444,51 @@ export class GameplayScene extends Phaser.Scene {
   private flashCombo(): void {
     const n = ctx.engine.state.comboCount;
     if (n < 2) return;
+
+    // Dynamic colors per combo intensity
+    const comboColors = ['#FFC048', '#FF9F1A', '#FF5252', '#FF1493', '#9B59B6', '#00D2D3'];
+    const colHex = comboColors[Math.min(n - 2, comboColors.length - 1)] ?? '#FFC048';
+
     this.comboPopup.setText(`Combo x${n}`);
+    this.comboPopup.setColor(colHex);
     this.comboPopup.setAlpha(1);
+    this.comboPopup.setScale(0.5);
+
     this.tweens.killTweensOf(this.comboPopup);
     this.tweens.add({
       targets: this.comboPopup,
+      scaleX: 1.35,
+      scaleY: 1.35,
       alpha: { from: 1, to: 0 },
-      y: { from: this.comboPopup.y, to: this.comboPopup.y - 40 },
-      duration: dur.slow,
-      ease: 'Cubic.easeOut',
+      y: { from: this.comboPopup.y, to: this.comboPopup.y - 45 },
+      duration: dur.slow + 100,
+      ease: 'Back.easeOut',
     });
   }
 
   private floatScorePopup(gain: number, x: number, y: number): void {
-    const txt = this.add.text(x, y, `+${gain}`, fontStyle(type.score, color.success))
+    const txt = this.add.text(x, y, `+${gain}`, fontStyle(type.score, color.warning))
       .setOrigin(0.5).setDepth(z.hud).setStroke(color.textStroke, 6);
+    txt.setScale(0.5);
+
     this.tweens.add({
       targets: txt,
-      alpha: { from: 1, to: 0 },
-      y: { from: y, to: y - 60 },
-      duration: dur.slow,
-      ease: 'Cubic.easeOut',
-      onComplete: () => txt.destroy(),
+      scaleX: 1.25,
+      scaleY: 1.25,
+      duration: dur.pop,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        this.tweens.add({
+          targets: txt,
+          alpha: 0,
+          y: y - 55,
+          scaleX: 0.9,
+          scaleY: 0.9,
+          duration: dur.base + 100,
+          ease: 'Cubic.easeOut',
+          onComplete: () => txt.destroy(),
+        });
+      },
     });
   }
 
@@ -487,6 +573,7 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private removeFruit(df: DroppedFruit): void {
+    this.tweens.killTweensOf(df.obj);
     this.mergingFruitIds.delete(df.id);
     this.fruitsById.delete(df.id);
     const i = this.fruits.indexOf(df);
@@ -548,43 +635,30 @@ export class GameplayScene extends Phaser.Scene {
       const merged = this.spawnFruit(plan.newTier, midX, midY);
       merged.obj.setVelocity(0, -1.5);
 
-      this.playPopJuice(midX, midY, plan.newTier);
+      // Visual juice: shockwave + colored radial juice droplets
+      playJuiceSplash(this, midX, midY, plan.newTier);
       this.floatScorePopup(plan.scoreGain, midX, midY - 12);
       this.flashCombo();
 
-      if (plan.newTier >= CONFIG.maxTier - 1) bigMerge = true;
+      if (plan.newTier >= CONFIG.maxTier - 1) {
+        bigMerge = true;
+        playJackpotClimax(this, midX, midY);
+      }
     }
 
     if (plans.length > 0) {
       this.lastMotionMs = this.time.now;
       this.updateHud();
-      this.playSfx(bigMerge ? 'sfx_merge_big' : 'sfx_merge');
+      const combo = ctx.engine.state.comboCount;
+      const detune = computeComboDetune(combo);
+      this.playSfx(bigMerge ? 'sfx_merge_big' : 'sfx_merge', 0.5, detune);
     }
   }
 
-  private playPopJuice(x: number, y: number, tier: number): void {
-    const r = fruitRadius(tier);
-    const burst = this.add.graphics().setDepth(z.actor + 5);
-    burst.lineStyle(4, 0xFFFFFF, 0.9);
-    burst.strokeCircle(x, y, r * 0.6);
-    burst.fillStyle(0xFFD700, 0.4);
-    burst.fillCircle(x, y, r * 0.4);
-
-    this.tweens.add({
-      targets: burst,
-      scaleX: 1.6,
-      scaleY: 1.6,
-      alpha: 0,
-      duration: 220,
-      ease: 'Cubic.easeOut',
-      onComplete: () => burst.destroy(),
-    });
-  }
-
-  // --- Audio hook ----------------------------------------------------------
-  private playSfx(key: string, volume = 0.5): void {
+  // --- Audio hook with pitch detune support ---------------------------------
+  private playSfx(key: string, volume = 0.5, detune = 0): void {
     if (!this.cache.audio.exists(key)) return;
-    this.sound.play(key, { volume });
+    this.sound.play(key, { volume, detune });
   }
 }
 
