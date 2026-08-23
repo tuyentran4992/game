@@ -75,6 +75,15 @@ Lưu ý: `scaffold.py`/`validate.py` vốn viết riêng cho M1 (độ cứng la
 - Ý tưởng chọn bởi MoA (quality) 2026-08-23. 5 file SPEC /data/youtube-playables/M3-Juicy-Merge/ (SPEC/DESIGN-SPEC/DATA-MODEL/TEST-CASES/E2E-TESTS) đã commit + push git.
 - **TIẾP THEO:** anh duyệt SPEC M3 → tạo `games/juicy-merge.yaml` + `CLAUDE.md` → giao Claude GLM-5.2 code (TDD TEST-CASES) → QA browser+vision → đóng gói.
 
+## 6d. CHẤT LƯỢNG — QUY TRÌNH VERIFY (Rào ① ②, 2026-08-23)
+> Để giảm lỗi game (boot crash, asset thiếu, đóng gói sai, type im), đã thêm 2 hàng rào bắt lỗi trước khi bàn giao. **LUÔN chạy `bash scripts/verify_game.sh <game-dir>` trước khi nộp/bàn giao.**
+- **Rào ① type-check GATE:** `npm run typecheck` = `tsc --noEmit` (0 lỗi). Đã xác nhận M1+M2 sạch. Lỗi "Promise/this.add" lúc trước chỉ do Hermes lint dùng cấu hình khác, tsconfig project đúng (ES2020+esModuleInterop+lib DOM).
+- **Rào ① logic test:** `npx vitest run` (M1 19/19, M2 33/33 pass).
+- **Rào ② build:** `npm run build` → zip từ `dist/` (không phải `main.js`).
+- **Rào ② asset manifest:** script tự so `this.load.*('key','file')` trong src vs file `raw/` — thiếu = cảnh báo (bắt lỗi asset 404 như liquid_neon M2 — đã fix bằng bỏ load thừa).
+- Script: `scripts/verify_game.sh`. File: game/package.json đã thêm `"typecheck": "tsc --noEmit"` cho M1+M2.
+- Browser boot/render QA vẫn là bước của Hermes (mở browser + vision) sau khi verify pass — không thay thế bằng script.
+
 ## 7. CHI PHÍ (của Claude Code GLM, AI-Box) — cộng dồn
 - M1: pipeline $2.23 + game $1.96 + qafixes $1.62 + UX-fixes ~$? ≈ ~$6-8
 - M2: code $3.04 + fix layout $0.44 + icon/glow + icon-final ≈ ~$4-5
