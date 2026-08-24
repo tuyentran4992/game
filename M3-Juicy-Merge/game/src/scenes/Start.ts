@@ -15,6 +15,8 @@ export class StartScene extends Phaser.Scene {
   /** Tracked decor images so a resize rebuilds them cleanly (destroy + redraw). */
   private chainImages: Phaser.GameObjects.Image[] = [];
   private cornerImage?: Phaser.GameObjects.Image;
+  /** Button containers, repositioned together on resize (FIT keeps world fixed). */
+  private menuButtons: Phaser.GameObjects.Container[] = [];
 
   constructor() { super({ key: 'StartScene' }); }
 
@@ -50,6 +52,7 @@ export class StartScene extends Phaser.Scene {
       this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
       this.time.delayedCall(dur.scene, () => this.scene.start('GameplayScene'));
     });
+    this.menuButtons.push(playBtn);
 
     // --- 2. Daily Challenge Mode Button -------------------------------------
     const isCompletedToday = ctx.isDailyCompletedToday();
@@ -82,6 +85,7 @@ export class StartScene extends Phaser.Scene {
       this.scene.pause();
       this.scene.launch('AlbumScene', { returnScene: 'StartScene' });
     });
+    this.menuButtons.push(dailyBtn, albumBtn);
 
     // --- Corner watermelon decoration (alpha 0.5, mockup §3.1) ---------------
     this.drawCornerDecor(width, height);
@@ -90,9 +94,13 @@ export class StartScene extends Phaser.Scene {
     drawMuteButton(this);
 
     this.scale.on('resize', (g: Phaser.Structs.Size) => {
-      title.setPosition(g.width / 2, g.height * 0.30);
-      this.drawFruitChain(g.width / 2, g.height * 0.46);
-      container.setPosition(g.width / 2, g.height * 0.66);
+      title.setPosition(g.width / 2, g.height * 0.26);
+      this.drawFruitChain(g.width / 2, g.height * 0.40);
+      const menux = g.width / 2;
+      const ry = [0.54, 0.63, 0.72];
+      this.menuButtons.forEach((btn, i) => {
+        if (ry[i] !== undefined && btn) btn.setPosition(menux, g.height * ry[i]!);
+      });
       this.drawCornerDecor(g.width, g.height);
     });
   }

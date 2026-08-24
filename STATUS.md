@@ -115,6 +115,19 @@ Lưu ý: `scaffold.py`/`validate.py` vốn viết riêng cho M1 (độ cứng la
 3. **Yandex** — tùy chính kiến anh.
 4. Mỗi nền tảng 1 layer SDK/ad riêng, **giữ bản Playables thuần (đúng luật CẤM tự nhét ads self-serve)**.
 
+## 6g. PLAYGAMA — KÊNH NEW (research + tích hợp M3 DONE 2026-08-24)
+- **Nền tảng**: Playgama (Dubai/UAE, startup 2023, $3M seed — TOP/TON/FJ Labs) — HTML5 distribution + monetization, **450M+ player/month**, non-exclusive, revshare 70-90%, payout nhanh (≥$100), **official YouTube Partner top-3 Playables + #1 gameplays**.
+- **Lợi so Mediacube**: KHÔNG lock 12 tháng, payout nhanh không giữ tiền, 1 SDK gắn 1 lần → nộp **10+ nền tảng** (YouTube/CrazyGames/GD/Y8/Yandex/MSN/...), free, không cần Google Dev account (Playgama handle cert 3-7 ngày, lên sóng 2-4 tuần). Whitelist domain bridge nên load CDN hợp lệ.
+- **Integration M3 DONE**: `docs/playgama-integration.md` (research đầy đủ + bản đồ API) + 3 file SDK:
+  - `game/index.html`: thêm `<script src="https://bridge.playgama.com/v2/stable/playgama-bridge.js">`
+  - `game/src/sdk-bridge-backend.ts` MỚI = `PlaygamaBackend` (wrapper window.bridge; **buffer mọi call tới khi initialize() xong** vì bridge THROW nếu dùng trước init — bug real đã fix; rewarded event-driven bọc thành Promise<boolean>)
+  - `game/src/sdk-handler.ts`: thành **multi-backend** — ưu tiên `bridge`(Playgama) → fallback `ytgame`(Mediacube/YouTube) → mock local. Scenes KHÔNG đổi.
+  - `game/playgama-bridge-config.json` MỚI (ad placements interstitial `game_over` + rewarded `continue`) — build script tự `cp` vào dist/ (vite emptyOutDir xóa).
+- **Verify M3 PASS**: typecheck 0 · vitest 109 · build · asset manifest · **browser+vision+console sạch** (bridge v2.1.0 initialized, 0 lỗi, màn Start đầy đủ).
+- **Bug pre-existing sửa thêm**: `Start.ts` resize callback tham chiếu biến `container` không tồn tại (leftover refactor) → chặn tsc; đã fix reposition đúng 3 nút menu.
+- **Còn cần anh (danh tính)**: tạo account `developer.playgama.com` (Sign Up → verify email) → gửi em → nộp M3 (upload zip từ `build/juicy-merge.zip` sau khi rebuild + đóng gói).
+- Lưu ý bản nộp Mediacube/ytgame thuần: bỏ dòng CDN bridge trong index.html (game gọi mạng ngoài nếu giữ) — multi-backend vẫn chạy ytgame được.
+
 ## 7. CHI PHÍ (của Claude Code GLM, AI-Box) — cộng dồn
 - M1: pipeline $2.23 + game $1.96 + qafixes $1.62 + UX-fixes ~$? ≈ ~$6-8
 - M2: code $3.04 + fix layout $0.44 + icon/glow + icon-final ≈ ~$4-5

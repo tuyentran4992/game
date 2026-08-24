@@ -8,6 +8,11 @@
     body { margin: 0; overflow: hidden; background: #FFF8E7; }
     #game { width: 100vw; height: 100vh; }
   </style>
+  <!-- Playgama Bridge v2 (JS Core) — unified SDK đa nền tảng. Global `bridge`.
+       Nộp qua Playgama (YouTube/CrazyGames/GD/Y8/...). Khi không có nền tảng
+       Playgama, backend tự fallback ytgame hoặc mock local → an toàn với mọi
+       bản nộp Mediacube/YouTube trước đây. xem docs/playgama-integration.md -->
+  <script src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script>
 </head>
 <body>
   <div id="game"></div>

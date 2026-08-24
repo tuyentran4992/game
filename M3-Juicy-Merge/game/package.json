@@ -4,7 +4,7 @@
   "description": "Juicy Merge: Fruit Pop — physics merge (Suika-style) for YouTube Playables",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && cp playgama-bridge-config.json dist/playgama-bridge-config.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
