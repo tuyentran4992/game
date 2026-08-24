@@ -1,5 +1,9 @@
-// YouTube Playables SDK handler (BR-04, BR-11)
-// Wraps ytgame.* with safe fallbacks so local dev works without the SDK.
+// SdkHandler multi-backend — Playgama Bridge ưu tiên, fallback YouTube Playables
+// (ytgame), fallback mock/localStorage cho dev local. Giữ NGUYÊN interface công
+// khai để scenes (Gameplay/GameOver/Start/main.ts) KHÔNG đổi.
+// BR-04, BR-11. Tích hợp Playgama 2026-08-24 (xem docs/playgama-integration.md).
+
+import { getBridge, PlaygamaBackend, type PlaygamaBridgeLike } from './sdk-bridge-backend';
 
 interface YtGame {
   gameReady(): void;
@@ -20,67 +24,134 @@ declare global {
   interface Window { ytgame?: YtGame; }
 }
 
+const LOCAL_STORAGE_KEY = 'cuu_meo_save_v1';
+
 export class SdkHandler {
   private ytgame: YtGame | null;
+  private bridge: PlaygamaBridgeLike | null = null;
+  useBridge = false;
 
   constructor() {
-    this.ytgame = window.ytgame ?? null;
+    this.ytgame = typeof window !== 'undefined' ? (window.ytgame ?? null) : null;
+    this.bridge = getBridge();
+    // Ưu tiên Playgama nếu có (nộp qua Playgama đa nền tảng). Ngược lại dùng ytgame
+    // (nộp thẳng Mediacube/YouTube). Backend tự init và buffer tới khi ready.
+    if (this.bridge) {
+      this.useBridge = true;
+      this.pb = new PlaygamaBackend(this.bridge);
+    }
   }
 
+  private pb: PlaygamaBackend | null = null;
+
   gameReady(): void {
+    if (this.pb) { this.pb.gameReady(); return; }
     this.ytgame?.gameReady?.();
   }
 
   onPause(cb: () => void): void {
+    if (this.pb) { this.pb.onPause(cb); return; }
     this.ytgame?.onPause?.(cb);
   }
 
   onResume(cb: () => void): void {
+    if (this.pb) { this.pb.onResume(cb); return; }
     this.ytgame?.onResume?.(cb);
   }
 
   isAudioEnabled(): boolean {
+    if (this.pb) return this.pb.isAudioEnabled();
     return this.ytgame?.isAudioEnabled?.() ?? true;
   }
 
   onAudioEnabledChange(cb: (enabled: boolean) => void): void {
+    if (this.pb) { this.pb.onAudioEnabledChange(cb); return; }
     this.ytgame?.onAudioEnabledChange?.(cb);
   }
 
-  // BR-11: saveData with error fallback (no crash on failure)
+  // BR-11: saveData with local storage fallback
   async saveData(data: unknown): Promise<boolean> {
+    const jsonStr = JSON.stringify(data);
     try {
-      await this.ytgame?.saveData?.(JSON.stringify(data));
-      return true;
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(LOCAL_STORAGE_KEY, jsonStr);
+      }
     } catch (e) {
-      console.warn('saveData failed, using current session', e);
-      return false;
+      console.warn('localStorage save failed', e);
     }
+
+    if (this.pb) return this.pb.saveData(data);
+
+    if (this.ytgame && typeof this.ytgame.saveData === 'function') {
+      try {
+        await this.ytgame.saveData(jsonStr);
+        return true;
+      } catch (e) {
+        console.warn('ytgame.saveData failed, using local storage cache', e);
+        return false;
+      }
+    }
+    return true;
   }
 
-  // BR-11: loadData with error fallback
+  // BR-11: loadData with local storage fallback
   async loadData(): Promise<unknown | null> {
-    try {
-      const raw = await this.ytgame?.loadData?.();
-      if (!raw) return null;
-      return JSON.parse(raw);
-    } catch (e) {
-      console.warn('loadData failed, starting fresh', e);
-      return null;
+    if (this.pb) {
+      const d = await this.pb.loadData();
+      if (d != null) return d;
+      return this._readLocalCache();
     }
+
+    if (this.ytgame && typeof this.ytgame.loadData === 'function') {
+      try {
+        const raw = await this.ytgame.loadData();
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          try {
+            if (typeof window !== 'undefined' && window.localStorage) {
+              window.localStorage.setItem(LOCAL_STORAGE_KEY, raw);
+            }
+          } catch {}
+          return parsed;
+        }
+      } catch (e) {
+        console.warn('ytgame.loadData failed, trying local storage', e);
+      }
+    }
+
+    return this._readLocalCache();
+  }
+
+  private _readLocalCache(): unknown | null {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const localRaw = window.localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (localRaw) return JSON.parse(localRaw);
+      }
+    } catch (e) {
+      console.warn('localStorage load failed', e);
+    }
+    return null;
   }
 
   sendScore(score: number): void {
+    if (this.pb) { this.pb.sendScore(score); return; }
     this.ytgame?.sendScore?.(score);
   }
 
   async requestInterstitialAd(): Promise<void> {
+    if (this.pb) { await this.pb.requestInterstitialAd(); return; }
     await this.ytgame?.ads?.requestInterstitialAd?.();
   }
 
   async requestRewardedAd(rewardId: string): Promise<boolean> {
+    if (this.pb) return this.pb.requestRewardedAd(rewardId);
+    if (!this.ytgame) {
+      // Fallback local dev: luôn cấp thưởng để test gameplay mượt mà
+      return true;
+    }
     try {
-      return await this.ytgame?.ads?.requestRewardedAd?.(rewardId) ?? false;
+      return await this.ytgame.ads?.requestRewardedAd?.(rewardId) ?? true;
     } catch {
       return false;
     }

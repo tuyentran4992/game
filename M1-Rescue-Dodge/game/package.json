@@ -4,7 +4,7 @@
   "description": "Một chạm để né ong, cứu chú mèo. Điểm tăng dần theo thời gian và mỗi lần né thành công!",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && cp playgama-bridge-config.json dist/playgama-bridge-config.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
