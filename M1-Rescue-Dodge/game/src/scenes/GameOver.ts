@@ -7,10 +7,11 @@ import { sdk } from '../sdk-instance';
 export class GameOverScene extends Phaser.Scene {
   constructor() { super({ key: 'GameOverScene' }); }
 
-  async create(data: { score: number; bestScore: number; isNewRecord: boolean }) {
+  async create(data: { score: number; bestScore: number; fish?: number; totalFish?: number; isNewRecord: boolean }) {
     const { width, height } = this.scale;
     const score = data?.score ?? 0;
     const best = data?.bestScore ?? 0;
+    const fish = data?.fish ?? 0;
     const isNewRecord = data?.isNewRecord ?? false;
 
     // F9 (ĐỢT 8): hiện màn Game Over → sfx_gameover; đảm bảo BGM đã dừng.
@@ -28,7 +29,7 @@ export class GameOverScene extends Phaser.Scene {
 
     // ---- Panel (§3.3) + nội dung trong 1 container để slide-up (F7) ----
     const pw = Math.min(480, width - sp[8] * 2);
-    const ph = Math.min(560, height - sp[8] * 2);
+    const ph = Math.min(580, height - sp[8] * 2);
     const cx = width / 2;
     const cy = height / 2;
     // Bắt đầu lệch xuống 48px + trong suốt → slide-up (dur.slow) về giữa
@@ -73,23 +74,25 @@ export class GameOverScene extends Phaser.Scene {
       .setOrigin(0.5).setDepth(z.panel + 1);
     finalScore.setData('testid', 'final-score');
     root.add(finalScore);
-    y += 48 + sp[6]; // 24
+    y += 48 + sp[4];
 
     // ĐIỂM CAO (label) + best-score (data-testid=best-score)
-    const bsLabel = this.add.text(0, y + 12, 'BEST', fontStyle(type.small, color.textPrimary))
+    const bsLabel = this.add.text(0, y + 10, 'BEST: ' + best, fontStyle(type.small, color.textPrimary))
       .setOrigin(0.5).setDepth(z.panel + 1);
+    bsLabel.setData('testid', 'best-score');
     root.add(bsLabel);
-    y += 24 + sp[1];
+    y += 22;
 
-    const bestScore = this.add.text(0, y + 17, String(best), fontStyle(type.h2, color.textPrimary))
+    // CÁ VÀNG THU THẬP ĐƯỢC
+    const fishLabel = this.add.text(0, y + 10, `🐟 ${fish} FISH COLLECTED`, fontStyle(type.small, color.warning))
       .setOrigin(0.5).setDepth(z.panel + 1);
-    bestScore.setData('testid', 'best-score');
-    root.add(bestScore);
-    y += 34 + sp[6]; // 24
+    root.add(fishLabel);
+    y += 28 + sp[4];
 
     // Nút "Chơi lại" = btn-primary (§3.1) — luôn có; phía trên
+    const btnWidth = Math.min(280, pw - 32);
     const buttonsY = y + 36; // giữa nút 72px
-    const retryBtn = drawButton(this, 0, buttonsY, 'Retry', { testid: 'retry-btn' });
+    const retryBtn = drawButton(this, 0, buttonsY, 'Retry', { width: btnWidth, testid: 'retry-btn' });
     root.add(retryBtn.container);
     retryBtn.container.on('pointerdown', async () => {
       // interstitial từ lượt 2+ (BR-09)
@@ -97,15 +100,14 @@ export class GameOverScene extends Phaser.Scene {
         try { await sdk.requestInterstitialAd(); } catch { /* ignore */ }
       }
       this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
-      this.time.delayedCall(dur.scene, () => this.scene.start('GameplayScene'));
+      this.time.delayedCall(dur.scene, () => this.scene.start('GameplayScene', { resume: false }));
     });
 
-    // Nút "Tiếp tục (xem ad)" = btn-ghost (§3.1) — chỉ lượt 2+ (BR-09/10), dưới nút Chơi lại
-    // F6: dùng type.h2 (28px) + width 320 để "Tiếp tục (xem ad)" KHÔNG bị cắt cụt chữ
+    // Nút "Tiếp tục" = btn-ghost (§3.1) — hiển thị khi chưa dùng lượt tiếp tục (BR-10)
     let continueBtn: ReturnType<typeof drawButton> | null = null;
-    if (ctx.engine.canContinue() && ctx.engine.shouldShowInterstitial()) {
-      continueBtn = drawButton(this, 0, buttonsY + 72 + sp[4], 'Continue (watch ad)',
-        { variant: 'ghost', width: 320, textType: type.h2, testid: 'continue-btn' });
+    if (ctx.engine.canContinue()) {
+      continueBtn = drawButton(this, 0, buttonsY + 72 + sp[4], 'Continue',
+        { variant: 'ghost', width: btnWidth, textType: type.h2, testid: 'continue-btn' });
       const btn = continueBtn; // non-null alias cho closure
       root.add(btn.container);
       btn.container.on('pointerdown', async () => {
@@ -114,9 +116,12 @@ export class GameOverScene extends Phaser.Scene {
         const earned = await sdk.requestRewardedAd('continue');
         if (earned) {
           ctx.engine.useContinue();
-          this.scene.start('GameplayScene', { resume: true });
+          this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
+          this.time.delayedCall(dur.scene, () => {
+            this.scene.start('GameplayScene', { resume: true });
+          });
         } else {
-          btn.textObj.setText('Continue (watch ad)');
+          btn.textObj.setText('Continue');
           btn.container.setAlpha(1).setInteractive({ useHandCursor: true });
         }
       });

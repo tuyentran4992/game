@@ -12,6 +12,8 @@ export interface Palette {
   accent: string;
 }
 
+export type BeeType = 'normal' | 'speedy' | 'fat' | 'zigzag';
+
 export interface MechanicsConfig {
   laneCount: number;
   milestoneInterval: number;     // điểm/lần để lên 1 level (BR-14)
@@ -19,7 +21,19 @@ export interface MechanicsConfig {
   comboBonus: number;            // điểm thưởng mỗi combo (BR-15)
   pointsPerDodge: number;        // +1/lần né
   pointsPerSecond: number;       // +1/s trụ
+  pointsPerFish: number;         // +2 điểm mỗi cá vàng
+  feverPerDodge: number;         // +6% Fever mỗi né
+  feverPerFish: number;          // +12% Fever mỗi cá
+  feverPerNearMiss: number;      // +18% Fever mỗi cú né sát
+  nearMissBonus: number;         // +2 điểm thưởng né sát
+  feverDurationSec: number;      // Thời gian Fever mode (4.5s)
+  magnetDurationSec: number;     // Thời gian Nam châm (6.0s)
+  feverKillBonus: number;        // +5 điểm khi húc bay ong trong Fever
+  swarmIntervalSec: number;      // Chu kỳ bão ong (28s)
+  swarmBonus: number;            // Điểm thưởng khi vượt bão ong (+10)
+  feverPerSwarm: number;         // +30% Fever khi sống sót bão ong
   startSpeed: number;            // tốc độ ong ban đầu — THẤP 10s đầu (BR-17)
+  maxSpeed: number;              // Tốc độ tối đa giới hạn theo phản xạ con người
   speedIncreasePerSec: number;   // tăng tốc sau 10s đầu
   levelSpeedStep: number;        // nhảy bậc tốc độ mỗi level (BR-17)
   spawnIncrease: number;         // mật độ spawn tăng mỗi giây sau 10s
@@ -37,11 +51,23 @@ export const MECHANICS: MechanicsConfig = {
   comboBonus: 5,
   pointsPerDodge: 1,
   pointsPerSecond: 1,
-  startSpeed: 120,
-  speedIncreasePerSec: 8,
-  levelSpeedStep: 20,
-  spawnIncrease: 0.03,
-  spawnRateMax: 4,
+  pointsPerFish: 2,
+  feverPerDodge: 6,
+  feverPerFish: 12,
+  feverPerNearMiss: 18,
+  nearMissBonus: 2,
+  feverDurationSec: 4.5,
+  magnetDurationSec: 6.0,
+  feverKillBonus: 5,
+  swarmIntervalSec: 22,
+  swarmBonus: 10,
+  feverPerSwarm: 30,
+  startSpeed: 160,
+  maxSpeed: 440,
+  speedIncreasePerSec: 5.0,
+  levelSpeedStep: 30,
+  spawnIncrease: 0.04,
+  spawnRateMax: 5,
   warmupSeconds: 10,
   continueMaxPerGameOver: 1,
   interstitialDelayGames: 2,

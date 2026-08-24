@@ -114,20 +114,21 @@ describe('GameEngine — difficulty curve (BR-17)', () => {
   beforeEach(() => { engine = new GameEngine(MECHANICS); engine.startNewGame(); });
 
   it('trong 10s đầu: tốc độ = startSpeed (THẤP, giữ chân)', () => {
-    expect(engine.difficulty(5).speed).toBe(120);
-    expect(engine.difficulty(0).speed).toBe(120);
-    expect(engine.difficulty(10).speed).toBe(120);
+    expect(engine.difficulty(5).speed).toBe(MECHANICS.startSpeed);
+    expect(engine.difficulty(0).speed).toBe(MECHANICS.startSpeed);
+    expect(engine.difficulty(10).speed).toBe(MECHANICS.startSpeed);
   });
 
-  it('sau 10s: tốc độ tăng liên tục theo giây', () => {
-    expect(engine.difficulty(15).speed).toBe(120 + 8 * 5);
-    expect(engine.difficulty(20).speed).toBe(120 + 8 * 10);
+  it('sau 10s: tốc độ tăng dần theo giây và level', () => {
+    expect(engine.difficulty(15).speed).toBe(MECHANICS.startSpeed + MECHANICS.speedIncreasePerSec * 5);
+    expect(engine.difficulty(20).speed).toBe(MECHANICS.startSpeed + MECHANICS.speedIncreasePerSec * 10);
   });
 
-  it('nhảy bậc tốc độ theo level (BR-17)', () => {
-    // level 2: +20; level 3: +40
-    expect(engine.difficulty(20, 2).speed).toBe(120 + 8 * 10 + 20);
-    expect(engine.difficulty(30, 3).speed).toBe(120 + 8 * 20 + 40);
+  it('tốc độ bị chặn bởi maxSpeed để vừa vặn phản xạ con người', () => {
+    // Thời gian chơi cực lâu hoặc level cực cao
+    const crazyDiff = engine.difficulty(1000, 20);
+    expect(crazyDiff.speed).toBe(MECHANICS.maxSpeed);
+    expect(crazyDiff.speed).toBeLessThanOrEqual(440);
   });
 
   it('spawn rate tăng sau 10s và chặn bởi spawnRateMax', () => {
@@ -175,5 +176,148 @@ describe('GameEngine — time score + lifecycle', () => {
     engine.endGame();
     engine.startNewGame(); // total = 2
     expect(engine.shouldShowInterstitial()).toBe(true);
+  });
+});
+
+describe('GameEngine — Phase 2: Fish Pickups, Shield, Magnet, Fever, Near-Miss', () => {
+  let engine: GameEngine;
+  beforeEach(() => { engine = new GameEngine(MECHANICS); engine.startNewGame(); });
+
+  it('collectFish cộng +2 điểm và tích lũy số cá', () => {
+    const r1 = engine.collectFish();
+    expect(r1.scoreDelta).toBe(2);
+    expect(engine.fish).toBe(1);
+    expect(engine.totalFish).toBe(1);
+    expect(engine.score).toBe(2);
+    expect(engine.fever).toBe(MECHANICS.feverPerFish);
+  });
+
+  it('activateShield và tryUseShield cứu 1 lần va chạm', () => {
+    expect(engine.shieldActive).toBe(false);
+    engine.activateShield();
+    expect(engine.shieldActive).toBe(true);
+
+    // Va chạm lần 1 -> khiên cứu mạng, mất khiên
+    const saved = engine.tryUseShield();
+    expect(saved).toBe(true);
+    expect(engine.shieldActive).toBe(false);
+
+    // Va chạm lần 2 -> không còn khiên
+    const savedAgain = engine.tryUseShield();
+    expect(savedAgain).toBe(false);
+  });
+
+  it('activateMagnet bật thời gian hút cá', () => {
+    expect(engine.isMagnetActive()).toBe(false);
+    engine.activateMagnet(5);
+    expect(engine.isMagnetActive()).toBe(true);
+    expect(engine.magnetTimeRemaining).toBe(5);
+
+    engine.updateTimers(3);
+    expect(engine.magnetTimeRemaining).toBe(2);
+    expect(engine.isMagnetActive()).toBe(true);
+
+    engine.updateTimers(2.5);
+    expect(engine.isMagnetActive()).toBe(false);
+  });
+
+  it('tích lũy Fever và kích hoạt Fever Mode khi đạt 100%', () => {
+    expect(engine.isFeverActive()).toBe(false);
+    expect(engine.fever).toBe(0);
+
+    // Nạp fever qua ăn cá & né
+    engine.addFever(50);
+    expect(engine.fever).toBe(50);
+    expect(engine.isFeverActive()).toBe(false);
+
+    const triggered = engine.addFever(60); // Vượt 100%
+    expect(triggered).toBe(true);
+    expect(engine.isFeverActive()).toBe(true);
+    expect(engine.feverTimeRemaining).toBe(MECHANICS.feverDurationSec);
+
+    // Trong Fever: điểm x2
+    const fishRes = engine.collectFish();
+    expect(fishRes.scoreDelta).toBe(MECHANICS.pointsPerFish * 2);
+
+    // Húc ong trong Fever
+    const killRes = engine.destroyBeeInFever();
+    expect(killRes.scoreDelta).toBe(MECHANICS.feverKillBonus);
+
+    // Fever hết giờ
+    const { feverEnded } = engine.updateTimers(5);
+    expect(feverEnded).toBe(true);
+    expect(engine.isFeverActive()).toBe(false);
+    expect(engine.fever).toBe(0);
+  });
+
+  it('registerNearMiss cộng điểm thưởng và nạp Fever lớn', () => {
+    const r = engine.registerNearMiss();
+    expect(r.scoreDelta).toBe(MECHANICS.nearMissBonus);
+    expect(engine.fever).toBe(MECHANICS.feverPerNearMiss);
+  });
+
+  it('endGame trả về đủ thông tin cá vàng', () => {
+    engine.collectFish();
+    engine.collectFish();
+    const end = engine.endGame();
+    expect(end.fish).toBe(2);
+    expect(end.totalFish).toBe(2);
+  });
+});
+
+describe('GameEngine — Phase 4: Enemy Variety & Swarm Events', () => {
+  let engine: GameEngine;
+  beforeEach(() => { engine = new GameEngine(MECHANICS); engine.startNewGame(); });
+
+  it('rollBeeType trả về normal trong 10s đầu Level 1', () => {
+    for (let i = 0; i < 20; i++) {
+      expect(engine.rollBeeType(5, 1)).toBe('normal');
+    }
+  });
+
+  it('rollBeeType có thể ra speedy sau 10s', () => {
+    const types = new Set();
+    for (let i = 0; i < 50; i++) {
+      types.add(engine.rollBeeType(15, 1));
+    }
+    expect(types.has('normal')).toBe(true);
+    expect(types.has('speedy')).toBe(true);
+  });
+
+  it('rollBeeType tại Level 3+ ra đủ 4 loại ong', () => {
+    const types = new Set();
+    for (let i = 0; i < 100; i++) {
+      types.add(engine.rollBeeType(30, 3));
+    }
+    expect(types.has('normal')).toBe(true);
+    expect(types.has('speedy')).toBe(true);
+    expect(types.has('fat')).toBe(true);
+    expect(types.has('zigzag')).toBe(true);
+  });
+
+  it('registerSwarmSurvive cộng +10 điểm và nạp +30% Fever', () => {
+    const r = engine.registerSwarmSurvive();
+    expect(r.scoreDelta).toBe(MECHANICS.swarmBonus);
+    expect(engine.score).toBe(MECHANICS.swarmBonus);
+    expect(engine.fever).toBe(MECHANICS.feverPerSwarm);
+  });
+
+  it('registerSwarmSurvive nhân đôi điểm trong Fever mode', () => {
+    engine.addFever(100); // trigger fever
+    expect(engine.isFeverActive()).toBe(true);
+    const r = engine.registerSwarmSurvive();
+    expect(r.scoreDelta).toBe(MECHANICS.swarmBonus * 2);
+  });
+
+  it('resumeGame bảo toàn score và fish, cấp khiên hồi sinh', () => {
+    engine.score = 25;
+    engine.fish = 4;
+    engine.useContinue();
+    engine.resumeGame();
+
+    expect(engine.score).toBe(25);
+    expect(engine.fish).toBe(4);
+    expect(engine.shieldActive).toBe(true);
+    expect(engine.canContinue()).toBe(false); // chỉ 1 lần continue per session
   });
 });

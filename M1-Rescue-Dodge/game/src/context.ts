@@ -13,9 +13,13 @@ class GameContext {
 
   async loadBest(): Promise<number> {
     if (this.bestScoreLoaded) return this.engine.bestScore;
-    const data = await sdk.loadData() as { best_score?: number } | null;
+    const data = await sdk.loadData() as { best_score?: number; total_fish?: number; total_games_played?: number } | null;
     if (data && typeof data.best_score === 'number') {
-      this.engine = new GameEngine(MECHANICS, { bestScore: data.best_score, totalGamesPlayed: this.engine.totalGamesPlayed });
+      this.engine = new GameEngine(MECHANICS, {
+        bestScore: data.best_score,
+        totalFish: data.total_fish ?? 0,
+        totalGamesPlayed: data.total_games_played ?? this.engine.totalGamesPlayed,
+      });
     }
     this.bestScoreLoaded = true;
     return this.engine.bestScore;
@@ -25,6 +29,7 @@ class GameContext {
     await sdk.saveData({
       schema_version: 1,
       best_score: this.engine.bestScore,
+      total_fish: this.engine.totalFish,
       level: this.engine.getLevel(),
       total_games_played: this.engine.totalGamesPlayed,
       last_updated_ts: Date.now(),
