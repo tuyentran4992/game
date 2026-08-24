@@ -5,26 +5,25 @@ import { color, type, sp, radius, shadow, z, dur, fontStyle, toColor } from './t
 export function drawButton(
   scene: Phaser.Scene,
   x: number, y: number, text: string,
-  opts: { width?: number; variant?: 'primary' | 'ghost'; testid?: string; textType?: { size: string; weight: string; lh: number } } = {}
+  opts: { width?: number; height?: number; variant?: 'primary' | 'ghost'; testid?: string; textType?: { size: string; weight: string; lh: number } } = {}
 ): { container: Phaser.GameObjects.Container; textObj: Phaser.GameObjects.Text; } {
   const width = opts.width ?? 280;
-  const height = 72;
+  const height = opts.height ?? (opts.variant === 'ghost' ? 52 : 64);
   const variant = opts.variant ?? 'primary';
-  const textType = opts.textType ?? type.display;
+  const textType = opts.textType ?? (opts.variant === 'ghost' ? type.body : type.display);
+  const r = Math.min(height / 2, radius.lg);
   const g = scene.add.graphics();
   const fill = variant === 'primary' ? color.primary : color.surface;
   const txtColor = variant === 'primary' ? color.textOnAccent : color.textPrimary;
-  // SHADOW vẽ TRƯỚC (đằng sau nút) để không đè lên fill — fix F1 (nút bị tối/đen)
+  // SHADOW vẽ TRƯỚC (đằng sau nút) để không đè lên fill
   g.fillStyle(toColor(color.shadow), shadow.btn.alpha);
-  g.fillRoundedRect(-width / 2, -height / 2 + shadow.btn.dy, width, height, radius.lg);
-  // FILL chính (token color.primary cam) — DESIGN-SPEC §3.1 btn-primary
+  g.fillRoundedRect(-width / 2, -height / 2 + shadow.btn.dy, width, height, r);
+  // FILL chính
   g.fillStyle(toColor(fill), 1);
-  g.fillRoundedRect(-width / 2, -height / 2, width, height, radius.lg);
-  // F8 (ĐỢT 7): BỎ gạch chân (viền dưới 6px) ở MỌI nút theo QA-FIXES.
-  // btn-ghost: vẽ viền full 4px primary (DESIGN-SPEC §3.1); btn-primary: pill cam + shadow.
+  g.fillRoundedRect(-width / 2, -height / 2, width, height, r);
   if (variant === 'ghost') {
-    g.lineStyle(4, toColor(color.primary), 1);
-    g.strokeRoundedRect(-width / 2, -height / 2, width, height, radius.lg);
+    g.lineStyle(3, toColor(color.primary), 1);
+    g.strokeRoundedRect(-width / 2, -height / 2, width, height, r);
   }
   g.setDepth(z.panel);
   const t = scene.add.text(0, 0, text, fontStyle(textType, txtColor)).setOrigin(0.5).setDepth(z.panel + 1);

@@ -40,6 +40,8 @@ export interface SwarmSurviveResult {
 
 export interface TickResult {
   scoreDelta: number;
+  levelUp?: boolean;
+  newLevel?: number;
 }
 
 export interface DifficultyResult {
@@ -56,10 +58,45 @@ export interface EndGameResult {
   isNewRecord: boolean;
 }
 
+export interface CatSkin {
+  id: string;
+  name: string;
+  price: number;
+  textureKey: string;
+  desc: string;
+}
+
+export const CAT_SKINS: CatSkin[] = [
+  { id: 'ginger', name: 'Ginger Tabby', price: 0, textureKey: 'cat_idle', desc: 'Playful and agile, reflexes like lightning!' },
+  { id: 'tuxedo', name: 'Tuxedo Gentleman', price: 450, textureKey: 'cat_tuxedo', desc: 'Dapper black suit with a stylish red bowtie!' },
+  { id: 'royal', name: 'Royal King Cat 👑', price: 1100, textureKey: 'cat_royal', desc: 'Golden crown and majestic royal velvet cape!' },
+  { id: 'astro', name: 'Astro Space Cat 🚀', price: 1800, textureKey: 'cat_astro', desc: 'Futuristic spacesuit with high-tech glowing visor!' },
+];
+
+export interface Quest {
+  id: string;
+  title: string;
+  desc: string;
+  target: number;
+  rewardFish: number;
+  progress: number;
+  claimed: boolean;
+}
+
+export const INITIAL_QUESTS: Quest[] = [
+  { id: 'dodge_30', title: 'Dodge 30 Bees', desc: 'Successfully dodge 30 incoming bees', target: 30, rewardFish: 15, progress: 0, claimed: false },
+  { id: 'collect_8_fish', title: 'Goldfish Hunter', desc: 'Collect 8 golden fish across runs', target: 8, rewardFish: 20, progress: 0, claimed: false },
+  { id: 'survive_swarm', title: 'Survive Swarm ⚠️', desc: 'Survive 1 dangerous bee swarm raid', target: 1, rewardFish: 25, progress: 0, claimed: false },
+  { id: 'score_100', title: 'Dodge Master', desc: 'Reach a record score of 100 points', target: 100, rewardFish: 40, progress: 0, claimed: false },
+];
+
 export interface GameEngineOptions {
   bestScore?: number;
   totalFish?: number;
   totalGamesPlayed?: number;
+  unlockedSkins?: string[];
+  selectedSkin?: string;
+  quests?: Quest[];
 }
 
 export class GameEngine {
@@ -82,16 +119,23 @@ export class GameEngine {
   bestScore: number;
   totalFish: number;
   totalGamesPlayed: number;
+  unlockedSkins: string[];
+  selectedSkin: string;
+  quests: Quest[];
 
-  // cờ phiên
+  // cờ phiên & fat bee breather progression (Phương trình: L(k) = 20 + 15k + 5k^2)
   recordShownThisSession = false;
   private continueUsed = false;
+  fatBeeSpawnCount = 0;
 
   constructor(cfg: MechanicsConfig, opts: GameEngineOptions = {}) {
     this.cfg = cfg;
     this.bestScore = opts.bestScore ?? 0;
     this.totalFish = opts.totalFish ?? 0;
     this.totalGamesPlayed = opts.totalGamesPlayed ?? 0;
+    this.unlockedSkins = opts.unlockedSkins && opts.unlockedSkins.length > 0 ? opts.unlockedSkins : ['ginger'];
+    this.selectedSkin = opts.selectedSkin ?? 'ginger';
+    this.quests = opts.quests && opts.quests.length > 0 ? opts.quests : JSON.parse(JSON.stringify(INITIAL_QUESTS));
   }
 
   startNewGame(): void {
@@ -106,7 +150,30 @@ export class GameEngine {
     this.feverTimeRemaining = 0;
     this.recordShownThisSession = false;
     this.continueUsed = false;
+    this.fatBeeSpawnCount = 0;
     this.totalGamesPlayed += 1;
+  }
+
+  /**
+   * Phương trình tự động tính mốc Level xuất hiện Ong Béo lần thứ (k+1):
+   * L(k) = 20 + 15k + 5k^2
+   * k = 0 -> Level 20
+   * k = 1 -> Level 40 (+20)
+   * k = 2 -> Level 70 (+30)
+   * k = 3 -> Level 110 (+40)
+   * k = 4 -> Level 160 (+50)...
+   */
+  getNextFatBeeTargetLevel(k = this.fatBeeSpawnCount): number {
+    return 20 + 15 * k + 5 * k * k;
+  }
+
+  shouldTriggerFatBeeBreather(level = this.getLevel()): boolean {
+    const target = this.getNextFatBeeTargetLevel();
+    return level >= target;
+  }
+
+  consumeFatBeeBreather(): void {
+    this.fatBeeSpawnCount++;
   }
 
   resumeGame(): void {
@@ -122,8 +189,9 @@ export class GameEngine {
   }
 
   getPaletteIndex(level: number = this.getLevel()): number {
-    const n = this.cfg.palettes.length;
-    return ((level - 1) % n + n) % n;
+    if (level < 10) return 0; // Ban ngày (Level 1..9)
+    if (level < 20) return 1; // Hoàng hôn (Level 10..19)
+    return 2;                 // Đêm (Level 20+)
   }
 
   get paletteIndex(): number {
@@ -138,6 +206,7 @@ export class GameEngine {
     const basePoints = this.isFeverActive() ? this.cfg.pointsPerDodge * 2 : this.cfg.pointsPerDodge;
     this.score += basePoints;
     this.streak += 1;
+    this.incrementQuest('dodge_30', 1);
 
     if (this.streak > 0 && this.streak % this.cfg.comboPer === 0) {
       comboBonus = this.isFeverActive() ? this.cfg.comboBonus * 2 : this.cfg.comboBonus;
@@ -171,6 +240,7 @@ export class GameEngine {
   collectFish(): FishResult {
     this.fish += 1;
     this.totalFish += 1;
+    this.incrementQuest('collect_8_fish', 1);
 
     const basePoints = this.isFeverActive() ? this.cfg.pointsPerFish * 2 : this.cfg.pointsPerFish;
     this.score += basePoints;
@@ -253,6 +323,7 @@ export class GameEngine {
     const baseBonus = this.isFeverActive() ? this.cfg.swarmBonus * 2 : this.cfg.swarmBonus;
     this.score += baseBonus;
     const feverTriggered = this.addFever(this.cfg.feverPerSwarm);
+    this.incrementQuest('survive_swarm', 1);
 
     const newLevel = this.getLevel();
     const prevScore = this.score - baseBonus;
@@ -268,26 +339,20 @@ export class GameEngine {
     };
   }
 
-  // --- Enemy Variety (Phân phối loại ong theo tiến trình) ---
+  // --- Enemy Variety (Phân phối loại ong thường/nhanh/zigzag theo tiến trình) ---
   rollBeeType(elapsedSec = this.elapsed, level = this.getLevel()): BeeType {
     if (elapsedSec < this.cfg.warmupSeconds && level === 1) {
       return 'normal';
     }
 
     const roll = Math.random();
-    if (level === 1) {
-      // Level 1 sau 10s: 80% thường, 20% nhanh
-      return roll < 0.20 ? 'speedy' : 'normal';
-    } else if (level === 2) {
-      // Level 2: 60% thường, 25% nhanh, 15% ong béo
-      if (roll < 0.25) return 'speedy';
-      if (roll < 0.40) return 'fat';
-      return 'normal';
+    if (level < 10) {
+      // Level 1-9 (Ban ngày): 75% thường, 25% nhanh
+      return roll < 0.25 ? 'speedy' : 'normal';
     } else {
-      // Level 3+: 45% thường, 25% nhanh, 15% béo, 15% zigzag
-      if (roll < 0.25) return 'speedy';
-      if (roll < 0.40) return 'fat';
-      if (roll < 0.55) return 'zigzag';
+      // Level 10+ (Hoàng hôn & Đêm): 50% thường, 30% nhanh, 20% zigzag
+      if (roll < 0.30) return 'speedy';
+      if (roll < 0.50) return 'zigzag';
       return 'normal';
     }
   }
@@ -316,9 +381,15 @@ export class GameEngine {
   // --- Score: thời gian ---
   tickSecond(): TickResult {
     const points = this.isFeverActive() ? this.cfg.pointsPerSecond * 2 : this.cfg.pointsPerSecond;
+    const prevLevel = this.getLevel();
     this.score += points;
     this.elapsed += 1;
-    return { scoreDelta: points };
+    const newLevel = this.getLevel();
+    return {
+      scoreDelta: points,
+      levelUp: newLevel > prevLevel,
+      newLevel,
+    };
   }
 
   // --- Difficulty curve (BR-17) ---
@@ -358,6 +429,7 @@ export class GameEngine {
       this.bestScore = this.score;
       this.recordShownThisSession = true;
     }
+    this.updateQuestMax('score_100', this.score);
     return {
       score: this.score,
       bestScore: this.bestScore,
@@ -375,6 +447,75 @@ export class GameEngine {
 
   useContinue(): void {
     this.continueUsed = true;
+  }
+
+  // --- Shop & Cat Skins ---
+  getAvailableSkins(): CatSkin[] {
+    return CAT_SKINS;
+  }
+
+  getSelectedSkin(): CatSkin {
+    return CAT_SKINS.find(s => s.id === this.selectedSkin) ?? CAT_SKINS[0];
+  }
+
+  getSelectedSkinTexture(): string {
+    return this.getSelectedSkin().textureKey;
+  }
+
+  isSkinUnlocked(skinId: string): boolean {
+    return this.unlockedSkins.includes(skinId);
+  }
+
+  unlockSkin(skinId: string): boolean {
+    const skin = CAT_SKINS.find(s => s.id === skinId);
+    if (!skin) return false;
+    if (this.isSkinUnlocked(skinId)) {
+      this.selectSkin(skinId);
+      return true;
+    }
+    if (this.totalFish < skin.price) return false;
+
+    this.totalFish -= skin.price;
+    this.unlockedSkins.push(skinId);
+    this.selectedSkin = skinId;
+    return true;
+  }
+
+  selectSkin(skinId: string): boolean {
+    if (!this.isSkinUnlocked(skinId)) return false;
+    this.selectedSkin = skinId;
+    return true;
+  }
+
+  // --- Quests & Achievements ---
+  getQuests(): Quest[] {
+    return this.quests;
+  }
+
+  incrementQuest(questId: string, amount = 1): void {
+    const q = this.quests.find(item => item.id === questId);
+    if (q && !q.claimed) {
+      q.progress = Math.min(q.target, q.progress + amount);
+    }
+  }
+
+  updateQuestMax(questId: string, value: number): void {
+    const q = this.quests.find(item => item.id === questId);
+    if (q && !q.claimed) {
+      q.progress = Math.max(q.progress, Math.min(q.target, value));
+    }
+  }
+
+  claimQuest(questId: string): number {
+    const q = this.quests.find(item => item.id === questId);
+    if (!q || q.claimed || q.progress < q.target) return 0;
+    q.claimed = true;
+    this.totalFish += q.rewardFish;
+    return q.rewardFish;
+  }
+
+  hasUnclaimedQuests(): boolean {
+    return this.quests.some(q => !q.claimed && q.progress >= q.target);
   }
 
   // --- Interstitial BR-09 ---

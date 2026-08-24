@@ -1,32 +1,38 @@
 import Phaser from 'phaser';
 import { color, type, sp, radius, z, dur, fontStyle, toColor } from '../tokens';
-import { drawGradientBg } from '../ui';
+import { ctx } from '../context';
 
 export class TutorialScene extends Phaser.Scene {
   constructor() { super({ key: 'TutorialScene' }); }
 
   create() {
     const { width, height } = this.scale;
-    drawGradientBg(this, color.bg.top, color.bg.bottom, color.grass);
+
+    // Background
+    const bg = this.add.image(width / 2, height / 2, 'bg_day').setDepth(z.bg);
+    const bgScale = Math.max(width / bg.width, height / bg.height);
+    bg.setScale(bgScale);
 
     const isPortrait = height >= width;
     const laneSpan = isPortrait ? Math.min(125, width * 0.28) : Math.min(120, height * 0.22);
     const centerX = width / 2;
     const catY = height * 0.75;
 
-    // Bong bóng tutorial (data-testid=tutorial-text)
+    // Bong bóng tutorial
     const padX = sp[6], padY = sp[4];
-    const t = this.add.text(centerX, height * 0.28, 'Tap Left / Right to dodge', fontStyle(type.body, color.textPrimary))
+    const t = this.add.text(centerX, height * 0.24, 'Tap Left / Right to dodge', fontStyle(type.body, '#FFFFFF'))
       .setOrigin(0.5).setDepth(z.tutorial + 1);
     t.setData('testid', 'tutorial-text');
     const tw = t.width + padX * 2, th = t.height + padY * 2;
     const bubble = this.add.graphics().setDepth(z.tutorial);
-    bubble.fillStyle(toColor(color.surfaceDim), 0.9);
-    bubble.fillRoundedRect(centerX - tw / 2, height * 0.28 - th / 2, tw, th, radius.md);
+    bubble.fillStyle(0x0F172A, 0.85);
+    bubble.fillRoundedRect(centerX - tw / 2, height * 0.24 - th / 2, tw, th, radius.md);
+    bubble.lineStyle(2, 0xFFA502, 1);
+    bubble.strokeRoundedRect(centerX - tw / 2, height * 0.24 - th / 2, tw, th, radius.md);
 
     // Vẽ 2 vạch phân làn demo
-    const g = this.add.graphics().setDepth(z.bg);
-    g.lineStyle(3, toColor(color.lane), 0.35);
+    const g = this.add.graphics().setDepth(z.bg + 1);
+    g.lineStyle(3, 0xFFFFFF, 0.6);
     for (let y = 0; y < height; y += 30) {
       g.strokeLineShape(new Phaser.Geom.Line(centerX - laneSpan / 2, y, centerX - laneSpan / 2, y + 16));
       g.strokeLineShape(new Phaser.Geom.Line(centerX + laneSpan / 2, y, centerX + laneSpan / 2, y + 16));
@@ -34,9 +40,9 @@ export class TutorialScene extends Phaser.Scene {
 
     // Demo Mèo ở dưới & Ong rơi từ trên xuống
     const catH = Math.round(laneSpan * 0.52);
-    const catW = Math.round(catH * 1.18);
+    const catW = catH;
     const beeSize = Math.round(laneSpan * 0.38);
-    const cat = this.add.image(centerX, catY, 'cat_idle').setDisplaySize(catW, catH).setDepth(z.actor);
+    const cat = this.add.image(centerX, catY, ctx.engine.getSelectedSkinTexture()).setDisplaySize(catW, catH).setDepth(z.actor);
     const bee = this.add.image(centerX, height * 0.40, 'bee_wasp').setDisplaySize(beeSize, beeSize).setDepth(z.actor);
 
     // Mèo nhảy né sang phải rồi về giữa

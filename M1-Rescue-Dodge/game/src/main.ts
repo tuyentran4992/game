@@ -18,7 +18,15 @@ class BootScene extends Phaser.Scene {
     // base path để chạy khi đóng gói zip (BR-05, không mạng ngoài)
     this.load.baseURL = './raw/';
     this.load.image('cat_idle', 'cat_idle.png');
+    this.load.image('cat_tuxedo', 'cat_tuxedo.png');
+    this.load.image('cat_royal', 'cat_royal.png');
+    this.load.image('cat_astro', 'cat_astro.png');
     this.load.image('bee_wasp', 'bee_wasp.png');
+    this.load.image('fish_item', 'fish_item.png');
+    this.load.image('fish_coin', 'fish_coin.png');
+    this.load.image('bg_day', 'bg_day.jpg');
+    this.load.image('bg_sunset', 'bg_sunset.jpg');
+    this.load.image('bg_night', 'bg_night.jpg');
     this.load.image('bg_gradient', 'bg_gradient.png');
     // F9 (ĐỢT 8): gắn âm thanh THẬT.
     // LƯU Ý: file mp3 thật trong assets/raw/ KHÔNG có đuôi .mp3 (bản có đuôi .mp3
@@ -49,10 +57,20 @@ const config: Phaser.Types.Core.GameConfig = {
   type: AUTO,
   parent: 'game',
   // BR-05: responsive mọi aspect, RESIZE tự co, giữ state
-  scale: { mode: Scale.RESIZE, width: '100%', height: '100%' },
+  scale: {
+    mode: Scale.RESIZE,
+    width: '100%',
+    height: '100%',
+  },
   backgroundColor: color.bg.top,
   scene: [BootScene, StartScene, TutorialScene, GameplayScene, GameOverScene],
-  render: { antialias: true, roundPixels: true },
+  render: {
+    antialias: true,
+    antialiasGL: true,
+    mipmapFilter: 'LINEAR_MIPMAP_LINEAR',
+    roundPixels: false,
+    pixelArt: false,
+  },
 };
 
 const game = new Phaser.Game(config);

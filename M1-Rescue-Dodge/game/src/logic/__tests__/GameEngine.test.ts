@@ -62,18 +62,17 @@ describe('GameEngine — level progression + palette (BR-14)', () => {
     expect(milestone.newLevel).toBe(2);
   });
 
-  it('palette vòng lại sau 3 level (BR-14)', () => {
+  it('palette chuyển theo ngưỡng level (Level 1..9: ngày, 10..19: hoàng hôn, 20+: đêm)', () => {
     expect(engine.getPaletteIndex(1)).toBe(0);
-    expect(engine.getPaletteIndex(2)).toBe(1);
-    expect(engine.getPaletteIndex(3)).toBe(2);
-    expect(engine.getPaletteIndex(4)).toBe(0); // vòng lại
-    expect(engine.getPaletteIndex(5)).toBe(1);
+    expect(engine.getPaletteIndex(9)).toBe(0);
+    expect(engine.getPaletteIndex(10)).toBe(1);
+    expect(engine.getPaletteIndex(19)).toBe(1);
+    expect(engine.getPaletteIndex(20)).toBe(2);
+    expect(engine.getPaletteIndex(50)).toBe(2);
   });
 
-  it('palette index đúng khi lên level qua dodge', () => {
-    // 5 né => score 10 (combo) => level 2 => palette index 1
-    for (let i = 0; i < 5; i++) engine.registerDodge();
-    expect(engine.paletteIndex).toBe(1);
+  it('palette index đúng khi bắt đầu và khi lên level cao', () => {
+    expect(engine.paletteIndex).toBe(0);
   });
 });
 
@@ -275,7 +274,7 @@ describe('GameEngine — Phase 4: Enemy Variety & Swarm Events', () => {
     }
   });
 
-  it('rollBeeType có thể ra speedy sau 10s', () => {
+  it('rollBeeType có thể ra speedy sau 10s ở Level 1', () => {
     const types = new Set();
     for (let i = 0; i < 50; i++) {
       types.add(engine.rollBeeType(15, 1));
@@ -284,15 +283,40 @@ describe('GameEngine — Phase 4: Enemy Variety & Swarm Events', () => {
     expect(types.has('speedy')).toBe(true);
   });
 
-  it('rollBeeType tại Level 3+ ra đủ 4 loại ong', () => {
+  it('rollBeeType tại Level 10+ (Hoàng hôn & Đêm) ra thêm ong zigzag', () => {
     const types = new Set();
     for (let i = 0; i < 100; i++) {
-      types.add(engine.rollBeeType(30, 3));
+      types.add(engine.rollBeeType(30, 10));
     }
     expect(types.has('normal')).toBe(true);
     expect(types.has('speedy')).toBe(true);
-    expect(types.has('fat')).toBe(true);
     expect(types.has('zigzag')).toBe(true);
+  });
+
+  it('shouldTriggerFatBeeBreather tính toán chính xác theo phương trình L(k) = 20 + 15k + 5k^2', () => {
+    // k = 0 -> Level 20
+    expect(engine.getNextFatBeeTargetLevel(0)).toBe(20);
+    expect(engine.shouldTriggerFatBeeBreather(19)).toBe(false);
+    expect(engine.shouldTriggerFatBeeBreather(20)).toBe(true);
+
+    engine.consumeFatBeeBreather(); // k = 1 -> Level 40 (+20)
+    expect(engine.getNextFatBeeTargetLevel()).toBe(40);
+    expect(engine.shouldTriggerFatBeeBreather(39)).toBe(false);
+    expect(engine.shouldTriggerFatBeeBreather(40)).toBe(true);
+
+    engine.consumeFatBeeBreather(); // k = 2 -> Level 70 (+30)
+    expect(engine.getNextFatBeeTargetLevel()).toBe(70);
+    expect(engine.shouldTriggerFatBeeBreather(69)).toBe(false);
+    expect(engine.shouldTriggerFatBeeBreather(70)).toBe(true);
+
+    engine.consumeFatBeeBreather(); // k = 3 -> Level 110 (+40)
+    expect(engine.getNextFatBeeTargetLevel()).toBe(110);
+
+    engine.consumeFatBeeBreather(); // k = 4 -> Level 160 (+50)
+    expect(engine.getNextFatBeeTargetLevel()).toBe(160);
+
+    engine.consumeFatBeeBreather(); // k = 5 -> Level 220 (+60)
+    expect(engine.getNextFatBeeTargetLevel()).toBe(220);
   });
 
   it('registerSwarmSurvive cộng +10 điểm và nạp +30% Fever', () => {
@@ -321,3 +345,71 @@ describe('GameEngine — Phase 4: Enemy Variety & Swarm Events', () => {
     expect(engine.canContinue()).toBe(false); // chỉ 1 lần continue per session
   });
 });
+
+describe('GameEngine — Meta Progression: Cat Skins & Shop', () => {
+  let engine: GameEngine;
+  beforeEach(() => { engine = new GameEngine(MECHANICS, { totalFish: 500 }); });
+
+  it('mặc định sở hữu skin ginger', () => {
+    expect(engine.isSkinUnlocked('ginger')).toBe(true);
+    expect(engine.selectedSkin).toBe('ginger');
+    expect(engine.getSelectedSkinTexture()).toBe('cat_idle');
+  });
+
+  it('mở khóa skin tuxedo trừ 450 cá vàng và tự trang bị', () => {
+    const success = engine.unlockSkin('tuxedo');
+    expect(success).toBe(true);
+    expect(engine.totalFish).toBe(50);
+    expect(engine.isSkinUnlocked('tuxedo')).toBe(true);
+    expect(engine.selectedSkin).toBe('tuxedo');
+    expect(engine.getSelectedSkinTexture()).toBe('cat_tuxedo');
+  });
+
+  it('không thể mở khóa skin nếu không đủ cá vàng', () => {
+    const poorEngine = new GameEngine(MECHANICS, { totalFish: 100 });
+    const success = poorEngine.unlockSkin('astro'); // giá 1800
+    expect(success).toBe(false);
+    expect(poorEngine.isSkinUnlocked('astro')).toBe(false);
+    expect(poorEngine.totalFish).toBe(100);
+  });
+
+  it('chuyển đổi skin đã mở khóa thành công', () => {
+    engine.unlockSkin('tuxedo');
+    expect(engine.selectSkin('ginger')).toBe(true);
+    expect(engine.selectedSkin).toBe('ginger');
+    expect(engine.selectSkin('tuxedo')).toBe(true);
+    expect(engine.selectedSkin).toBe('tuxedo');
+  });
+});
+
+describe('GameEngine — Quests & Achievements', () => {
+  let engine: GameEngine;
+  beforeEach(() => { engine = new GameEngine(MECHANICS, { totalFish: 0 }); engine.startNewGame(); });
+
+  it('tăng tiến độ quest né ong khi né thành công', () => {
+    for (let i = 0; i < 5; i++) engine.registerDodge();
+    const q = engine.getQuests().find(item => item.id === 'dodge_30');
+    expect(q?.progress).toBe(5);
+  });
+
+  it('tăng tiến độ quest ăn cá vàng khi nhặt cá', () => {
+    engine.collectFish();
+    engine.collectFish();
+    const q = engine.getQuests().find(item => item.id === 'collect_8_fish');
+    expect(q?.progress).toBe(2);
+  });
+
+  it('hoàn thành và nhận thưởng quest', () => {
+    engine.incrementQuest('survive_swarm', 1);
+    const q = engine.getQuests().find(item => item.id === 'survive_swarm');
+    expect(q?.progress).toBe(1);
+    expect(engine.hasUnclaimedQuests()).toBe(true);
+
+    const reward = engine.claimQuest('survive_swarm');
+    expect(reward).toBe(25);
+    expect(engine.totalFish).toBe(25);
+    expect(q?.claimed).toBe(true);
+    expect(engine.hasUnclaimedQuests()).toBe(false);
+  });
+});
+

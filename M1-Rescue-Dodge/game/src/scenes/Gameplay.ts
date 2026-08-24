@@ -47,12 +47,15 @@ export class GameplayScene extends Phaser.Scene {
   private bgG!: Phaser.GameObjects.Graphics;
   private speedLinesG!: Phaser.GameObjects.Graphics;
 
+  private bgImage?: Phaser.GameObjects.Image;
   private lanes: number[] = [];
   private currentLane = 1;
   private moveSeq = 0;
 
   private bees: Bee[] = [];
   private items: Item[] = [];
+  private pendingSpeedyLanes: Set<number> = new Set();
+  private fatBeeActive = false;
 
   private elapsed = 0;
   private lastTick = 0;
@@ -86,26 +89,36 @@ export class GameplayScene extends Phaser.Scene {
 
   private getCatSize(width: number, height: number): { w: number; h: number } {
     const laneSpan = this.getLaneSpan(width, height);
-    const h = Math.round(laneSpan * 0.52);
-    const w = Math.round(h * 1.18);
+    const h = Math.round(laneSpan * 0.56);
+    const w = h;
     return { w, h };
   }
 
   private getBeeSize(width: number, height: number): number {
     const laneSpan = this.getLaneSpan(width, height);
-    return Math.round(laneSpan * 0.38);
+    return Math.round(laneSpan * 0.46);
   }
 
   private isResumeMode = false;
 
   init(data?: { resume?: boolean }) {
     this.isResumeMode = data?.resume === true;
+    this.bgImage = undefined;
+    this.bgG = undefined as any;
+    this.bees = [];
+    this.items = [];
+    this.pendingSpeedyLanes.clear();
+    this.fatBeeActive = false;
   }
 
   async create(data?: { resume?: boolean }) {
     const { width, height } = this.scale;
+    this.pendingSpeedyLanes.clear();
+    this.fatBeeActive = false;
     const isResume = data?.resume === true || this.isResumeMode === true;
     this.isResumeMode = false;
+    this.bgImage = undefined;
+    this.bgG = undefined as any;
 
     if (isResume) {
       ctx.engine.resumeGame();
@@ -187,7 +200,7 @@ export class GameplayScene extends Phaser.Scene {
 
     this.feverAura = this.add.graphics().setDepth(z.actor - 1).setAlpha(0);
 
-    this.cat = this.add.image(this.lanes[this.currentLane], catY, 'cat_idle')
+    this.cat = this.add.image(this.lanes[this.currentLane], catY, ctx.engine.getSelectedSkinTexture())
       .setDisplaySize(catSize.w, catSize.h).setDepth(z.actor);
     this.cat.setData('testid', 'cat');
 
@@ -196,35 +209,52 @@ export class GameplayScene extends Phaser.Scene {
     this.magnetIndicator = this.add.text(this.cat.x, this.cat.y - catSize.h * 0.65, '🧲', { fontSize: '24px' })
       .setOrigin(0.5).setDepth(z.actor + 2).setAlpha(0);
 
-    // Controls
+    // Controls: Mỗi thao tác chỉ chuyển đúng 1 làn (-1 hoặc +1), phản hồi tức thì 0ms
     let pointerDownX = 0;
     let pointerDownY = 0;
-    let pointerDownTime = 0;
+    let swipedInGesture = false;
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (!this.running) return;
       pointerDownX = p.x;
       pointerDownY = p.y;
-      pointerDownTime = this.time.now;
+      swipedInGesture = false;
+    });
+
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (!this.running || !p.isDown || swipedInGesture) return;
+      const dx = p.x - pointerDownX;
+      const dy = p.y - pointerDownY;
+
+      // Nhận diện vuốt ngang tức thì (Threshold 20px)
+      if (Math.abs(dx) > 20 && Math.abs(dx) > Math.abs(dy)) {
+        swipedInGesture = true;
+        if (dx < 0) {
+          this.moveLane(-1); // Vuốt trái -> sang trái đúng 1 làn
+        } else {
+          this.moveLane(1);  // Vuốt phải -> sang phải đúng 1 làn
+        }
+      }
     });
 
     this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
       if (!this.running) return;
-      const dx = p.x - pointerDownX;
-      const dy = p.y - pointerDownY;
-      const elapsedMs = this.time.now - pointerDownTime;
 
-      if (Math.abs(dx) > 20 && Math.abs(dx) > Math.abs(dy) && elapsedMs < 500) {
-        if (dx < 0) this.moveLane(-1);
-        else this.moveLane(1);
-        return;
+      // Nếu người chơi chỉ Tap/Click nhanh mà không vuốt
+      if (!swipedInGesture) {
+        const catCurrentX = this.cat ? this.cat.x : width / 2;
+        if (p.x < catCurrentX - 15) {
+          this.moveLane(-1); // Chạm bên trái con mèo -> sang trái 1 làn
+        } else if (p.x > catCurrentX + 15) {
+          this.moveLane(1);  // Chạm bên phải con mèo -> sang phải 1 làn
+        } else {
+          // Chạm ngay giữa con mèo: chuyển sang làn thoáng hơn
+          if (this.currentLane === 0) this.moveLane(1);
+          else if (this.currentLane === 2) this.moveLane(-1);
+          else this.moveLane(p.x < width / 2 ? -1 : 1);
+        }
       }
-
-      if (p.x < width / 2) {
-        this.moveLane(-1);
-      } else {
-        this.moveLane(1);
-      }
+      swipedInGesture = false;
     });
 
     this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
@@ -250,7 +280,15 @@ export class GameplayScene extends Phaser.Scene {
     });
 
     this.startBgm();
-    this.scale.on('resize', (g: Phaser.Structs.Size) => this.onResize(g));
+    const resizeListener = (g: Phaser.Structs.Size) => this.onResize(g);
+    this.scale.on('resize', resizeListener);
+    this.events.once('shutdown', () => {
+      this.scale.off('resize', resizeListener);
+      if (this.bgImage && this.bgImage.active) this.bgImage.destroy();
+      if (this.bgG && this.bgG.active) this.bgG.destroy();
+      this.bgImage = undefined;
+      this.bgG = undefined as any;
+    });
   }
 
   private startBgm() {
@@ -338,22 +376,22 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private drawLevelBg(level: number) {
-    if (this.bgG) this.bgG.destroy();
-    const pal = paletteForLevel(level);
     const { width, height } = this.scale;
+    const bgKey = level < 10 ? 'bg_day' : (level < 20 ? 'bg_sunset' : 'bg_night');
+
+    if (!this.bgImage || !this.bgImage.active) {
+      this.bgImage = this.add.image(width / 2, height / 2, bgKey).setDepth(z.bg);
+    } else {
+      this.bgImage.setTexture(bgKey);
+    }
+    const bgScale = Math.max(width / this.bgImage.width, height / this.bgImage.height);
+    this.bgImage.setPosition(width / 2, height / 2).setScale(bgScale);
+
+    if (this.bgG && this.bgG.active) {
+      this.bgG.destroy();
+    }
     const g = this.add.graphics();
     this.bgG = g;
-
-    const topC = Phaser.Display.Color.HexStringToColor(pal.bgTop);
-    const botC = Phaser.Display.Color.HexStringToColor(pal.bgBottom);
-    const steps = 24;
-    for (let i = 0; i < steps; i++) {
-      const c = Phaser.Display.Color.Interpolate.ColorWithColor(topC, botC, steps, i);
-      const y1 = height * (i / steps);
-      const y2 = height * ((i + 1) / steps);
-      g.fillStyle(Phaser.Display.Color.GetColor(c.r, c.g, c.b), 1);
-      g.fillRect(0, y1, width, y2 - y1 + 1);
-    }
 
     const laneSpan = (this.lanes[1] - this.lanes[0]);
     const div1X = (this.lanes[0] + this.lanes[1]) / 2;
@@ -361,20 +399,23 @@ export class GameplayScene extends Phaser.Scene {
     const leftEdge = this.lanes[0] - laneSpan / 2;
     const rightEdge = this.lanes[2] + laneSpan / 2;
 
-    g.fillStyle(toColor(pal.grass), 0.15);
+    // Road asphalt backing
+    g.fillStyle(0x0F172A, 0.40);
     g.fillRect(leftEdge, 0, rightEdge - leftEdge, height);
 
-    g.lineStyle(4, toColor(pal.lane), 0.4);
+    // Dashed center lane lines
+    g.lineStyle(4, 0xFFFFFF, 0.60);
     for (let y = 0; y < height; y += 32) {
       g.strokeLineShape(new Phaser.Geom.Line(div1X, y, div1X, y + 18));
       g.strokeLineShape(new Phaser.Geom.Line(div2X, y, div2X, y + 18));
     }
 
-    g.lineStyle(3, toColor(pal.lane), 0.25);
+    // Outer lane boundaries
+    g.lineStyle(3, 0xFFFFFF, 0.80);
     g.strokeLineShape(new Phaser.Geom.Line(leftEdge, 0, leftEdge, height));
     g.strokeLineShape(new Phaser.Geom.Line(rightEdge, 0, rightEdge, height));
 
-    g.setDepth(z.bg);
+    g.setDepth(z.bg + 1);
   }
 
   private moveLane(dir: number) {
@@ -441,22 +482,32 @@ export class GameplayScene extends Phaser.Scene {
     this.lastTick += dt;
     if (this.lastTick >= 1) {
       this.lastTick -= 1;
-      ctx.engine.tickSecond();
+      const res = ctx.engine.tickSecond();
+      if (res.levelUp && res.newLevel) {
+        this.onLevelUp(res.newLevel);
+      }
       this.updateHud();
     }
 
+    const currentLevel = ctx.engine.getLevel();
+
+    // Kiểm tra kích hoạt Sự kiện "Ong Béo Thư Giãn" theo mốc lũy tiến (Level 20 -> 45 -> 80...)
+    if (!this.fatBeeActive && !this.swarmActive && ctx.engine.shouldTriggerFatBeeBreather(currentLevel)) {
+      ctx.engine.consumeFatBeeBreather();
+      this.triggerFatBeeBreather();
+    }
+
     // Kiểm tra kích hoạt Sự kiện Bão Ong (Swarm Wave)
-    if (!this.swarmActive && this.elapsed - this.lastSwarmTime >= MECHANICS.swarmIntervalSec) {
+    if (!this.swarmActive && !this.fatBeeActive && this.elapsed - this.lastSwarmTime >= MECHANICS.swarmIntervalSec) {
       this.lastSwarmTime = this.elapsed;
       this.triggerSwarmWave();
     }
 
     // spawn ong theo độ khó tăng dần theo level & thời gian
-    const diff = ctx.engine.difficulty(this.elapsed, ctx.engine.getLevel());
-    const currentLevel = ctx.engine.getLevel();
+    const diff = ctx.engine.difficulty(this.elapsed, currentLevel);
     const spawnInterval = Math.max(0.38, 1.35 - (diff.speed - MECHANICS.startSpeed) * 0.0035 - (currentLevel - 1) * 0.10);
     this.lastSpawn += dt;
-    if (!this.swarmActive && this.lastSpawn >= spawnInterval && this.bees.length < diff.spawnCount + 2) {
+    if (!this.swarmActive && !this.fatBeeActive && this.lastSpawn >= spawnInterval && this.bees.length < diff.spawnCount + 2) {
       const spawned = this.spawnBee(diff.speed);
       if (spawned) {
         this.lastSpawn = 0;
@@ -494,7 +545,7 @@ export class GameplayScene extends Phaser.Scene {
       }
 
       // Ăn vật phẩm (Collision)
-      if (Math.abs(it.container.y - catY) < 45 && Math.abs(it.container.x - catX) < 45) {
+      if (Math.abs(it.container.y - catY) < 52 && Math.abs(it.container.x - catX) < 52) {
         it.collected = true;
         this.collectItem(it);
         it.container.destroy();
@@ -510,17 +561,34 @@ export class GameplayScene extends Phaser.Scene {
       b.container.y += diff.speed * b.speedMult * dt;
       const isFat = b.type === 'fat';
 
-      // Xử lý cơ chế rẽ làn của Ong Zigzag
+      // Xử lý cơ chế rẽ làn của Ong Zigzag (chỉ rẽ vào làn an toàn, không kẹp dính)
       if (b.type === 'zigzag' && !b.swerved && b.container.y > this.scale.height * 0.38) {
         b.swerved = true;
-        const targetLane = b.lane === 0 ? 1 : (b.lane === 2 ? 1 : (Math.random() < 0.5 ? 0 : 2));
-        b.lane = targetLane;
-        this.tweens.add({
-          targets: b.container,
-          x: this.lanes[targetLane],
-          duration: 260,
-          ease: 'sine.inout',
+        const candidates = b.lane === 0 ? [1] : (b.lane === 2 ? [1] : [0, 2]);
+        const safeCandidates = candidates.filter(target => {
+          const hasNearbyBee = this.bees.some(other =>
+            other !== b &&
+            other.container &&
+            other.container.active &&
+            (other.lane === target || other.secondaryLane === target) &&
+            Math.abs(other.container.y - b.container.y) < 140
+          );
+          return !hasNearbyBee;
         });
+
+        const targetLane = safeCandidates.length > 0
+          ? safeCandidates[Math.floor(Math.random() * safeCandidates.length)]
+          : b.lane;
+
+        if (targetLane !== b.lane) {
+          b.lane = targetLane;
+          this.tweens.add({
+            targets: b.container,
+            x: this.lanes[targetLane],
+            duration: 260,
+            ease: 'sine.inout',
+          });
+        }
       }
 
       // Né thành công
@@ -572,6 +640,9 @@ export class GameplayScene extends Phaser.Scene {
       }
     }
     this.bees = this.bees.filter(b => b.container && b.container.active);
+    if (this.fatBeeActive && !this.bees.some(b => b.type === 'fat')) {
+      this.fatBeeActive = false;
+    }
 
     this.drawFeverBar();
     this.drawSpeedLines(diff.speed, isFever);
@@ -646,6 +717,9 @@ export class GameplayScene extends Phaser.Scene {
 
   private getOccupiedLanesAtTop(topYThreshold = 200): Set<number> {
     const occupied = new Set<number>();
+    // Khóa luôn các làn đang có biển cảnh báo ⚠️ chờ rơi
+    this.pendingSpeedyLanes.forEach(l => occupied.add(l));
+
     for (const b of this.bees) {
       if (b.container && b.container.active && b.container.y < topYThreshold) {
         occupied.add(b.lane);
@@ -659,13 +733,17 @@ export class GameplayScene extends Phaser.Scene {
 
   // Thuật toán quét quỹ đạo thời gian tới (Trajectory Arrival Time Solver)
   private willBlockAllLanes(newLane: number, newSecondaryLane: number | undefined, newSpeedMult: number, spawnY: number, baseSpeed: number): boolean {
-    const catY = this.cat.y;
+    const catY = this.cat ? this.cat.y : this.scale.height * 0.78;
     const tNew = (catY - spawnY) / (baseSpeed * newSpeedMult);
     const blockedLanes = new Set<number>();
     blockedLanes.add(newLane);
     if (newSecondaryLane !== undefined) blockedLanes.add(newSecondaryLane);
 
-    const safeTimeDelta = 0.28;
+    // Tính luôn các làn đang có biển cảnh báo ⚠️
+    this.pendingSpeedyLanes.forEach(l => blockedLanes.add(l));
+
+    // safeTimeDelta 0.38s: đảm bảo luôn có đủ thời gian phản xạ (khoảng cách an toàn)
+    const safeTimeDelta = 0.38;
 
     for (const b of this.bees) {
       if (!b.container || !b.container.active) continue;
@@ -676,13 +754,15 @@ export class GameplayScene extends Phaser.Scene {
       }
     }
 
+    // Nếu chặn cả 3 làn (hoặc không còn làn nào an toàn) -> CHẶN
     return blockedLanes.size >= 3;
   }
 
   private spawnBee(speed: number): boolean {
     this.bees = this.bees.filter(b => b.container && b.container.active);
 
-    if (this.bees.some(b => b.type === 'fat')) {
+    // Không spawn bất kỳ con ong nào khác khi đang trong đợt Ong Béo Thư Giãn
+    if (this.fatBeeActive || this.bees.some(b => b.type === 'fat')) {
       return false;
     }
 
@@ -691,46 +771,40 @@ export class GameplayScene extends Phaser.Scene {
       return false;
     }
 
-    let type = ctx.engine.rollBeeType(this.elapsed, ctx.engine.getLevel());
+    const type = ctx.engine.rollBeeType(this.elapsed, ctx.engine.getLevel());
     const beeSize = this.getBeeSize(this.scale.width, this.scale.height);
-
-    if ((occupied.size > 0 || this.bees.length > 1) && type === 'fat') {
-      type = 'normal';
-    }
-
-    if (type === 'fat') {
-      const side = Math.random() < 0.5 ? 0 : 1;
-      const lane1 = side;
-      const lane2 = side + 1;
-      const midX = (this.lanes[lane1] + this.lanes[lane2]) / 2;
-      this.createFatBeeEntity(midX, lane1, lane2, beeSize * 1.55);
-      return true;
-    }
 
     const freeLanes = [0, 1, 2].filter(l => !occupied.has(l));
     if (freeLanes.length === 0) return false;
 
     const speedMult = type === 'speedy' ? 1.18 : 1.0;
-    let validLanes = freeLanes.filter(l => !this.willBlockAllLanes(l, undefined, speedMult, -beeSize, speed));
+    const validLanes = freeLanes.filter(l => !this.willBlockAllLanes(l, undefined, speedMult, -beeSize, speed));
+    
+    // NGUYÊN TẮC VÀNG: Nếu không còn làn nào an toàn, HỦY SPAWN để giữ đường sống cho người chơi!
     if (validLanes.length === 0) {
-      validLanes = freeLanes;
+      return false;
     }
 
     const lane = validLanes[Math.floor(Math.random() * validLanes.length)];
 
     if (type === 'speedy') {
+      this.pendingSpeedyLanes.add(lane);
       const beacon = this.add.text(this.lanes[lane], 30, '⚠️', { fontSize: '20px' }).setOrigin(0.5).setDepth(z.hud);
       this.tweens.add({
         targets: beacon,
         scale: 1.3,
         alpha: 0.3,
-        duration: 200,
+        duration: 130,
         yoyo: true,
-        repeat: 2,
+        repeat: 1, // Tổng thời gian cảnh báo ~0.5s dứt khoát
         onComplete: () => {
+          this.pendingSpeedyLanes.delete(lane);
           beacon.destroy();
           if (!this.running) return;
-          this.createBeeEntity('speedy', lane, beeSize * 0.90, 1.18, 0xFF4757);
+          // Kiểm tra an toàn lần 2 trước khi thả
+          const canSpawnSpeedy = !this.willBlockAllLanes(lane, undefined, 1.18, -beeSize * 0.90, speed);
+          const finalSpeedMult = canSpawnSpeedy ? 1.18 : 1.0;
+          this.createBeeEntity('speedy', lane, beeSize * 0.90, finalSpeedMult, 0xFF4757);
         },
       });
     } else if (type === 'zigzag') {
@@ -740,15 +814,18 @@ export class GameplayScene extends Phaser.Scene {
     }
 
     const currentLevel = ctx.engine.getLevel();
-    if (currentLevel >= 2 && occupied.size === 0 && Math.random() < 0.30) {
+    if (currentLevel >= 5 && occupied.size === 0 && Math.random() < 0.25) {
       const remainingLanes = validLanes.filter(l => l !== lane);
       if (remainingLanes.length >= 2) {
         const secondLane = remainingLanes[0];
-        this.time.delayedCall(240, () => {
+        this.time.delayedCall(280, () => {
           if (this.running && !this.swarmActive && !this.bees.some(b => b.type === 'fat')) {
-            const secondType = ctx.engine.rollBeeType(this.elapsed, currentLevel);
-            if (secondType !== 'fat') {
-              this.createBeeEntity(secondType === 'speedy' ? 'speedy' : 'normal', secondLane, beeSize, 1.0);
+            // Kiểm tra an toàn trước khi spawn con thứ 2
+            if (!this.willBlockAllLanes(secondLane, undefined, 1.0, -beeSize, speed)) {
+              const secondType = ctx.engine.rollBeeType(this.elapsed, currentLevel);
+              if (secondType !== 'fat') {
+                this.createBeeEntity(secondType === 'speedy' ? 'speedy' : 'normal', secondLane, beeSize, 1.0);
+              }
             }
           }
         });
@@ -899,24 +976,30 @@ export class GameplayScene extends Phaser.Scene {
   private spawnSpecificItem(type: ItemType, lane: number, yPos: number) {
     const container = this.add.container(this.lanes[lane], yPos).setDepth(z.actor - 1);
     const bg = this.add.graphics();
-    let iconStr = '🐟';
-    let haloColor = 0xFFD700;
 
-    if (type === 'shield') {
-      iconStr = '🛡️';
-      haloColor = 0x00E5FF;
-    } else if (type === 'magnet') {
-      iconStr = '🧲';
-      haloColor = 0xFF4757;
+    if (type === 'fish') {
+      bg.fillStyle(0xFFFFFF, 0.18);
+      bg.fillCircle(0, 0, 24);
+      bg.lineStyle(2.5, 0xFFD700, 0.95);
+      bg.strokeCircle(0, 0, 24);
+
+      const sprite = this.add.image(0, 0, 'fish_item').setDisplaySize(48, 48);
+      container.add([bg, sprite]);
+    } else {
+      let iconStr = '🛡️';
+      let haloColor = 0x00E5FF;
+      if (type === 'magnet') {
+        iconStr = '🧲';
+        haloColor = 0xFF4757;
+      }
+      bg.fillStyle(haloColor, 0.20);
+      bg.fillCircle(0, 0, 24);
+      bg.lineStyle(2.5, haloColor, 0.95);
+      bg.strokeCircle(0, 0, 24);
+
+      const txt = this.add.text(0, 0, iconStr, { fontSize: '24px' }).setOrigin(0.5);
+      container.add([bg, txt]);
     }
-
-    bg.fillStyle(haloColor, 0.25);
-    bg.fillCircle(0, 0, 22);
-    bg.lineStyle(2, haloColor, 0.9);
-    bg.strokeCircle(0, 0, 22);
-
-    const txt = this.add.text(0, 0, iconStr, { fontSize: '22px' }).setOrigin(0.5);
-    container.add([bg, txt]);
 
     this.tweens.add({
       targets: container,
@@ -986,6 +1069,33 @@ export class GameplayScene extends Phaser.Scene {
       onComplete: () => this.tweens.add({ targets: this.levelPopup, alpha: 0, duration: 300, delay: 1000, ease: 'cubic.in' }),
     });
     this.playSfx('sfx_levelup', 0.45);
+  }
+
+  private triggerFatBeeBreather() {
+    this.fatBeeActive = true;
+    this.playSfx('sfx_combo', 0.6, 1.2);
+    this.showPowerupPopup('👑 FAT BEE BREAK! 🐟', '#FFD700');
+
+    const side = Math.random() < 0.5 ? 0 : 1;
+    const lane1 = side;
+    const lane2 = side + 1;
+    const safeLane = side === 0 ? 2 : 0;
+    const midX = (this.lanes[lane1] + this.lanes[lane2]) / 2;
+    const beeSize = this.getBeeSize(this.scale.width, this.scale.height);
+
+    // Thả chú Ong Béo bay chậm rãi ở 2 làn
+    this.time.delayedCall(300, () => {
+      if (!this.running) return;
+      this.createFatBeeEntity(midX, lane1, lane2, beeSize * 1.6);
+    });
+
+    // Thả chuỗi 3 con cá vàng ở làn an toàn còn lại
+    for (let i = 0; i < 3; i++) {
+      this.time.delayedCall(350 + i * 260, () => {
+        if (!this.running) return;
+        this.spawnSpecificItem('fish', safeLane, -40);
+      });
+    }
   }
 
   private showComboPopup() {

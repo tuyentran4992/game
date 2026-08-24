@@ -1,10 +1,13 @@
 import Phaser from 'phaser';
-import { color, type, sp, radius, shadow, z, dur, fontStyle, toColor } from '../tokens';
-import { drawButton, drawGradientBg } from '../ui';
+import { color, type, radius, shadow, z, dur, fontStyle, toColor } from '../tokens';
+import { drawButton } from '../ui';
 import { ctx } from '../context';
 import { sdk } from '../sdk-instance';
 
 export class GameOverScene extends Phaser.Scene {
+  private root!: Phaser.GameObjects.Container;
+  private bg!: Phaser.GameObjects.Image;
+
   constructor() { super({ key: 'GameOverScene' }); }
 
   async create(data: { score: number; bestScore: number; fish?: number; totalFish?: number; isNewRecord: boolean }) {
@@ -14,105 +17,223 @@ export class GameOverScene extends Phaser.Scene {
     const fish = data?.fish ?? 0;
     const isNewRecord = data?.isNewRecord ?? false;
 
-    // F9 (ĐỢT 8): hiện màn Game Over → sfx_gameover; đảm bảo BGM đã dừng.
     this.sound.stopByKey('bgm_main');
-    if (this.cache.audio.exists('sfx_gameover')) this.sound.play('sfx_gameover', { volume: 0.4 });
-
-    // Nền + chi tiết rẻ tiền (F7: bụi cỏ + vạch lane đứt §2.3)
-    drawGradientBg(this, color.bg.top, color.bg.bottom, color.grass);
-    this.drawDecor(width, height);
-
-    // overlay tối (z40) — DESIGN-SPEC §4.4
-    const overlay = this.add.rectangle(width / 2, height / 2, width, height, toColor(color.overlay), 0)
-      .setDepth(z.overlay);
-    this.tweens.add({ targets: overlay, alpha: 0.55, duration: dur.scene, ease: 'cubic.inout' });
-
-    // ---- Panel (§3.3) + nội dung trong 1 container để slide-up (F7) ----
-    const pw = Math.min(480, width - sp[8] * 2);
-    const ph = Math.min(580, height - sp[8] * 2);
-    const cx = width / 2;
-    const cy = height / 2;
-    // Bắt đầu lệch xuống 48px + trong suốt → slide-up (dur.slow) về giữa
-    const root = this.add.container(cx, cy + 48).setDepth(z.panel).setAlpha(0);
-
-    // Panel graphics (local 0,0): shadow trước, fill surface, border primary 4px
-    const g = this.add.graphics();
-    g.fillStyle(toColor(color.shadow), shadow.panel.alpha);
-    g.fillRoundedRect(-pw / 2, -ph / 2 + shadow.panel.dy, pw, ph, radius.lg);
-    g.fillStyle(toColor(color.surface), 1);
-    g.fillRoundedRect(-pw / 2, -ph / 2, pw, ph, radius.lg);
-    g.lineStyle(4, toColor(color.primary), 1);
-    g.strokeRoundedRect(-pw / 2, -ph / 2, pw, ph, radius.lg);
-    root.add(g);
-
-    // Bố cục nội dung theo con trỏ y (local, padding sp[8]=32 mỗi cạnh)
-    const pad = sp[8];
-    let y = -ph / 2 + pad;
-
-    // Title "GAME OVER" — type.h1, color.danger, bóng nhẹ cân đối (F7)
-    const title = this.add.text(0, y + 21, 'GAME OVER', fontStyle(type.h1, color.danger))
-      .setOrigin(0.5).setDepth(z.panel + 1);
-    title.setShadow(0, 2, color.shadow, 3, false, true);
-    root.add(title);
-    y += 42 + sp[4]; // 16
-
-    // Kỷ lục mới (nếu có) — type.small warning, ngay dưới title
-    if (isNewRecord) {
-      const star = this.add.text(0, y + 9, '★ NEW RECORD!', fontStyle(type.small, color.warning))
-        .setOrigin(0.5).setDepth(z.panel + 1);
-      root.add(star);
-      y += 24;
+    if (this.cache.audio.exists('sfx_gameover')) {
+      this.sound.play('sfx_gameover', { volume: 0.45 });
     }
 
-    // ĐIỂM (label) + final-score (data-testid=final-score)
-    const fsLabel = this.add.text(0, y + 12, 'SCORE', fontStyle(type.small, color.textPrimary))
-      .setOrigin(0.5).setDepth(z.panel + 1);
-    root.add(fsLabel);
-    y += 24 + sp[1]; // 4
+    // 1. High-resolution Background
+    this.bg = this.add.image(width / 2, height / 2, 'bg_day').setDepth(z.bg);
+    const bgScale = Math.max(width / this.bg.width, height / this.bg.height);
+    this.bg.setScale(bgScale);
 
-    const finalScore = this.add.text(0, y + 24, String(score), fontStyle(type.display, color.textPrimary))
-      .setOrigin(0.5).setDepth(z.panel + 1);
+    // 2. Dark backdrop overlay
+    const overlay = this.add.graphics().setDepth(z.bg + 1);
+    overlay.fillStyle(0x0A0E1A, 0.75);
+    overlay.fillRect(0, 0, width, height);
+    overlay.setInteractive(new Phaser.Geom.Rectangle(0, 0, width, height), Phaser.Geom.Rectangle.Contains);
+
+    // 3. Mobile-First Card Dimensions
+    const pw = Math.min(330, width - 32);
+    const canCont = ctx.engine.canContinue();
+    const isShort = height < 560;
+    const ph = isShort ? (canCont ? 460 : 400) : (canCont ? 500 : 435);
+    const cx = width / 2;
+    const cy = height / 2;
+
+    this.root = this.add.container(cx, cy).setDepth(z.panel).setAlpha(0).setScale(0.88);
+
+    // 4. Panel Background Graphics (Drawn inside root container centered at 0, 0)
+    const panelG = this.add.graphics();
+    // Ambient Drop Shadow
+    panelG.fillStyle(toColor(color.shadow), shadow.panel.alpha);
+    panelG.fillRoundedRect(-pw / 2, -ph / 2 + shadow.panel.dy, pw, ph, radius.lg);
+    // Panel Surface Fill
+    panelG.fillStyle(0xFFFFFF, 1);
+    panelG.fillRoundedRect(-pw / 2, -ph / 2, pw, ph, radius.lg);
+    // Primary Color Border
+    panelG.lineStyle(4, toColor(color.primary), 1);
+    panelG.strokeRoundedRect(-pw / 2, -ph / 2, pw, ph, radius.lg);
+    this.root.add(panelG);
+
+    let curY = -ph / 2 + (isShort ? 24 : 30);
+
+    // 5. Header: "GAME OVER"
+    const title = this.add.text(0, curY, 'GAME OVER', fontStyle({ size: isShort ? '24px' : '26px', weight: '900', lh: 1 }, color.danger))
+      .setOrigin(0.5);
+    title.setShadow(0, 2, 'rgba(231, 76, 60, 0.35)', 4, false, true);
+    this.root.add(title);
+    curY += isShort ? 36 : 42;
+
+    // 6. Mascot Avatar Sub-Container (Cat reaction with soft badge)
+    const catBadgeRadius = isShort ? 28 : 34;
+    const catSize = isShort ? 54 : 64;
+
+    const avatarContainer = this.add.container(0, curY);
+
+    const catBadgeG = this.add.graphics();
+    catBadgeG.fillStyle(0xFFF3D6, 1);
+    catBadgeG.fillCircle(0, 0, catBadgeRadius);
+    catBadgeG.lineStyle(2, 0xFFA502, 1);
+    catBadgeG.strokeCircle(0, 0, catBadgeRadius);
+    avatarContainer.add(catBadgeG);
+
+    const catImg = this.add.image(0, 0, ctx.engine.getSelectedSkinTexture())
+      .setDisplaySize(catSize, catSize);
+    avatarContainer.add(catImg);
+
+    // Dazed / sweat reaction emoji
+    const sweatTxt = this.add.text(catBadgeRadius * 0.75, -catBadgeRadius * 0.6, '💧', { fontSize: isShort ? '14px' : '16px' })
+      .setOrigin(0.5);
+    avatarContainer.add(sweatTxt);
+
+    this.root.add(avatarContainer);
+
+    // Bouncing/breathing animation on avatarContainer (container scale starts at 1, so 1.05 / 0.96 breathes naturally without distortion)
+    this.tweens.add({
+      targets: avatarContainer,
+      scaleY: 1.05,
+      scaleX: 0.96,
+      duration: 1200,
+      yoyo: true,
+      repeat: -1,
+      ease: 'sine.inout',
+    });
+    curY += catBadgeRadius + (isShort ? 14 : 18);
+
+    // 7. New Record Banner (If achieved)
+    if (isNewRecord) {
+      const bannerW = pw - 60;
+      const bannerH = 26;
+      const bannerG = this.add.graphics();
+      bannerG.fillStyle(0xFEF3C7, 1);
+      bannerG.fillRoundedRect(-bannerW / 2, curY - bannerH / 2, bannerW, bannerH, 13);
+      bannerG.lineStyle(1.5, 0xF59E0B, 1);
+      bannerG.strokeRoundedRect(-bannerW / 2, curY - bannerH / 2, bannerW, bannerH, 13);
+      this.root.add(bannerG);
+
+      const recordTxt = this.add.text(0, curY, '★ NEW BEST RECORD! ★', fontStyle({ size: '12px', weight: '800', lh: 1 }, '#D97706'))
+        .setOrigin(0.5);
+      this.root.add(recordTxt);
+
+      this.spawnSparkles(cx, cy + curY);
+      curY += 28;
+    }
+
+    // 8. Score Card Box (Dedicated sleek card with count-up animation)
+    const scoreBoxW = pw - 48;
+    const scoreBoxH = isShort ? 66 : 74;
+    const scoreBoxG = this.add.graphics();
+    scoreBoxG.fillStyle(0xF8FAFC, 1);
+    scoreBoxG.fillRoundedRect(-scoreBoxW / 2, curY, scoreBoxW, scoreBoxH, 14);
+    scoreBoxG.lineStyle(1.5, 0xE2E8F0, 1);
+    scoreBoxG.strokeRoundedRect(-scoreBoxW / 2, curY, scoreBoxW, scoreBoxH, 14);
+    this.root.add(scoreBoxG);
+
+    const scoreLabel = this.add.text(0, curY + 14, 'FINAL SCORE', fontStyle({ size: '11px', weight: '800', lh: 1 }, color.textSecondary))
+      .setOrigin(0.5);
+    this.root.add(scoreLabel);
+
+    const finalScore = this.add.text(0, curY + (isShort ? 42 : 46), '0', fontStyle({ size: isShort ? '32px' : '36px', weight: '900', lh: 1 }, color.textPrimary))
+      .setOrigin(0.5);
     finalScore.setData('testid', 'final-score');
-    root.add(finalScore);
-    y += 48 + sp[4];
+    this.root.add(finalScore);
 
-    // ĐIỂM CAO (label) + best-score (data-testid=best-score)
-    const bsLabel = this.add.text(0, y + 10, 'BEST: ' + best, fontStyle(type.small, color.textPrimary))
-      .setOrigin(0.5).setDepth(z.panel + 1);
-    bsLabel.setData('testid', 'best-score');
-    root.add(bsLabel);
-    y += 22;
+    // Number Count-Up Tween
+    const scoreCounter = { val: 0 };
+    this.tweens.add({
+      targets: scoreCounter,
+      val: score,
+      duration: Math.min(650, Math.max(300, score * 12)),
+      ease: 'cubic.out',
+      onUpdate: () => {
+        finalScore.setText(String(Math.floor(scoreCounter.val)));
+      },
+      onComplete: () => {
+        finalScore.setText(String(score));
+        this.tweens.add({
+          targets: finalScore,
+          scale: 1.15,
+          duration: 120,
+          yoyo: true,
+          ease: 'back.out',
+        });
+      },
+    });
+    curY += scoreBoxH + (isShort ? 12 : 16);
 
-    // CÁ VÀNG THU THẬP ĐƯỢC
-    const fishLabel = this.add.text(0, y + 10, `🐟 ${fish} FISH COLLECTED`, fontStyle(type.small, color.warning))
-      .setOrigin(0.5).setDepth(z.panel + 1);
-    root.add(fishLabel);
-    y += 28 + sp[4];
+    // 9. Stat Badges (Best Score & Fish Pills)
+    const pillW = (pw - 56) / 2;
+    const pillH = isShort ? 32 : 36;
+    const pillY = curY + pillH / 2;
 
-    // Nút "Chơi lại" = btn-primary (§3.1) — luôn có; phía trên
-    const btnWidth = Math.min(280, pw - 32);
-    const buttonsY = y + 36; // giữa nút 72px
-    const retryBtn = drawButton(this, 0, buttonsY, 'Retry', { width: btnWidth, testid: 'retry-btn' });
-    root.add(retryBtn.container);
+    // Left Pill: Best Score
+    const bestPillG = this.add.graphics();
+    bestPillG.fillStyle(0xF1F5F9, 1);
+    bestPillG.fillRoundedRect(-pw / 2 + 24, curY, pillW, pillH, 10);
+    bestPillG.lineStyle(1, 0xCBD5E1, 1);
+    bestPillG.strokeRoundedRect(-pw / 2 + 24, curY, pillW, pillH, 10);
+    this.root.add(bestPillG);
+
+    const bestTxt = this.add.text(-pw / 2 + 24 + pillW / 2, pillY, `🏆 BEST: ${best}`, fontStyle({ size: '12px', weight: '800', lh: 1 }, color.textPrimary))
+      .setOrigin(0.5);
+    bestTxt.setData('testid', 'best-score');
+    this.root.add(bestTxt);
+
+    // Right Pill: Fish Collected
+    const fishPillG = this.add.graphics();
+    fishPillG.fillStyle(0xFFFBEB, 1);
+    fishPillG.fillRoundedRect(pw / 2 - 24 - pillW, curY, pillW, pillH, 10);
+    fishPillG.lineStyle(1, 0xFDE68A, 1);
+    fishPillG.strokeRoundedRect(pw / 2 - 24 - pillW, curY, pillW, pillH, 10);
+    this.root.add(fishPillG);
+
+    const fishTxt = this.add.text(pw / 2 - 24 - pillW / 2, pillY, `🐟 +${fish} FISH`, fontStyle({ size: '12px', weight: '800', lh: 1 }, '#D97706'))
+      .setOrigin(0.5);
+    this.root.add(fishTxt);
+
+    curY += pillH + (isShort ? 16 : 20);
+
+    // 10. Action Buttons
+    const btnWidth = Math.min(250, pw - 48);
+
+    // Nút Primary: "🔁 Play Again"
+    const retryBtnH = isShort ? 48 : 54;
+    const retryBtn = drawButton(this, 0, curY + retryBtnH / 2, '🔁 Play Again', {
+      width: btnWidth,
+      height: retryBtnH,
+      testid: 'retry-btn',
+      textType: { size: isShort ? '17px' : '19px', weight: '900', lh: 1 },
+    });
+    this.root.add(retryBtn.container);
+
     retryBtn.container.on('pointerdown', async () => {
-      // interstitial từ lượt 2+ (BR-09)
+      retryBtn.container.disableInteractive();
       if (ctx.engine.shouldShowInterstitial()) {
         try { await sdk.requestInterstitialAd(); } catch { /* ignore */ }
       }
       this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
-      this.time.delayedCall(dur.scene, () => this.scene.start('GameplayScene', { resume: false }));
+      this.time.delayedCall(dur.scene, () => {
+        this.scene.start('GameplayScene', { resume: false });
+      });
     });
+    curY += retryBtnH + (isShort ? 10 : 12);
 
-    // Nút "Tiếp tục" = btn-ghost (§3.1) — hiển thị khi chưa dùng lượt tiếp tục (BR-10)
-    let continueBtn: ReturnType<typeof drawButton> | null = null;
-    if (ctx.engine.canContinue()) {
-      continueBtn = drawButton(this, 0, buttonsY + 72 + sp[4], 'Continue',
-        { variant: 'ghost', width: btnWidth, textType: type.h2, testid: 'continue-btn' });
-      const btn = continueBtn; // non-null alias cho closure
-      root.add(btn.container);
-      btn.container.on('pointerdown', async () => {
-        btn.textObj.setText('Loading…');
-        btn.container.setAlpha(0.6).disableInteractive();
+    // Nút Secondary (Rewarded): "🎬 Revive (+1 Life)"
+    if (canCont) {
+      const contBtnH = isShort ? 42 : 46;
+      const continueBtn = drawButton(this, 0, curY + contBtnH / 2, '🎬 Revive (+1 Life)', {
+        variant: 'ghost',
+        width: btnWidth,
+        height: contBtnH,
+        textType: { size: isShort ? '14px' : '15px', weight: '800', lh: 1 },
+        testid: 'continue-btn',
+      });
+      this.root.add(continueBtn.container);
+
+      continueBtn.container.on('pointerdown', async () => {
+        continueBtn.textObj.setText('Loading…');
+        continueBtn.container.setAlpha(0.6).disableInteractive();
         const earned = await sdk.requestRewardedAd('continue');
         if (earned) {
           ctx.engine.useContinue();
@@ -121,35 +242,53 @@ export class GameOverScene extends Phaser.Scene {
             this.scene.start('GameplayScene', { resume: true });
           });
         } else {
-          btn.textObj.setText('Continue');
-          btn.container.setAlpha(1).setInteractive({ useHandCursor: true });
+          continueBtn.textObj.setText('🎬 Revive (+1 Life)');
+          continueBtn.container.setAlpha(1).setInteractive({ useHandCursor: true });
         }
       });
     }
 
-    // slide-up + fade-in (F7: dur.slow) — panel + nội dung cùng trượt
-    this.tweens.add({ targets: root, y: cy, alpha: 1, duration: dur.slow, ease: 'cubic.out' });
+    // 11. Card Entrance Animation (Back.out pop)
+    this.tweens.add({
+      targets: this.root,
+      alpha: 1,
+      scale: 1,
+      duration: dur.pop,
+      ease: 'back.out',
+    });
 
-    this.scale.on('resize', (sz: Phaser.Structs.Size) => {
-      this.cameras.main.setSize(sz.width, sz.height);
+    // 12. Responsive Safe Centering on Window Resize
+    const resizeListener = (gameSize: Phaser.Structs.Size) => {
+      const nw = gameSize.width;
+      const nh = gameSize.height;
+      if (this.bg && this.bg.active) {
+        this.bg.setPosition(nw / 2, nh / 2).setScale(Math.max(nw / this.bg.width, nh / this.bg.height));
+      }
+      if (this.root && this.root.active) {
+        this.root.setPosition(nw / 2, nh / 2);
+      }
+    };
+    this.scale.on('resize', resizeListener);
+    this.events.once('shutdown', () => {
+      this.scale.off('resize', resizeListener);
     });
   }
 
-  // Chi tiết nền rẻ tiền (F7): bụi cỏ tam giác dọc mép cỏ + vạch lane đứt (§2.3)
-  private drawDecor(width: number, height: number) {
-    const g = this.add.graphics().setDepth(z.bg);
-    const grassY = height * 0.62;
-    // bụi cỏ tam giác nhỏ dọc mép cỏ
-    g.fillStyle(toColor(color.grass), 1);
-    for (let i = 0; i < width; i += 80) {
-      const ox = i + 20;
-      g.fillTriangle(ox, grassY, ox + 9, grassY - 16, ox + 18, grassY);
-    }
-    // vạch lane đứt (§2.3) ngay dưới mép cỏ
-    g.lineStyle(4, toColor(color.lane), 0.35);
-    const ly = grassY + 36;
-    for (let x = 0; x < width; x += 30) {
-      g.strokeLineShape(new Phaser.Geom.Line(x, ly, x + 18, ly));
+  private spawnSparkles(x: number, y: number) {
+    for (let i = 0; i < 16; i++) {
+      const p = this.add.circle(x, y, Phaser.Math.Between(3, 7), 0xF59E0B).setDepth(z.panel + 5);
+      const angle = (i / 16) * Math.PI * 2;
+      const dist = Phaser.Math.Between(30, 80);
+      this.tweens.add({
+        targets: p,
+        x: x + Math.cos(angle) * dist,
+        y: y + Math.sin(angle) * dist,
+        alpha: 0,
+        scale: 0.2,
+        duration: 600,
+        ease: 'quad.out',
+        onComplete: () => p.destroy(),
+      });
     }
   }
 }

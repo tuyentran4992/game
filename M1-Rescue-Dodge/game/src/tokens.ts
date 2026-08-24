@@ -14,6 +14,7 @@ export const color = {
   surface: '#FFFFFF',
   surfaceDim: '#9ED8FF',
   textPrimary: '#3A2E39',
+  textSecondary: '#64748B',
   textOnAccent: '#FFFFFF',
   textOnPrimary: '#FFFFFF',
   success: '#2ECC71',
@@ -61,6 +62,7 @@ export const z = {
   tutorial: 30,
   overlay: 40,
   panel: 50,
+  dialog: 100,
 } as const;
 
 // Multi-palette theo level (BR-14) — DESIGN-SPEC §1.1 bảng level
@@ -78,8 +80,9 @@ export const LEVEL_PALETTES: LevelPalette[] = [
 ];
 
 export function paletteForLevel(level: number): LevelPalette {
-  const idx = ((level - 1) % LEVEL_PALETTES.length + LEVEL_PALETTES.length) % LEVEL_PALETTES.length;
-  return LEVEL_PALETTES[idx];
+  if (level < 10) return LEVEL_PALETTES[0]; // Ban ngày (Level 1..9)
+  if (level < 20) return LEVEL_PALETTES[1]; // Hoàng hôn (Level 10..19)
+  return LEVEL_PALETTES[2];                 // Đêm (Level 20+)
 }
 
 // Helper: fontStyle từ token
