@@ -125,7 +125,10 @@ Lưu ý: `scaffold.py`/`validate.py` vốn viết riêng cho M1 (độ cứng la
   - `game/playgama-bridge-config.json` MỚI (ad placements interstitial `game_over` + rewarded `continue`) — build script tự `cp` vào dist/ (vite emptyOutDir xóa).
 - **Verify M3 PASS**: typecheck 0 · vitest 109 · build · asset manifest · **browser+vision+console sạch** (bridge v2.1.0 initialized, 0 lỗi, màn Start đầy đủ).
 - **Bug pre-existing sửa thêm**: `Start.ts` resize callback tham chiếu biến `container` không tồn tại (leftover refactor) → chặn tsc; đã fix reposition đúng 3 nút menu.
-- **Còn cần anh (danh tính)**: tạo account `developer.playgama.com` (Sign Up → verify email) → gửi em → nộp M3 (upload zip từ `build/juicy-merge.zip` sau khi rebuild + đóng gói).
+- **Còn cần anh (danh tính)**: tạo account `developer.playgama.com` (Sign Up → verify email) → gửi em → nộp M3
+- **SUBMITTED 2026-08-24**: anh tạo account Playgama (user kotaro001) + tạo game + điền metadata EN (desc/how-to-play/devices/orientation/lang) + upload 3 cover (cover_*.png trong `M3-Juicy-Merge/build/playgama/` - em dựng PIL từ art game) + test QA PASS (save SDK, rewarded, interstitial, game over) → **submit, review 3-5 ngày**.
+- Ghi chú khi test: interstitial chỉ hiện từ game over lần 2+; rewarded chỉ cấp khi state 'rewarded'.
+- Sau khi review pass: nộp M1+M2 qua Playgama (đã có pattern multi-backend SDK, chỉ cần gắn tương tự + đóng gói).
 - Lưu ý bản nộp Mediacube/ytgame thuần: bỏ dòng CDN bridge trong index.html (game gọi mạng ngoài nếu giữ) — multi-backend vẫn chạy ytgame được.
 
 ## 7. CHI PHÍ (của Claude Code GLM, AI-Box) — cộng dồn
