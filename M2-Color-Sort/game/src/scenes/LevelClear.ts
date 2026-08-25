@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import { color, type, sp, radius, z, dur, glow, fontStyle, toColor, liquidPalette } from '../tokens';
-import { drawGalaxyBg, drawPanel, drawButton, synthAudio, GalaxyBgObjects } from '../ui';
+import { color, type, sp, z, dur, fontStyle, toColor, liquidPalette } from '../tokens';
+import { drawGalaxyBg, drawPanel, drawButton, spawnNeonBurst, synthAudio, GalaxyBgObjects } from '../ui';
 import { ctx } from '../context';
 import { sdk } from '../sdk-instance';
 import { MECHANICS } from '../logic/mechanics';
@@ -12,17 +12,19 @@ export class LevelClearScene extends Phaser.Scene {
     super({ key: 'LevelClearScene' });
   }
 
-  create(data: { level: number; moves: number; optimal?: number; best: number }) {
+  create(data: { level: number; moves: number; optimal?: number; best: number; seals?: number }) {
     const { width, height } = this.scale;
     this.bgObjects = drawGalaxyBg(this);
+    this.cameras.main.fadeIn(dur.base, 0, 0, 0);
 
     const level = data?.level ?? 1;
     const moves = data?.moves ?? 0;
     const optimal = data?.optimal ?? Math.max(3, level * 2 + 1);
     const best = data?.best ?? moves;
+    const seals = data?.seals ?? 0;
 
     // 1. Pháo hoa Neon Confetti bắn tỏa ra
-    this.spawnConfetti(width, height);
+    this.spawnConfetti(width, height, seals);
 
     // 2. Overlay mờ nền
     const overlay = this.add.rectangle(width / 2, height / 2, width, height, toColor('#000000'), 0)
@@ -43,6 +45,14 @@ export class LevelClearScene extends Phaser.Scene {
       .setOrigin(0.5).setDepth(z.panel + 1);
     title.setShadow(0, 0, color.success, 16, false, true);
     root.add(title);
+    this.tweens.add({
+      targets: title,
+      scale: 1.06,
+      duration: 900,
+      yoyo: true,
+      repeat: -1,
+      ease: 'sine.inout',
+    });
 
     // 4. Star Rating (3 Stars: <= optimal+2 -> 3 stars, <= optimal+6 -> 2 stars, otherwise 1 star)
     const starContainer = this.add.container(0, -ph / 2 + sp[6] + 62).setDepth(z.panel + 1);
@@ -72,7 +82,7 @@ export class LevelClearScene extends Phaser.Scene {
         delay: 200 + s * 140,
         ease: 'back.out',
         onStart: () => {
-          if (isEarned) synthAudio.playClick();
+          if (isEarned) synthAudio.playSparkle(s);
         },
       });
     }
@@ -141,33 +151,34 @@ export class LevelClearScene extends Phaser.Scene {
 
     this.scale.on('resize', (sz: Phaser.Structs.Size) => {
       this.cameras.main.setSize(sz.width, sz.height);
+      root.setPosition(sz.width / 2, sz.height / 2);
+      overlay.setPosition(sz.width / 2, sz.height / 2).setSize(sz.width, sz.height);
     });
   }
 
-  private spawnConfetti(width: number, height: number) {
-    const cx = width / 2, cy = height * 0.45;
-    for (let i = 0; i < 75; i++) {
+  // Confetti neon: burst giữa màn + vệt sáng rơi từ trên (ADD blend → phát sáng)
+  private spawnConfetti(width: number, height: number, seals: number) {
+    const cx = width / 2, cy = height * 0.42;
+
+    spawnNeonBurst(this, cx, cy, liquidPalette, 46, Math.min(360, width * 0.7), z.overlay + 1);
+
+    const streaks = 18 + Math.min(12, seals * 2);
+    for (let i = 0; i < streaks; i++) {
       const hex = liquidPalette[Math.floor(Math.random() * liquidPalette.length)];
-      const size = Phaser.Math.Between(3, 7);
-      const isCircle = i % 2 === 0;
-
-      const p: Phaser.GameObjects.GameObject = isCircle
-        ? this.add.circle(cx, cy, size / 2, toColor(hex), 1).setDepth(z.overlay + 1)
-        : this.add.rectangle(cx, cy, size, size * 1.6, toColor(hex), 1).setDepth(z.overlay + 1);
-
-      const angle = Math.random() * Math.PI * 2;
-      const dist = Phaser.Math.Between(70, 360);
-      const tx = cx + Math.cos(angle) * dist;
-      const ty = cy + Math.sin(angle) * dist + Phaser.Math.Between(60, 220);
+      const x = Phaser.Math.Between(sp[5], Math.max(sp[5] + 1, width - sp[5]));
+      const p = this.add.rectangle(x, -20, 3, Phaser.Math.Between(10, 22), toColor(hex), 1)
+        .setDepth(z.overlay + 1)
+        .setBlendMode(Phaser.BlendModes.ADD);
 
       this.tweens.add({
         targets: p,
-        x: tx,
-        y: ty,
-        alpha: 0,
-        angle: Phaser.Math.Between(180, 1080),
-        duration: Phaser.Math.Between(900, 1500),
-        ease: 'cubic.out',
+        y: height + 30,
+        x: x + Phaser.Math.Between(-60, 60),
+        angle: Phaser.Math.Between(-180, 180),
+        alpha: 0.2,
+        duration: Phaser.Math.Between(1100, 2000),
+        delay: i * 45,
+        ease: 'sine.in',
         onComplete: () => p.destroy(),
       });
     }

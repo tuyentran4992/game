@@ -72,6 +72,22 @@ export const glow = {
   primary: { blur: 24, alpha: 0.55, color: '#B967FF' },
 } as const;
 
+// FX juice (upgrade JUICE/INTERFACE) — hệ số phụ trợ, KHÔNG thay token core.
+// Chỉ mô tả cường độ hiệu ứng; màu vẫn lấy từ color.* / liquidPalette.
+export const fx = {
+  /** alpha ống KHÔNG thể nhận nước khi đang chọn nguồn (~30%) */
+  dimInvalid: 0.30,
+  /** alpha khối ghost preview (nhấp nháy min→max) */
+  ghostMin: 0.55,
+  ghostMax: 1.0,
+  /** frost kính khi seal */
+  frostAlpha: 0.13,
+  /** chu kỳ shimmer chậm của ống đã seal (ms) */
+  shimmerLoopMs: 2600,
+  /** vòng seal giữ lại sau khi "snap shut" */
+  sealRingIdleAlpha: 0.55,
+} as const;
+
 // Motion (DESIGN-SYSTEM §1.6)
 export const dur = {
   fast: 120,

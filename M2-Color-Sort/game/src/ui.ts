@@ -1,205 +1,13 @@
 // UI helpers M2 Neon Galaxy — Tối ưu hóa siêu hiệu năng 60 FPS (Zero-Garbage, O(1) Draw)
 // Canvas Phaser Graphics, KHÔNG DOM. Tham chiếu DESIGN-SPEC §3.
 import Phaser from 'phaser';
-import { color, type, sp, radius, shadow, z, dur, glow, fontStyle, toColor, lighten, darken, liquidPalette } from './tokens';
+import { color, type, sp, radius, shadow, z, dur, glow, fx, fontStyle, toColor, lighten, darken, liquidPalette } from './tokens';
 
 // ============================================================================
-// 1. WEBAUDIO SYNTHESIZER (Phụ trợ âm thanh mượt mà, không phụ thuộc file ngoài)
+// 1. AUDIO — MỘT BUS DUY NHẤT (src/audio.ts). Re-export giữ API cũ `synthAudio`.
+//    SDK pause/mute chỉ cần 1 dòng: synthAudio.setMuted(true) (xem main.ts).
 // ============================================================================
-class WebAudioSynth {
-  private ctx: AudioContext | null = null;
-  private isMuted = false;
-
-  private getContext(): AudioContext | null {
-    if (this.ctx) {
-      if (this.ctx.state === 'suspended') {
-        void this.ctx.resume();
-      }
-      return this.ctx;
-    }
-    try {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (AudioCtx) {
-        this.ctx = new AudioCtx();
-        return this.ctx;
-      }
-    } catch {
-      // Audio not supported
-    }
-    return null;
-  }
-
-  public setMute(muted: boolean) {
-    this.isMuted = muted;
-  }
-
-  public getMute(): boolean {
-    return this.isMuted;
-  }
-
-  public playGlug(step = 0) {
-    if (this.isMuted) return;
-    const ctx = this.getContext();
-    if (!ctx) return;
-    try {
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      const filter = ctx.createBiquadFilter();
-
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(800 + step * 120, now);
-
-      const baseFreq = 340 + step * 45;
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(baseFreq, now);
-      osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.4, now + 0.07);
-
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-
-      osc.connect(filter);
-      filter.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start(now);
-      osc.stop(now + 0.11);
-    } catch {
-      // Ignore
-    }
-  }
-
-  public playTubeComplete() {
-    if (this.isMuted) return;
-    const ctx = this.getContext();
-    if (!ctx) return;
-    try {
-      const now = ctx.currentTime;
-      const notes = [587.33, 739.99, 880.0, 1174.66];
-      notes.forEach((freq, idx) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, now + idx * 0.05);
-
-        gain.gain.setValueAtTime(0.001, now + idx * 0.05);
-        gain.gain.linearRampToValueAtTime(0.18, now + idx * 0.05 + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.05 + 0.45);
-
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(now + idx * 0.05);
-        osc.stop(now + idx * 0.05 + 0.46);
-      });
-    } catch {
-      // Ignore
-    }
-  }
-
-  public playLevelClear() {
-    if (this.isMuted) return;
-    const ctx = this.getContext();
-    if (!ctx) return;
-    try {
-      const now = ctx.currentTime;
-      const chord = [523.25, 659.25, 783.99, 1046.5];
-      chord.forEach((freq, idx) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, now + idx * 0.07);
-
-        gain.gain.setValueAtTime(0.001, now + idx * 0.07);
-        gain.gain.linearRampToValueAtTime(0.2, now + idx * 0.07 + 0.03);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.07 + 0.7);
-
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(now + idx * 0.07);
-        osc.stop(now + idx * 0.07 + 0.75);
-      });
-    } catch {
-      // Ignore
-    }
-  }
-
-  public playClick() {
-    if (this.isMuted) return;
-    const ctx = this.getContext();
-    if (!ctx) return;
-    try {
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, now);
-      osc.frequency.exponentialRampToValueAtTime(440, now + 0.04);
-
-      gain.gain.setValueAtTime(0.14, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.05);
-    } catch {
-      // Ignore
-    }
-  }
-
-  public playHint() {
-    if (this.isMuted) return;
-    const ctx = this.getContext();
-    if (!ctx) return;
-    try {
-      const now = ctx.currentTime;
-      const notes = [659.25, 880.0, 1318.5];
-      notes.forEach((freq, idx) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, now + idx * 0.06);
-
-        gain.gain.setValueAtTime(0.001, now + idx * 0.06);
-        gain.gain.linearRampToValueAtTime(0.15, now + idx * 0.06 + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.06 + 0.4);
-
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(now + idx * 0.06);
-        osc.stop(now + idx * 0.06 + 0.42);
-      });
-    } catch {
-      // Ignore
-    }
-  }
-
-  public playBuzz() {
-    if (this.isMuted) return;
-    const ctx = this.getContext();
-    if (!ctx) return;
-    try {
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(130, now);
-      osc.frequency.linearRampToValueAtTime(100, now + 0.1);
-
-      gain.gain.setValueAtTime(0.16, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.13);
-    } catch {
-      // Ignore
-    }
-  }
-}
-
-export const synthAudio = new WebAudioSynth();
+import { synthAudio } from './audio';
 
 // ============================================================================
 // 2. COLOR CACHE
@@ -271,6 +79,15 @@ export interface TubeViews {
   glowRing: Phaser.GameObjects.Graphics;
   ambientGlow: Phaser.GameObjects.Graphics;
   completionFx: Phaser.GameObjects.Container;
+  /** ghost preview: khối chất lỏng "sẽ được đổ" (trong suốt) */
+  ghostG: Phaser.GameObjects.Graphics;
+  /** SEAL: kính bị đóng băng (frost) */
+  frostG: Phaser.GameObjects.Graphics;
+  /** SEAL: vòng neon "khép lại" quanh ống */
+  sealRing: Phaser.GameObjects.Graphics;
+  /** SEAL: dải sáng chạy chậm trên khối chất lỏng (shimmer) */
+  shimmerG: Phaser.GameObjects.Graphics;
+  sealed: boolean;
   width: number;
   height: number;
   capacity: number;
@@ -301,12 +118,31 @@ export function drawTube(
   const liquidG = scene.add.graphics().setDepth(z.actor);
   container.add(liquidG);
 
-  // 4. Thân ống thủy tinh 3D Glass
+  // 4. Ghost preview (số lát SẼ đổ sang) — trên chất lỏng, dưới kính
+  const ghostG = scene.add.graphics().setDepth(z.actor + 0.5);
+  container.add(ghostG);
+
+  // 5. Shimmer chậm khi ống đã seal
+  const shimmerG = scene.add.graphics().setDepth(z.actor + 1).setBlendMode(Phaser.BlendModes.ADD);
+  shimmerG.setAlpha(0);
+  container.add(shimmerG);
+
+  // 6. Frost kính khi seal
+  const frostG = scene.add.graphics().setDepth(z.actor + 1.5);
+  frostG.setAlpha(0);
+  container.add(frostG);
+
+  // 7. Thân ống thủy tinh 3D Glass
   const glass = scene.add.graphics().setDepth(z.actor + 2);
   redrawGlassBody(glass, tubeW, tubeH);
   container.add(glass);
 
-  // 5. Container hiệu ứng hoàn thành ống
+  // 8. Vòng seal neon (snap shut)
+  const sealRing = scene.add.graphics().setDepth(z.actor + 3).setBlendMode(Phaser.BlendModes.ADD);
+  sealRing.setAlpha(0);
+  container.add(sealRing);
+
+  // 9. Container hiệu ứng hoàn thành ống
   const completionFx = scene.add.container(0, 0).setDepth(z.actor + 4);
   container.add(completionFx);
 
@@ -317,6 +153,11 @@ export function drawTube(
     glowRing,
     ambientGlow,
     completionFx,
+    ghostG,
+    frostG,
+    sealRing,
+    shimmerG,
+    sealed: false,
     width: tubeW,
     height: tubeH,
     capacity,
@@ -427,14 +268,15 @@ export function renderLiquid(views: TubeViews, content: string[]): void {
 }
 
 // ============================================================================
-// 6. RENDER POUR TRANSITION NHẸ (O(1) DRAW)
+// 6. POUR TRANSITION — chuyển chất lỏng MƯỢT nhiều lát (O(1) draw / frame)
+//    ratio 0→1: nguồn rút `count` lát, đích dâng `count` lát (đồng bộ 1 tween).
 // ============================================================================
 export function renderPourTransition(
   views: TubeViews,
   baseContent: string[],
   transitionColor: string,
   ratio: number,
-  _isSource: boolean,
+  count = 1,
 ): void {
   const { liquidG, width: tubeW, height: tubeH, capacity } = views;
   liquidG.clear();
@@ -448,11 +290,11 @@ export function renderPourTransition(
   const cornerR = liquidW * 0.42;
   const yBase = halfH - innerPad;
 
+  // 1. Phần chất lỏng "tĩnh" (không tham gia lần đổ này)
   for (let i = 0; i < baseContent.length; i++) {
     const colInfo = getCachedLiquidColor(baseContent[i]);
     const isBottom = (i === 0);
-    const layerBotY = yBase - i * layerH;
-    const layerTopY = layerBotY - layerH;
+    const layerTopY = yBase - i * layerH - layerH;
 
     liquidG.fillStyle(colInfo.base, 0.95);
     if (isBottom) {
@@ -460,25 +302,290 @@ export function renderPourTransition(
     } else {
       liquidG.fillRect(-halfW + innerPad, layerTopY, liquidW, layerH);
     }
+    liquidG.fillStyle(colInfo.bright, 0.3);
+    liquidG.fillRoundedRect(-halfW + innerPad + liquidW * 0.15, layerTopY + 2, liquidW * 0.7, layerH - 4, 2);
   }
 
-  const currentHeight = Math.max(0, Math.min(layerH, layerH * ratio));
-  if (currentHeight > 0.5) {
+  // 2. Khối đang chuyển: chiều cao = count × layerH × ratio (mượt, không nhảy bậc)
+  const maxLayers = Math.max(0, Math.min(count, capacity - baseContent.length));
+  const movingH = Math.max(0, Math.min(maxLayers * layerH, maxLayers * layerH * ratio));
+  if (movingH > 0.4) {
     const colInfo = getCachedLiquidColor(transitionColor);
-    const layerIdx = baseContent.length;
-    const isBottom = (layerIdx === 0);
-    const layerBotY = yBase - layerIdx * layerH;
-    const layerTopY = layerBotY - currentHeight;
+    const baseIdx = baseContent.length;
+    const isBottom = (baseIdx === 0);
+    const blockBotY = yBase - baseIdx * layerH;
+    const blockTopY = blockBotY - movingH;
 
     liquidG.fillStyle(colInfo.base, 0.95);
     if (isBottom) {
-      liquidG.fillRoundedRect(-halfW + innerPad, layerTopY, liquidW, currentHeight, { tl: 0, tr: 0, bl: cornerR, br: cornerR });
+      liquidG.fillRoundedRect(-halfW + innerPad, blockTopY, liquidW, movingH, { tl: 0, tr: 0, bl: cornerR, br: cornerR });
     } else {
-      liquidG.fillRect(-halfW + innerPad, layerTopY, liquidW, currentHeight);
+      liquidG.fillRect(-halfW + innerPad, blockTopY, liquidW, movingH);
     }
 
+    liquidG.fillStyle(colInfo.bright, 0.32);
+    liquidG.fillRoundedRect(-halfW + innerPad + liquidW * 0.15, blockTopY + 2, liquidW * 0.7, Math.max(1, movingH - 4), 2);
+
+    // đường ngăn giữa các lát cùng màu (giữ cảm giác "đếm được số lát")
+    liquidG.lineStyle(1, colInfo.dark, 0.55);
+    for (let k = 1; k < maxLayers; k++) {
+      const y = blockBotY - k * layerH;
+      if (y <= blockTopY) break;
+      liquidG.beginPath();
+      liquidG.moveTo(-halfW + innerPad + 2, y);
+      liquidG.lineTo(halfW - innerPad - 2, y);
+      liquidG.strokePath();
+    }
+
+    // mặt thoáng đang dâng/rút
     liquidG.fillStyle(colInfo.bright, 0.85);
-    liquidG.fillEllipse(0, layerTopY, liquidW * 0.9, Math.min(6, layerH * 0.22));
+    liquidG.fillEllipse(0, blockTopY, liquidW * 0.9, Math.min(6, layerH * 0.22));
+    liquidG.fillStyle(toColor('#FFFFFF'), 0.55);
+    liquidG.fillEllipse(-liquidW * 0.15, blockTopY - 1, liquidW * 0.36, Math.min(3, layerH * 0.1));
+  }
+}
+
+// ============================================================================
+// 6b. GHOST PREVIEW — hiện ĐÚNG số lát sẽ chuyển sang ống đích (trong suốt)
+// ============================================================================
+export function renderGhostSegments(
+  views: TubeViews,
+  contentLength: number,
+  colorHex: string,
+  count: number,
+): void {
+  const { ghostG, width: tubeW, height: tubeH, capacity } = views;
+  ghostG.clear();
+  if (count <= 0) return;
+
+  const halfW = tubeW / 2;
+  const halfH = tubeH / 2;
+  const innerPad = 3.5;
+  const liquidW = tubeW - innerPad * 2;
+  const usableH = tubeH - innerPad * 2 - 4;
+  const layerH = usableH / capacity;
+  const cornerR = liquidW * 0.42;
+  const yBase = halfH - innerPad;
+  const colInfo = getCachedLiquidColor(colorHex);
+  const n = Math.min(count, capacity - contentLength);
+
+  for (let k = 0; k < n; k++) {
+    const idx = contentLength + k;
+    const layerTopY = yBase - idx * layerH - layerH;
+    const isBottom = (idx === 0);
+
+    ghostG.fillStyle(colInfo.base, 0.34);
+    if (isBottom) {
+      ghostG.fillRoundedRect(-halfW + innerPad, layerTopY, liquidW, layerH, { tl: 0, tr: 0, bl: cornerR, br: cornerR });
+    } else {
+      ghostG.fillRect(-halfW + innerPad, layerTopY, liquidW, layerH);
+    }
+    ghostG.lineStyle(1.2, colInfo.bright, 0.6);
+    ghostG.strokeRect(-halfW + innerPad, layerTopY, liquidW, layerH);
+  }
+
+  // vạch mặt thoáng dự kiến (đỉnh khối ghost)
+  const topY = yBase - (contentLength + n) * layerH;
+  ghostG.lineStyle(2, toColor(color.accent), 0.85);
+  ghostG.beginPath();
+  ghostG.moveTo(-halfW + innerPad, topY);
+  ghostG.lineTo(halfW - innerPad, topY);
+  ghostG.strokePath();
+}
+
+/** Bật ghost preview + nhấp nháy nhẹ (khoá vào tween của scene). */
+export function showGhostPreview(
+  scene: Phaser.Scene,
+  views: TubeViews,
+  contentLength: number,
+  colorHex: string,
+  count: number,
+): void {
+  scene.tweens.killTweensOf(views.ghostG);
+  renderGhostSegments(views, contentLength, colorHex, count);
+  views.ghostG.setAlpha(fx.ghostMin);
+  scene.tweens.add({
+    targets: views.ghostG,
+    alpha: fx.ghostMax,
+    duration: 620,
+    yoyo: true,
+    repeat: -1,
+    ease: 'sine.inout',
+  });
+}
+
+export function clearGhostPreview(scene: Phaser.Scene, views: TubeViews): void {
+  scene.tweens.killTweensOf(views.ghostG);
+  views.ghostG.clear();
+  views.ghostG.setAlpha(1);
+}
+
+// ============================================================================
+// 6c. SEAL MOMENT — kính đóng băng + vòng neon khép lại + shimmer chậm
+//     (âm thanh: synthAudio.playSealNote() — nốt đi lên thang ngũ cung)
+// ============================================================================
+function drawFrost(g: Phaser.GameObjects.Graphics, tubeW: number, tubeH: number): void {
+  g.clear();
+  const halfW = tubeW / 2;
+  const halfH = tubeH / 2;
+  const cornerR = tubeW * 0.44;
+
+  // màn kính mờ (frost) phủ toàn thân
+  g.fillStyle(toColor('#FFFFFF'), fx.frostAlpha);
+  g.fillRoundedRect(-halfW + 1, -halfH + 1, tubeW - 2, tubeH - 2, { tl: 4, tr: 4, bl: cornerR, br: cornerR });
+
+  // các vân băng mảnh (rẻ, không texture)
+  g.fillStyle(toColor('#FFFFFF'), 0.16);
+  const bands = 4;
+  for (let i = 0; i < bands; i++) {
+    const y = -halfH + 10 + (i * (tubeH - 24)) / bands;
+    const w = tubeW * (i % 2 === 0 ? 0.52 : 0.34);
+    const x = i % 2 === 0 ? -tubeW * 0.22 : tubeW * 0.04;
+    g.fillRoundedRect(x, y, w, 2, 1);
+  }
+  g.fillStyle(toColor(color.accent), 0.1);
+  g.fillRoundedRect(-halfW + 1, -halfH + 1, tubeW - 2, tubeH * 0.3, { tl: 4, tr: 4, bl: 2, br: 2 });
+}
+
+function drawSealRing(g: Phaser.GameObjects.Graphics, tubeW: number, tubeH: number, hex: string): void {
+  g.clear();
+  const pad = 5;
+  const w = tubeW + pad * 2;
+  const h = tubeH + pad * 2;
+  const colInfo = getCachedLiquidColor(hex);
+
+  g.lineStyle(5, colInfo.base, 0.35);
+  g.strokeRoundedRect(-w / 2, -h / 2, w, h, 34);
+  g.lineStyle(2.5, toColor('#FFFFFF'), 0.85);
+  g.strokeRoundedRect(-w / 2, -h / 2, w, h, 34);
+
+  // "chốt" niêm phong ở miệng ống
+  g.fillStyle(colInfo.bright, 0.9);
+  g.fillRoundedRect(-tubeW * 0.34, -tubeH / 2 - 7, tubeW * 0.68, 6, 3);
+  g.lineStyle(1.2, toColor('#FFFFFF'), 0.9);
+  g.strokeRoundedRect(-tubeW * 0.34, -tubeH / 2 - 7, tubeW * 0.68, 6, 3);
+}
+
+function drawShimmerBand(g: Phaser.GameObjects.Graphics, tubeW: number, hex: string): void {
+  g.clear();
+  const colInfo = getCachedLiquidColor(hex);
+  const w = tubeW - 8;
+  g.fillStyle(colInfo.bright, 0.16);
+  g.fillRoundedRect(-w / 2, -7, w, 14, 6);
+  g.fillStyle(toColor('#FFFFFF'), 0.1);
+  g.fillRoundedRect(-w / 2, -2.5, w, 5, 2.5);
+}
+
+/**
+ * SEAL một ống: frost kính, vòng neon snap-shut, shimmer chậm trên chất lỏng.
+ * `instant` = true khi phục hồi trạng thái (resize/undo) → không animate, không kêu.
+ */
+export function sealTube(
+  scene: Phaser.Scene,
+  views: TubeViews,
+  colorHex: string,
+  instant = false,
+): void {
+  views.sealed = true;
+  const { width: tubeW, height: tubeH } = views;
+
+  drawFrost(views.frostG, tubeW, tubeH);
+  drawSealRing(views.sealRing, tubeW, tubeH, colorHex);
+  drawShimmerBand(views.shimmerG, tubeW, colorHex);
+
+  const shimmerTop = -tubeH / 2 + 14;
+  const shimmerBot = tubeH / 2 - 14;
+
+  scene.tweens.killTweensOf(views.frostG);
+  scene.tweens.killTweensOf(views.sealRing);
+  scene.tweens.killTweensOf(views.shimmerG);
+
+  if (instant) {
+    views.frostG.setAlpha(1);
+    views.sealRing.setAlpha(fx.sealRingIdleAlpha).setScale(1);
+  } else {
+    // kính "đóng băng" dần
+    views.frostG.setAlpha(0);
+    scene.tweens.add({ targets: views.frostG, alpha: 1, duration: dur.slow, ease: 'quad.out' });
+
+    // vòng neon KHÉP LẠI (snap shut) rồi giữ mờ
+    views.sealRing.setAlpha(0).setScale(1.35);
+    scene.tweens.add({
+      targets: views.sealRing,
+      scale: 1,
+      alpha: 1,
+      duration: dur.pop,
+      ease: 'back.out',
+      onComplete: () => {
+        scene.tweens.add({ targets: views.sealRing, alpha: fx.sealRingIdleAlpha, duration: dur.base, ease: 'quad.out' });
+      },
+    });
+  }
+
+  // shimmer chậm chạy lên xuống — "chất lỏng còn sống" sau khi seal
+  views.shimmerG.setAlpha(0.9);
+  views.shimmerG.y = shimmerBot;
+  scene.tweens.add({
+    targets: views.shimmerG,
+    y: shimmerTop,
+    duration: fx.shimmerLoopMs,
+    ease: 'sine.inout',
+    yoyo: true,
+    repeat: -1,
+    delay: instant ? 0 : dur.pop,
+  });
+}
+
+/** Bỏ seal (undo làm ống không còn 1 màu / restart / re-layout). */
+export function unsealTube(scene: Phaser.Scene, views: TubeViews): void {
+  views.sealed = false;
+  scene.tweens.killTweensOf(views.frostG);
+  scene.tweens.killTweensOf(views.sealRing);
+  scene.tweens.killTweensOf(views.shimmerG);
+  views.frostG.clear();
+  views.frostG.setAlpha(0);
+  views.sealRing.clear();
+  views.sealRing.setAlpha(0).setScale(1);
+  views.shimmerG.clear();
+  views.shimmerG.setAlpha(0);
+  views.shimmerG.y = 0;
+  views.completionFx.removeAll(true);
+}
+
+// ============================================================================
+// 6d. NEON PARTICLE BURST (level clear / seal) — vẽ bằng shape, 0 KB asset
+// ============================================================================
+export function spawnNeonBurst(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  palette: readonly string[],
+  count = 28,
+  spread = 200,
+  depth: number = z.tutorial,
+): void {
+  for (let i = 0; i < count; i++) {
+    const hex = palette[Math.floor(Math.random() * palette.length)];
+    const size = Phaser.Math.Between(3, 6);
+    const isSpark = i % 3 === 0;
+    const p = isSpark
+      ? scene.add.rectangle(x, y, size * 0.7, size * 2.4, toColor(hex), 1)
+      : scene.add.circle(x, y, size / 2, toColor(hex), 1);
+    p.setDepth(depth).setBlendMode(Phaser.BlendModes.ADD);
+
+    const angle = Math.random() * Math.PI * 2;
+    const dist = Phaser.Math.Between(spread * 0.35, spread);
+    scene.tweens.add({
+      targets: p,
+      x: x + Math.cos(angle) * dist,
+      y: y + Math.sin(angle) * dist + Phaser.Math.Between(20, 90),
+      alpha: 0,
+      angle: Phaser.Math.Between(-360, 360),
+      scale: 0.4,
+      duration: Phaser.Math.Between(520, 980),
+      ease: 'cubic.out',
+      onComplete: () => p.destroy(),
+    });
   }
 }
 
@@ -809,4 +916,5 @@ export function drawPanel(
   return g;
 }
 
-export { color, type, sp, radius, shadow, z, dur, glow, fontStyle, toColor, lighten, darken, liquidPalette };
+export { synthAudio };
+export { color, type, sp, radius, shadow, z, dur, glow, fx, fontStyle, toColor, lighten, darken, liquidPalette };

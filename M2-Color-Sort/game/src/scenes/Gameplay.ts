@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { color, type, sp, radius, z, dur, glow, fontStyle, toColor, liquidPalette } from '../tokens';
+import { color, type, sp, radius, z, dur, fx, fontStyle, toColor, liquidPalette } from '../tokens';
 import {
   drawGalaxyBg,
   drawTube,
@@ -9,6 +9,11 @@ import {
   drawHudCapsule,
   drawPourStream,
   drawHintArc,
+  showGhostPreview,
+  clearGhostPreview,
+  sealTube,
+  unsealTube,
+  spawnNeonBurst,
   synthAudio,
   TubeViews,
   GalaxyBgObjects,
@@ -16,6 +21,7 @@ import {
 import { ctx } from '../context';
 import { sdk } from '../sdk-instance';
 import { MECHANICS } from '../logic/mechanics';
+import { computeBoardLayout, tubePosition, BoardLayout } from '../logic/layout';
 import {
   createBoard,
   doMove,
@@ -25,14 +31,17 @@ import {
   hintMove,
   isLegal,
   isClean,
+  moveCount as legalMoveCount,
   BoardState,
-  Move,
 } from '../logic/color-sort';
 
 interface TubeUI {
   views: TubeViews;
   index: number;
 }
+
+/** Alpha của ống KHÔNG thể nhận nước khi đang chọn nguồn (~30% — tokens.fx.dimInvalid). */
+const DIM_INVALID_ALPHA = fx.dimInvalid;
 
 export class GameplayScene extends Phaser.Scene {
   private board!: BoardState;
@@ -45,12 +54,16 @@ export class GameplayScene extends Phaser.Scene {
   private stuckTooltip: Phaser.GameObjects.Container | null = null;
   private isAnimating = false;
   private toolbarBtns: Phaser.GameObjects.Container[] = [];
+  private hudObjects: Phaser.GameObjects.GameObject[] = [];
   private origTubePositions: { x: number; y: number }[] = [];
   private pourStreamG!: Phaser.GameObjects.Graphics;
   private hintArcG!: Phaser.GameObjects.Graphics;
   private hintArcTimer: Phaser.Time.TimerEvent | null = null;
   private boardZone: Phaser.GameObjects.Zone | null = null;
-  private completedTubes = new Set<number>();
+  private sealPipsG!: Phaser.GameObjects.Graphics;
+  /** index các ống đang ở trạng thái SEAL (đầy + 1 màu duy nhất) */
+  private sealedTubes = new Set<number>();
+  private layout!: BoardLayout;
 
   constructor() {
     super({ key: 'GameplayScene' });
@@ -63,7 +76,9 @@ export class GameplayScene extends Phaser.Scene {
     this.board = createBoard(MECHANICS, level, level * 7919 + 13);
     this.selected = null;
     this.isAnimating = false;
-    this.completedTubes.clear();
+    this.sealedTubes.clear();
+    // thang ngũ cung bắt đầu lại mỗi level → melody seal luôn đi từ nốt gốc
+    synthAudio.resetSealScale(0);
 
     // 1. Nền vũ trụ Deep Space HD (Static, 0 overhead)
     this.bgObjects = drawGalaxyBg(this);
@@ -71,11 +86,13 @@ export class GameplayScene extends Phaser.Scene {
     // 2. Graphics layer
     this.pourStreamG = this.add.graphics().setDepth(z.actor + 3);
     this.hintArcG = this.add.graphics().setDepth(z.actor + 5);
+    this.sealPipsG = this.add.graphics().setDepth(z.hud);
+    this.sealPipsG.setData('testid', 'seal-progress');
 
     // 3. HUD
     this.drawHud(width, height);
 
-    // 4. Bố cục ống nghiệm
+    // 4. Bố cục ống nghiệm (responsive — logic/layout.ts)
     this.layoutBoard(width, height);
 
     // 5. Toolbar dưới cùng
@@ -96,12 +113,15 @@ export class GameplayScene extends Phaser.Scene {
   // HUD (TOP BAR)
   // ==========================================================================
   private drawHud(width: number, _height: number) {
+    for (const o of this.hudObjects) o.destroy();
+    this.hudObjects = [];
+
     const topY = sp[4] + 28;
 
     // 1. LEVEL BADGE
     const levelW = 120, levelH = 46;
     const levelX = sp[4] + levelW / 2 + 8;
-    drawHudCapsule(this, levelX, topY, levelW, levelH, color.primary);
+    this.hudObjects.push(drawHudCapsule(this, levelX, topY, levelW, levelH, color.primary));
 
     this.levelLabel = this.add.text(
       levelX,
@@ -111,11 +131,12 @@ export class GameplayScene extends Phaser.Scene {
     ).setOrigin(0.5).setDepth(z.hud + 1);
     this.levelLabel.setShadow(0, 2, 'rgba(0,0,0,0.6)', 4, false, true);
     this.levelLabel.setData('testid', 'level-label');
+    this.hudObjects.push(this.levelLabel);
 
     // 2. MOVES COUNTER
     const moveW = 130, moveH = 46;
     const moveX = levelX + levelW / 2 + moveW / 2 + 12;
-    drawHudCapsule(this, moveX, topY, moveW, moveH, color.primaryDark);
+    this.hudObjects.push(drawHudCapsule(this, moveX, topY, moveW, moveH, color.primaryDark));
 
     this.moveLabel = this.add.text(
       moveX,
@@ -125,25 +146,28 @@ export class GameplayScene extends Phaser.Scene {
     ).setOrigin(0.5).setDepth(z.hud + 1);
     this.moveLabel.setShadow(0, 2, 'rgba(0,0,0,0.6)', 4, false, true);
     this.moveLabel.setData('testid', 'move-count');
+    this.hudObjects.push(this.moveLabel);
 
     // 3. AUDIO TOGGLE
     const audioW = 54, audioH = 46;
     const audioX = width - sp[4] - audioW / 2 - 8;
     const audioCapsule = drawHudCapsule(this, audioX, topY, audioW, audioH, color.accent);
+    this.hudObjects.push(audioCapsule);
 
     this.audioBtnText = this.add.text(
       audioX,
       topY,
-      this.sound.mute ? '🔇' : '🔊',
+      synthAudio.isMuted() ? '🔇' : '🔊',
       fontStyle(type.h2, color.surface),
     ).setOrigin(0.5).setDepth(z.hud + 1);
     this.audioBtnText.setData('testid', 'audio-toggle');
+    this.hudObjects.push(this.audioBtnText);
 
     const audioZone = this.add.zone(audioX, topY, audioW, audioH).setDepth(z.hud + 2).setInteractive({ useHandCursor: true });
     audioZone.on('pointerdown', () => {
-      this.sound.mute = !this.sound.mute;
-      synthAudio.setMute(this.sound.mute);
-      this.audioBtnText.setText(this.sound.mute ? '🔇' : '🔊');
+      // MỘT DÒNG: bus audio duy nhất (synth + sfx file) — DESIGN-SPEC §7
+      synthAudio.setMuted(!synthAudio.isMuted());
+      this.audioBtnText.setText(synthAudio.isMuted() ? '🔇' : '🔊');
       synthAudio.playClick();
       this.tweens.add({
         targets: [this.audioBtnText, audioCapsule],
@@ -153,43 +177,66 @@ export class GameplayScene extends Phaser.Scene {
         ease: 'quad.out',
       });
     });
+    this.hudObjects.push(audioZone);
+
+    this.renderSealPips(width);
+  }
+
+  /** Dãy pip nhỏ dưới HUD: số ống đã SEAL / tổng số màu (2 kênh: hình + màu). */
+  private renderSealPips(width: number) {
+    if (!this.sealPipsG) return;
+    const g = this.sealPipsG;
+    g.clear();
+
+    const total = this.board.colors.length;
+    if (total <= 0) return;
+
+    const r = 5;
+    const gap = 9;
+    const spanW = total * (r * 2) + (total - 1) * gap;
+    const startX = Math.max(sp[4] + r, Math.min(width - sp[4] - spanW, width / 2 - spanW / 2));
+    const y = sp[4] + 28 + 23 + 12;
+    const done = this.sealedTubes.size;
+
+    for (let i = 0; i < total; i++) {
+      const cx = startX + i * (r * 2 + gap) + r;
+      if (i < done) {
+        g.fillStyle(toColor(color.accent), 0.95);
+        g.fillCircle(cx, y, r);
+        g.lineStyle(1.5, toColor('#FFFFFF'), 0.8);
+        g.strokeCircle(cx, y, r + 1.5);
+      } else {
+        g.fillStyle(toColor('#FFFFFF'), 0.14);
+        g.fillCircle(cx, y, r);
+        g.lineStyle(1.2, toColor(color.primary), 0.55);
+        g.strokeCircle(cx, y, r);
+      }
+    }
   }
 
   // ==========================================================================
-  // BOARD LAYOUT
+  // BOARD LAYOUT (responsive — nhiều ống vẫn chơi được ở 9:16)
   // ==========================================================================
   private layoutBoard(width: number, height: number) {
-    for (const t of this.tubeUIs) t.views.container.destroy();
+    for (const t of this.tubeUIs) {
+      this.tweens.killTweensOf(t.views.container);
+      t.views.container.destroy();
+    }
     this.tubeUIs = [];
     this.origTubePositions = [];
 
     const tubeCount = this.board.tubes.length;
     const capacity = this.board.capacity;
 
-    let cols: number;
-    if (width >= 1500) cols = Math.min(7, Math.ceil(tubeCount / 2));
-    else if (width >= 900) cols = Math.ceil(tubeCount / 2);
-    else cols = Math.min(5, Math.ceil(tubeCount / 2));
-    cols = Math.max(1, cols);
-    const rows = Math.ceil(tubeCount / cols);
-
-    const boardAreaH = height * 0.58;
-    const maxTubeH = Math.min(230, (boardAreaH - sp[5] * (rows + 1)) / rows);
-    const tubeH = Math.max(120, maxTubeH);
-    const tubeW = Math.max(46, Math.min(90, tubeH * 0.42));
-    const gapX = Math.max(12, Math.min(28, (width - cols * tubeW) / (cols + 1)));
-    const gapY = Math.max(16, sp[5]);
-
-    const boardW = cols * tubeW + (cols - 1) * gapX;
-    const boardH = rows * tubeH + (rows - 1) * gapY;
-    const startX = (width - boardW) / 2 + tubeW / 2;
-    const startY = height * 0.48 - boardH / 2 + tubeH / 2;
+    this.layout = computeBoardLayout(width, height, tubeCount, {
+      hudH: 104,
+      toolbarH: 126,
+      marginX: sp[4],
+    });
+    const { tubeW, tubeH, hitW, hitH } = this.layout;
 
     for (let i = 0; i < tubeCount; i++) {
-      const r = Math.floor(i / cols), c = i % cols;
-      const x = startX + c * (tubeW + gapX);
-      const y = startY + r * (tubeH + gapY);
-
+      const { x, y } = tubePosition(this.layout, i);
       this.origTubePositions.push({ x, y });
 
       const views = drawTube(this, tubeW, tubeH, capacity);
@@ -199,21 +246,32 @@ export class GameplayScene extends Phaser.Scene {
 
       renderLiquid(views, this.board.tubes[i]);
 
-      views.container.setSize(Math.max(48, tubeW), Math.max(48, tubeH));
+      views.container.setSize(hitW, hitH);
       views.container.setInteractive({ useHandCursor: true });
       views.container.on('pointerdown', () => this.onTubeTap(i));
 
       this.tubeUIs.push({ views, index: i });
     }
 
+    // phục hồi trạng thái SEAL (sau resize / extra tube) — không animate, không âm
+    for (const idx of this.sealedTubes) {
+      const ui = this.tubeUIs[idx];
+      const tube = this.board.tubes[idx];
+      if (ui && tube && tube.length > 0) sealTube(this, ui.views, tube[0], true);
+    }
+
+    this.updateSelection();
+
     if (!this.boardZone) {
       this.boardZone = this.add.zone(width / 2, height * 0.5, width, height).setDepth(z.bg).setInteractive();
       this.boardZone.setData('testid', 'board');
+    } else {
+      this.boardZone.setPosition(width / 2, height * 0.5).setSize(width, height);
     }
   }
 
   // ==========================================================================
-  // TUBE SELECTION
+  // TUBE SELECTION + GHOST PREVIEW + DIM ỐNG KHÔNG HỢP LỆ
   // ==========================================================================
   private clearHint() {
     this.hintArcG.clear();
@@ -253,31 +311,85 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private updateSelection() {
+    const sel = this.selected;
+    const pourHex = (sel !== null && this.board.tubes[sel].length > 0)
+      ? this.board.tubes[sel][this.board.tubes[sel].length - 1]
+      : null;
+
     for (const t of this.tubeUIs) {
-      const isSel = (t.index === this.selected);
       const orig = this.origTubePositions[t.index];
+      const views = t.views;
+      this.tweens.killTweensOf(views.container);
+      this.tweens.killTweensOf(views.glowRing);
+      clearGhostPreview(this, views);
 
-      this.tweens.killTweensOf(t.views.container);
-
-      if (isSel) {
-        this.children.bringToTop(t.views.container);
+      if (sel === null) {
+        views.glowRing.setAlpha(0);
         this.tweens.add({
-          targets: t.views.container,
-          y: orig.y - 20,
-          scale: 1.05,
-          duration: 120,
-          ease: 'cubic.out',
-        });
-        t.views.glowRing.setAlpha(0.85);
-      } else {
-        t.views.glowRing.setAlpha(0);
-        this.tweens.add({
-          targets: t.views.container,
+          targets: views.container,
           x: orig.x,
           y: orig.y,
           angle: 0,
-          scale: 1.0,
-          duration: 120,
+          scale: 1,
+          alpha: 1,
+          duration: dur.fast,
+          ease: 'cubic.out',
+        });
+        continue;
+      }
+
+      if (t.index === sel) {
+        // NGUỒN: nâng lên + glow pulse (DESIGN-SPEC §5 A2)
+        this.children.bringToTop(views.container);
+        this.tweens.add({
+          targets: views.container,
+          y: orig.y - 20,
+          x: orig.x,
+          scale: 1.05,
+          alpha: 1,
+          duration: dur.fast,
+          ease: 'cubic.out',
+        });
+        views.glowRing.setAlpha(0.55);
+        this.tweens.add({
+          targets: views.glowRing,
+          alpha: 1,
+          duration: dur.slow,
+          yoyo: true,
+          repeat: -1,
+          ease: 'sine.inout',
+        });
+        continue;
+      }
+
+      // ĐÍCH: hợp lệ → ghost preview đúng số lát; không hợp lệ → mờ 30%
+      const count = pourHex !== null
+        ? legalMoveCount(this.board.tubes, sel, t.index, this.board.capacity)
+        : 0;
+
+      if (count > 0 && pourHex) {
+        this.tweens.add({
+          targets: views.container,
+          x: orig.x,
+          y: orig.y,
+          angle: 0,
+          scale: 1,
+          alpha: 1,
+          duration: dur.fast,
+          ease: 'cubic.out',
+        });
+        showGhostPreview(this, views, this.board.tubes[t.index].length, pourHex, count);
+        views.glowRing.setAlpha(0.28);
+      } else {
+        views.glowRing.setAlpha(0);
+        this.tweens.add({
+          targets: views.container,
+          x: orig.x,
+          y: orig.y,
+          angle: 0,
+          scale: 1,
+          alpha: DIM_INVALID_ALPHA,
+          duration: dur.fast,
           ease: 'cubic.out',
         });
       }
@@ -285,7 +397,7 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   // ==========================================================================
-  // 60 FPS ULTRA SMOOTH POURING ANIMATION PIPELINE
+  // POUR JUICE — 3 nhịp: nghiêng → rót (mượt, nhiều lát) → về chỗ
   // ==========================================================================
   private attemptPour(from: number, to: number) {
     const isMoveLegal = isLegal(this.board.tubes, from, to, this.board.capacity);
@@ -309,8 +421,8 @@ export class GameplayScene extends Phaser.Scene {
 
     this.isAnimating = true;
 
-    // Cập nhật Move counter
-    this.moveLabel.setText(`⤵ ${this.board.moveCount}`);
+    // Move-count cập nhật NGAY (feel instant — DESIGN-SPEC §5)
+    this.bumpMoveLabel();
 
     const srcUI = this.tubeUIs[from];
     const dstUI = this.tubeUIs[to];
@@ -323,19 +435,23 @@ export class GameplayScene extends Phaser.Scene {
     const pourTargetY = origDst.y - dstUI.views.height * 0.6;
 
     this.children.bringToTop(srcUI.views.container);
+    this.tweens.killTweensOf(srcUI.views.container);
+    this.tweens.killTweensOf(srcUI.views.glowRing);
+    srcUI.views.glowRing.setAlpha(0.7);
 
-    // BƯỚC 1: Bay và nghiêng ống siêu mượt (140ms)
+    // BƯỚC 1: bay + nghiêng ống (dur.fast → cảm giác nhanh nhẹn)
     this.tweens.add({
       targets: srcUI.views.container,
       x: pourTargetX,
       y: pourTargetY,
       angle: targetAngle,
+      alpha: 1,
       duration: 140,
       ease: 'cubic.out',
       onComplete: () => {
-        // BƯỚC 2: Rót nước tức thời (180ms)
-        this.runFastPour(from, to, srcBefore, dstBefore, pourColorHex, move.count, () => {
-          // BƯỚC 3: Thu ống về vị trí gốc (140ms)
+        // BƯỚC 2: rót — thời lượng theo số lát (mượt, không nhảy bậc)
+        this.runPour(from, to, srcBefore, dstBefore, pourColorHex, move.count, () => {
+          // BƯỚC 3: thu ống về vị trí gốc
           this.tweens.add({
             targets: srcUI.views.container,
             x: origSrc.x,
@@ -344,11 +460,12 @@ export class GameplayScene extends Phaser.Scene {
             duration: 140,
             ease: 'cubic.out',
             onComplete: () => {
+              srcUI.views.glowRing.setAlpha(0);
               this.isAnimating = false;
-              this.checkTubeCompletionCelebration(to);
+              this.syncSeals(true);
 
               if (this.board.win) {
-                this.time.delayedCall(300, () => this.onLevelClear());
+                this.time.delayedCall(260, () => this.onLevelClear());
               } else if (this.board.stuck) {
                 this.showStuckTooltip();
               }
@@ -359,8 +476,7 @@ export class GameplayScene extends Phaser.Scene {
     });
   }
 
-  // Rót nước O(1) hiệu năng cao
-  private runFastPour(
+  private runPour(
     from: number,
     to: number,
     srcBefore: string[],
@@ -378,10 +494,10 @@ export class GameplayScene extends Phaser.Scene {
     const endX = dstUI.views.container.x;
     const endY = dstUI.views.container.y - dstUI.views.height * 0.44;
 
-    synthAudio.playGlug(1);
+    synthAudio.playGlug(dstBefore.length);
     this.playSfx('sfx_pour', 0.35);
 
-    // Mảng nền tĩnh của nguồn (sau khi đã bớt đi lớp đổ)
+    // Mảng nền tĩnh của nguồn (sau khi đã bớt đi lớp đổ) + của đích
     const srcBase = srcBefore.slice(0, srcBefore.length - count);
     const dstBase = dstBefore.slice();
 
@@ -389,29 +505,29 @@ export class GameplayScene extends Phaser.Scene {
     this.tweens.add({
       targets: animData,
       t: 1.0,
-      duration: 180,
-      ease: 'linear',
+      duration: 150 + count * 45,
+      ease: 'sine.inout',
       onUpdate: () => {
         const progress = animData.t;
+        const thickness = 4 + Math.min(3, count);
 
-        // Vẽ dòng nước
-        drawPourStream(this.pourStreamG, startX, startY, endX, endY, colorHex, 5);
+        drawPourStream(this.pourStreamG, startX, startY, endX, endY, colorHex, thickness);
 
-        // Render nguồn rút dần
-        renderPourTransition(srcUI.views, srcBase, colorHex, (1 - progress), true);
-
-        // Render đích dâng dần
-        renderPourTransition(dstUI.views, dstBase, colorHex, progress, false);
+        // nguồn rút dần / đích dâng dần — CÙNG 1 tween (đồng bộ)
+        renderPourTransition(srcUI.views, srcBase, colorHex, 1 - progress, count);
+        renderPourTransition(dstUI.views, dstBase, colorHex, progress, count);
       },
       onComplete: () => {
         this.pourStreamG.clear();
 
-        // Vẽ tĩnh chuẩn xác kết quả
         renderLiquid(srcUI.views, this.board.tubes[from]);
         renderLiquid(dstUI.views, this.board.tubes[to]);
 
-        // Ripple nhẹ tại đích
+        // "drop" mềm khi khối chất lỏng đáp xuống + ripple mặt thoáng
+        const fillRatio = this.board.tubes[to].length / this.board.capacity;
+        synthAudio.playDrop(fillRatio);
         this.spawnSurfaceRipple(dstUI, colorHex);
+        this.flashTubeMouth(dstUI, color.success);
 
         onComplete();
       },
@@ -431,53 +547,86 @@ export class GameplayScene extends Phaser.Scene {
       6,
       toColor(colorHex),
       0.8,
-    ).setDepth(z.actor + 4);
+    ).setDepth(z.actor + 4).setBlendMode(Phaser.BlendModes.ADD);
 
     this.tweens.add({
       targets: rip,
-      scaleX: 1.25,
+      scaleX: 1.3,
       alpha: 0,
-      duration: 200,
+      duration: dur.pop,
       ease: 'quad.out',
       onComplete: () => rip.destroy(),
     });
   }
 
-  // ==========================================================================
-  // TUBE COMPLETED FANFARE
-  // ==========================================================================
-  private checkTubeCompletionCelebration(tubeIndex: number) {
-    const tube = this.board.tubes[tubeIndex];
-    if (tube.length === this.board.capacity && isClean(tube)) {
-      if (!this.completedTubes.has(tubeIndex)) {
-        this.completedTubes.add(tubeIndex);
-        this.celebrateCompletedTube(tubeIndex);
-      }
-    }
+  /** Vành miệng ống đích nhấp 1 lần (DESIGN-SPEC §5 A3). */
+  private flashTubeMouth(ui: TubeUI, hex: string) {
+    const { width: tubeW, height: tubeH, container } = ui.views;
+    const line = this.add.rectangle(container.x, container.y - tubeH / 2, tubeW * 0.9, 4, toColor(hex), 0.9)
+      .setDepth(z.actor + 4).setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({
+      targets: line,
+      alpha: 0,
+      scaleX: 1.2,
+      duration: dur.base,
+      ease: 'quad.out',
+      onComplete: () => line.destroy(),
+    });
   }
 
-  private celebrateCompletedTube(tubeIndex: number) {
-    const ui = this.tubeUIs[tubeIndex];
-    if (!ui) return;
-
-    synthAudio.playTubeComplete();
-    const { width: tubeW, height: tubeH, completionFx } = ui.views;
-    completionFx.removeAll(true);
-
-    const cap = this.add.graphics();
-    cap.fillStyle(toColor(color.primary), 0.9);
-    cap.fillRoundedRect(-tubeW * 0.35, -tubeH / 2 - 6, tubeW * 0.7, 7, 3);
-    cap.lineStyle(1.5, toColor('#FFFFFF'), 0.8);
-    cap.strokeRoundedRect(-tubeW * 0.35, -tubeH / 2 - 6, tubeW * 0.7, 7, 3);
-    cap.setScale(0);
-    completionFx.add(cap);
-
+  private bumpMoveLabel() {
+    this.moveLabel.setText(`⤵ ${this.board.moveCount}`);
+    this.tweens.killTweensOf(this.moveLabel);
+    this.moveLabel.setScale(1);
     this.tweens.add({
-      targets: cap,
-      scale: 1,
-      duration: 250,
-      ease: 'back.out',
+      targets: this.moveLabel,
+      scale: 1.18,
+      duration: dur.pop / 2,
+      yoyo: true,
+      ease: 'quad.out',
     });
+  }
+
+  // ==========================================================================
+  // SEAL MOMENT — ống 1 màu duy nhất + đầy → frost + ring khép + shimmer + nốt nhạc
+  // ==========================================================================
+  private isSealable(index: number): boolean {
+    const tube = this.board.tubes[index];
+    return tube.length === this.board.capacity && isClean(tube);
+  }
+
+  /**
+   * Đồng bộ trạng thái SEAL của toàn bộ ống với board.
+   * `withFx` = false → phục hồi im lặng (undo/restart): không animate, không nốt nhạc.
+   */
+  private syncSeals(withFx: boolean) {
+    let newlySealed = 0;
+
+    for (const t of this.tubeUIs) {
+      const idx = t.index;
+      const sealable = this.isSealable(idx);
+      const wasSealed = this.sealedTubes.has(idx);
+
+      if (sealable && !wasSealed) {
+        this.sealedTubes.add(idx);
+        const hex = this.board.tubes[idx][0];
+        sealTube(this, t.views, hex, !withFx);
+        if (withFx) {
+          newlySealed++;
+          // nốt kế tiếp ĐI LÊN thang ngũ cung (mỗi seal 1 nốt)
+          synthAudio.playSealNote();
+          this.playSfx('sfx_clear', 0.22);
+          const { container, width: tubeW } = t.views;
+          spawnNeonBurst(this, container.x, container.y, [hex, color.accent, '#FFFFFF'], 12, tubeW * 1.6, z.actor + 6);
+        }
+      } else if (!sealable && wasSealed) {
+        this.sealedTubes.delete(idx);
+        unsealTube(this, t.views);
+        renderLiquid(t.views, this.board.tubes[idx]);
+      }
+    }
+
+    if (newlySealed > 0 || this.sealPipsG) this.renderSealPips(this.scale.width);
   }
 
   private shakeTube(i: number) {
@@ -562,6 +711,7 @@ export class GameplayScene extends Phaser.Scene {
   // ==========================================================================
   // CONTROLLER ACTIONS
   // ==========================================================================
+  /** UNDO = TỨC THÌ & MIỄN PHÍ (không animation dài — task §3). */
   private onUndo() {
     if (this.isAnimating) return;
     this.clearHint();
@@ -571,12 +721,28 @@ export class GameplayScene extends Phaser.Scene {
       this.playSfx('sfx_error', 0.3);
       return;
     }
-    this.moveLabel.setText(`⤵ ${this.board.moveCount}`);
+    this.bumpMoveLabel();
+
+    // render lại ngay (0 delay) + pop nhẹ 2 ống liên quan cho dễ theo dõi
     for (const t of this.tubeUIs) {
       renderLiquid(t.views, this.board.tubes[t.index]);
     }
-    synthAudio.playGlug(1);
-    this.playSfx('sfx_pour', 0.3);
+    this.syncSeals(false);
+
+    for (const idx of [undone.from, undone.to]) {
+      const ui = this.tubeUIs[idx];
+      if (!ui) continue;
+      this.tweens.killTweensOf(ui.views.container);
+      ui.views.container.setScale(0.94);
+      this.tweens.add({
+        targets: ui.views.container,
+        scale: 1,
+        duration: dur.fast,
+        ease: 'quad.out',
+      });
+    }
+
+    synthAudio.playGlug(0);
     this.selected = null;
     this.updateSelection();
   }
@@ -588,11 +754,15 @@ export class GameplayScene extends Phaser.Scene {
     this.time.delayedCall(dur.scene, () => {
       this.board = restartBoard(MECHANICS, this.board);
       this.selected = null;
-      this.completedTubes.clear();
+      for (const t of this.tubeUIs) unsealTube(this, t.views);
+      this.sealedTubes.clear();
+      synthAudio.resetSealScale(0);
       this.moveLabel.setText(`⤵ 0`);
       for (const t of this.tubeUIs) {
         renderLiquid(t.views, this.board.tubes[t.index]);
       }
+      this.renderSealPips(this.scale.width);
+      this.updateSelection();
       this.cameras.main.fadeIn(dur.scene, 0, 0, 0);
       synthAudio.playClick();
       this.playSfx('sfx_click', 0.3);
@@ -619,7 +789,7 @@ export class GameplayScene extends Phaser.Scene {
 
     synthAudio.playHint();
 
-    // 1. Lift source tube
+    // 1. Lift source tube (kèm ghost preview trên đích — thấy ngay sẽ đổ mấy lát)
     this.selected = hint.from;
     this.updateSelection();
 
@@ -652,12 +822,26 @@ export class GameplayScene extends Phaser.Scene {
     if (!earned) return false;
 
     addExtraTube(this.board);
+    this.selected = null;
     this.layoutBoard(this.scale.width, this.scale.height);
     const last = this.tubeUIs[this.tubeUIs.length - 1];
     last.views.container.setScale(0);
     this.tweens.add({ targets: last.views.container, scale: 1, duration: dur.pop, ease: 'back.out' });
-    synthAudio.playTubeComplete();
+    synthAudio.playRewardTube();
+    this.hideStuckTooltip();
     return true;
+  }
+
+  private hideStuckTooltip() {
+    if (!this.stuckTooltip) return;
+    const tip = this.stuckTooltip;
+    this.stuckTooltip = null;
+    this.tweens.add({
+      targets: tip,
+      alpha: 0,
+      duration: dur.base,
+      onComplete: () => tip.destroy(),
+    });
   }
 
   private showStuckTooltip(msg = 'No moves left! Use ↺ Undo or ⟳ Restart 💡') {
@@ -669,6 +853,7 @@ export class GameplayScene extends Phaser.Scene {
       .setOrigin(0.5);
     t.setShadow(0, 2, color.shadow, 3, false, true);
 
+    const canExtra = this.board.extraTubeUsed < MECHANICS.reward.extraTube.maxExtra;
     const w = t.width + sp[4] * 2, h = t.height + sp[3];
     const g = this.add.graphics().setDepth(z.tutorial);
     g.fillStyle(toColor('#120D2C'), 0.95);
@@ -676,25 +861,36 @@ export class GameplayScene extends Phaser.Scene {
     g.lineStyle(1.5, toColor(color.warning), 0.8);
     g.strokeRoundedRect(-w / 2, -h / 2, w, h, radius.md);
 
-    this.stuckTooltip = this.add.container(width / 2, y, [g, t]).setDepth(z.tutorial).setAlpha(0);
+    const items: Phaser.GameObjects.GameObject[] = [g, t];
+    this.stuckTooltip = this.add.container(width / 2, y, items).setDepth(z.tutorial).setAlpha(0);
+
+    // Rewarded EXTRA TUBE (M2-06) — chỉ hiện khi đang kẹt và còn suất
+    if (canExtra) {
+      const extra = drawButton(this, 0, -h / 2 - 34, '+1 TUBE', {
+        variant: 'glass',
+        width: 132,
+        height: 44,
+        textType: type.small,
+        testid: 'extra-tube-btn',
+      });
+      extra.container.on('pointerdown', (
+        _p: Phaser.Input.Pointer,
+        _lx: number,
+        _ly: number,
+        event: Phaser.Types.Input.EventData,
+      ) => {
+        event.stopPropagation();
+        void this.requestExtraTube();
+      });
+      this.stuckTooltip.add(extra.container);
+    }
+
     this.tweens.add({
       targets: this.stuckTooltip,
       alpha: 1,
       duration: dur.base,
       ease: 'quad.out',
-      onComplete: () => this.time.delayedCall(3000, () => {
-        if (this.stuckTooltip) {
-          this.tweens.add({
-            targets: this.stuckTooltip,
-            alpha: 0,
-            duration: dur.base,
-            onComplete: () => {
-              this.stuckTooltip?.destroy();
-              this.stuckTooltip = null;
-            },
-          });
-        }
-      }),
+      onComplete: () => this.time.delayedCall(4000, () => this.hideStuckTooltip()),
     });
     synthAudio.playBuzz();
   }
@@ -715,22 +911,62 @@ export class GameplayScene extends Phaser.Scene {
     void ctx.save();
   }
 
+  // ==========================================================================
+  // LEVEL CLEAR — burst neon tại board + melody resolve, rồi chuyển scene mượt
+  // ==========================================================================
   private onLevelClear() {
     this.clearHint();
-    synthAudio.playLevelClear();
+    this.selected = null;
+    this.isAnimating = true;
+
+    // melody resolve (khớp thang seal) + sfx file nếu có
+    synthAudio.playLevelClear(this.sealedTubes.size);
     this.playSfx('sfx_clear', 0.5);
+
+    // flash các ống đã seal + burst hạt neon từ giữa board
+    this.tubeUIs.forEach((t, i) => {
+      if (!this.sealedTubes.has(t.index)) return;
+      this.tweens.add({
+        targets: t.views.container,
+        scale: 1.08,
+        duration: dur.fast,
+        delay: i * 40,
+        yoyo: true,
+        ease: 'quad.out',
+      });
+      this.tweens.add({
+        targets: t.views.sealRing,
+        alpha: 1,
+        duration: dur.base,
+        delay: i * 40,
+        yoyo: true,
+      });
+    });
+
+    const cx = this.scale.width / 2;
+    const cy = this.layout ? this.layout.startY + this.layout.boardH / 2 - this.layout.tubeH / 2 : this.scale.height * 0.45;
+    spawnNeonBurst(this, cx, cy, liquidPalette, 34, Math.min(280, this.scale.width * 0.55), z.tutorial);
+
     ctx.onLevelClear(this.board.level, this.board.moveCount);
     void ctx.save();
-    this.scene.start('LevelClearScene', {
-      level: this.board.level,
-      moves: this.board.moveCount,
-      optimal: this.board.optimalMoves,
-      best: ctx.getBestMovesForLevel(this.board.level),
+
+    // chuyển scene mượt (fade) — DESIGN-SPEC §5 A8
+    this.time.delayedCall(360, () => {
+      this.cameras.main.fadeOut(dur.base, 0, 0, 0);
+      this.time.delayedCall(dur.base, () => {
+        this.scene.start('LevelClearScene', {
+          level: this.board.level,
+          moves: this.board.moveCount,
+          optimal: this.board.optimalMoves,
+          best: ctx.getBestMovesForLevel(this.board.level),
+          seals: this.sealedTubes.size,
+        });
+      });
     });
   }
 
   private playSfx(key: string, volume = 0.35) {
-    if (this.sound.mute) return;
+    if (this.sound.mute || synthAudio.isMuted()) return;
     if (this.cache.audio.exists(key)) this.sound.play(key, { volume });
   }
 
@@ -740,11 +976,9 @@ export class GameplayScene extends Phaser.Scene {
     if (this.bgObjects.bgImage) this.bgObjects.bgImage.destroy();
 
     this.bgObjects = drawGalaxyBg(this);
+    this.drawHud(g.width, g.height);
     this.layoutBoard(g.width, g.height);
     this.drawToolbar(g.width, g.height);
-
-    if (this.audioBtnText) {
-      this.audioBtnText.setPosition(g.width - sp[4] - 27 - 8, sp[4] + 28);
-    }
+    if (this.stuckTooltip) this.stuckTooltip.setPosition(g.width / 2, g.height - sp[5] - 92);
   }
 }

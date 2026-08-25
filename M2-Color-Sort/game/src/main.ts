@@ -5,7 +5,8 @@ import { StartScene } from './scenes/Start';
 import { GameplayScene } from './scenes/Gameplay';
 import { LevelClearScene } from './scenes/LevelClear';
 import { ctx } from './context';
-import { color, dur } from './tokens';
+import { synthAudio } from './audio';
+import { dur } from './tokens';
 
 export const GAME_TITLE = 'Neon Sort: Galaxy Pour';
 export const GAME_NAME = 'neon-sort';
@@ -48,16 +49,21 @@ const config: Phaser.Types.Core.GameConfig = {
 
 const game = new Phaser.Game(config);
 
+// MỘT AUDIO BUS DUY NHẤT: synth WebAudio + sfx file của Phaser cùng đi qua đây.
+// → mọi callback pause/mute của SDK chỉ cần MỘT DÒNG để im toàn bộ game.
+synthAudio.attachSoundManager(game.sound);
+synthAudio.setMuted(!sdk.isAudioEnabled());
+
 sdk.onPause(() => {
+  synthAudio.suspend();                                  // ← 1 dòng: im toàn bộ audio
   game.scene.pause('GameplayScene');
-  game.sound.mute = true;
 });
 sdk.onResume(() => {
-  game.sound.mute = !sdk.isAudioEnabled();
+  synthAudio.resume(sdk.isAudioEnabled());               // ← 1 dòng: mở lại đúng trạng thái
   game.scene.resume('GameplayScene');
 });
 sdk.onAudioEnabledChange((enabled: boolean) => {
-  game.sound.mute = !enabled;
+  synthAudio.setMuted(!enabled);                         // ← 1 dòng
 });
 
 sdk.gameReady();
