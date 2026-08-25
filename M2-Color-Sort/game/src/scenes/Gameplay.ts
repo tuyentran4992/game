@@ -25,6 +25,7 @@ import { ctx } from '../context';
 import { sdk } from '../sdk-instance';
 import { inputGate } from '../input-gate';
 import { showAdConfirm, showAdLoading, showToast } from '../ad-ux';
+import { L } from '../lang';
 import { AD_FLOW_TIMEOUT_MS, AD_WATCHDOG_MS, canBuyExtraTube, hintGrant, raceTimeout } from '../logic/ad-pacing';
 import { startBgmOnce } from '../bgm';
 import { MECHANICS } from '../logic/mechanics';
@@ -97,7 +98,7 @@ export class GameplayScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const cx = width / 2, cy = height / 2;
     const root = this.add.container(cx, cy).setDepth(z.overlay + 60);
-    const t = this.add.text(0, 42, 'Generating board…', fontStyle(type.small, color.accent)).setOrigin(0.5);
+    const t = this.add.text(0, 42, L('generating'), fontStyle(type.small, color.accent)).setOrigin(0.5);
     t.setShadow(0, 2, color.shadow, 4, false, true);
     const ring = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
     ring.lineStyle(5, toColor(color.primary), 0.28);
@@ -965,7 +966,7 @@ export class GameplayScene extends Phaser.Scene {
 
     if (!grant.allowed) {
       // 1 gợi ý/level — nói rõ lý do thay vì nút "chết"
-      showToast(this, 'Hint already used — next level unlocks a new one');
+      showToast(this, L('hint_used') );
       synthAudio.playBuzz();
       return;
     }
@@ -975,7 +976,7 @@ export class GameplayScene extends Phaser.Scene {
     if (!grant.requiresAd) {
       if (this.applyHint()) {
         ctx.markFreeHintUsed();
-        showToast(this, 'First hint is free — next one needs a short ad');
+        showToast(this, L('first_hint_free'));
         this.refreshRewardButtons();
       }
       return;
@@ -983,15 +984,15 @@ export class GameplayScene extends Phaser.Scene {
 
     // (2) Ad khả dụng? Kiểm tra TRƯỚC khi mời xem.
     if (!sdk.isRewardedAvailable()) {
-      showToast(this, 'Ad unavailable — try again later');
+      showToast(this, L('ad_unavailable'));
       return;
     }
 
     // (3) Sheet xác nhận — không bao giờ vào ad khi chưa hỏi.
     showAdConfirm(this, {
-      title: 'Watch a short ad for a hint?',
-      confirmText: 'WATCH ▶',
-      cancelText: 'NO THANKS',
+      title: L('confirm_hint'),
+      confirmText: L('confirm_yes'),
+      cancelText: L('confirm_no'),
       onConfirm: () => { void this.runRewarded('hint', () => { this.applyHint(); }); },
     });
   }
@@ -1003,7 +1004,7 @@ export class GameplayScene extends Phaser.Scene {
   private async runRewarded(tag: 'hint' | 'extra-tube', onEarned: () => void): Promise<boolean> {
     if (this.adBusy) return false;
     this.adBusy = true;
-    const spinner = showAdLoading(this, 'Ad loading…');
+    const spinner = showAdLoading(this, L('ad_loading'));
     let earned = false;
     try {
       const ad = sdk.requestRewardedAd(tag);
@@ -1027,7 +1028,7 @@ export class GameplayScene extends Phaser.Scene {
     }
 
     if (!earned) {
-      showToast(this, 'Ad unavailable — try again later');
+      showToast(this, L('ad_unavailable'));
       return false;
     }
     onEarned();
@@ -1042,7 +1043,7 @@ export class GameplayScene extends Phaser.Scene {
     this.clearHint();
     const hint = hintMove(this.board);
     if (!hint) {
-      this.showStuckTooltip('No moves left! Use Undo or Restart');
+      this.showStuckTooltip(L('stuck_no_moves'));
       return false;
     }
 
@@ -1093,19 +1094,19 @@ export class GameplayScene extends Phaser.Scene {
     if (this.isAnimating || this.board.win) return;
 
     if (!canBuyExtraTube(this.board.extraTubeUsed, MECHANICS.reward.extraTube.maxExtra)) {
-      showToast(this, 'Extra tube already used in this level');
+      showToast(this, L('extra_used'));
       synthAudio.playBuzz();
       return;
     }
     if (!sdk.isRewardedAvailable()) {
-      showToast(this, 'Ad unavailable — try again later');
+      showToast(this, L('ad_unavailable'));
       return;
     }
     showAdConfirm(this, {
-      title: 'Watch a short ad for +1 tube?',
-      note: 'One extra tube for this level · stays after Restart',
-      confirmText: 'WATCH ▶',
-      cancelText: 'NO THANKS',
+      title: L('confirm_tube'),
+      note: L('note_extra'),
+      confirmText: L('confirm_yes'),
+      cancelText: L('confirm_no'),
       onConfirm: () => { void this.requestExtraTube(); },
     });
   }
@@ -1162,7 +1163,7 @@ export class GameplayScene extends Phaser.Scene {
     });
   }
 
-  private showStuckTooltip(msg = 'No moves left! Use Undo or Restart') {
+  private showStuckTooltip(msg = L('stuck_no_moves')) {
     if (this.stuckTooltip) return;
     const { width, height } = this.scale;
     const y = height - sp[5] - 92;
@@ -1186,7 +1187,7 @@ export class GameplayScene extends Phaser.Scene {
     // ('extra-tube-btn'). Tooltip chỉ là shortcut phụ + kéo chú ý xuống toolbar
     // (không auto-hide mất cơ hội mua như trước).
     if (canExtra) {
-      const extra = drawButton(this, 0, -h / 2 - 34, '+1 TUBE ▶', {
+      const extra = drawButton(this, 0, -h / 2 - 34, L('extra_tube_tip'), {
         variant: 'glass',
         width: 148,
         height: 44,
@@ -1222,7 +1223,7 @@ export class GameplayScene extends Phaser.Scene {
     const boardTop = this.layout ? this.layout.startY : height * 0.3;
     const y = Math.max(sp[4] + 64, boardTop - 46);
     const wrapW = Math.min(width - 48, 460);
-    const msg = 'Tap a tube to pour liquid';
+    const msg = L('tutorial_tap');
 
     const t = this.add.text(0, 0, msg, {
       ...fontStyle(type.body, color.surface),
@@ -1323,7 +1324,7 @@ export class GameplayScene extends Phaser.Scene {
 
     if (wantAd) {
       ctx.markInterstitialShown(now);
-      const spinner = showAdLoading(this, 'Ad loading…');
+      const spinner = showAdLoading(this, L('ad_loading'));
       try {
         await raceTimeout(
           sdk.requestInterstitialAd(AD_FLOW_TIMEOUT_MS).then(() => true),

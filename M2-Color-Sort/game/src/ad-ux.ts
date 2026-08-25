@@ -15,6 +15,7 @@
 import Phaser from 'phaser';
 import { color, type, sp, radius, z, dur, fontStyle, toColor } from './tokens';
 import { drawButton, synthAudio } from './ui';
+import { L } from './lang';
 
 const OVERLAY_DEPTH = z.overlay + 60;
 
@@ -36,7 +37,7 @@ function dimBackdrop(scene: Phaser.Scene, alpha: number): Phaser.GameObjects.Rec
  * "Ad loading…" — hiện ngay khi bắt đầu await 1 quảng cáo (B2-3/B2-5).
  * KHÔNG tự hết hạn: caller luôn bọc ad trong raceTimeout() rồi gọi destroy().
  */
-export function showAdLoading(scene: Phaser.Scene, label = 'Ad loading…'): AdOverlay {
+export function showAdLoading(scene: Phaser.Scene, label = L('ad_loading')): AdOverlay {
   const { width, height } = scene.scale;
   const cx = width / 2;
   const cy = height / 2;
@@ -168,7 +169,7 @@ export function showAdConfirm(scene: Phaser.Scene, opts: AdConfirmOptions): Phas
   root.add(g);
 
   const badge = scene.add
-    .text(0, -ph / 2 + sp[4] + 6, '▶ REWARDED AD', fontStyle(type.small, color.accent))
+    .text(0, -ph / 2 + sp[4] + 6, L('rewarded_badge'), fontStyle(type.small, color.accent))
     .setOrigin(0.5);
   badge.setShadow(0, 0, color.accent, 10, false, true);
   root.add(badge);
@@ -183,7 +184,7 @@ export function showAdConfirm(scene: Phaser.Scene, opts: AdConfirmOptions): Phas
   root.add(title);
 
   const note = scene.add
-    .text(0, title.y + title.height / 2 + 16, opts.note ?? 'Short ad · reward granted after it ends', {
+    .text(0, title.y + title.height / 2 + 16, opts.note ?? L('note_short_ad'), {
       ...fontStyle(type.small, color.surface),
       wordWrap: { width: pw - sp[5] * 2 },
     })
@@ -208,7 +209,7 @@ export function showAdConfirm(scene: Phaser.Scene, opts: AdConfirmOptions): Phas
     });
   };
 
-  const yes = drawButton(scene, 0, ph / 2 - 78, opts.confirmText ?? 'WATCH ▶', {
+  const yes = drawButton(scene, 0, ph / 2 - 78, opts.confirmText ?? L('confirm_yes'), {
     variant: 'primary',
     width: pw - sp[5] * 2,
     height: 54,
@@ -226,7 +227,7 @@ export function showAdConfirm(scene: Phaser.Scene, opts: AdConfirmOptions): Phas
   });
   root.add(yes.container);
 
-  const no = drawButton(scene, 0, ph / 2 - 22, opts.cancelText ?? 'NO THANKS', {
+  const no = drawButton(scene, 0, ph / 2 - 22, opts.cancelText ?? L('confirm_no'), {
     variant: 'ghost',
     width: pw - sp[5] * 2,
     height: 44,

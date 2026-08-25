@@ -1,24 +1,30 @@
 // ============================================================================
-// YouTube Playables SDK adapter (P0-1) — M2-08 / M2-09 / M2-11
+// Multi-backend SDK adapter (M2 Phase 5) — YouTube Playables + Playgama + local
 //
-// The platform SDK (loaded by index.html from youtube.com/game_api/v1) exposes a
-// NAMESPACED global:
-//   ytgame.game.firstFrameReady() / gameReady() / saveData(str) / loadData()
-//   ytgame.system.onPause(cb) / onResume(cb) / isAudioEnabled() /
-//                 onAudioEnabledChange(cb) / getLanguage()
-//   ytgame.engagement.sendScore({ value })
-//   ytgame.ads.requestInterstitialAd() / requestRewardedAd()
+// A small backend layer that DETECTS the active SDK and dispatches save/load,
+// interstitial + rewarded ads, firstFrameReady/gameReady, sendScore and
+// pause/resume/mute/audio to the RIGHT backend. Mirrors M1/M3
+// (sdk-bridge-backend.ts / sdk-handler.ts). Backends, in priority order:
 //
-// This adapter samples that surface DEFENSIVELY (every call re-reads
-// window.ytgame and probes for the function) so the game never crashes when:
-//   * the SDK script is missing/blocked (local dev, offline zip QA),
-//   * the SDK is an older FLAT build (ytgame.gameReady(), ytgame.saveData()…),
-//   * only part of the namespace exists (e.g. no `engagement`).
-// Storage always mirrors to localStorage so a plain browser reload resumes too
-// (P0-2), and loadData() applies LAST-WRITE-WINS via `last_updated_ts`.
+//   1. YTGAME  — YouTube Playables SDK (loaded by index.html from
+//                youtube.com/game_api/v1, NAMESPACED). M2 ships this directly
+//                and its YouTube submission must not regress → wins when present.
+//   2. PLAYGAMA — Playgama Bridge v2 (window.bridge / playgamaBridge) for
+//                Playgama-routed portals (CrazyGames / Poki / GD / Y8 / ...).
+//                Used when no ytgame is present (those hosts don't load game_api).
+//   3. LOCAL   — dev/offline: no SDK → localStorage fallback, never crash.
+//
+// The ytgame branch samples its surface DEFENSIVELY (every call re-reads
+// window.ytgame and probes for the function) so the game never crashes when the
+// SDK script is missing/blocked, is an older FLAT build, or only part of the
+// namespace exists. Storage ALWAYS mirrors to localStorage so a plain browser
+// reload resumes too (P0-2), and loadData() applies LAST-WRITE-WINS via
+// `last_updated_ts`. The Playgama branch (PlaygamaBackend) buffers every
+// call/callback until bridge.initialize() resolves so boot never throws.
 // ============================================================================
 
 import { REWARDED_TIMEOUT_MS } from './logic/ad-pacing';
+import { getBridge, PlaygamaBackend, type PlaygamaBridgeLike } from './sdk-bridge-backend';
 
 type VoidCb = () => void;
 type AudioCb = (enabled: boolean) => void;
@@ -91,26 +97,50 @@ function withTimeout<T>(p: Promise<T>, ms: number, onTimeout: T): Promise<T> {
   });
 }
 
+export type BackendId = 'ytgame' | 'playgama' | 'local';
+
 export class SdkHandler {
-  /** true nếu ĐANG chạy trong Playables (SDK thật) — dùng để không "tặng" reward. */
+  /** true nếu ĐANG chạy với 1 SDK platform thật (ytgame HOẶC playgama). */
   readonly hasSdk: boolean;
   readonly inPlayables: boolean;
   readonly sdkVersion: string;
+  /** Backend được chọn (phát hiện theo thứ tự ytgame → playgama → local). */
+  readonly backend: BackendId;
   /** true khi lần save gần nhất đã ghi được xuống platform (không chỉ localStorage). */
   savedToPlatform = false;
 
+  private ytgame: YtGameLike | null;
+  private bridge: PlaygamaBridgeLike | null;
+  private pb: PlaygamaBackend | null = null;
   private firstFrameSent = false;
   private gameReadySent = false;
   private visibilityBound = false;
 
   constructor() {
     const yt = this.yt();
+    this.ytgame = yt;
+    this.bridge = getBridge();
+
+    // PHÁT HIỆN BACKEND (M2 Phase 5):
+    //   ytgame trước (nộp thẳng YouTube — KHÔNG được regress), rồi Playgama
+    //   (portal qua Playgama: CrazyGames/Poki/GD/... — chúng KHÔNG load game_api),
+    //   còn không → local (dev/offline). Mọi method dispatch theo `backend`.
+    if (yt) {
+      this.backend = 'ytgame';
+    } else if (this.bridge) {
+      this.backend = 'playgama';
+      this.pb = new PlaygamaBackend(this.bridge);
+      this.pb.readyPromise().catch(() => {});
+    } else {
+      this.backend = 'local';
+    }
+
     // Sample the exposed surface ONCE for logging/diagnostics; every call below
     // still re-probes, so a late-loading SDK still works.
-    this.hasSdk = !!yt;
+    this.hasSdk = !!yt || this.backend === 'playgama';
     this.inPlayables = !!yt?.IN_PLAYABLES_ENV;
     this.sdkVersion = typeof yt?.SDK_VERSION === 'string' ? yt.SDK_VERSION : '';
-    if (yt) {
+    if (this.backend === 'ytgame' && yt) {
       const ns = [
         yt.game ? 'game' : null,
         yt.system ? 'system' : null,
@@ -118,12 +148,23 @@ export class SdkHandler {
         yt.ads ? 'ads' : null,
       ].filter(Boolean).join(',');
       console.info(`[sdk] ytgame detected (v${this.sdkVersion || '?'}) namespaces: ${ns || 'flat-only'}`);
+    } else if (this.backend === 'playgama') {
+      console.info('[sdk] Playgama Bridge detected → multi-backend (playgama)');
     } else {
-      console.info('[sdk] ytgame absent → flat/localStorage fallback (local dev)');
+      console.info('[sdk] no SDK → flat/localStorage fallback (local dev)');
     }
   }
 
-  /** Re-read the global every time: the SDK script may resolve after this module. */
+  /** Backend đang ENGAGED (public diagnostics). */
+  get useBridge(): boolean { return this.backend === 'playgama'; }
+
+  /** Chờ backend platform SẴN SÀNG (Playgama cần bridge.initialize(); ytgame/local tức thì). */
+  ready(): Promise<void> {
+    if (this.pb) return this.pb.readyPromise();
+    return Promise.resolve();
+  }
+
+  /** Re-read the ytgame global every time: the SDK script may resolve after this module. */
   private yt(): YtGameLike | null {
     if (typeof window === 'undefined') return null;
     return window.ytgame ?? null;
@@ -132,6 +173,7 @@ export class SdkHandler {
   // ------------------------------------------------------------ lifecycle ---
   /** P0-5: khung hình ĐẦU TIÊN đã render (platform tắt loader của nó). */
   firstFrameReady(): void {
+    if (this.pb) { this.pb.firstFrameReady(); return; }   // Playgama: no-op (game_ready)
     if (this.firstFrameSent) return;
     this.firstFrameSent = true;
     const yt = this.yt();
@@ -145,6 +187,7 @@ export class SdkHandler {
 
   /** P0-5: CHỈ gọi khi asset đã load xong VÀ màn Start nhận được input. */
   gameReady(): void {
+    if (this.pb) { this.pb.gameReady(); return; }
     if (this.gameReadySent) return;
     this.gameReadySent = true;
     const yt = this.yt();
@@ -160,6 +203,7 @@ export class SdkHandler {
 
   // ------------------------------------------------- pause / mute passthru ---
   onPause(cb: VoidCb): void {
+    if (this.pb) { this.pb.onPause(cb); return; }
     const yt = this.yt();
     try {
       if (isFn(yt?.system?.onPause)) { yt!.system!.onPause!(cb); return; }
@@ -171,6 +215,7 @@ export class SdkHandler {
   }
 
   onResume(cb: VoidCb): void {
+    if (this.pb) { this.pb.onResume(cb); return; }
     const yt = this.yt();
     try {
       if (isFn(yt?.system?.onResume)) { yt!.system!.onResume!(cb); return; }
@@ -195,6 +240,7 @@ export class SdkHandler {
   get usesVisibilityFallback(): boolean { return this.visibilityBound; }
 
   isAudioEnabled(): boolean {
+    if (this.pb) return this.pb.isAudioEnabled();
     const yt = this.yt();
     try {
       if (isFn(yt?.system?.isAudioEnabled)) return yt!.system!.isAudioEnabled!() !== false;
@@ -206,6 +252,7 @@ export class SdkHandler {
   }
 
   onAudioEnabledChange(cb: AudioCb): void {
+    if (this.pb) { this.pb.onAudioEnabledChange(cb); return; }
     const yt = this.yt();
     try {
       if (isFn(yt?.system?.onAudioEnabledChange)) { yt!.system!.onAudioEnabledChange!(cb); return; }
@@ -215,7 +262,9 @@ export class SdkHandler {
     }
   }
 
+  /** i18n (AUDIT §B6 / SPEC §5): ngôn ngữ từ BACKEND ĐANG CHẠY + fallback 'en'. */
   getLanguage(): string {
+    if (this.pb) return this.pb.getLanguage();
     const yt = this.yt();
     try {
       if (isFn(yt?.system?.getLanguage)) return yt!.system!.getLanguage!() || 'en';
@@ -244,6 +293,16 @@ export class SdkHandler {
     const localOk = this.writeLocal(json);
 
     this.savedToPlatform = false;
+    if (this.pb) {
+      try {
+        this.savedToPlatform = await this.pb.saveData(data);
+      } catch (e) {
+        console.warn('[sdk] bridge saveData failed (localStorage keeps the state)', e);
+        this.savedToPlatform = false;
+      }
+      return this.savedToPlatform || localOk;
+    }
+
     const yt = this.yt();
     const fn = isFn(yt?.game?.saveData) ? yt!.game!.saveData!.bind(yt!.game)
       : isFn(yt?.saveData) ? yt!.saveData!.bind(yt) : null;
@@ -281,6 +340,9 @@ export class SdkHandler {
   }
 
   private async readRemote(): Promise<unknown | null> {
+    // Playgama: bridge.storage (cloud-save khi nền tảng hỗ trợ).
+    if (this.pb) return this.pb.loadData();
+
     const yt = this.yt();
     const fn = isFn(yt?.game?.loadData) ? yt!.game!.loadData!.bind(yt!.game)
       : isFn(yt?.loadData) ? yt!.loadData!.bind(yt) : null;
@@ -319,6 +381,7 @@ export class SdkHandler {
   // ----------------------------------------------------------- engagement ---
   /** M2-08: platform nhận OBJECT `{ value }` trên namespace engagement. */
   sendScore(score: number): void {
+    if (this.pb) { this.pb.sendScore(score); return; }
     const yt = this.yt();
     try {
       if (isFn(yt?.engagement?.sendScore)) {
@@ -341,6 +404,7 @@ export class SdkHandler {
    * Ngoài Playables (dev/offline) → true để luồng UI vẫn test được.
    */
   isRewardedAvailable(): boolean {
+    if (this.pb) return this.pb.isRewardedAvailable();
     const yt = this.yt();
     if (!yt) return !this.inPlayables;
     return isFn(yt.ads?.requestRewardedAd);
@@ -348,12 +412,19 @@ export class SdkHandler {
 
   /** B2: có API interstitial? (không có → bỏ qua im lặng, không chặn NEXT). */
   isInterstitialAvailable(): boolean {
+    if (this.pb) return this.pb.isInterstitialAvailable();
     const yt = this.yt();
     if (!yt) return false;   // dev: KHÔNG giả lập interstitial (không có gì để hiện)
     return isFn(yt.ads?.requestInterstitialAd);
   }
 
   async requestInterstitialAd(timeoutMs = AD_TIMEOUT_MS): Promise<void> {
+    if (this.pb) {
+      try { await this.pb.requestInterstitialAd(); } catch (e) {
+        console.warn('[sdk] bridge interstitial failed', e);
+      }
+      return;
+    }
     const yt = this.yt();
     const fn = isFn(yt?.ads?.requestInterstitialAd) ? yt!.ads!.requestInterstitialAd!.bind(yt!.ads) : null;
     if (!fn) return;
@@ -370,6 +441,7 @@ export class SdkHandler {
    * 4-6 s thì ad xem xong vẫn không được thưởng = mất doanh thu + mất niềm tin.
    */
   async requestRewardedAd(rewardId: string, timeoutMs = REWARDED_TIMEOUT_MS): Promise<boolean> {
+    if (this.pb) return this.pb.requestRewardedAd(rewardId);
     const yt = this.yt();
     const fn = isFn(yt?.ads?.requestRewardedAd) ? yt!.ads!.requestRewardedAd!.bind(yt!.ads) : null;
     if (!fn) {

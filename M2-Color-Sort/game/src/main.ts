@@ -8,6 +8,7 @@ import { inputGate } from './input-gate';
 import { synthAudio } from './audio';
 import { color, dur, fontStyle, toColor, type, z } from './tokens';
 import { setBootProgress } from './boot-ui';
+import { L } from './lang';
 
 export const GAME_TITLE = 'Neon Sort: Galaxy Pour';
 export const GAME_NAME = 'neon-sort';
@@ -31,7 +32,7 @@ class BootScene extends Phaser.Scene {
     const barW = Math.min(260, width * 0.62);
     const barX = (width - barW) / 2;
     const barY = height * 0.5;
-    const label = this.add.text(width / 2, barY - 36, 'Loading galaxy…', fontStyle(type.small, color.accent))
+    const label = this.add.text(width / 2, barY - 36, L('loading'), fontStyle(type.small, color.accent))
       .setOrigin(0.5).setDepth(z.hud);
     const g = this.add.graphics().setDepth(z.hud);
     const drawBar = (p: number) => {
@@ -92,6 +93,12 @@ const config: Phaser.Types.Core.GameConfig = {
 };
 
 const game = new Phaser.Game(config);
+
+// i18n (AUDIT §B6): đồng bộ phụ đề overlay HTML (#boot-sub) theo backend đang chạy.
+try {
+  const sub = document.getElementById('boot-sub');
+  if (sub) sub.textContent = L('loading');
+} catch { /* no-op */ }
 
 // MỘT AUDIO BUS DUY NHẤT: synth WebAudio + sfx file của Phaser cùng đi qua đây.
 // → mọi callback pause/mute của SDK chỉ cần MỘT DÒNG để im toàn bộ game.

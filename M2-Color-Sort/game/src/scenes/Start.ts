@@ -19,6 +19,7 @@ import { sdk } from '../sdk-instance';
 import { inputGate } from '../input-gate';
 import { hideBootOverlay } from '../boot-ui';
 import { startBgmOnce } from '../bgm';
+import { L, LF } from '../lang';
 
 // Demo minh họa cơ chế: đổ 3 lát cyan sang ống bên phải → ống ĐẦY 1 MÀU → SEAL.
 const DEMO_SRC = ['#FF1493', '#00F0FF', '#00F0FF', '#00F0FF'];
@@ -65,7 +66,7 @@ export class StartScene extends Phaser.Scene {
     this.buildDemo(m, true);
 
     // 3. Neon Play Button (data-testid: start-btn)
-    const { container } = drawButton(this, m.rightX, m.btnY, 'PLAY', {
+    const { container } = drawButton(this, m.rightX, m.btnY, L('play'), {
       testid: 'start-btn',
       width: Math.min(270, width - 72),
       height: 72,
@@ -111,7 +112,7 @@ export class StartScene extends Phaser.Scene {
     this.caption = this.add.text(
       m.rightX,
       m.capY,
-      `Start Level ${startLevel}`,
+      LF('start_level', startLevel),
       fontStyle(type.small, color.accent),
     ).setOrigin(0.5).setDepth(z.hud).setAlpha(0);
     this.caption.setShadow(0, 2, color.shadow, 4, false, true);
@@ -124,12 +125,12 @@ export class StartScene extends Phaser.Scene {
       ease: 'quad.out',
     });
 
-    // 5. Dòng gợi ý cơ chế (copy MỚI — English only)
+    // 5. Dòng gợi ý cơ chế (i18n VI/EN — AUDIT §B5-1/§B6)
     // AUDIT §B5-1: wordWrap + responsive font size (>=14, min(18, w/22)).
     this.hintLine = this.add.text(
       m.rightX,
       m.hintY,
-      'Pour a tube into one solid color to seal it',
+      L('hint_pour'),
       this.hintStyle(width, m.hintSize),
     ).setOrigin(0.5).setDepth(z.hud).setAlpha(0);
     this.tweens.add({

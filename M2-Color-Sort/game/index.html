@@ -18,6 +18,14 @@
        a flat shape and then to localStorage — the game NEVER crashes. -->
   <script src="https://www.youtube.com/game_api/v1"></script>
 
+  <!-- Playgama Bridge v2 (multi-backend, M2 Phase 5) — unified SDK đa nền tảng
+       (CrazyGames / Poki / GameDistribution / Y8 / ... qua Playgama). Global
+       `bridge` / `playgamaBridge`. Chỉ là SDK được phép (M2-09) — KHÔNG chứa
+       ads bên thứ 3 / self-monetization. SdkHandler ưu tiên ytgame khi có mặt
+       (nộp thẳng YouTube không regress); khi không có ytgame → dùng Playgama.
+       Nền tảng hỗ trợ thì host tự route; không hỗ trợ → mock, không crash. -->
+  <script src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script>
+
   <style>
     html, body { margin: 0; padding: 0; overflow: hidden; background: #0B0B1E; }
     #game { width: 100vw; height: 100vh; }

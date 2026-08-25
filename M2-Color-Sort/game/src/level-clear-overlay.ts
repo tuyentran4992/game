@@ -5,6 +5,7 @@
 import Phaser from 'phaser';
 import { color, type, sp, z, dur, fontStyle, toColor } from './tokens';
 import { drawPanel, drawButton, drawStar, synthAudio } from './ui';
+import { L, LF } from './lang';
 
 export interface ClearOverlayOpts {
   level: number;
@@ -54,8 +55,8 @@ export class LevelClearOverlay {
     const panel = drawPanel(this.scene, cx, cy, pw, ph);
     this.root.add(panel);
 
-    // Title: LEVEL N COMPLETE
-    const title = this.scene.add.text(cx, cy - ph / 2 + 58, `LEVEL ${o.level} COMPLETE`, fontStyle(type.h1, color.success))
+    // Title: LEVEL N COMPLETE (i18n, AUDIT §B6)
+    const title = this.scene.add.text(cx, cy - ph / 2 + 58, LF('clear_title', o.level), fontStyle(type.h1, color.success))
       .setOrigin(0.5);
     title.setShadow(0, 0, color.success, 16, false, true);
     this.root.add(title);
@@ -74,14 +75,14 @@ export class LevelClearOverlay {
     }
 
     // Moves
-    const movesT = this.scene.add.text(cx, cy - ph / 2 + 186, `Moves: ${o.moves}`, fontStyle(type.score, color.surface))
+    const movesT = this.scene.add.text(cx, cy - ph / 2 + 186, LF('moves', o.moves), fontStyle(type.score, color.surface))
       .setOrigin(0.5);
     this.root.add(movesT);
 
-    // Best / ★ NEW BEST moment (AUDIT §B5-4) — vector star icon, no '★' glyph
+    // Best / ★ NEW BEST moment (AUDIT §B5-4/§B6) — vector star icon, no '★' glyph
     const bestStr = o.newBest
-      ? `NEW BEST: ${o.moves} moves`
-      : (o.best > 0 ? `Best: ${o.best}   Optimal: ${o.optimal}` : `Optimal: ${o.optimal} moves`);
+      ? LF('new_best', o.moves)
+      : (o.best > 0 ? LF('best', o.best, o.optimal) : LF('optimal', o.optimal));
     const bestBox = this.scene.add.text(cx, cy - ph / 2 + 240, bestStr, fontStyle(type.body, color.accent))
       .setOrigin(0.5);
     const bestWrap = this.scene.add.container(0, 0);
@@ -92,7 +93,7 @@ export class LevelClearOverlay {
     this.root.add(bestWrap);
 
     // Buttons: primary NEXT + ghost REPLAY
-    const next = drawButton(this.scene, cx, cy + ph / 2 - 118, 'NEXT LEVEL', {
+    const next = drawButton(this.scene, cx, cy + ph / 2 - 118, L('next_level'), {
       testid: 'next-level-btn',
       width: 250,
       height: 60,
@@ -108,7 +109,7 @@ export class LevelClearOverlay {
     });
     this.root.add(next.container);
 
-    const replay = drawButton(this.scene, cx, cy + ph / 2 - 52, 'REPLAY', {
+    const replay = drawButton(this.scene, cx, cy + ph / 2 - 52, L('replay'), {
       testid: 'replay-btn',
       width: 210,
       height: 46,
