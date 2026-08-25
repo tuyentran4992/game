@@ -385,8 +385,22 @@ export function undoMove(board: BoardState): Move | null {
   return reverse;
 }
 
+/**
+ * Restart (M2-05): sinh lại CHÍNH board gốc từ seed — nhưng GIỮ ống thưởng mà
+ * người chơi đã xem quảng cáo để có (P0-3).
+ *
+ * Bug cũ: generateBoard() luôn trả `extraTubeUsed: 0`, nên sau restart cap
+ * `maxExtra` bị bỏ qua → mua thêm ống lần 2 → restart lần 2 sinh board ÍT ống
+ * hơn số tube UI đang có → renderLiquid(views, undefined) → TypeError.
+ * Nay: extraTubeUsed được BẢO TOÀN và số ống luôn = ramp.tubes + extraTubeUsed.
+ */
 export function restartBoard(cfg: MechanicsConfig, board: BoardState): BoardState {
-  const fresh = generateBoard(cfg, board.level, board.seed, board.extraTubeUsed);
+  const extra = board.extraTubeUsed;
+  const fresh = generateBoard(cfg, board.level, board.seed, extra);
+  fresh.extraTubeUsed = extra;
+  // Bảo hiểm: board mới KHÔNG BAO GIỜ được ít ống hơn board cũ (UI đang vẽ n ống).
+  while (fresh.tubes.length < board.tubes.length) fresh.tubes.push([]);
+  fresh.tubeCount = fresh.tubes.length;
   return fresh;
 }
 

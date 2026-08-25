@@ -14,6 +14,9 @@ import {
   GalaxyBgObjects,
 } from '../ui';
 import { ctx } from '../context';
+import { sdk } from '../sdk-instance';
+import { inputGate } from '../input-gate';
+import { hideBootOverlay } from '../boot-ui';
 
 // Demo minh họa cơ chế: đổ 3 lát cyan sang ống bên phải → ống ĐẦY 1 MÀU → SEAL.
 const DEMO_SRC = ['#FF1493', '#00F0FF', '#00F0FF', '#00F0FF'];
@@ -30,6 +33,7 @@ export class StartScene extends Phaser.Scene {
   private demoTubes: TubeViews[] = [];
   private demoStreamG!: Phaser.GameObjects.Graphics;
   private demoTimer: Phaser.Time.TimerEvent | null = null;
+  private readySignalled = false;
 
   constructor() {
     super({ key: 'StartScene' });
@@ -149,6 +153,8 @@ export class StartScene extends Phaser.Scene {
     });
 
     this.startBtn.on('pointerdown', () => {
+      // B2 PRE-ROLL GATE: chưa sẵn sàng / đang pre-roll → không nhận tap.
+      if (!inputGate.enabled) return;
       synthAudio.playClick();
       this.tweens.killTweensOf(this.startBtn);
       this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
@@ -190,6 +196,31 @@ export class StartScene extends Phaser.Scene {
     });
 
     this.scale.on('resize', (g: Phaser.Structs.Size) => this.onResize(g));
+
+    // P0-5: mọi asset đã tải (BootScene) và nút PLAY đã nhận input → báo platform.
+    this.signalReady();
+  }
+
+  /**
+   * P0-5 — THỨ TỰ BẮT BUỘC:
+   *   khung hình đầu tiên đã render → ytgame.game.firstFrameReady()
+   *   → gỡ loading overlay → ytgame.game.gameReady() (Start đã tương tác được).
+   * Không bao giờ gọi gameReady() trước khi BootScene.preload() xong.
+   */
+  private signalReady() {
+    if (this.readySignalled) return;
+    this.readySignalled = true;
+    this.game.events.once(Phaser.Core.Events.POST_RENDER, () => {
+      sdk.firstFrameReady();
+      hideBootOverlay();
+      // 1 frame nữa để chắc chắn input của nút PLAY đã hoạt động.
+      this.time.delayedCall(0, () => {
+        sdk.gameReady();
+        // B2 PRE-ROLL GATE: chỉ TỪ ĐÂY input mới được nhận (và chỉ khi platform
+        // không đang pause vì pre-roll — xem inputGate.setPaused trong main.ts).
+        inputGate.markReady();
+      });
+    });
   }
 
   private onResize(g: Phaser.Structs.Size) {

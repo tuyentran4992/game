@@ -87,6 +87,10 @@ export interface TubeViews {
   sealRing: Phaser.GameObjects.Graphics;
   /** SEAL: dải sáng chạy chậm trên khối chất lỏng (shimmer) */
   shimmerG: Phaser.GameObjects.Graphics;
+  /** ART: thân ống thuỷ tinh chụp thật (tube_base.png) — null nếu texture thiếu */
+  glassImg: Phaser.GameObjects.Image | null;
+  /** ART: mặt thoáng chất lỏng phát sáng (liquid_neon.png, tint theo màu đỉnh) */
+  surfaceImg: Phaser.GameObjects.Image | null;
   sealed: boolean;
   width: number;
   height: number;
@@ -118,6 +122,17 @@ export function drawTube(
   const liquidG = scene.add.graphics().setDepth(z.actor);
   container.add(liquidG);
 
+  // 3b. ART liquid_neon.png — mặt thoáng phát sáng (grayscale → tint theo màu đỉnh).
+  //     Ảnh grayscale nên tint được; ADD blend → hoà vào ánh neon.
+  let surfaceImg: Phaser.GameObjects.Image | null = null;
+  if (scene.textures.exists('liquid_neon')) {
+    surfaceImg = scene.add.image(0, 0, 'liquid_neon')
+      .setDepth(z.actor + 0.4)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setVisible(false);
+    container.add(surfaceImg);
+  }
+
   // 4. Ghost preview (số lát SẼ đổ sang) — trên chất lỏng, dưới kính
   const ghostG = scene.add.graphics().setDepth(z.actor + 0.5);
   container.add(ghostG);
@@ -136,6 +151,17 @@ export function drawTube(
   const glass = scene.add.graphics().setDepth(z.actor + 2);
   redrawGlassBody(glass, tubeW, tubeH);
   container.add(glass);
+
+  // 7b. ART tube_base.png — ảnh ống thuỷ tinh thật (khúc xạ/độ dày kính) phủ nhẹ
+  //     lên thân vector → ống RỖNG cũng "có kính", không còn phẳng tối.
+  let glassImg: Phaser.GameObjects.Image | null = null;
+  if (scene.textures.exists('tube_base')) {
+    glassImg = scene.add.image(0, 0, 'tube_base')
+      .setDepth(z.actor + 2.2)
+      .setDisplaySize(tubeW * 1.04, tubeH * 1.02)
+      .setAlpha(0.34);
+    container.add(glassImg);
+  }
 
   // 8. Vòng seal neon (snap shut)
   const sealRing = scene.add.graphics().setDepth(z.actor + 3).setBlendMode(Phaser.BlendModes.ADD);
@@ -157,6 +183,8 @@ export function drawTube(
     frostG,
     sealRing,
     shimmerG,
+    glassImg,
+    surfaceImg,
     sealed: false,
     width: tubeW,
     height: tubeH,
@@ -205,7 +233,9 @@ function redrawGlassBody(glass: Phaser.GameObjects.Graphics, tubeW: number, tube
 // ============================================================================
 // 5. RENDER CHẤT LỎNG NHANH CHUẨN 60 FPS
 // ============================================================================
-export function renderLiquid(views: TubeViews, content: string[]): void {
+export function renderLiquid(views: TubeViews, contentIn: string[] | undefined | null): void {
+  // P0-3: không bao giờ crash nếu số tube UI lệch số tube board (đọc undefined).
+  const content = contentIn ?? [];
   views.currentContent = content.slice();
   const { liquidG, ambientGlow, width: tubeW, height: tubeH, capacity } = views;
   liquidG.clear();
@@ -227,9 +257,24 @@ export function renderLiquid(views: TubeViews, content: string[]): void {
     ambientGlow.fillEllipse(0, halfH - 2, tubeW * 0.75, 14);
   }
 
-  if (content.length === 0) return;
+  if (content.length === 0) {
+    if (views.surfaceImg) views.surfaceImg.setVisible(false);
+    return;
+  }
 
   const yBase = halfH - innerPad;
+
+  // ART liquid_neon: mặt thoáng bóng của LÁT TRÊN CÙNG (tint theo màu, ADD blend)
+  if (views.surfaceImg) {
+    const topInfo = getCachedLiquidColor(content[content.length - 1]);
+    const surfaceY = yBase - content.length * layerH;
+    views.surfaceImg
+      .setVisible(true)
+      .setPosition(0, surfaceY + Math.min(layerH * 0.30, 7))
+      .setDisplaySize(liquidW * 1.06, Math.max(7, Math.min(layerH * 0.85, 20)))
+      .setTint(topInfo.bright)
+      .setAlpha(0.5);
+  }
 
   for (let i = 0; i < content.length; i++) {
     const colInfo = getCachedLiquidColor(content[i]);
@@ -280,6 +325,8 @@ export function renderPourTransition(
 ): void {
   const { liquidG, width: tubeW, height: tubeH, capacity } = views;
   liquidG.clear();
+  // Mặt thoáng ảnh chỉ dùng cho trạng thái TĨNH — trong lúc rót dùng vector (mượt hơn).
+  if (views.surfaceImg) views.surfaceImg.setVisible(false);
 
   const halfW = tubeW / 2;
   const halfH = tubeH / 2;
@@ -884,6 +931,8 @@ export function drawHudCapsule(
 
 // ============================================================================
 // 11. FROSTED GLASS PANEL
+//     Dùng ART ui_chrome.png (khung kính neon) qua NineSlice nếu có texture →
+//     góc bo KHÔNG bị kéo méo; thiếu texture thì fallback 100% vector như cũ.
 // ============================================================================
 export function drawPanel(
   scene: Phaser.Scene,
@@ -891,7 +940,8 @@ export function drawPanel(
   y: number,
   width: number,
   height: number,
-): Phaser.GameObjects.Graphics {
+): Phaser.GameObjects.Container {
+  const root = scene.add.container(0, 0).setDepth(z.panel);
   const g = scene.add.graphics();
   const r = radius.lg;
 
@@ -901,19 +951,30 @@ export function drawPanel(
   g.fillStyle(toColor(color.primary), 0.15);
   g.fillRoundedRect(x - width / 2 - 6, y - height / 2 - 6, width + 12, height + 12, r + 4);
 
-  g.fillStyle(toColor('#120E2E'), 0.95);
-  g.fillRoundedRect(x - width / 2, y - height / 2, width, height, r);
+  const hasChrome = scene.textures.exists('ui_chrome');
+  if (!hasChrome) {
+    g.fillStyle(toColor('#120E2E'), 0.95);
+    g.fillRoundedRect(x - width / 2, y - height / 2, width, height, r);
+  }
 
   g.fillStyle(toColor('#FFFFFF'), 0.1);
   g.fillRoundedRect(x - width / 2 + 6, y - height / 2 + 4, width - 12, height * 0.25, r - 4);
 
-  g.lineStyle(3, toColor(color.primary), 0.9);
-  g.strokeRoundedRect(x - width / 2, y - height / 2, width, height, r);
+  if (!hasChrome) {
+    g.lineStyle(3, toColor(color.primary), 0.9);
+    g.strokeRoundedRect(x - width / 2, y - height / 2, width, height, r);
+  }
   g.lineStyle(1, toColor(color.accent), 0.4);
   g.strokeRoundedRect(x - width / 2 + 3, y - height / 2 + 3, width - 6, height - 6, r - 2);
 
-  g.setDepth(z.panel);
-  return g;
+  if (hasChrome) {
+    // ui_chrome.png = panel kính tối + viền neon gradient. NineSlice 46 px góc.
+    const chrome = scene.add.nineslice(x, y, 'ui_chrome', undefined, width, height, 46, 46, 40, 40)
+      .setAlpha(0.97);
+    root.add(chrome);
+  }
+  root.add(g);
+  return root;
 }
 
 export { synthAudio };

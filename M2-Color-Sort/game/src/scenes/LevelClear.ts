@@ -3,10 +3,15 @@ import { color, type, sp, z, dur, fontStyle, toColor, liquidPalette } from '../t
 import { drawGalaxyBg, drawPanel, drawButton, spawnNeonBurst, synthAudio, GalaxyBgObjects } from '../ui';
 import { ctx } from '../context';
 import { sdk } from '../sdk-instance';
+import { inputGate } from '../input-gate';
+import { showAdLoading } from '../ad-ux';
+import { AD_FLOW_TIMEOUT_MS, raceTimeout } from '../logic/ad-pacing';
 import { MECHANICS } from '../logic/mechanics';
 
 export class LevelClearScene extends Phaser.Scene {
   private bgObjects!: GalaxyBgObjects;
+  /** chống double-tap NEXT (mỗi lần bấm chỉ 1 lần xét quảng cáo) */
+  private advancing = false;
 
   constructor() {
     super({ key: 'LevelClearScene' });
@@ -14,6 +19,7 @@ export class LevelClearScene extends Phaser.Scene {
 
   create(data: { level: number; moves: number; optimal?: number; best: number; seals?: number }) {
     const { width, height } = this.scale;
+    this.advancing = false;
     this.bgObjects = drawGalaxyBg(this);
     this.cameras.main.fadeIn(dur.base, 0, 0, 0);
 
@@ -123,21 +129,11 @@ export class LevelClearScene extends Phaser.Scene {
     });
     root.add(nextBtn);
 
-    nextBtn.on('pointerdown', async () => {
+    nextBtn.on('pointerdown', () => {
+      if (!inputGate.enabled || this.advancing) return;   // B2 pre-roll gate + chống double-tap
+      this.advancing = true;
       synthAudio.playClick();
-      if (level > 1 && MECHANICS.ad.interstitialAfterClear) {
-        try {
-          await sdk.requestInterstitialAd();
-        } catch {
-          // Ignore
-        }
-      }
-      this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
-      this.time.delayedCall(dur.scene, () => {
-        ctx.currentLevel = level + 1;
-        void ctx.save();
-        this.scene.start('GameplayScene');
-      });
+      void this.advance(level);
     });
 
     // Panel entrance tween
@@ -154,6 +150,60 @@ export class LevelClearScene extends Phaser.Scene {
       root.setPosition(sz.width / 2, sz.height / 2);
       overlay.setPosition(sz.width / 2, sz.height / 2).setSize(sz.width, sz.height);
     });
+  }
+
+  // ==========================================================================
+  // NEXT LEVEL + INTERSTITIAL PACING (AUDIT §B2-2/B2-3, M2-07)
+  //
+  //   * Cổng: level >= 3 && >= 2 level kể từ ad trước && cooldown 75 s
+  //     (trước đây: 100 % số lần clear từ level 2 → nguy cơ policy + churn).
+  //   * `Promise.race([ad, timeout(4 s)])` → nút NEXT KHÔNG BAO GIỜ treo;
+  //     timeout / no-fill / lỗi → đi tiếp im lặng, không bao giờ bẫy người chơi.
+  //   * Spinner "Ad loading…" trong lúc chờ (không phải màn hình đen im lặng).
+  //   * Pacing được PERSIST (save v2.1 `ads.last_interstitial_ts/levels_since_ad`)
+  //     nên reload / đổi phiên không reset cooldown.
+  // ==========================================================================
+  private async advance(level: number) {
+    const now = Date.now();
+    const wantAd = MECHANICS.ad.interstitialAfterClear
+      && ctx.canShowInterstitial(level, now)
+      && sdk.isInterstitialAvailable();
+
+    if (wantAd) {
+      // Ghi nhận NGAY (kể cả khi ad timeout/no-fill) → không thử lại dồn dập.
+      ctx.markInterstitialShown(now);
+      const spinner = showAdLoading(this, 'Ad loading…');
+      try {
+        await raceTimeout(
+          sdk.requestInterstitialAd(AD_FLOW_TIMEOUT_MS).then(() => true),
+          AD_FLOW_TIMEOUT_MS,
+          false,
+        );
+      } catch (e) {
+        console.warn('[ads] interstitial failed, continuing', e);
+      } finally {
+        spinner.destroy();
+      }
+    }
+
+    if (!this.scene.isActive()) return;   // scene đã bị đổi trong lúc chờ ad
+
+    let started = false;
+    const go = () => {
+      if (started) return;
+      started = true;
+      ctx.currentLevel = level + 1;
+      ctx.clearSession();          // P0-2: level mới → không resume board cũ
+      void ctx.saveNow();          // flush ngay khi sang level (không chờ debounce)
+      this.scene.start('GameplayScene');
+    };
+
+    this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
+    this.time.delayedCall(dur.scene, go);
+    // Chốt an toàn bằng timer THẬT: nếu scene bị platform pause đúng lúc chuyển
+    // (ad chồng lấn), Phaser timer sẽ đứng → không bao giờ để người chơi kẹt ở
+    // màn LEVEL CLEAR chỉ vì 1 quảng cáo.
+    setTimeout(go, dur.scene + 2500);
   }
 
   // Confetti neon: burst giữa màn + vệt sáng rơi từ trên (ADD blend → phát sáng)

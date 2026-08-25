@@ -20,6 +20,9 @@ import {
 } from '../ui';
 import { ctx } from '../context';
 import { sdk } from '../sdk-instance';
+import { inputGate } from '../input-gate';
+import { showAdConfirm, showAdLoading, showToast } from '../ad-ux';
+import { AD_WATCHDOG_MS, canBuyExtraTube, hintGrant, raceTimeout } from '../logic/ad-pacing';
 import { MECHANICS } from '../logic/mechanics';
 import { computeBoardLayout, tubePosition, BoardLayout } from '../logic/layout';
 import {
@@ -64,6 +67,13 @@ export class GameplayScene extends Phaser.Scene {
   /** index các ống đang ở trạng thái SEAL (đầy + 1 màu duy nhất) */
   private sealedTubes = new Set<number>();
   private layout!: BoardLayout;
+  /** P0-2: hint đã dùng ở level này? (persist trong session block = hint_used_this_level) */
+  private hintUsedThisLevel = false;
+  /** B2-5: đang chờ 1 quảng cáo → chặn mọi action khác (không double-spend) */
+  private adBusy = false;
+  /** B2-6: slot toolbar CỐ ĐỊNH cho rewarded +1 ống (trước đây chỉ nằm trong tooltip) */
+  private extraTubeBtn: Phaser.GameObjects.Container | null = null;
+  private hintBtn: Phaser.GameObjects.Container | null = null;
 
   constructor() {
     super({ key: 'GameplayScene' });
@@ -73,7 +83,12 @@ export class GameplayScene extends Phaser.Scene {
     await ctx.load();
     const { width, height } = this.scale;
     const level = Math.max(1, ctx.currentLevel);
-    this.board = createBoard(MECHANICS, level, level * 7919 + 13);
+
+    // P0-2: RESUME giữa level nếu save có session hợp lệ (đúng board + undo stack),
+    // ngược lại sinh board mới deterministic theo seed.
+    const resumed = ctx.resumeBoard(level);
+    this.board = resumed ?? createBoard(MECHANICS, level, level * 7919 + 13);
+    this.hintUsedThisLevel = resumed ? ctx.hintUsedForSession(level) : false;
     this.selected = null;
     this.isAnimating = false;
     this.sealedTubes.clear();
@@ -95,6 +110,9 @@ export class GameplayScene extends Phaser.Scene {
     // 4. Bố cục ống nghiệm (responsive — logic/layout.ts)
     this.layoutBoard(width, height);
 
+    // 4b. Phục hồi trạng thái SEAL im lặng (quan trọng khi resume giữa level)
+    this.syncSeals(false);
+
     // 5. Toolbar dưới cùng
     this.drawToolbar(width, height);
 
@@ -104,9 +122,17 @@ export class GameplayScene extends Phaser.Scene {
     this.cameras.main.fadeIn(dur.scene, 0, 0, 0);
     this.scale.on('resize', (g: Phaser.Structs.Size) => this.onResize(g));
 
+    // 7. Snapshot ngay khi vào level → refresh giữa level không mất tiến độ
+    this.persist();
+
     if (this.cache.audio.exists('bgm_main')) {
       this.sound.play('bgm_main', { loop: true, volume: 0.3 });
     }
+  }
+
+  /** P0-2: chụp board + undo stack vào save (debounce ≥1 s ở context). */
+  private persist() {
+    ctx.snapshot(this.board, this.hintUsedThisLevel);
   }
 
   // ==========================================================================
@@ -168,6 +194,7 @@ export class GameplayScene extends Phaser.Scene {
       // MỘT DÒNG: bus audio duy nhất (synth + sfx file) — DESIGN-SPEC §7
       synthAudio.setMuted(!synthAudio.isMuted());
       this.audioBtnText.setText(synthAudio.isMuted() ? '🔇' : '🔊');
+      ctx.setMuted(synthAudio.isMuted());   // P0-2: mute sống qua reload
       synthAudio.playClick();
       this.tweens.add({
         targets: [this.audioBtnText, audioCapsule],
@@ -282,6 +309,8 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private onTubeTap(i: number) {
+    // B2 PRE-ROLL GATE: không nhận tap trước khi game sẵn sàng / đang pause (ad).
+    if (!inputGate.enabled || this.adBusy) return;
     if (this.isAnimating || this.board.win) return;
     this.clearHint();
 
@@ -463,6 +492,7 @@ export class GameplayScene extends Phaser.Scene {
               srcUI.views.glowRing.setAlpha(0);
               this.isAnimating = false;
               this.syncSeals(true);
+              this.persist();   // P0-2: lưu sau MỖI nước đổ (debounce ≥1 s)
 
               if (this.board.win) {
                 this.time.delayedCall(260, () => this.onLevelClear());
@@ -652,44 +682,51 @@ export class GameplayScene extends Phaser.Scene {
   private drawToolbar(width: number, height: number) {
     for (const b of this.toolbarBtns) b.destroy();
     this.toolbarBtns = [];
+    this.extraTubeBtn = null;
+    this.hintBtn = null;
 
     const y = height - sp[5] - 36;
     const margin = sp[4];
     const availW = Math.max(0, width - margin * 2);
 
-    const idealBtnW = 86;
-    const idealGapX = sp[5];
-    const minBtnW = 48;
+    // B2-6: 4 slot — UNDO / RESTART / HINT (rewarded) / +1 TUBE (rewarded, LUÔN hiện)
+    const defs = [
+      { testid: 'undo-btn', text: '↺', action: () => this.onUndo(), icon: 'undo' as const, ad: false },
+      { testid: 'restart-btn', text: '⟳', action: () => this.onRestart(), icon: 'restart' as const, ad: false },
+      { testid: 'hint-btn', text: '💡', action: () => { void this.onHint(); }, icon: 'hint' as const, ad: true },
+      { testid: 'extra-tube-btn', text: '+1', action: () => this.onExtraTubeTap(), icon: null, ad: true, small: true },
+    ];
+    const n = defs.length;
+
+    const idealBtnW = 78;
+    const idealGapX = sp[4];
+    const minBtnW = 48;      // vẫn ≥44 px touch target ở 320 px
     const minGapX = sp[2];
 
     let btnW: number = idealBtnW;
     let gapX: number = idealGapX;
-    let total = 3 * btnW + 2 * gapX;
+    let total = n * btnW + (n - 1) * gapX;
 
     if (total > availW) {
       gapX = minGapX;
-      total = 3 * btnW + 2 * gapX;
+      total = n * btnW + (n - 1) * gapX;
       if (total > availW) {
-        btnW = Math.max(minBtnW, Math.floor((availW - 2 * minGapX) / 3));
-        gapX = Math.max(minGapX, Math.floor((availW - 3 * btnW) / 2));
+        btnW = Math.max(minBtnW, Math.floor((availW - (n - 1) * minGapX) / n));
+        gapX = Math.max(minGapX, Math.floor((availW - n * btnW) / (n - 1)));
       }
     }
-    total = 3 * btnW + 2 * gapX;
+    total = n * btnW + (n - 1) * gapX;
     const startX = (width - total) / 2 + btnW / 2;
-
-    const defs = [
-      { testid: 'undo-btn', text: '↺', action: () => this.onUndo(), icon: 'undo' as const },
-      { testid: 'restart-btn', text: '⟳', action: () => this.onRestart(), icon: 'restart' as const },
-      { testid: 'hint-btn', text: '💡', action: () => this.onHint(), icon: 'hint' as const },
-    ];
+    const btnH = 62;
 
     defs.forEach((d, i) => {
       const x = startX + i * (btnW + gapX);
       const btn = drawButton(this, x, y, d.text, {
         variant: 'ghost',
         width: btnW,
-        height: 62,
-        textType: type.h2,
+        height: btnH,
+        // '+1' là CHỮ (không icon) → cỡ nhỏ hơn để không tràn khi toolbar bị nén
+        textType: 'small' in d && d.small ? type.body : type.h2,
         testid: d.testid,
         icon: d.icon,
       });
@@ -704,8 +741,61 @@ export class GameplayScene extends Phaser.Scene {
         d.action();
       });
 
+      // Badge ▶ nhỏ = "nút này chạy quảng cáo có thưởng" (B2-6 discoverability)
+      if (d.ad) this.addAdBadge(btn.container, btnW, btnH);
+      if (d.testid === 'extra-tube-btn') this.extraTubeBtn = btn.container;
+      if (d.testid === 'hint-btn') this.hintBtn = btn.container;
+
       this.toolbarBtns.push(btn.container);
     });
+
+    this.refreshRewardButtons();
+  }
+
+  /** Badge ▶ (tròn, neon) ở góc trên-phải nút → báo trước "có quảng cáo". */
+  private addAdBadge(container: Phaser.GameObjects.Container, w: number, h: number) {
+    const bx = w / 2 - 9;
+    const by = -h / 2 + 9;
+    const g = this.add.graphics();
+    g.fillStyle(toColor(color.accent), 0.22);
+    g.fillCircle(bx, by, 12);
+    g.fillStyle(toColor(color.accent), 1);
+    g.fillCircle(bx, by, 9);
+    g.fillStyle(toColor('#07223A'), 1);
+    g.fillTriangle(bx - 3, by - 4.5, bx - 3, by + 4.5, bx + 4.5, by);
+    container.add(g);
+    container.setData('adBadge', g);
+  }
+
+  /**
+   * B2-4/B2-6 — trạng thái 2 nút thưởng luôn phản ánh ĐÚNG luật:
+   *   * 💡 mờ khi đã dùng gợi ý ở level này (1 gợi ý/level), badge ▶ tắt khi miễn phí.
+   *   * ＋1 mờ + vô hiệu khi đã mua ống thưởng / hết `max_extra`.
+   */
+  private refreshRewardButtons() {
+    const maxExtra = MECHANICS.reward.extraTube.maxExtra;
+    const canExtra = canBuyExtraTube(this.board.extraTubeUsed, maxExtra);
+    if (this.extraTubeBtn) {
+      const btn = this.extraTubeBtn;
+      btn.setAlpha(canExtra ? 1 : 0.34);
+      btn.setData('disabled', !canExtra);
+      const badge = btn.getData('adBadge') as Phaser.GameObjects.Graphics | undefined;
+      if (badge) badge.setAlpha(canExtra ? 1 : 0.25);
+      if (canExtra) btn.setInteractive({ useHandCursor: true });
+      else btn.setInteractive({ useHandCursor: false });   // vẫn nhận tap → giải thích, không im lặng
+    }
+
+    if (this.hintBtn) {
+      const grant = hintGrant(
+        { hintUsedThisLevel: this.hintUsedThisLevel, freeHintUsed: ctx.freeHintUsed },
+        { oncePerLevel: MECHANICS.reward.hint.hintOncePerLevel, costAd: MECHANICS.reward.hint.costAd },
+      );
+      this.hintBtn.setAlpha(grant.allowed ? 1 : 0.34);
+      this.hintBtn.setData('disabled', !grant.allowed);
+      const badge = this.hintBtn.getData('adBadge') as Phaser.GameObjects.Graphics | undefined;
+      // gợi ý ĐẦU TIÊN miễn phí → không hiện badge quảng cáo (không hứa sai)
+      if (badge) badge.setAlpha(grant.allowed && grant.requiresAd ? 1 : 0.18);
+    }
   }
 
   // ==========================================================================
@@ -713,7 +803,7 @@ export class GameplayScene extends Phaser.Scene {
   // ==========================================================================
   /** UNDO = TỨC THÌ & MIỄN PHÍ (không animation dài — task §3). */
   private onUndo() {
-    if (this.isAnimating) return;
+    if (!inputGate.enabled || this.adBusy || this.isAnimating) return;
     this.clearHint();
     const undone = undoMove(this.board);
     if (!undone) {
@@ -745,10 +835,11 @@ export class GameplayScene extends Phaser.Scene {
     synthAudio.playGlug(0);
     this.selected = null;
     this.updateSelection();
+    this.persist();   // P0-2: undo cũng phải lưu (undo stack + moves)
   }
 
   private onRestart() {
-    if (this.isAnimating) return;
+    if (!inputGate.enabled || this.adBusy || this.isAnimating) return;
     this.clearHint();
     this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
     this.time.delayedCall(dur.scene, () => {
@@ -758,34 +849,136 @@ export class GameplayScene extends Phaser.Scene {
       this.sealedTubes.clear();
       synthAudio.resetSealScale(0);
       this.moveLabel.setText(`⤵ 0`);
-      for (const t of this.tubeUIs) {
-        renderLiquid(t.views, this.board.tubes[t.index]);
+
+      // P0-3: số ống của board sau restart PHẢI khớp số tube UI. Nếu lệch
+      // (ống thưởng), dựng lại toàn bộ board thay vì render vào UI không tồn tại.
+      if (this.board.tubes.length !== this.tubeUIs.length) {
+        this.layoutBoard(this.scale.width, this.scale.height);
+      } else {
+        for (const t of this.tubeUIs) {
+          renderLiquid(t.views, this.board.tubes[t.index]);
+        }
       }
+      this.syncSeals(false);
       this.renderSealPips(this.scale.width);
       this.updateSelection();
+      this.refreshRewardButtons();   // P0-3: ống thưởng ĐÃ mua vẫn giữ qua Restart
+      this.persist();   // P0-2: restart = trạng thái mới cần lưu
       this.cameras.main.fadeIn(dur.scene, 0, 0, 0);
       synthAudio.playClick();
       this.playSfx('sfx_click', 0.3);
     });
   }
 
+  // ---------------------------------------------------------------- HINT ---
+  /**
+   * B2-4/B2-5 — luật gợi ý (trước đây `hintOncePerLevel` là DEAD CODE):
+   *   1. Gợi ý ĐẦU TIÊN trong đời = MIỄN PHÍ (onboarding grant, dạy cơ chế).
+   *   2. Sau đó: ĐÚNG 1 gợi ý / level, và phải xem rewarded ad.
+   *   3. Trước ad luôn có sheet xác nhận + kiểm tra ad khả dụng + spinner;
+   *      ad lỗi → toast "Ad unavailable", KHÔNG im lặng no-op.
+   */
   private async onHint() {
+    if (!inputGate.enabled || this.adBusy) return;
     if (this.isAnimating || this.board.win) return;
+
+    const grant = hintGrant(
+      { hintUsedThisLevel: this.hintUsedThisLevel, freeHintUsed: ctx.freeHintUsed },
+      { oncePerLevel: MECHANICS.reward.hint.hintOncePerLevel, costAd: MECHANICS.reward.hint.costAd },
+    );
+
+    if (!grant.allowed) {
+      // 1 gợi ý/level — nói rõ lý do thay vì nút "chết"
+      showToast(this, 'Hint already used — next level unlocks a new one');
+      synthAudio.playBuzz();
+      return;
+    }
+
+    // (1) Gợi ý miễn phí đầu tiên: KHÔNG quảng cáo. Chỉ tiêu suất khi thực sự
+    //     có nước gợi ý (board bí → không "ăn" suất miễn phí của người chơi).
+    if (!grant.requiresAd) {
+      if (this.applyHint()) {
+        ctx.markFreeHintUsed();
+        showToast(this, 'First hint is free ✨ — next one needs a short ad');
+        this.refreshRewardButtons();
+      }
+      return;
+    }
+
+    // (2) Ad khả dụng? Kiểm tra TRƯỚC khi mời xem.
+    if (!sdk.isRewardedAvailable()) {
+      showToast(this, 'Ad unavailable — try again later');
+      return;
+    }
+
+    // (3) Sheet xác nhận — không bao giờ vào ad khi chưa hỏi.
+    showAdConfirm(this, {
+      title: 'Watch a short ad for a hint?',
+      confirmText: 'WATCH ▶',
+      cancelText: 'NO THANKS',
+      onConfirm: () => { void this.runRewarded('hint', () => { this.applyHint(); }); },
+    });
+  }
+
+  /**
+   * Luồng rewarded dùng chung (hint + extra-tube): spinner → ad → grant/toast.
+   * KHÔNG bao giờ cấp thưởng khi ad thất bại lúc SDK có mặt (B2-1).
+   */
+  private async runRewarded(tag: 'hint' | 'extra-tube', onEarned: () => void): Promise<boolean> {
+    if (this.adBusy) return false;
+    this.adBusy = true;
+    const spinner = showAdLoading(this, 'Ad loading…');
+    let earned = false;
+    try {
+      const ad = sdk.requestRewardedAd(tag);
+      // 2 nhịp chờ (B2-5, "không bao giờ đứng hình"):
+      //   nhịp 1 — 6 s: nếu ad ĐÃ xong/đã bị đóng thì biết ngay.
+      //   nhịp 2 — chỉ chờ tiếp khi platform ĐÃ pause game (⇒ ad thật đang chạy,
+      //            người chơi đang xem 15-30 s). Chưa pause = no-fill → thoát ngay.
+      const quick = await raceTimeout<'earned' | 'denied' | 'pending'>(
+        ad.then((v) => (v ? 'earned' : 'denied')),
+        AD_WATCHDOG_MS,
+        'pending',
+      );
+      if (quick === 'pending') earned = inputGate.isPaused ? await ad : false;
+      else earned = quick === 'earned';
+    } catch (e) {
+      console.warn('[ads] rewarded threw', e);
+      earned = false;
+    } finally {
+      spinner.destroy();
+      this.adBusy = false;
+    }
+
+    if (!earned) {
+      showToast(this, 'Ad unavailable — try again later');
+      return false;
+    }
+    onEarned();
+    return true;
+  }
+
+  /**
+   * Vẽ gợi ý (đã được cấp phép) — KHÔNG tự đổ hộ người chơi (M2-06).
+   * Trả false khi board KHÔNG còn nước gợi ý ⇒ caller không tiêu suất/không tính ad.
+   */
+  private applyHint(): boolean {
     this.clearHint();
-
-    const earned = await sdk.requestRewardedAd('hint');
-    if (!earned) return;
-
     const hint = hintMove(this.board);
     if (!hint) {
       this.showStuckTooltip('No moves left! Use ↺ Undo or ⟳ Restart 💡');
-      return;
+      return false;
     }
+
+    this.hintUsedThisLevel = true;
+    this.persist();   // P0-2: hint_used_this_level vào session block
+    this.refreshRewardButtons();
 
     const srcPos = this.origTubePositions[hint.from];
     const dstPos = this.origTubePositions[hint.to];
     const srcUI = this.tubeUIs[hint.from];
     const dstUI = this.tubeUIs[hint.to];
+    if (!srcPos || !dstPos || !srcUI || !dstUI) return true;
 
     synthAudio.playHint();
 
@@ -814,22 +1007,71 @@ export class GameplayScene extends Phaser.Scene {
     this.hintArcTimer = this.time.delayedCall(3000, () => {
       this.clearHint();
     });
+    return true;
   }
 
-  public async requestExtraTube(): Promise<boolean> {
-    if (this.board.extraTubeUsed >= MECHANICS.reward.extraTube.maxExtra) return false;
-    const earned = await sdk.requestRewardedAd('extra_tube');
-    if (!earned) return false;
+  // ---------------------------------------------------------- EXTRA TUBE ---
+  /** Slot toolbar cố định (B2-6) — luôn thấy, có badge ▶, mờ khi hết suất. */
+  private onExtraTubeTap() {
+    if (!inputGate.enabled || this.adBusy) return;
+    if (this.isAnimating || this.board.win) return;
 
+    if (!canBuyExtraTube(this.board.extraTubeUsed, MECHANICS.reward.extraTube.maxExtra)) {
+      showToast(this, 'Extra tube already used in this level');
+      synthAudio.playBuzz();
+      return;
+    }
+    if (!sdk.isRewardedAvailable()) {
+      showToast(this, 'Ad unavailable — try again later');
+      return;
+    }
+    showAdConfirm(this, {
+      title: 'Watch a short ad for +1 tube?',
+      note: 'One extra tube for this level · stays after Restart',
+      confirmText: 'WATCH ▶',
+      cancelText: 'NO THANKS',
+      onConfirm: () => { void this.requestExtraTube(); },
+    });
+  }
+
+  /** Thực thi mua ống thưởng (sheet xác nhận đã hiển thị ở onExtraTubeTap). */
+  public async requestExtraTube(): Promise<boolean> {
+    if (!canBuyExtraTube(this.board.extraTubeUsed, MECHANICS.reward.extraTube.maxExtra)) return false;
+    // B2-8: tag chuẩn hoá 'extra-tube' (khớp TEST-CASES PC-08), không còn 'extra_tube'.
+    return this.runRewarded('extra-tube', () => this.grantExtraTube());
+  }
+
+  private grantExtraTube() {
     addExtraTube(this.board);
     this.selected = null;
     this.layoutBoard(this.scale.width, this.scale.height);
+    this.syncSeals(false);
     const last = this.tubeUIs[this.tubeUIs.length - 1];
-    last.views.container.setScale(0);
-    this.tweens.add({ targets: last.views.container, scale: 1, duration: dur.pop, ease: 'back.out' });
+    if (last) {
+      last.views.container.setScale(0);
+      this.tweens.add({ targets: last.views.container, scale: 1, duration: dur.pop, ease: 'back.out' });
+    }
     synthAudio.playRewardTube();
     this.hideStuckTooltip();
-    return true;
+    this.refreshRewardButtons();   // hết suất → nút ＋1 xám lại ngay
+    this.persist();   // P0-2: ống thưởng đã trả bằng quảng cáo → phải lưu ngay
+  }
+
+  /** Kéo chú ý tới slot ＋1 trên toolbar khi board bí (B2-6 discoverability). */
+  private pulseExtraTubeBtn() {
+    const btn = this.extraTubeBtn;
+    if (!btn || btn.getData('disabled')) return;
+    this.tweens.killTweensOf(btn);
+    btn.setScale(1);
+    this.tweens.add({
+      targets: btn,
+      scale: 1.12,
+      duration: 320,
+      yoyo: true,
+      repeat: 3,
+      ease: 'sine.inout',
+      onComplete: () => btn.setScale(1),
+    });
   }
 
   private hideStuckTooltip() {
@@ -864,14 +1106,16 @@ export class GameplayScene extends Phaser.Scene {
     const items: Phaser.GameObjects.GameObject[] = [g, t];
     this.stuckTooltip = this.add.container(width / 2, y, items).setDepth(z.tutorial).setAlpha(0);
 
-    // Rewarded EXTRA TUBE (M2-06) — chỉ hiện khi đang kẹt và còn suất
+    // Rewarded EXTRA TUBE (M2-06 / B2-6): lối vào CHÍNH giờ là slot toolbar cố định
+    // ('extra-tube-btn'). Tooltip chỉ là shortcut phụ + kéo chú ý xuống toolbar
+    // (không auto-hide mất cơ hội mua như trước).
     if (canExtra) {
-      const extra = drawButton(this, 0, -h / 2 - 34, '+1 TUBE', {
+      const extra = drawButton(this, 0, -h / 2 - 34, '+1 TUBE ▶', {
         variant: 'glass',
-        width: 132,
+        width: 148,
         height: 44,
         textType: type.small,
-        testid: 'extra-tube-btn',
+        testid: 'extra-tube-tip-btn',
       });
       extra.container.on('pointerdown', (
         _p: Phaser.Input.Pointer,
@@ -880,9 +1124,10 @@ export class GameplayScene extends Phaser.Scene {
         event: Phaser.Types.Input.EventData,
       ) => {
         event.stopPropagation();
-        void this.requestExtraTube();
+        this.onExtraTubeTap();
       });
       this.stuckTooltip.add(extra.container);
+      this.pulseExtraTubeBtn();
     }
 
     this.tweens.add({
@@ -908,7 +1153,7 @@ export class GameplayScene extends Phaser.Scene {
       }),
     });
     ctx.tutorialSeen = true;
-    void ctx.save();
+    ctx.save();
   }
 
   // ==========================================================================
@@ -948,7 +1193,7 @@ export class GameplayScene extends Phaser.Scene {
     spawnNeonBurst(this, cx, cy, liquidPalette, 34, Math.min(280, this.scale.width * 0.55), z.tutorial);
 
     ctx.onLevelClear(this.board.level, this.board.moveCount);
-    void ctx.save();
+    void ctx.saveNow();   // P0-2: level clear → flush ngay (không chờ debounce)
 
     // chuyển scene mượt (fade) — DESIGN-SPEC §5 A8
     this.time.delayedCall(360, () => {

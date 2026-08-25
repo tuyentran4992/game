@@ -4,13 +4,61 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Neon Sort: Galaxy Pour</title>
+
+  <!-- YouTube Playables SDK (P0-1). Global `ytgame`, NAMESPACED surface:
+         ytgame.game.{firstFrameReady,gameReady,saveData,loadData}
+         ytgame.system.{onPause,onResume,isAudioEnabled,onAudioEnabledChange,getLanguage}
+         ytgame.engagement.sendScore({value})
+         ytgame.ads.{requestInterstitialAd,requestRewardedAd}
+       MUST be a classic (non-module) script loaded BEFORE /src/main.ts so that
+       window.ytgame exists when SdkHandler samples the surface. Mirrors M1
+       (M1-Rescue-Dodge/game/index.html) — the single allowed external script
+       (M2-09: no other network / 3rd-party ads / self-monetization).
+       If it fails to load (local dev, offline zip test) SdkHandler falls back to
+       a flat shape and then to localStorage — the game NEVER crashes. -->
+  <script src="https://www.youtube.com/game_api/v1"></script>
+
   <style>
-    body { margin: 0; overflow: hidden; background: #0B0B1E; }
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #0B0B1E; }
     #game { width: 100vw; height: 100vh; }
+
+    /* P0-5: loading overlay — visible BEFORE Phaser boots, removed only when the
+       Start screen is interactive (right before ytgame.game.gameReady()). */
+    #boot-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 18px; background: radial-gradient(circle at 50% 40%, #16123B 0%, #0B0B1E 70%);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: #FFFFFF; transition: opacity .28s ease-out;
+    }
+    #boot-overlay.hidden { opacity: 0; pointer-events: none; }
+    #boot-title {
+      font-size: 26px; font-weight: 800; letter-spacing: 2px;
+      color: #FFFFFF; text-shadow: 0 0 18px rgba(185,103,255,.85);
+    }
+    #boot-sub { font-size: 14px; font-weight: 600; color: #00E5FF; opacity: .85; }
+    #boot-track {
+      width: min(260px, 62vw); height: 8px; border-radius: 99px;
+      background: rgba(255,255,255,.12); overflow: hidden;
+      box-shadow: 0 0 14px rgba(0,229,255,.25) inset;
+    }
+    #boot-bar {
+      width: 4%; height: 100%; border-radius: 99px;
+      background: linear-gradient(90deg, #B967FF, #00E5FF);
+      box-shadow: 0 0 12px rgba(0,229,255,.9);
+      transition: width .18s linear;
+    }
   </style>
 </head>
 <body>
   <div id="game"></div>
+
+  <div id="boot-overlay" data-testid="loading-overlay" role="status" aria-live="polite">
+    <div id="boot-title">NEON SORT</div>
+    <div id="boot-track"><div id="boot-bar"></div></div>
+    <div id="boot-sub">Loading galaxy…</div>
+  </div>
+
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
