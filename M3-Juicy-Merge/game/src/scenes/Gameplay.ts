@@ -156,83 +156,102 @@ export class GameplayScene extends Phaser.Scene {
     );
   }
 
-  // --- Bucket visual (Playgama-grade Frosted Glass & Cedar Wood 3D Container) ------------
+  // --- Bucket visual (Playgama-grade 3D Acrylic Glass & Polished Cedar Wood) ------------
   private drawBucket(): void {
     const L = this.layout;
     const H = L.bucketBottomY - L.bucketTopY;
     const g = this.add.graphics().setDepth(z.bucketGlass);
 
-    // 1. Soft Ambient Outer Drop Shadow behind bucket
-    g.fillStyle(0x000000, 0.14);
-    g.fillRoundedRect(L.bucketX0 - 6, L.bucketTopY + 8, L.bucketWidth + 12, H + 10, { tl: 0, tr: 0, bl: radius.lg, br: radius.lg });
+    // 1. Soft Ambient Outer Drop Shadow (Triple-pass depth)
+    g.fillStyle(0x000000, 0.22);
+    g.fillRoundedRect(L.bucketX0 - 10, L.bucketTopY + 12, L.bucketWidth + 20, H + 16, { tl: 0, tr: 0, bl: radius.lg, br: radius.lg });
 
-    // 2. Frosted Glass Backing Plate (smooth semi-transparent milky white)
-    g.fillStyle(0xFFFFFF, 0.36);
+    // 2. Frosted Acrylic Glass Backplate (Glossy Translucent)
+    g.fillStyle(0xFFFFFF, 0.42);
     g.fillRoundedRect(L.bucketX0, L.bucketTopY, L.bucketWidth, H, { tl: 0, tr: 0, bl: radius.md, br: radius.md });
 
-    // Inner Glass Highlights & Edge Refractions
-    g.lineStyle(2, 0xFFFFFF, 0.85);
+    // Diagonal Specular Glossy Light Sheens on Glass
+    g.fillStyle(0xFFFFFF, 0.18);
+    g.beginPath();
+    g.moveTo(L.bucketX0 + 30, L.bucketTopY);
+    g.lineTo(L.bucketX0 + 90, L.bucketTopY);
+    g.lineTo(L.bucketX0 + 20, L.bucketBottomY);
+    g.lineTo(L.bucketX0 - 40, L.bucketBottomY);
+    g.closePath();
+    g.fillPath();
+
+    g.fillStyle(0xFFFFFF, 0.12);
+    g.beginPath();
+    g.moveTo(L.bucketX0 + 120, L.bucketTopY);
+    g.lineTo(L.bucketX0 + 150, L.bucketTopY);
+    g.lineTo(L.bucketX0 + 80, L.bucketBottomY);
+    g.lineTo(L.bucketX0 + 50, L.bucketBottomY);
+    g.closePath();
+    g.fillPath();
+
+    // Inner Glass Edge Highlights
+    g.lineStyle(2.5, 0xFFFFFF, 0.9);
     g.strokeRoundedRect(L.bucketX0 + 1, L.bucketTopY + 1, L.bucketWidth - 2, H - 2, { tl: 0, tr: 0, bl: radius.md, br: radius.md });
 
-    g.fillStyle(0x000000, 0.05);
-    g.fillRect(L.bucketX0, L.bucketTopY, 14, H);
-    g.fillRect(L.bucketX1 - 14, L.bucketTopY, 14, H);
+    g.fillStyle(0x000000, 0.04);
+    g.fillRect(L.bucketX0, L.bucketTopY, 16, H);
+    g.fillRect(L.bucketX1 - 16, L.bucketTopY, 16, H);
 
-    // 3. Left & Right 3D Cedar Wood Pillars (Rendered on top of glass)
+    // 3. Left & Right 3D Cedar Wood Pillars with Gold Fittings
     const fg = this.add.graphics().setDepth(z.bucketFrame);
 
     // Left Pillar
-    fg.fillStyle(0x000000, 0.18);
-    fg.fillRoundedRect(L.bucketX0 - 18, L.bucketTopY - 12 + 4, 18, H + 12, 6);
-    fg.fillStyle(0x7A431D, 1);
-    fg.fillRoundedRect(L.bucketX0 - 18, L.bucketTopY - 12, 18, H + 12, 6);
+    fg.fillStyle(0x000000, 0.22);
+    fg.fillRoundedRect(L.bucketX0 - 20, L.bucketTopY - 14 + 6, 20, H + 16, 6);
+    fg.fillStyle(0x5C3414, 1);
+    fg.fillRoundedRect(L.bucketX0 - 20, L.bucketTopY - 14, 20, H + 16, 6);
     fg.fillStyle(0x9A6136, 1);
-    fg.fillRect(L.bucketX0 - 16, L.bucketTopY - 10, 8, H + 8);
-    fg.fillStyle(0xC7844E, 0.8);
-    fg.fillRect(L.bucketX0 - 15, L.bucketTopY - 8, 3, H + 4);
-    // Golden Post Cap
-    fg.fillStyle(0xFBBF24, 1);
-    fg.fillCircle(L.bucketX0 - 9, L.bucketTopY - 14, 9);
-    fg.fillStyle(0xFFFFFF, 0.8);
-    fg.fillCircle(L.bucketX0 - 11, L.bucketTopY - 16, 3);
+    fg.fillRect(L.bucketX0 - 18, L.bucketTopY - 12, 10, H + 12);
+    fg.fillStyle(0xC7844E, 0.85);
+    fg.fillRect(L.bucketX0 - 16, L.bucketTopY - 10, 4, H + 8);
+    // Golden Dome Cap
+    fg.fillStyle(0xF59E0B, 1);
+    fg.fillCircle(L.bucketX0 - 10, L.bucketTopY - 16, 11);
+    fg.fillStyle(0xFDE68A, 1);
+    fg.fillCircle(L.bucketX0 - 12, L.bucketTopY - 18, 4);
 
     // Right Pillar
-    fg.fillStyle(0x000000, 0.18);
-    fg.fillRoundedRect(L.bucketX1, L.bucketTopY - 12 + 4, 18, H + 12, 6);
-    fg.fillStyle(0x7A431D, 1);
-    fg.fillRoundedRect(L.bucketX1, L.bucketTopY - 12, 18, H + 12, 6);
+    fg.fillStyle(0x000000, 0.22);
+    fg.fillRoundedRect(L.bucketX1, L.bucketTopY - 14 + 6, 20, H + 16, 6);
+    fg.fillStyle(0x5C3414, 1);
+    fg.fillRoundedRect(L.bucketX1, L.bucketTopY - 14, 20, H + 16, 6);
     fg.fillStyle(0x9A6136, 1);
-    fg.fillRect(L.bucketX1 + 2, L.bucketTopY - 10, 8, H + 8);
-    fg.fillStyle(0xC7844E, 0.8);
-    fg.fillRect(L.bucketX1 + 3, L.bucketTopY - 8, 3, H + 4);
-    // Golden Post Cap
-    fg.fillStyle(0xFBBF24, 1);
-    fg.fillCircle(L.bucketX1 + 9, L.bucketTopY - 14, 9);
-    fg.fillStyle(0xFFFFFF, 0.8);
-    fg.fillCircle(L.bucketX1 + 7, L.bucketTopY - 16, 3);
+    fg.fillRect(L.bucketX1 + 2, L.bucketTopY - 12, 10, H + 12);
+    fg.fillStyle(0xC7844E, 0.85);
+    fg.fillRect(L.bucketX1 + 4, L.bucketTopY - 10, 4, H + 8);
+    // Golden Dome Cap
+    fg.fillStyle(0xF59E0B, 1);
+    fg.fillCircle(L.bucketX1 + 10, L.bucketTopY - 16, 11);
+    fg.fillStyle(0xFDE68A, 1);
+    fg.fillCircle(L.bucketX1 + 8, L.bucketTopY - 18, 4);
 
     // 4. Sturdy 3D Wooden Base Foundation & Floor Beam
-    fg.fillStyle(0x000000, 0.25);
-    fg.fillRoundedRect(L.bucketX0 - 24, L.bucketBottomY + 8, L.bucketWidth + 48, 32, radius.sm);
+    fg.fillStyle(0x000000, 0.28);
+    fg.fillRoundedRect(L.bucketX0 - 26, L.bucketBottomY + 10, L.bucketWidth + 52, 34, radius.sm);
     // Dark bottom bevel
-    fg.fillStyle(0x4A2508, 1);
-    fg.fillRoundedRect(L.bucketX0 - 24, L.bucketBottomY + 6, L.bucketWidth + 48, 28, radius.sm);
+    fg.fillStyle(0x3B1A04, 1);
+    fg.fillRoundedRect(L.bucketX0 - 26, L.bucketBottomY + 6, L.bucketWidth + 52, 30, radius.sm);
     // Main base body
     fg.fillStyle(0x6E3915, 1);
-    fg.fillRoundedRect(L.bucketX0 - 24, L.bucketBottomY, L.bucketWidth + 48, 28, radius.sm);
+    fg.fillRoundedRect(L.bucketX0 - 26, L.bucketBottomY, L.bucketWidth + 52, 30, radius.sm);
     // Gold metallic top strip
     fg.fillStyle(0xF59E0B, 1);
-    fg.fillRect(L.bucketX0 - 20, L.bucketBottomY + 2, L.bucketWidth + 40, 5);
-    fg.fillStyle(0xFDE68A, 0.9);
-    fg.fillRect(L.bucketX0 - 18, L.bucketBottomY + 3, L.bucketWidth + 36, 2);
+    fg.fillRect(L.bucketX0 - 22, L.bucketBottomY + 2, L.bucketWidth + 44, 6);
+    fg.fillStyle(0xFDE68A, 0.95);
+    fg.fillRect(L.bucketX0 - 20, L.bucketBottomY + 3, L.bucketWidth + 40, 2);
 
     // Golden Corner Rivets
-    fg.fillStyle(0xFBBF24, 1);
-    fg.fillCircle(L.bucketX0 - 10, L.bucketBottomY + 16, 5);
-    fg.fillCircle(L.bucketX1 + 10, L.bucketBottomY + 16, 5);
-    fg.fillStyle(0xFFFFFF, 0.9);
-    fg.fillCircle(L.bucketX0 - 11, L.bucketBottomY + 15, 2);
-    fg.fillCircle(L.bucketX1 + 9, L.bucketBottomY + 15, 2);
+    fg.fillStyle(0xF59E0B, 1);
+    fg.fillCircle(L.bucketX0 - 12, L.bucketBottomY + 17, 6);
+    fg.fillCircle(L.bucketX1 + 12, L.bucketBottomY + 17, 6);
+    fg.fillStyle(0xFDE68A, 1);
+    fg.fillCircle(L.bucketX0 - 14, L.bucketBottomY + 15, 2.5);
+    fg.fillCircle(L.bucketX1 + 10, L.bucketBottomY + 15, 2.5);
 
     // Container anchor for QA
     const bucket = this.add.container(L.bucketX0, L.bucketTopY).setDepth(z.actor);
@@ -408,18 +427,25 @@ export class GameplayScene extends Phaser.Scene {
     this.scene.launch('GameOverScene');
   }
 
+  // --- Reset/Continue Hook ---------------------------------------------------
   clearFruitsAboveDanger(): void {
-    // 1. Find all fruits whose top is overflowing or near the danger line
-    const overflowing = this.fruits.filter((f) => {
-      const r = fruitRadius(f.tier);
-      return f.obj.y - r < this.layout.dangerY + 40 || f.obj.y < this.layout.dangerY;
-    });
+    const time = this.time.now;
+    const toRemoveSet = new Set<DroppedFruit>();
 
-    // 2. Ensure at least top 3 fruits in the bucket are cleared for plenty of breathing room
-    const sorted = [...this.fruits].sort((a, b) => a.obj.y - b.obj.y);
-    const toRemoveSet = new Set<DroppedFruit>(overflowing);
-    for (let i = 0; i < Math.min(3, sorted.length); i++) {
-      const topFruit = sorted[i];
+    // 1. Identify all fruits overflowing or touching danger line
+    for (const f of this.fruits) {
+      const r = fruitRadius(f.tier);
+      if (f.obj.y < this.layout.dangerY || (f.obj.y - r * 0.5) < this.layout.dangerY) {
+        toRemoveSet.add(f);
+      }
+    }
+
+    // 2. Fallback: if no fruit was strictly above, clear the highest fruit
+    if (toRemoveSet.size === 0 && this.fruits.length > 0) {
+      let topFruit = this.fruits[0];
+      for (const f of this.fruits) {
+        if (f.obj.y < (topFruit?.obj.y ?? 9999)) topFruit = f;
+      }
       if (topFruit) toRemoveSet.add(topFruit);
     }
 
@@ -445,138 +471,174 @@ export class GameplayScene extends Phaser.Scene {
     this.updateHud();
   }
 
-  // --- HUD & Strategic Power-ups (Playgama-grade 3D Casual HUD) ------------
+  // --- HUD & Strategic Power-ups (3D Candy Toy Badges) ------------
   private createHud(): void {
     const { width } = this.scale;
 
-    // 1. Score & Best Score Plaque (Frosted Glass & Gold Trim)
+    // 1. Score & Best Score Plaque (Solar Gold 3D Toy Plaque)
     const scoreX = 14;
+    const scoreW = 176;
+    const scoreH = 74;
     const scoreBg = this.add.graphics().setDepth(z.hud);
-    // Soft shadow
-    scoreBg.fillStyle(0x000000, 0.14);
-    scoreBg.fillRoundedRect(scoreX, 18, 174, 72, radius.md);
-    // Frosted body
-    scoreBg.fillStyle(0xFFFFFF, 0.96);
-    scoreBg.fillRoundedRect(scoreX, 16, 174, 72, radius.md);
-    scoreBg.lineStyle(2, 0xF59E0B, 0.9);
-    scoreBg.strokeRoundedRect(scoreX, 16, 174, 72, radius.md);
+
+    // Drop shadow
+    scoreBg.fillStyle(0x000000, 0.22);
+    scoreBg.fillRoundedRect(scoreX, 16 + 6, scoreW, scoreH, radius.md);
+    // 3D Bevel Base (Amber dark)
+    scoreBg.fillStyle(0xB45309, 1);
+    scoreBg.fillRoundedRect(scoreX, 16 + 6, scoreW, scoreH, radius.md);
+    // Main Solar Gold face
+    scoreBg.fillStyle(0xF59E0B, 1);
+    scoreBg.fillRoundedRect(scoreX, 16, scoreW, scoreH - 6, radius.md);
+    // Specular shine
+    scoreBg.fillStyle(0xFDE68A, 0.45);
+    scoreBg.fillRoundedRect(scoreX + 6, 19, scoreW - 12, 28, radius.sm);
+    scoreBg.lineStyle(2, 0x78350F, 0.9);
+    scoreBg.strokeRoundedRect(scoreX, 16, scoreW, scoreH, radius.md);
 
     this.scoreText = this.add.text(scoreX + 12, 36, '💎 SCORE 0', {
       fontFamily: 'sans-serif',
-      fontSize: '19px',
+      fontSize: '18px',
       fontStyle: 'bold',
-      color: '#0F172A',
-    }).setOrigin(0, 0.5).setDepth(z.hud + 1);
+      color: '#FFFFFF',
+    }).setOrigin(0, 0.5).setStroke('#78350F', 5).setDepth(z.hud + 1);
     this.scoreText.setData('testid', 'score-label');
 
     this.bestScoreText = this.add.text(scoreX + 12, 62, `🏆 BEST ${ctx.engine.state.bestScore}`, {
       fontFamily: 'sans-serif',
-      fontSize: '14px',
+      fontSize: '13px',
       fontStyle: 'bold',
-      color: '#D97706',
-    }).setOrigin(0, 0.5).setDepth(z.hud + 1);
+      color: '#FEF08A',
+    }).setOrigin(0, 0.5).setStroke('#78350F', 4).setDepth(z.hud + 1);
 
-    // 2. Next Fruit & Swap Powerup Capsule
-    this.swapButtonBaseX = 196;
+    // 2. Next Fruit & Swap Powerup Capsule (Cyan Mint 3D Capsule)
+    this.swapButtonBaseX = 198;
     const swapContainer = this.add.container(this.swapButtonBaseX, 16).setDepth(z.hud);
     this.swapButtonContainer = swapContainer;
     swapContainer.setData('testid', 'next-fruit');
 
+    const swapW = 206;
+    const swapH = 74;
     const swapBg = this.add.graphics();
-    swapBg.fillStyle(0x000000, 0.14);
-    swapBg.fillRoundedRect(0, 2, 206, 72, radius.md);
-    swapBg.fillStyle(0xFFFFFF, 0.96);
-    swapBg.fillRoundedRect(0, 0, 206, 72, radius.md);
-    swapBg.lineStyle(2, 0x38BDF8, 0.9);
-    swapBg.strokeRoundedRect(0, 0, 206, 72, radius.md);
+
+    // Drop shadow
+    swapBg.fillStyle(0x000000, 0.22);
+    swapBg.fillRoundedRect(0, 6, swapW, swapH, radius.md);
+    // 3D Bevel base (Dark Cyan)
+    swapBg.fillStyle(0x047857, 1);
+    swapBg.fillRoundedRect(0, 6, swapW, swapH, radius.md);
+    // Main Mint Cyan face
+    swapBg.fillStyle(0x06D6A0, 1);
+    swapBg.fillRoundedRect(0, 0, swapW, swapH - 6, radius.md);
+    // Specular gloss
+    swapBg.fillStyle(0xA7F3D0, 0.45);
+    swapBg.fillRoundedRect(6, 3, swapW - 12, 28, radius.sm);
+    swapBg.lineStyle(2, 0x064E3B, 0.9);
+    swapBg.strokeRoundedRect(0, 0, swapW, swapH, radius.md);
 
     // Circular glowing preview pedestals
-    swapBg.fillStyle(0xF1F5F9, 1);
-    swapBg.fillCircle(120, 36, 23);
-    swapBg.lineStyle(1.5, 0xE2E8F0, 1);
-    swapBg.strokeCircle(120, 36, 23);
+    swapBg.fillStyle(0xFFFFFF, 0.92);
+    swapBg.fillCircle(122, 34, 23);
+    swapBg.lineStyle(2, 0x047857, 0.8);
+    swapBg.strokeCircle(122, 34, 23);
 
-    swapBg.fillStyle(0xF1F5F9, 1);
-    swapBg.fillCircle(174, 36, 17);
-    swapBg.lineStyle(1.5, 0xE2E8F0, 1);
-    swapBg.strokeCircle(174, 36, 17);
+    swapBg.fillStyle(0xFFFFFF, 0.88);
+    swapBg.fillCircle(174, 34, 17);
+    swapBg.lineStyle(1.5, 0x047857, 0.8);
+    swapBg.strokeCircle(174, 34, 17);
     swapContainer.add(swapBg);
 
     const swapTitle = this.add.text(12, 24, 'NEXT 🔄', {
       fontFamily: 'sans-serif',
       fontSize: '15px',
       fontStyle: 'bold',
-      color: '#0284C7',
-    }).setOrigin(0, 0.5);
+      color: '#FFFFFF',
+    }).setOrigin(0, 0.5).setStroke('#064E3B', 5);
     swapContainer.add(swapTitle);
 
     this.swapCountText = this.add.text(12, 50, `x${ctx.engine.powerups.swapCount} Swap`, {
       fontFamily: 'sans-serif',
-      fontSize: '14px',
+      fontSize: '13px',
       fontStyle: 'bold',
-      color: '#059669',
-    }).setOrigin(0, 0.5);
+      color: '#FEF08A',
+    }).setOrigin(0, 0.5).setStroke('#064E3B', 4);
     swapContainer.add(this.swapCountText);
 
     const key0 = resolveFruitTexture(this, 0);
-    this.nextPreview1 = this.add.image(120, 36, key0).setDisplaySize(40, 40);
-    this.nextPreview2 = this.add.image(174, 36, key0).setDisplaySize(28, 28).setAlpha(0.75);
+    this.nextPreview1 = this.add.image(122, 34, key0).setDisplaySize(40, 40);
+    this.nextPreview2 = this.add.image(174, 34, key0).setDisplaySize(28, 28).setAlpha(0.85);
     swapContainer.add(this.nextPreview1);
     swapContainer.add(this.nextPreview2);
 
-    swapContainer.setSize(206, 72);
+    swapContainer.setSize(swapW, swapH);
     swapContainer.setInteractive({ useHandCursor: true });
     swapContainer.on('pointerdown', () => this.onSwapFruit());
 
-    // 3. Bucket Shake Button (Purple 3D Candy Capsule)
-    this.shakeButtonBaseX = 410;
+    // 3. Bucket Shake Button (Royal Purple 3D Candy Capsule)
+    this.shakeButtonBaseX = 412;
+    const shakeW = 120;
+    const shakeH = 74;
     const shakeContainer = this.add.container(this.shakeButtonBaseX, 16).setDepth(z.hud);
     this.shakeButtonContainer = shakeContainer;
     shakeContainer.setData('testid', 'shake-btn');
 
     const shakeBg = this.add.graphics();
-    shakeBg.fillStyle(0x000000, 0.14);
-    shakeBg.fillRoundedRect(0, 2, 122, 72, radius.md);
-    shakeBg.fillStyle(0xFFFFFF, 0.96);
-    shakeBg.fillRoundedRect(0, 0, 122, 72, radius.md);
-    shakeBg.lineStyle(2, 0xA855F7, 0.9);
-    shakeBg.strokeRoundedRect(0, 0, 122, 72, radius.md);
+    // Drop shadow
+    shakeBg.fillStyle(0x000000, 0.22);
+    shakeBg.fillRoundedRect(0, 6, shakeW, shakeH, radius.md);
+    // 3D Bevel base (Dark Purple)
+    shakeBg.fillStyle(0x5B21B6, 1);
+    shakeBg.fillRoundedRect(0, 6, shakeW, shakeH, radius.md);
+    // Main Royal Purple face
+    shakeBg.fillStyle(0x8B5CF6, 1);
+    shakeBg.fillRoundedRect(0, 0, shakeW, shakeH - 6, radius.md);
+    // Specular gloss
+    shakeBg.fillStyle(0xDDD6FE, 0.45);
+    shakeBg.fillRoundedRect(6, 3, shakeW - 12, 28, radius.sm);
+    shakeBg.lineStyle(2, 0x4C1D95, 0.9);
+    shakeBg.strokeRoundedRect(0, 0, shakeW, shakeH, radius.md);
     shakeContainer.add(shakeBg);
 
-    const shakeTitle = this.add.text(61, 24, '📳 SHAKE', {
+    const shakeTitle = this.add.text(60, 24, '📳 SHAKE', {
+      fontFamily: 'sans-serif',
+      fontSize: '14px',
+      fontStyle: 'bold',
+      color: '#FFFFFF',
+    }).setOrigin(0.5).setStroke('#4C1D95', 5);
+    shakeContainer.add(shakeTitle);
+
+    this.shakeCountText = this.add.text(60, 50, `x${ctx.engine.powerups.shakeCount}`, {
       fontFamily: 'sans-serif',
       fontSize: '15px',
       fontStyle: 'bold',
-      color: '#7C3AED',
-    }).setOrigin(0.5);
-    shakeContainer.add(shakeTitle);
-
-    this.shakeCountText = this.add.text(61, 50, `x${ctx.engine.powerups.shakeCount}`, {
-      fontFamily: 'sans-serif',
-      fontSize: '16px',
-      fontStyle: 'bold',
-      color: '#8B5CF6',
-    }).setOrigin(0.5);
+      color: '#FEF08A',
+    }).setOrigin(0.5).setStroke('#4C1D95', 4);
     shakeContainer.add(this.shakeCountText);
 
-    shakeContainer.setSize(122, 72);
+    shakeContainer.setSize(shakeW, shakeH);
     shakeContainer.setInteractive({ useHandCursor: true });
     shakeContainer.on('pointerdown', () => this.onShakeBucket());
 
-    // 4. Fruit Album Button 📖 (Emerald 3D Square)
+    // 4. Fruit Album Button 📖 (Coral Emerald 3D Square)
     const albumContainer = this.add.container(540, 16).setDepth(z.hud);
+    const albumW = 74;
+    const albumH = 74;
     const albumBg = this.add.graphics();
-    albumBg.fillStyle(0x000000, 0.14);
-    albumBg.fillRoundedRect(0, 2, 72, 72, radius.md);
-    albumBg.fillStyle(0xFFFFFF, 0.96);
-    albumBg.fillRoundedRect(0, 0, 72, 72, radius.md);
-    albumBg.lineStyle(2, 0x10B981, 0.9);
-    albumBg.strokeRoundedRect(0, 0, 72, 72, radius.md);
+    albumBg.fillStyle(0x000000, 0.22);
+    albumBg.fillRoundedRect(0, 6, albumW, albumH, radius.md);
+    albumBg.fillStyle(0x047857, 1);
+    albumBg.fillRoundedRect(0, 6, albumW, albumH, radius.md);
+    albumBg.fillStyle(0x10B981, 1);
+    albumBg.fillRoundedRect(0, 0, albumW, albumH - 6, radius.md);
+    albumBg.fillStyle(0xA7F3D0, 0.45);
+    albumBg.fillRoundedRect(6, 3, albumW - 12, 28, radius.sm);
+    albumBg.lineStyle(2, 0x064E3B, 0.9);
+    albumBg.strokeRoundedRect(0, 0, albumW, albumH, radius.md);
     albumContainer.add(albumBg);
 
-    const albumIcon = this.add.text(36, 36, '📖', { fontSize: '32px' }).setOrigin(0.5);
+    const albumIcon = this.add.text(37, 34, '📖', { fontSize: '32px' }).setOrigin(0.5);
     albumContainer.add(albumIcon);
-    albumContainer.setSize(72, 72);
+    albumContainer.setSize(albumW, albumH);
     albumContainer.setInteractive({ useHandCursor: true });
     albumContainer.on('pointerdown', () => {
       this.lastUiClickTime = this.time.now;
@@ -589,18 +651,18 @@ export class GameplayScene extends Phaser.Scene {
       const diff = ctx.getCurrentDailyDifficulty();
       const bannerW = Math.min(540, width - 40);
       const bannerH = 46;
-      const bannerY = 98;
+      const bannerY = 100;
       const bannerBg = this.add.graphics().setDepth(z.hud);
-      bannerBg.fillStyle(0x000000, 0.12);
-      bannerBg.fillRoundedRect(width / 2 - bannerW / 2, bannerY + 2, bannerW, bannerH, 23);
-      bannerBg.fillStyle(0xFFFFFF, 0.96);
+      bannerBg.fillStyle(0x000000, 0.16);
+      bannerBg.fillRoundedRect(width / 2 - bannerW / 2, bannerY + 4, bannerW, bannerH, 23);
+      bannerBg.fillStyle(0xFFFFFF, 0.98);
       bannerBg.fillRoundedRect(width / 2 - bannerW / 2, bannerY, bannerW, bannerH, 23);
-      bannerBg.lineStyle(2, 0xF59E0B, 0.9);
+      bannerBg.lineStyle(2.5, 0xF59E0B, 1);
       bannerBg.strokeRoundedRect(width / 2 - bannerW / 2, bannerY, bannerW, bannerH, 23);
 
       this.dailyBannerText = this.add.text(width / 2, bannerY + bannerH / 2, `📅 Day ${diff.dayLevel}/12: ${diff.fruitLimit} fruits left   •   Goal: ${diff.targetScore} pts 🎯`, {
         fontFamily: 'sans-serif',
-        fontSize: '16px',
+        fontSize: '15px',
         fontStyle: 'bold',
         color: '#B45309',
       }).setOrigin(0.5).setDepth(z.hud + 1);
@@ -666,10 +728,12 @@ export class GameplayScene extends Phaser.Scene {
 
     // Visual & audio feedback
     this.playSfx('sfx_drop', 0.6, 500);
+    const baseScaleX = this.ghost.scaleX;
+    const baseScaleY = this.ghost.scaleY;
     this.tweens.add({
       targets: this.ghost,
-      scaleX: { from: 0.2, to: 1 },
-      scaleY: { from: 1.4, to: 1 },
+      scaleX: { from: baseScaleX * 0.2, to: baseScaleX },
+      scaleY: { from: baseScaleY * 1.3, to: baseScaleY },
       duration: dur.pop,
       ease: 'Back.easeOut',
     });

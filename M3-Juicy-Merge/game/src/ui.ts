@@ -1,4 +1,4 @@
-// M3 Juicy Merge — Playgama-grade UI component library
+// M3 Juicy Merge — Playgama / Poki Top-Tier Visual UI Component Library
 import Phaser from 'phaser';
 import { color, radius, type, toColor, z, dur } from './tokens';
 import { sdk } from './sdk-instance';
@@ -11,6 +11,7 @@ export interface ButtonOpts {
   fontSize?: number;
   textColor?: string;
   icon?: string;
+  enableShimmer?: boolean;
 }
 
 export interface ButtonResult {
@@ -19,11 +20,12 @@ export interface ButtonResult {
 }
 
 /**
- * 3D Chunky Candy Button (Playgama/Poki Casual standard):
- * - Soft ambient bottom drop shadow
- * - 3D dark bottom bevel extrusion (8px depth)
+ * 3D Chunky Candy Button (Playgama / Poki Top-Tier Visual Standard):
+ * - Soft ambient bottom drop shadow (6px)
+ * - 3D dark bottom bevel extrusion (10px depth)
  * - Top glossy specular highlight sheen arc
- * - Bold punchy typography with text shadow
+ * - Shimmer light sweep animation across button face
+ * - Bold punchy typography with double stroke and drop shadow
  * - Bouncy spring press physics
  */
 export function drawButton(
@@ -36,42 +38,42 @@ export function drawButton(
   const variant = opts.variant ?? 'primary';
   const w = opts.width ?? 380;
   const h = opts.height ?? 72;
-  const fontSize = opts.fontSize ?? 26;
+  const fontSize = opts.fontSize ?? 25;
   const container = scene.add.container(x, y).setDepth(z.panel);
 
   const g = scene.add.graphics();
   const rad = radius.md;
-  const bevel = 8; // 3D depth
+  const bevel = 9; // 3D depth
 
   // 1. Soft Ambient Drop Shadow
-  g.fillStyle(0x000000, 0.22);
+  g.fillStyle(0x000000, 0.26);
   g.fillRoundedRect(-w / 2, -h / 2 + bevel + 4, w, h, rad);
 
   let fillColor = 0xFF4D6D;
-  let darkColor = 0xC9184A;
+  let darkColor = 0xA4133C;
   let highlightColor = 0xFF8FA3;
   let textColor = '#FFFFFF';
-  let strokeColor = '#000000';
+  let strokeColor = '#590D22';
 
   if (variant === 'primary') {
-    fillColor = 0xFF4D6D;
-    darkColor = 0xA4133C;
-    highlightColor = 0xFF8FA3;
+    fillColor = 0xFF4D6D;      // Candy Strawberry Pink
+    darkColor = 0x9B1137;      // Deep 3D Shadow
+    highlightColor = 0xFFAEC0; // Glossy highlight
     strokeColor = '#590D22';
   } else if (variant === 'amber' || variant === 'gold') {
-    fillColor = 0xF59E0B;
-    darkColor = 0xB45309;
-    highlightColor = 0xFDE68A;
+    fillColor = 0xF59E0B;      // Solar Amber Gold
+    darkColor = 0xB45309;      // Deep Amber Gold
+    highlightColor = 0xFDE68A; // Light Gold Specular
     strokeColor = '#78350F';
   } else if (variant === 'emerald') {
-    fillColor = 0x10B981;
-    darkColor = 0x047857;
-    highlightColor = 0x6EE7B7;
+    fillColor = 0x10B981;      // Mint Emerald Green
+    darkColor = 0x047857;      // Deep Forest Emerald
+    highlightColor = 0xA7F3D0; // Light Mint Gloss
     strokeColor = '#064E3B';
   } else if (variant === 'purple') {
-    fillColor = 0x8B5CF6;
-    darkColor = 0x6D28D9;
-    highlightColor = 0xC4B5FD;
+    fillColor = 0x8B5CF6;      // Royal Neon Purple
+    darkColor = 0x5B21B6;      // Deep Violet Shadow
+    highlightColor = 0xDDD6FE; // Light Lilac Gloss
     strokeColor = '#4C1D95';
   } else if (variant === 'ghost') {
     fillColor = 0xFFFFFF;
@@ -91,11 +93,11 @@ export function drawButton(
 
   // 4. Top Specular Gloss Highlight Sheen (Glass/Candy shine)
   if (variant !== 'ghost') {
-    g.fillStyle(highlightColor, 0.45);
-    g.fillRoundedRect(-w / 2 + 10, -h / 2 + 4, w - 20, (h - bevel) * 0.42, rad - 4);
-    // Tiny white reflection line at top
-    g.fillStyle(0xFFFFFF, 0.65);
-    g.fillRoundedRect(-w / 2 + 20, -h / 2 + 5, w - 40, 3, 2);
+    g.fillStyle(highlightColor, 0.48);
+    g.fillRoundedRect(-w / 2 + 10, -h / 2 + 3, w - 20, (h - bevel) * 0.42, rad - 4);
+    // Pure white specular rim
+    g.fillStyle(0xFFFFFF, 0.75);
+    g.fillRoundedRect(-w / 2 + 20, -h / 2 + 4, w - 40, 3, 2);
   } else {
     g.lineStyle(3, 0xCBD5E1, 1);
     g.strokeRoundedRect(-w / 2, -h / 2, w, h, rad);
@@ -103,8 +105,43 @@ export function drawButton(
 
   container.add(g);
 
-  // 5. Label Text with crisp stroke and shadow
-  const textContent = opts.icon ? `${opts.icon} ${label}` : label;
+  // 5. Shimmer Light Ribbon Sweep Animation (Top casual game polish)
+  if (variant !== 'ghost' && opts.enableShimmer !== false) {
+    const shimmer = scene.add.graphics();
+    shimmer.fillStyle(0xFFFFFF, 0.35);
+    shimmer.beginPath();
+    shimmer.moveTo(-20, -h / 2);
+    shimmer.lineTo(10, -h / 2);
+    shimmer.lineTo(-5, h / 2 - bevel);
+    shimmer.lineTo(-35, h / 2 - bevel);
+    shimmer.closePath();
+    shimmer.fillPath();
+
+    const maskG = scene.make.graphics({ add: false });
+    maskG.fillStyle(0xFFFFFF, 1);
+    maskG.fillRoundedRect(x - w / 2, y - h / 2, w, h - bevel, rad);
+    const mask = maskG.createGeometryMask();
+    shimmer.setMask(mask);
+    container.add(shimmer);
+
+    container.on('destroy', () => {
+      maskG.destroy();
+      mask.destroy();
+    });
+
+    shimmer.setX(-w / 2 - 40);
+    scene.tweens.add({
+      targets: shimmer,
+      x: w / 2 + 50,
+      duration: 850,
+      repeat: -1,
+      repeatDelay: 3200,
+      ease: 'Cubic.easeInOut',
+    });
+  }
+
+  // 6. Label Text with crisp stroke and shadow
+  const textContent = opts.icon ? `${opts.icon}  ${label}` : label;
   const textObj = scene.add.text(0, -bevel / 2, textContent, {
     fontFamily: 'sans-serif',
     fontSize: `${fontSize}px`,
@@ -113,12 +150,12 @@ export function drawButton(
   }).setOrigin(0.5);
 
   if (variant !== 'ghost') {
-    textObj.setStroke(strokeColor, 5);
-    textObj.setShadow(0, 2, 'rgba(0,0,0,0.35)', 2, false, true);
+    textObj.setStroke(strokeColor, 6);
+    textObj.setShadow(0, 3, 'rgba(0,0,0,0.40)', 3, false, true);
   }
 
   // Auto-fit calculation
-  const maxTextW = w - 32;
+  const maxTextW = w - 36;
   if (textObj.width > maxTextW) {
     textObj.setScale(maxTextW / textObj.width);
   }
@@ -134,8 +171,8 @@ export function drawButton(
       targets: container,
       scaleX: 0.94,
       scaleY: 0.94,
-      y: y + 3,
-      duration: 60,
+      y: y + 4,
+      duration: 65,
       yoyo: true,
       ease: 'Quad.easeInOut',
     });
@@ -145,17 +182,17 @@ export function drawButton(
 }
 
 /**
- * Draw modern ambient tropical sunrise gradient background with floating light bokeh particles.
+ * Draw modern ambient tropical sunset skybox with radial spotlight and floating light sparkles.
  */
 export function drawBackground(scene: Phaser.Scene): void {
   const { width, height } = scene.scale;
 
-  // 1. Smooth Multi-stop Sunrise Gradient
+  // 1. Smooth Multi-stop Vibrant Sunset Gradient
   const g = scene.add.graphics().setDepth(z.bg);
-  const steps = 32;
-  const topC = 0xFFF3E3;    // Warm golden sunlight
-  const midC = 0xFFE3D8;    // Soft peach
-  const botC = 0xD4EEFA;    // Crisp sky blue
+  const steps = 40;
+  const topC = 0xFF5E7E;    // Vibrant coral raspberry pink
+  const midC = 0xFFA834;    // Warm honey amber orange
+  const botC = 0xFFF0B5;    // Soft sunshine cream yellow
 
   for (let i = 0; i < steps; i++) {
     const t = i / (steps - 1);
@@ -164,11 +201,22 @@ export function drawBackground(scene: Phaser.Scene): void {
     g.fillRect(0, (height * i) / steps, width, height / steps + 1);
   }
 
-  // 2. Soft Ambient Floating Bokeh / Sparkles in Background
+  // 2. Soft Radial Spotlight Glow behind Playfield (Center Stage Light)
+  const spotG = scene.add.graphics().setDepth(z.bgSpotlight);
+  const spotRadius = Math.min(width, height) * 0.48;
+  const spotRings = 10;
+  for (let r = spotRings; r > 0; r--) {
+    const currentR = (spotRadius * r) / spotRings;
+    const alpha = (0.28 * (spotRings - r + 1)) / spotRings;
+    spotG.fillStyle(0xFFFFFF, alpha);
+    spotG.fillCircle(width / 2, height * 0.52, currentR);
+  }
+
+  // 3. Ambient Floating Bokeh & Twinkling Stars in Background
   spawnAmbientBokeh(scene, width, height);
 
-  // 3. Cute meadow turf strip at the bottom
-  const meadowH = 14;
+  // 4. Vibrant Tropical Meadow Turf Strip at the bottom
+  const meadowH = 16;
   g.fillStyle(0x10B981, 1);
   g.fillRect(0, height - meadowH, width, meadowH);
   g.fillStyle(0x059669, 1);
@@ -176,29 +224,52 @@ export function drawBackground(scene: Phaser.Scene): void {
 }
 
 function spawnAmbientBokeh(scene: Phaser.Scene, w: number, h: number): void {
-  const particleCount = 14;
+  const particleCount = 18;
+  const colors = [0xFFFFFF, 0xFFE066, 0xFFD166, 0xFF99C8, 0x70D6FF];
+
   for (let i = 0; i < particleCount; i++) {
     const px = Math.random() * w;
     const py = Math.random() * h;
-    const size = Math.random() * 8 + 4;
-    const alpha = Math.random() * 0.35 + 0.15;
+    const size = Math.random() * 9 + 4;
+    const alpha = Math.random() * 0.38 + 0.15;
+    const col = colors[Math.floor(Math.random() * colors.length)] ?? 0xFFFFFF;
 
     const dot = scene.add.graphics().setDepth(z.bgParticles);
-    dot.fillStyle(0xFFFFFF, alpha);
+    dot.fillStyle(col, alpha);
     dot.fillCircle(0, 0, size);
     dot.setPosition(px, py);
 
-    // Floating upward drift tween
+    // Floating upward drift with sine sway
     scene.tweens.add({
       targets: dot,
-      y: `-=${Math.random() * 120 + 80}`,
-      x: `+=${(Math.random() - 0.5) * 60}`,
-      alpha: { from: alpha, to: 0.05 },
-      duration: Math.random() * 4000 + 4000,
+      y: `-=${Math.random() * 140 + 90}`,
+      x: `+=${(Math.random() - 0.5) * 70}`,
+      alpha: { from: alpha, to: 0.04 },
+      duration: Math.random() * 4500 + 3500,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
       delay: Math.random() * 2000,
+    });
+  }
+
+  // Add a few twinkling stars (✨)
+  for (let j = 0; j < 6; j++) {
+    const sx = Math.random() * (w - 60) + 30;
+    const sy = Math.random() * (h * 0.4) + 20;
+    const star = scene.add.text(sx, sy, '✨', { fontSize: '20px' })
+      .setOrigin(0.5).setDepth(z.bgParticles).setAlpha(0.2);
+
+    scene.tweens.add({
+      targets: star,
+      scale: { from: 0.6, to: 1.2 },
+      alpha: { from: 0.15, to: 0.6 },
+      angle: { from: -15, to: 15 },
+      duration: Math.random() * 2000 + 1500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+      delay: Math.random() * 1500,
     });
   }
 }
@@ -226,11 +297,11 @@ export function drawFrostedCard(
 ): Phaser.GameObjects.Graphics {
   const g = scene.add.graphics();
   // Soft outer drop shadow
-  g.fillStyle(0x000000, 0.16);
+  g.fillStyle(0x000000, 0.20);
   g.fillRoundedRect(x - w / 2, y - h / 2 + 8, w, h, rad);
 
   // Frosted white glass body
-  g.fillStyle(0xFFFFFF, 0.94);
+  g.fillStyle(0xFFFFFF, 0.96);
   g.fillRoundedRect(x - w / 2, y - h / 2, w, h, rad);
 
   // Inner subtle highlight
@@ -244,6 +315,47 @@ export function drawFrostedCard(
   return g;
 }
 
+/**
+ * Draw a 3D Toy-Style Embossed HUD Badge (Score / Powerup / Status)
+ */
+export function draw3DBadge(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  baseColor: number,
+  bevelColor: number,
+  rad = radius.md,
+): Phaser.GameObjects.Container {
+  const container = scene.add.container(x, y).setDepth(z.hud);
+  const g = scene.add.graphics();
+  const bevel = 6;
+
+  // Drop shadow
+  g.fillStyle(0x000000, 0.18);
+  g.fillRoundedRect(-w / 2, -h / 2 + bevel + 3, w, h, rad);
+
+  // Bottom 3D bevel
+  g.fillStyle(bevelColor, 1);
+  g.fillRoundedRect(-w / 2, -h / 2 + bevel, w, h, rad);
+
+  // Main body
+  g.fillStyle(baseColor, 1);
+  g.fillRoundedRect(-w / 2, -h / 2, w, h - bevel, rad);
+
+  // Top specular highlight sheen
+  g.fillStyle(0xFFFFFF, 0.35);
+  g.fillRoundedRect(-w / 2 + 6, -h / 2 + 3, w - 12, (h - bevel) * 0.40, rad - 4);
+
+  // Subtle border outline
+  g.lineStyle(2, bevelColor, 0.85);
+  g.strokeRoundedRect(-w / 2, -h / 2, w, h, rad);
+
+  container.add(g);
+  return container;
+}
+
 // --- Mute button -------------------------------------------------------------
 let userMuted = false;
 export function isUserMuted(): boolean { return userMuted; }
@@ -255,12 +367,12 @@ export function applyMute(game: Phaser.Game, sdkAudioEnabled: boolean): void {
 function drawSpeakerIcon(g: Phaser.GameObjects.Graphics, on: boolean): void {
   g.clear();
   // 3D round bubble backdrop
-  g.fillStyle(0x000000, 0.15);
-  g.fillCircle(0, 3, 26);
+  g.fillStyle(0x000000, 0.18);
+  g.fillCircle(0, 4, 26);
 
-  g.fillStyle(0xFFFFFF, 0.96);
+  g.fillStyle(0xFFFFFF, 0.98);
   g.fillCircle(0, 0, 26);
-  g.lineStyle(2.5, 0xF59E0B, 0.9);
+  g.lineStyle(2.5, 0xF59E0B, 1);
   g.strokeCircle(0, 0, 26);
 
   const body = on ? 0x475569 : 0x94A3B8;

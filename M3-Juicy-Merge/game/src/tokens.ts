@@ -1,29 +1,39 @@
-// M3 Juicy Merge — tokens (DESIGN-SPEC M3, Playgama-grade casual art tokens)
+// M3 Juicy Merge — tokens (DESIGN-SPEC M3, Playgama / Poki-grade visual tokens)
 import type Phaser from 'phaser';
 
 export type ColorKey =
-  | 'bgTop' | 'bgBottom' | 'primary' | 'primaryDark' | 'primaryGrad'
+  | 'bgTop' | 'bgMid' | 'bgBottom' | 'primary' | 'primaryDark' | 'primaryGrad'
   | 'accent' | 'success' | 'danger' | 'warning'
   | 'surface' | 'surfaceAlt' | 'overlay'
   | 'textPrimary' | 'textSecondary' | 'textOnPrimary' | 'textStroke'
   | 'shadow' | 'lane' | 'grass' | 'surfaceDim'
-  | 'woodLight' | 'woodDark' | 'gold' | 'goldDark';
+  | 'woodLight' | 'woodDark' | 'gold' | 'goldDark' | 'goldLight' | 'goldShadow'
+  | 'candyPink' | 'candyPinkDark' | 'candyCyan' | 'candyCyanDark'
+  | 'candyPurple' | 'candyPurpleDark' | 'candyAmber' | 'candyAmberDark'
+  | 'candyGreen' | 'candyGreenDark';
 
 export const color: Record<ColorKey, string> = {
-  // Vibrant Casual Tropical / Sunrise Sky Palette
-  bgTop: '#FFF3E3',        // Warm peach sunlight
-  bgBottom: '#D8EEFA',     // Soft crisp sky blue
-  primary: '#FF4D6D',      // Candy Pink Berry
-  primaryDark: '#C9184A',  // Deep 3D Pink Shadow
-  primaryGrad: '#FF758F',  // Glossy highlight
+  // Vibrant Tropical Sunset & Radiant Skybox Palette
+  bgTop: '#FF5E7E',        // Vibrant coral raspberry pink
+  bgMid: '#FFA834',        // Warm honey amber orange
+  bgBottom: '#FFF0B5',     // Soft sunshine cream yellow
+  
+  // 3D Candy Primary Action (Juicy Strawberry Pink)
+  primary: '#FF4D6D',
+  primaryDark: '#C9184A',
+  primaryGrad: '#FF758F',
+  
+  // Vibrant Arcade Accents
   accent: '#06D6A0',       // Mint Cyan
   success: '#10B981',      // Emerald Green
   danger: '#EF4444',       // Vibrant Alert Red
-  warning: '#F59E0B',      // Golden Amber
+  warning: '#F59E0B',      // Solar Amber Gold
+  
   surface: '#FFFFFF',
   surfaceAlt: '#F8FAFC',
   surfaceDim: '#FFF7ED',
-  overlay: 'rgba(15, 23, 42, 0.65)',
+  overlay: 'rgba(15, 23, 42, 0.70)',
+  
   textPrimary: '#1E293B',  // Slate Dark
   textSecondary: '#64748B',// Slate Muted
   textOnPrimary: '#FFFFFF',
@@ -31,10 +41,26 @@ export const color: Record<ColorKey, string> = {
   shadow: '#000000',
   lane: '#38BDF8',
   grass: '#10B981',
-  woodLight: '#9A6136',   // Rich polished cedar wood
-  woodDark: '#673E1A',    // Dark 3D bevel wood
-  gold: '#FBBF24',        // Metallic Gold highlight
-  goldDark: '#D97706',    // Dark gold bevel
+  
+  // 3D Polished Wood & Royal Gold Tokens
+  woodLight: '#9A6136',    // Cedar wood body
+  woodDark: '#5C3414',     // Dark 3D bevel wood
+  gold: '#F59E0B',         // 24K Solar Gold
+  goldLight: '#FDE68A',    // Specular gold shine
+  goldDark: '#D97706',     // Deep gold shadow
+  goldShadow: '#78350F',   // Darkest gold stroke
+  
+  // 3D Candy Button Palettes
+  candyPink: '#FF3366',
+  candyPinkDark: '#B80036',
+  candyCyan: '#06D6A0',
+  candyCyanDark: '#048A66',
+  candyPurple: '#8B5CF6',
+  candyPurpleDark: '#5B21B6',
+  candyAmber: '#F59E0B',
+  candyAmberDark: '#B45309',
+  candyGreen: '#10B981',
+  candyGreenDark: '#047857',
 };
 
 export type TypeKey = 'display' | 'h1' | 'h2' | 'body' | 'small' | 'score';
@@ -58,7 +84,7 @@ export const radius = {
 
 // z-layering
 export const z = {
-  bg: 0, bgParticles: 5, actor: 10, bucketGlass: 8, bucketFrame: 14, hud: 20, tutorial: 30, overlay: 40, panel: 50,
+  bg: 0, bgSpotlight: 2, bgParticles: 5, actor: 10, bucketGlass: 8, bucketFrame: 14, hud: 20, tutorial: 30, overlay: 40, panel: 50,
 };
 
 // motion durations

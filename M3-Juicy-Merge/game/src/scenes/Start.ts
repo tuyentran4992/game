@@ -350,39 +350,58 @@ export class StartScene extends Phaser.Scene {
   private createJuicyLogo(cx: number, cy: number): void {
     this.logoContainer = this.add.container(cx, cy).setDepth(z.hud);
 
-    // 1. 3D Shadow Layer
-    const shadow = this.add.text(0, 6, 'JUICE MERGE', {
+    // 1. Deepest 3D Drop Shadow
+    const shadow2 = this.add.text(0, 8, 'JUICE MERGE', {
       fontFamily: 'sans-serif',
       fontSize: '56px',
       fontStyle: 'bold',
-      color: '#7A0C2E',
-    }).setOrigin(0.5).setStroke('#50071C', 10);
-    this.logoContainer.add(shadow);
+      color: '#38040E',
+    }).setOrigin(0.5).setStroke('#200108', 12);
+    this.logoContainer.add(shadow2);
 
-    // 2. Main 3D White Outlined Logo
+    // 2. 3D Cherry Extrusion Layer
+    const shadow1 = this.add.text(0, 4, 'JUICE MERGE', {
+      fontFamily: 'sans-serif',
+      fontSize: '56px',
+      fontStyle: 'bold',
+      color: '#9B1137',
+    }).setOrigin(0.5).setStroke('#800F2F', 10);
+    this.logoContainer.add(shadow1);
+
+    // 3. Main Candy Pink Pop Face with Thick White Stroke
     const mainTitle = this.add.text(0, 0, 'JUICE MERGE', {
       fontFamily: 'sans-serif',
       fontSize: '56px',
       fontStyle: 'bold',
-      color: '#FF4D6D',
+      color: '#FF3366',
     }).setOrigin(0.5).setStroke('#FFFFFF', 8);
     mainTitle.setData('testid', 'start-title');
     this.logoContainer.add(mainTitle);
 
-    // 3. Sparkling decorative icons
-    const starL = this.add.text(-195, -20, '✨', { fontSize: '28px' }).setOrigin(0.5);
-    const starR = this.add.text(195, -20, '✨', { fontSize: '28px' }).setOrigin(0.5);
+    // 4. Sparkling Rainbow Stars
+    const starL = this.add.text(-200, -22, '✨', { fontSize: '30px' }).setOrigin(0.5);
+    const starR = this.add.text(200, -22, '✨', { fontSize: '30px' }).setOrigin(0.5);
     this.logoContainer.add([starL, starR]);
 
-    // 4. Mascot Fruit Wobble (Strawberry & Watermelon)
+    this.tweens.add({
+      targets: [starL, starR],
+      angle: { from: -20, to: 20 },
+      scale: { from: 0.8, to: 1.3 },
+      duration: 1200,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    // 5. Mascot Fruit Wobble (Strawberry & Watermelon)
     if (this.textures.exists(fruitKey(1))) {
-      const mascot1 = this.add.image(-220, 10, fruitKey(1)).setDisplaySize(50, 50);
+      const mascot1 = this.add.image(-226, 12, fruitKey(1)).setDisplaySize(54, 54);
       this.logoContainer.add(mascot1);
       this.tweens.add({
         targets: mascot1,
-        angle: { from: -10, to: 10 },
-        y: '-=6',
-        duration: 900,
+        angle: { from: -12, to: 12 },
+        y: '-=8',
+        duration: 850,
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut',
@@ -390,13 +409,13 @@ export class StartScene extends Phaser.Scene {
     }
 
     if (this.textures.exists(fruitKey(11))) {
-      const mascot2 = this.add.image(220, 10, fruitKey(11)).setDisplaySize(58, 58);
+      const mascot2 = this.add.image(226, 12, fruitKey(11)).setDisplaySize(62, 62);
       this.logoContainer.add(mascot2);
       this.tweens.add({
         targets: mascot2,
-        angle: { from: 8, to: -8 },
-        y: '-=8',
-        duration: 1100,
+        angle: { from: 10, to: -10 },
+        y: '-=10',
+        duration: 1050,
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut',
@@ -407,9 +426,9 @@ export class StartScene extends Phaser.Scene {
     this.tweens.add({
       targets: this.logoContainer,
       y: cy - 6,
-      scaleX: 1.02,
-      scaleY: 1.02,
-      duration: 1800,
+      scaleX: 1.03,
+      scaleY: 1.03,
+      duration: 1600,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
@@ -433,12 +452,17 @@ export class StartScene extends Phaser.Scene {
     const x0 = cx - (slot * (n - 1)) / 2;
     const size = Math.min(42, slot - 4);
 
-    // Frosted Capsule Backdrop for fruit chain
+    // Frosted 3D Acrylic Capsule for fruit chain
     this.chainBackdrop = this.add.graphics().setDepth(z.hud - 1);
-    this.chainBackdrop.fillStyle(0xFFFFFF, 0.90);
-    this.chainBackdrop.fillRoundedRect(cx - maxChainW / 2 - 8, cy - 26, maxChainW + 16, 52, 26);
-    this.chainBackdrop.lineStyle(2, 0xCBD5E1, 0.8);
-    this.chainBackdrop.strokeRoundedRect(cx - maxChainW / 2 - 8, cy - 26, maxChainW + 16, 52, 26);
+    // Drop shadow
+    this.chainBackdrop.fillStyle(0x000000, 0.18);
+    this.chainBackdrop.fillRoundedRect(cx - maxChainW / 2 - 10, cy - 24, maxChainW + 20, 56, 28);
+    // Body
+    this.chainBackdrop.fillStyle(0xFFFFFF, 0.94);
+    this.chainBackdrop.fillRoundedRect(cx - maxChainW / 2 - 10, cy - 28, maxChainW + 20, 56, 28);
+    // Gold & Amber trim
+    this.chainBackdrop.lineStyle(2.5, 0xF59E0B, 0.95);
+    this.chainBackdrop.strokeRoundedRect(cx - maxChainW / 2 - 10, cy - 28, maxChainW + 20, 56, 28);
 
     for (let tier = 0; tier < n; tier++) {
       const key = fruitKey(tier);

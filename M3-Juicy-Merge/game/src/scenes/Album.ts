@@ -30,28 +30,35 @@ export class AlbumScene extends Phaser.Scene {
     const cardH = Math.min(980, height - 60);
     const bg = this.add.graphics();
 
-    // Soft outer shadow
-    bg.fillStyle(0x000000, 0.25);
-    bg.fillRoundedRect(-cardW / 2, -cardH / 2 + 8, cardW, cardH, radius.lg);
+    // 1. Soft outer shadow
+    bg.fillStyle(0x000000, 0.28);
+    bg.fillRoundedRect(-cardW / 2, -cardH / 2 + 10, cardW, cardH, radius.lg);
 
-    // Frosted white glass body
+    // 2. Frosted white glass body
     bg.fillStyle(0xFFFFFF, 0.98);
     bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, radius.lg);
-    bg.lineStyle(3, 0x10B981, 0.9);
+
+    // 3. Top Emerald Ribbon Accent
+    bg.fillStyle(0x10B981, 1);
+    bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, 18, {
+      tl: radius.lg, tr: radius.lg, bl: 0, br: 0,
+    });
+    // Gold & Emerald 3D outer stroke
+    bg.lineStyle(3, 0x10B981, 1);
     bg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, radius.lg);
     modal.add(bg);
 
-    // Header Title
-    const title = this.add.text(0, -cardH / 2 + 38, '📖 FRUIT ENCYCLOPEDIA', {
+    // Header Title with crisp stroke
+    const title = this.add.text(0, -cardH / 2 + 42, '📖 FRUIT ENCYCLOPEDIA', {
       fontFamily: 'sans-serif',
       fontSize: '24px',
       fontStyle: 'bold',
-      color: '#0F172A',
-    }).setOrigin(0.5);
+      color: '#064E3B',
+    }).setOrigin(0.5).setStroke('#FFFFFF', 4);
     modal.add(title);
 
     // Progress Subtitle & Badge
-    const subtitle = this.add.text(0, -cardH / 2 + 70, `${progress.unlockedCount}/${progress.totalCount} Unlocked • ${progress.title}`, {
+    const subtitle = this.add.text(0, -cardH / 2 + 74, `${progress.unlockedCount}/${progress.totalCount} Unlocked • ${progress.title}`, {
       fontFamily: 'sans-serif',
       fontSize: '15px',
       fontStyle: 'bold',

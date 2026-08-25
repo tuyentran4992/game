@@ -76,33 +76,37 @@ export class GameOverScene extends Phaser.Scene {
       this.showRecordBadge(panel, -panelH / 2 + 155);
     }
 
-    // 3. Dual Score Card (2-column neat card)
+    // 3. Dual Score Card (2-column 3D embossed cards)
     const best = ctx.engine.state.bestScore;
     const scoreCardW = panelW - 56;
-    const scoreCardH = 110;
-    const scoreCardY = isNewRecord ? -50 : -65;
+    const scoreCardH = 114;
+    const scoreCardY = isNewRecord ? -45 : -60;
 
     const scoreCardBg = this.add.graphics();
-    scoreCardBg.fillStyle(0xF8FAFC, 1);
+    // Drop shadow
+    scoreCardBg.fillStyle(0x000000, 0.18);
+    scoreCardBg.fillRoundedRect(-scoreCardW / 2, scoreCardY - scoreCardH / 2 + 5, scoreCardW, scoreCardH, radius.md);
+    // Body
+    scoreCardBg.fillStyle(0xFFFFFF, 1);
     scoreCardBg.fillRoundedRect(-scoreCardW / 2, scoreCardY - scoreCardH / 2, scoreCardW, scoreCardH, radius.md);
-    scoreCardBg.lineStyle(2, 0xE2E8F0, 1);
+    scoreCardBg.lineStyle(2.5, 0xF59E0B, 0.9);
     scoreCardBg.strokeRoundedRect(-scoreCardW / 2, scoreCardY - scoreCardH / 2, scoreCardW, scoreCardH, radius.md);
     // Center divider
-    scoreCardBg.lineStyle(2, 0xCBD5E1, 0.8);
-    scoreCardBg.lineBetween(0, scoreCardY - scoreCardH / 2 + 16, 0, scoreCardY + scoreCardH / 2 - 16);
+    scoreCardBg.lineStyle(2, 0xE2E8F0, 1);
+    scoreCardBg.lineBetween(0, scoreCardY - scoreCardH / 2 + 12, 0, scoreCardY + scoreCardH / 2 - 12);
     panel.add(scoreCardBg);
 
     // Left Column: SCORE
     const leftColX = -scoreCardW / 4;
-    const finalLabel = this.add.text(leftColX, scoreCardY - 24, '💎 FINAL SCORE', {
+    const finalLabel = this.add.text(leftColX, scoreCardY - 26, '💎 FINAL SCORE', {
       fontFamily: 'sans-serif',
       fontSize: '13px',
       fontStyle: 'bold',
-      color: '#64748B',
+      color: '#0284C7',
     }).setOrigin(0.5);
     const finalVal = this.add.text(leftColX, scoreCardY + 16, `${score}`, {
       fontFamily: 'sans-serif',
-      fontSize: '32px',
+      fontSize: '34px',
       fontStyle: 'bold',
       color: '#0F172A',
     }).setOrigin(0.5);
@@ -112,7 +116,7 @@ export class GameOverScene extends Phaser.Scene {
 
     // Right Column: BEST
     const rightColX = scoreCardW / 4;
-    const bestLabel = this.add.text(rightColX, scoreCardY - 24, '🏆 ALL-TIME BEST', {
+    const bestLabel = this.add.text(rightColX, scoreCardY - 26, '🏆 ALL-TIME BEST', {
       fontFamily: 'sans-serif',
       fontSize: '13px',
       fontStyle: 'bold',
@@ -120,7 +124,7 @@ export class GameOverScene extends Phaser.Scene {
     }).setOrigin(0.5);
     const bestVal = this.add.text(rightColX, scoreCardY + 16, `${best}`, {
       fontFamily: 'sans-serif',
-      fontSize: '32px',
+      fontSize: '34px',
       fontStyle: 'bold',
       color: '#B45309',
     }).setOrigin(0.5);
@@ -249,7 +253,7 @@ export class GameOverScene extends Phaser.Scene {
     const gameplay = this.scene.get('GameplayScene') as { clearFruitsAboveDanger?: () => void };
     gameplay.clearFruitsAboveDanger?.();
     this.scene.resume('GameplayScene');
-    this.scene.stop();
+    this.scene.stop('GameOverScene');
   }
 
   private showRewardDenied(): void {
