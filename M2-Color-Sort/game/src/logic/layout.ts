@@ -1,6 +1,7 @@
-// Responsive board layout (PURE — no Phaser). DESIGN-SPEC §2.1/§2.3:
-// board tự co theo viewport, ống KHÔNG nhỏ hơn vùng chạm 44px khi còn chỗ,
-// level khó (nhiều ống) vẫn chơi được ở 9:16.
+// Responsive board layout (PURE — no Phaser). DESIGN-SPEC §2.1/§2.3 + AUDIT §B3:
+// board tự co theo viewport, ống KHÔNG nhỏ hơn vùng chạm 44px khi còn chỗ, level
+// khó (nhiều ống) vẫn chơi được ở 9:16, column cap theo bề rộng, gap đàn hồi,
+// và chiều cao ống TÔN TRỌNG capacity để mỗi lát chất lỏng đọc được (layer ≥ 26px).
 // Test: __tests__/layout.test.ts
 
 export interface BoardLayout {
@@ -22,6 +23,8 @@ export interface BoardLayout {
   /** vùng chạm tối thiểu (>= 44px theo design-system §2) */
   hitW: number;
   hitH: number;
+  /** chiều cao mỗi lát chất lỏng ((tubeH − nội thất)/capacity) — đọc được ≥ 26px */
+  layerH: number;
 }
 
 export interface LayoutOptions {
@@ -35,10 +38,10 @@ export interface LayoutOptions {
   maxTubeW?: number;
   minTubeH?: number;
   maxTubeH?: number;
-  minGapX?: number;
-  minGapY?: number;
   /** tỉ lệ rộng/cao của ống (DESIGN-SPEC §3.1: 84×200 ≈ 0.42) */
   aspect?: number;
+  /** số lát tối đa mỗi ống (AUDIT §B3 — capacity là input của layout) */
+  capacity?: number;
 }
 
 const DEFAULTS: Required<LayoutOptions> = {
@@ -47,26 +50,37 @@ const DEFAULTS: Required<LayoutOptions> = {
   marginX: 16,
   minTubeW: 44,
   maxTubeW: 92,
-  minTubeH: 104,
+  minTubeH: 120,
   maxTubeH: 236,
-  minGapX: 10,
-  minGapY: 14,
   aspect: 0.42,
+  capacity: 4,
 };
 
-/** ưu tiên ít hàng: 1 hàng dễ đọc hơn nhiều hàng khi diện tích tương đương */
-const ROW_PENALTY = 1200;
-/** thưởng lớn cho cấu hình còn giữ vùng chạm ≥ 44px (design-system §2) */
-const TOUCH_BONUS = 4000;
+/** Chiều cao tối thiểu của MỘT lát chất lỏng để đọc được / nhắm được (AUDIT §B3). */
+export const MIN_LAYER_PX = 26;
+/** chiều cao nội thất ống (innerPad*2 + 4) — từ ui.ts renderLiquid */
+const TUBE_INNER = 11;
+/** vùng chạm tối thiểu theo design-system §2 */
+export const MIN_TOUCH = 44;
+
+/** Elastic gap: lớn dần theo ống (AUDIT §B3 — không bao giờ co về 5px mù). */
+function elasticGap(tubeW: number): number {
+  return Math.max(8, Math.min(22, tubeW * 0.18));
+}
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v));
 }
 
 /**
- * Chọn số cột/hàng + kích thước ống tối ưu (tối đa diện tích ống) sao cho toàn bộ
- * board vừa trong vùng giữa HUD và toolbar. Ống co xuống dưới 44px CHỈ khi
- * viewport quá nhỏ để tránh tràn (fallback an toàn, không bao giờ vẽ ra ngoài).
+ * Chọn số cột/hàng + kích thước ống tối ưu (tối đa ĐỘ ĐỌC ĐƯỢC) sao cho toàn bộ
+ * board vừa trong vùng giữa HUD và toolbar, với:
+ *   - column cap theo bề rộng (DESIGN-SPEC §2.3)  w<380→4, <480→5, <900→6, <1500→7, else 8
+ *   - portrait ≤ 3 hàng, landscape ≤ 2 hàng
+ *   - breathing room padY/padX được TRỪ TRƯỚC khi fit (ống không chạm HUD/toolbar)
+ *   - gap đàn hồi clamp(tubeW*0.18, 8, 22)
+ *   - capacity-aware: tubeH ≥ capacity*MIN_LAYER_PX + nội thất (khi viewport cho phép)
+ *   - min tube 44×120; score ĐỘ ĐỌC, không phải diện tích.
  */
 export function computeBoardLayout(
   width: number,
@@ -76,85 +90,124 @@ export function computeBoardLayout(
 ): BoardLayout {
   const o = { ...DEFAULTS, ...opts };
   const n = Math.max(1, Math.floor(tubeCount));
-  const availW = Math.max(80, width - o.marginX * 2);
-  const areaTop = o.hudH;
-  const areaH = Math.max(140, height - o.hudH - o.toolbarH);
+  const capacity = Math.max(1, Math.floor(o.capacity ?? DEFAULTS.capacity));
+
+  // 1) column cap theo bề rộng (DESIGN-SPEC §2.3)
+  const maxColsByWidth = width < 380 ? 4 : width < 480 ? 5 : width < 900 ? 6 : width < 1500 ? 7 : 8;
+  const maxCols = Math.min(n, maxColsByWidth);
+  // 2) portrait ≤ 3 hàng, landscape ≤ 2
+  const maxRows = height / width > 1.5 ? 3 : 2;
+
+  // 3) breathing room TRƯỚC khi fit
+  const availRawW = Math.max(0, width - o.marginX * 2);
+  const areaRawH = Math.max(0, height - o.hudH - o.toolbarH);
+  const padX = Math.max(12, availRawW * 0.04);
+  const padY = Math.max(16, areaRawH * 0.06);
+  const areaTop = o.hudH + padY;
+  const availW = Math.max(24, availRawW - padX * 2);
+  const areaH = Math.max(24, areaRawH - padY * 2);
+
+  // 4) capacity-aware min chiều cao ống
+  const capMinTubeH = capacity * MIN_LAYER_PX + TUBE_INNER;
+
+  const tryLayout = (cols: number): { layout: BoardLayout; score: number } | null => {
+    const rows = Math.ceil(n / cols);
+    if (rows > maxRows) return null;
+
+    // elastic gap phụ thuộc tubeW → lặp vài vòng để hội tụ
+    let gap = 12;
+    let tubeW = (availW - gap * (cols + 1)) / cols;
+    for (let k = 0; k < 3; k++) {
+      tubeW = (availW - gap * (cols + 1)) / cols;
+      gap = elasticGap(tubeW);
+    }
+    if (tubeW <= 16) return null;
+    // ống KHÔNG to hơn maxTubeW (92px — design); phần dư là lề 2 bên cho thoáng
+    tubeW = Math.min(tubeW, o.maxTubeW);
+    gap = elasticGap(tubeW);
+
+    let tubeH = Math.min(o.maxTubeH, (areaH - gap * (rows + 1)) / rows);
+    if (tubeH <= 24) return null;
+
+    // aspect shaping NHƯNG không hạ xuống dưới capMin (capacity-aware)
+    const shapedByW = tubeW / o.aspect;
+    tubeH = Math.min(tubeH, Math.max(capMinTubeH, shapedByW));
+
+    const layerH = (tubeH - TUBE_INNER) / capacity;
+    // AUDIT §B3 / verify: n=6..10 nên 2 HÀNG (đọc thông, không phải "tường đông"),
+    // NHƯNG vẫn cho phép 3 khi viewport quá hẹp (cols cap chặn 2 hàng) → bonus, không cứng.
+    const twoRowBonus = n >= 6 && n <= 10 && rows === 2 ? 12000 : 0;
+    const score =
+      twoRowBonus
+      + layerH * 60                                    // đọc được từng lát
+      + Math.min(tubeW, o.maxTubeW) * 8              // ống to thì tốt
+      - rows * 240                                   // hàng nhiều → nhẹ nhàng hơn Penalty 1200 cũ
+      - (gap < 10 ? 5000 : 0)                        // gap mù = không bao giờ xếp
+      + (tubeW >= MIN_TOUCH && layerH >= MIN_LAYER_PX ? 6000 : 0); // touch ≥44 + layer ≥26
+
+    const boardW = cols * tubeW + gap * (cols - 1);
+    const boardH = rows * tubeH + gap * (rows - 1);
+    return {
+      score,
+      layout: {
+        cols,
+        rows,
+        count: n,
+        viewWidth: width,
+        tubeW,
+        tubeH,
+        gapX: gap,
+        gapY: gap,
+        boardW,
+        boardH,
+        startX: (width - boardW) / 2 + tubeW / 2,
+        startY: areaTop + (areaH - boardH) / 2 + tubeH / 2,
+        hitW: Math.max(MIN_TOUCH, tubeW),
+        hitH: Math.max(MIN_TOUCH, tubeH),
+        layerH,
+      },
+    };
+  };
 
   let best: BoardLayout | null = null;
   let bestScore = -Infinity;
 
-  for (let cols = 1; cols <= n; cols++) {
-    const rows = Math.ceil(n / cols);
-    const gapY = o.minGapY;
-
-    // chiều cao ống theo số hàng
-    let tubeH = (areaH - gapY * (rows + 1)) / rows;
-    tubeH = Math.min(o.maxTubeH, tubeH);
-    if (tubeH <= 24) continue;
-
-    // chiều rộng theo tỉ lệ ống, rồi co lại nếu không đủ ngang
-    let gapX = o.minGapX;
-    let tubeW = clamp(tubeH * o.aspect, o.minTubeW, o.maxTubeW);
-    let needed = cols * tubeW + gapX * (cols + 1);
-    if (needed > availW) {
-      tubeW = (availW - gapX * (cols + 1)) / cols;
-      if (tubeW < o.minTubeW) {
-        // hạ gap trước khi hạ vùng chạm
-        gapX = Math.max(4, o.minGapX * 0.5);
-        tubeW = (availW - gapX * (cols + 1)) / cols;
-      }
-      if (tubeW <= 16) continue;
-      // giữ ống không "béo": cao ít nhất ~2× rộng
-      tubeH = Math.min(tubeH, Math.max(o.minTubeH * 0.6, tubeW / o.aspect));
-    }
-
-    // ưu tiên: (1) giữ vùng chạm ≥ 44px, (2) ít hàng (board gọn, dễ nhìn), (3) ống to
-    const score = tubeW * tubeH - rows * ROW_PENALTY + (tubeW >= o.minTubeW ? TOUCH_BONUS : 0);
-    if (score <= bestScore) continue;
-
-    const boardW = cols * tubeW + gapX * (cols - 1);
-    const boardH = rows * tubeH + gapY * (rows - 1);
-    bestScore = score;
-    best = {
-      cols,
-      rows,
-      count: n,
-      viewWidth: width,
-      tubeW,
-      tubeH,
-      gapX,
-      gapY,
-      boardW,
-      boardH,
-      startX: (width - boardW) / 2 + tubeW / 2,
-      startY: areaTop + (areaH - boardH) / 2 + tubeH / 2,
-      hitW: Math.max(44, tubeW),
-      hitH: Math.max(44, tubeH),
-    };
+  // 5) tìm layout: 1 hàng ĐƯỢC ƯU TIÊN trên phone khi vừa (dễ đọc thông)
+  const singleFeasible = width < 900 && n <= maxColsByWidth;
+  for (let cols = 1; cols <= maxCols; cols++) {
+    const picked = tryLayout(cols);
+    if (!picked) continue;
+    let s = picked.score;
+    if (singleFeasible && picked.layout.rows === 1 && picked.layout.tubeW >= MIN_TOUCH) s += 20000; // ép 1 hàng
+    if (s <= bestScore) continue;
+    bestScore = s;
+    best = picked.layout;
   }
 
   if (best) return best;
 
-  // Fallback cực nhỏ: 1 hàng, chia đều
-  const cols = n;
-  const tubeW = Math.max(12, (availW - o.minGapX * (cols + 1)) / cols);
-  const tubeH = Math.max(40, areaH - o.minGapY * 2);
-  const boardW = cols * tubeW + o.minGapX * (cols - 1);
+  // 6) Fallback cực nhỏ: 1 hàng, chia đều (KHÔNG tràn ra ngoài)
+  const cols = Math.min(n, Math.max(1, Math.floor(availW / (MIN_TOUCH + 8))));
+  const tubeW = Math.max(12, (availW - elasticGap(24) * (cols + 1)) / cols);
+  const tubeH = Math.max(40, areaH - elasticGap(tubeW) * 2);
+  const boardW = cols * tubeW + elasticGap(tubeW) * (cols - 1);
+  const layerH = Math.max(6, (tubeH - TUBE_INNER) / capacity);
   return {
     cols,
-    rows: 1,
+    rows: Math.ceil(n / cols),
     count: n,
     viewWidth: width,
     tubeW,
     tubeH,
-    gapX: o.minGapX,
-    gapY: o.minGapY,
+    gapX: elasticGap(tubeW),
+    gapY: elasticGap(tubeW),
     boardW,
-    boardH: tubeH,
+    boardH: (Math.ceil(n / cols)) * tubeH + Math.max(0, Math.ceil(n / cols) - 1) * elasticGap(tubeW),
     startX: (width - boardW) / 2 + tubeW / 2,
-    startY: areaTop + areaH / 2,
-    hitW: Math.max(44, tubeW),
-    hitH: Math.max(44, tubeH),
+    startY: areaTop + (areaH - Math.max(tubeH, areaH - elasticGap(tubeW) * 2)) / 2 + tubeH / 2,
+    hitW: Math.max(MIN_TOUCH, tubeW),
+    hitH: Math.max(MIN_TOUCH, tubeH),
+    layerH,
   };
 }
 

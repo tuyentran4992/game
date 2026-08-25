@@ -23,6 +23,7 @@ import { sdk } from '../sdk-instance';
 import { inputGate } from '../input-gate';
 import { showAdConfirm, showAdLoading, showToast } from '../ad-ux';
 import { AD_WATCHDOG_MS, canBuyExtraTube, hintGrant, raceTimeout } from '../logic/ad-pacing';
+import { startBgmOnce } from '../bgm';
 import { MECHANICS } from '../logic/mechanics';
 import { computeBoardLayout, tubePosition, BoardLayout } from '../logic/layout';
 import {
@@ -35,6 +36,7 @@ import {
   isLegal,
   isClean,
   moveCount as legalMoveCount,
+  getCachedBoard,
   BoardState,
 } from '../logic/color-sort';
 
@@ -74,24 +76,82 @@ export class GameplayScene extends Phaser.Scene {
   /** B2-6: slot toolbar CỐ ĐỊNH cho rewarded +1 ống (trước đây chỉ nằm trong tooltip) */
   private extraTubeBtn: Phaser.GameObjects.Container | null = null;
   private hintBtn: Phaser.GameObjects.Container | null = null;
+  /** AUDIT P-1: lấy reference để gỡ đúng handler khi scene SHUTDOWN (scale không tự off). */
+  private onResizeBound!: (g: Phaser.Structs.Size) => void;
+  /** overlay "Generating…" trong lúc sinh board cold (AUDIT §B3). */
+  private generatingOverlay: { root: Phaser.GameObjects.Container; spin: Phaser.Tweens.Tween; pulse: Phaser.Tweens.Tween } | null = null;
 
   constructor() {
     super({ key: 'GameplayScene' });
+  }
+
+  /** AUDIT §B3: hiện "Generating…" + deferred 1 frame TRƯỚC khi sinh board cold. */
+  private showGenerating() {
+    if (this.generatingOverlay) return;
+    const { width, height } = this.scale;
+    const cx = width / 2, cy = height / 2;
+    const root = this.add.container(cx, cy).setDepth(z.overlay + 60);
+    const t = this.add.text(0, 42, 'Generating board…', fontStyle(type.small, color.accent)).setOrigin(0.5);
+    t.setShadow(0, 2, color.shadow, 4, false, true);
+    const ring = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
+    ring.lineStyle(5, toColor(color.primary), 0.28);
+    ring.strokeCircle(0, 0, 24);
+    ring.lineStyle(5, toColor(color.accent), 1);
+    ring.beginPath();
+    ring.arc(0, 0, 24, -Math.PI / 2, Math.PI / 5, false);
+    ring.strokePath();
+    root.add([ring, t]);
+    const spin = this.tweens.add({ targets: ring, angle: 360, duration: 700, repeat: -1, ease: 'linear' });
+    const pulse = this.tweens.add({ targets: t, alpha: 0.45, duration: 620, yoyo: true, repeat: -1, ease: 'sine.inout' });
+    this.generatingOverlay = { root, spin, pulse };
+  }
+
+  private hideGenerating() {
+    const o = this.generatingOverlay;
+    this.generatingOverlay = null;
+    if (!o) return;
+    o.spin.remove();
+    o.pulse.remove();
+    if (o.root.scene) this.tweens.add({ targets: o.root, alpha: 0, duration: dur.base, onComplete: () => o.root.destroy() });
+    else o.root.destroy();
+  }
+
+  /** deferred 1 frame (để canvas render overlay trước khi main thread đè công việc sinh board). */
+  private nextFrame(): Promise<void> {
+    return new Promise((resolve) => {
+      this.time.delayedCall(0, () => resolve());
+    });
   }
 
   async create() {
     await ctx.load();
     const { width, height } = this.scale;
     const level = Math.max(1, ctx.currentLevel);
+    const seed = level * 7919 + 13;
 
     // P0-2: RESUME giữa level nếu save có session hợp lệ (đúng board + undo stack),
-    // ngược lại sinh board mới deterministic theo seed.
+    // ngược lại: board memoized / prefetch cho level này → TỨC THÌ; cold path →
+    // overlay "Generating…" + deferred 1 frame (AUDIT §B3 kill high-level freeze).
     const resumed = ctx.resumeBoard(level);
-    this.board = resumed ?? createBoard(MECHANICS, level, level * 7919 + 13);
+    if (resumed) {
+      this.board = resumed;
+    } else {
+      const cached = getCachedBoard(level, seed);
+      if (cached) {
+        this.board = cached;
+      } else {
+        this.showGenerating();
+        await this.nextFrame();
+        this.board = createBoard(MECHANICS, level, seed);
+        this.hideGenerating();
+      }
+    }
     this.hintUsedThisLevel = resumed ? ctx.hintUsedForSession(level) : false;
     this.selected = null;
     this.isAnimating = false;
     this.sealedTubes.clear();
+    // AUDIT P-3: BGM loop start ĐÚNG 1 lần (không phải mỗi level); tiếp tục xuyên level.
+    startBgmOnce(this.game);
     // thang ngũ cung bắt đầu lại mỗi level → melody seal luôn đi từ nốt gốc
     synthAudio.resetSealScale(0);
 
@@ -107,7 +167,7 @@ export class GameplayScene extends Phaser.Scene {
     // 3. HUD
     this.drawHud(width, height);
 
-    // 4. Bố cục ống nghiệm (responsive — logic/layout.ts)
+    // 4. Bố cục ống nghiệm (responsive — logic/layout.ts, capacity-aware)
     this.layoutBoard(width, height);
 
     // 4b. Phục hồi trạng thái SEAL im lặng (quan trọng khi resume giữa level)
@@ -120,14 +180,17 @@ export class GameplayScene extends Phaser.Scene {
     if (!ctx.tutorialSeen) this.showTutorial(width, height);
 
     this.cameras.main.fadeIn(dur.scene, 0, 0, 0);
-    this.scale.on('resize', (g: Phaser.Structs.Size) => this.onResize(g));
+
+    // AUDIT P-1 — scale resize listener leak: giữ reference + GỠ khi scene shutdown
+    // (Phaser KHÔNG tự gọi shutdown() — ta đăng ký events.once('shutdown')).
+    this.onResizeBound = (g: Phaser.Structs.Size) => this.onResize(g);
+    this.scale.on('resize', this.onResizeBound);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off('resize', this.onResizeBound);
+    });
 
     // 7. Snapshot ngay khi vào level → refresh giữa level không mất tiến độ
     this.persist();
-
-    if (this.cache.audio.exists('bgm_main')) {
-      this.sound.play('bgm_main', { loop: true, volume: 0.3 });
-    }
   }
 
   /** P0-2: chụp board + undo stack vào save (debounce ≥1 s ở context). */
@@ -259,6 +322,7 @@ export class GameplayScene extends Phaser.Scene {
       hudH: 104,
       toolbarH: 126,
       marginX: sp[4],
+      capacity: this.board.capacity,   // AUDIT §B3: capacity-aware layer height
     });
     const { tubeW, tubeH, hitW, hitH } = this.layout;
 
@@ -1216,6 +1280,8 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private onResize(g: Phaser.Structs.Size) {
+    // AUDIT P-1: guard khi scene đang teardown (không đụng object destroyed).
+    if (!this.bgObjects || !this.boardZone) return;
     this.clearHint();
     this.bgObjects.g.destroy();
     if (this.bgObjects.bgImage) this.bgObjects.bgImage.destroy();

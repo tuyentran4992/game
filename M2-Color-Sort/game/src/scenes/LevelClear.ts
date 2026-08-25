@@ -7,11 +7,14 @@ import { inputGate } from '../input-gate';
 import { showAdLoading } from '../ad-ux';
 import { AD_FLOW_TIMEOUT_MS, raceTimeout } from '../logic/ad-pacing';
 import { MECHANICS } from '../logic/mechanics';
+import { prefetchBoard } from '../logic/color-sort';
 
 export class LevelClearScene extends Phaser.Scene {
   private bgObjects!: GalaxyBgObjects;
   /** chống double-tap NEXT (mỗi lần bấm chỉ 1 lần xét quảng cáo) */
   private advancing = false;
+  /** AUDIT P-1: reference để gỡ resize handler khi shutdown. */
+  private onResizeBound!: (sz: Phaser.Structs.Size) => void;
 
   constructor() {
     super({ key: 'LevelClearScene' });
@@ -145,10 +148,16 @@ export class LevelClearScene extends Phaser.Scene {
       ease: 'cubic.out',
     });
 
-    this.scale.on('resize', (sz: Phaser.Structs.Size) => {
+    this.onResizeBound = (sz: Phaser.Structs.Size) => {
+      if (!root.scene) return;   // AUDIT P-1 guard (root đã bị destroy)
       this.cameras.main.setSize(sz.width, sz.height);
       root.setPosition(sz.width / 2, sz.height / 2);
       overlay.setPosition(sz.width / 2, sz.height / 2).setSize(sz.width, sz.height);
+    };
+    this.scale.on('resize', this.onResizeBound);
+    // AUDIT P-1: Phaser không gọi shutdown() → tự gỡ listener khi scene dừng.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off('resize', this.onResizeBound);
     });
   }
 
@@ -165,6 +174,9 @@ export class LevelClearScene extends Phaser.Scene {
   // ==========================================================================
   private async advance(level: number) {
     const now = Date.now();
+    // AUDIT §B3: pre-generate level N+1 NGAY trong lúc màn clear (nhàn CPU) →
+    // Gameplay vào level kế NHẬN board từ memo cache → không freeze.
+    prefetchBoard(MECHANICS, level + 1);
     const wantAd = MECHANICS.ad.interstitialAfterClear
       && ctx.canShowInterstitial(level, now)
       && sdk.isInterstitialAvailable();

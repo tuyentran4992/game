@@ -24,3 +24,5 @@ __pycache__/
 # QA / cache temp
 cache/
 *.bak
+# AI-asset cache
+.gen_cache/

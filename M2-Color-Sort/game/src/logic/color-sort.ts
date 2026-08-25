@@ -205,12 +205,100 @@ export function solveBoard(tubes: Liquid[][], capacity: number, maxStates = 4000
 }
 
 // ---------- Level generator (sinh NGƯỢC + BẢO TOÀN KHẢ NĂNG GIẢI) ----------
+
+/**
+ * AUDIT §B3 freeze fix: board KHÔNG cần solver BFS tốn 1.5s ở level 30.
+ * Scramble ngược là solvable BY CONSTRUCTION (đường đi forward replay hợp lệ
+ * → win) — chỉ tốn O(len) để kiểm tra, microseconds thay vì 15000-state BFS.
+ * Login cứng (seed khác → board khác) + memoize per (level, seed) + prefetch.
+ */
+
+/** Số lần thử scramble (mỗi lần ~0.3ms — cực rẻ so với BFS). */
+const GEN_ATTEMPTS = 120;
+/** BFS fallback bounded — chỉ cho seed hiếm nơi scramble không replay được. */
+const FALLBACK_VERIFY_STATES = 6000;
+
+/** Replay forward path từ board TRỘN → kiểm tra có phải chuỗi nước đi hợp lệ thắng cờ? */
+function replayForwardWins(tubes: Liquid[][], forward: Move[], capacity: number): boolean {
+  const t = tubes.map((tt) => tt.slice());
+  for (const m of forward) {
+    if (m.from === m.to || m.from < 0 || m.to < 0) return false;
+    if (m.from >= t.length || m.to >= t.length) return false;
+    const src = t[m.from];
+    const dst = t[m.to];
+    if (src.length === 0) return false;
+    const sp = capacity - dst.length;
+    if (sp <= 0) return false;
+    if (dst.length > 0 && dst[dst.length - 1] !== src[src.length - 1]) return false;
+    const cnt = Math.min(m.count, sp, topRun(src));
+    if (cnt <= 0) return false;
+    const moved = src.splice(src.length - cnt, cnt);
+    for (const c of moved) dst.push(c);
+  }
+  return isWin(t);
+}
+
+/** Deep-clone board (để cache không bị đột biến khi doMove trên bản trả về). */
+function cloneBoard(b: BoardState): BoardState {
+  return {
+    ...b,
+    tubes: b.tubes.map((t) => t.slice()),
+    colors: b.colors.slice(),
+    history: b.history.map((m) => ({ ...m })),
+    solutionPath: b.solutionPath.map((m) => ({ ...m })),
+  };
+}
+
+// ----- Board memo cache (level, seed) — re-entry / prefetch TỨC THÌ -----
+const boardCache = new Map<string, BoardState>();
+function cacheKey(level: number, seed: number): string {
+  return `${level}:${seed}`;
+}
+/** Board (deep-clone) đã verified/sinh cho (level,seed) — null nếu chưa có. */
+export function getCachedBoard(level: number, seed: number): BoardState | null {
+  const c = boardCache.get(cacheKey(level, seed));
+  return c ? cloneBoard(c) : null;
+}
+export function hasCachedBoard(level: number, seed: number): boolean {
+  return boardCache.has(cacheKey(level, seed));
+}
+/** Pre-generate level (seed mặc định) để Gameplay vào level NHẬN board TỨC THÌ. */
+export function prefetchBoard(cfg: MechanicsConfig, level: number): BoardState | null {
+  const seed = level * 7919 + 13;
+  if (boardCache.has(cacheKey(level, seed))) return getCachedBoard(level, seed)!;
+  const board = generateBoard(cfg, level, seed, 0);
+  boardCache.set(cacheKey(level, seed), cloneBoard(board));
+  return board;
+}
+
 export function generateBoard(
   cfg: MechanicsConfig,
   level: number,
   seed: number,
   extraTubeCount = 0,
 ): BoardState {
+  const makeBoard = (
+    tubes: Liquid[][],
+    colors: Liquid[],
+    solutionPath: Move[],
+    optimalMoves: number,
+    usedSeed: number,
+  ): BoardState => ({
+    level,
+    capacity,
+    tubes,
+    tubeCount: tubes.length,
+    colors,
+    moveCount: 0,
+    history: [],
+    extraTubeUsed: 0,
+    win: false,
+    stuck: false,
+    seed: usedSeed,
+    solutionPath,
+    optimalMoves,
+  });
+
   const ramp = rampForLevel(cfg, level);
   const totalTubes = ramp.tubes + extraTubeCount;
   const emptyTubes = ramp.empty + extraTubeCount;
@@ -247,15 +335,10 @@ export function generateBoard(
     return out;
   };
 
-  let currentSeed = seed;
-  let fallbackBoard: BoardState | null = null;
-
-  for (let attempt = 0; attempt < 25; attempt++) {
-    const rng = mulberry32(currentSeed);
-
-    // BƯỚC 1: solved state
+  /** Một lần scramble: solved → trộn → {tubes, forward(path giải)}. */
+  const scrambleOnce = (rng: () => number): { tubes: Liquid[][]; forward: Move[] } | null => {
     const tubes: Liquid[][] = [];
-    const colors: Liquid[] = palette.slice(0, colorCount).map(c => c.hex);
+    const colors: Liquid[] = palette.slice(0, colorCount).map((c) => c.hex);
     for (let c = 0; c < colorCount; c++) {
       const arr: Liquid[] = [];
       for (let k = 0; k < capacity; k++) arr.push(colors[c]);
@@ -264,7 +347,6 @@ export function generateBoard(
     for (let e = 0; e < emptyTubes; e++) tubes.push([]);
     while (tubes.length < totalTubes) tubes.push([]);
 
-    // BƯỚC 2: trộn N bước bằng scramble moves (reversible)
     const solutionPath: Move[] = [];
     let lastMove: Move | null = null;
     for (let step_i = 0; step_i < maxScramble; step_i++) {
@@ -304,61 +386,69 @@ export function generateBoard(
       guard++;
     }
 
+    // forward = đảo ngược scramble → nước đi GIẢI (BPI tự replay = win)
     const forward: Move[] = [];
     for (let i = solutionPath.length - 1; i >= 0; i--) {
       const m = solutionPath[i];
       forward.push({ from: m.to, to: m.from, layers: m.count, count: m.count });
     }
+    return forward.length === 0 ? null : { tubes, forward };
+  };
 
-    // TÍNH SỐ BƯỚC TỐI ƯU & KIỂM TRA ĐỘ GIẢI ĐƯỢC
-    const shortestSolution = solveBoard(tubes, capacity, 15000);
-    if (!isWin(tubes) && legalMoves(tubes, capacity).length > 0 && shortestSolution !== null && shortestSolution.length > 0) {
-      return {
-        level,
-        capacity,
-        tubes,
-        tubeCount: totalTubes,
-        colors,
-        moveCount: 0,
-        history: [],
-        extraTubeUsed: 0,
-        win: false,
-        stuck: false,
-        seed: currentSeed,
-        solutionPath: shortestSolution,
-        optimalMoves: shortestSolution.length,
-      };
+  let currentSeed = seed;
+  let fallback: { tubes: Liquid[][]; forward: Move[]; usedSeed: number } | null = null;
+
+  for (let attempt = 0; attempt < GEN_ATTEMPTS; attempt++) {
+    const rng = mulberry32(currentSeed);
+    let scrambled: { tubes: Liquid[][]; forward: Move[] } | null = null;
+    try {
+      scrambled = scrambleOnce(rng);
+    } catch { /* ignore — thử seed khác */ }
+    if (!scrambled) {
+      currentSeed = (currentSeed * 1664525 + 1013904223) >>> 0;
+      continue;
+    }
+    const { tubes, forward } = scrambled;
+    const colors = palette.slice(0, colorCount).map((c) => c.hex);
+
+    // PHASE A: solvable by construction (replay forward hợp lệ → win) — KHÔNG cần BFS.
+    if (!isWin(tubes) && legalMoves(tubes, capacity).length > 0 && replayForwardWins(tubes, forward, capacity)) {
+      const optimal = Math.max(1, Math.min(30, forward.length));
+      return makeBoard(tubes, colors, forward, optimal, currentSeed);
     }
 
-    if (!fallbackBoard && !isWin(tubes) && legalMoves(tubes, capacity).length > 0) {
-      fallbackBoard = {
-        level,
-        capacity,
-        tubes,
-        tubeCount: totalTubes,
-        colors,
-        moveCount: 0,
-        history: [],
-        extraTubeUsed: 0,
-        win: false,
-        stuck: false,
-        seed: currentSeed,
-        solutionPath: shortestSolution || forward,
-        optimalMoves: shortestSolution ? shortestSolution.length : Math.max(3, Math.min(10, forward.length)),
-      };
+    if (!fallback && !isWin(tubes) && legalMoves(tubes, capacity).length > 0) {
+      fallback = { tubes: tubes.map((t) => t.slice()), forward, usedSeed: currentSeed };
     }
-
     currentSeed = (currentSeed * 1664525 + 1013904223) >>> 0;
   }
 
-  return fallbackBoard!;
+  // PHASE B fallback: BFS bounded trả về đường thắng THẬT (verified) cho seed hiếm.
+  if (fallback) {
+    const colors = palette.slice(0, colorCount).map((c) => c.hex);
+    const sol = solveBoard(fallback.tubes, capacity, FALLBACK_VERIFY_STATES);
+    if (sol && sol.length > 0) {
+      return makeBoard(fallback.tubes, colors, sol, sol.length, fallback.usedSeed);
+    }
+    // best-effort: forward (replay có thể không hoàn chỉnh nhưng hint vẫn tìm được nước hợp lệ)
+    const optimal = Math.max(1, Math.min(30, fallback.forward.length));
+    return makeBoard(fallback.tubes, colors, fallback.forward, optimal, fallback.usedSeed);
+  }
+
+  // Không thể xảy ra trong thực tế — bảo hiểm: solved board trắng (độ giả, không bao giờ dùng)
+  const empty = Array.from({ length: Math.max(1, totalTubes) }, () => [] as Liquid[]);
+  return makeBoard(empty, palette.slice(0, colorCount).map((c) => c.hex), [], Math.max(1, level * 2), seed);
 }
 
 // ---------- Board controller (move/undo/restart/hint) ----------
 
 export function createBoard(cfg: MechanicsConfig, level: number, seed?: number): BoardState {
   const s = seed ?? (level * 7919 + 13);
-  return generateBoard(cfg, level, s, 0);
+  const cached = getCachedBoard(level, s);
+  if (cached) return cached;
+  const board = generateBoard(cfg, level, s, 0);
+  boardCache.set(cacheKey(level, s), cloneBoard(board));
+  return board;
 }
 
 export function doMove(board: BoardState, from: number, to: number): Move | null {

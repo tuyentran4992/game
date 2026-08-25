@@ -17,6 +17,7 @@ import { ctx } from '../context';
 import { sdk } from '../sdk-instance';
 import { inputGate } from '../input-gate';
 import { hideBootOverlay } from '../boot-ui';
+import { startBgmOnce } from '../bgm';
 
 // Demo minh họa cơ chế: đổ 3 lát cyan sang ống bên phải → ống ĐẦY 1 MÀU → SEAL.
 const DEMO_SRC = ['#FF1493', '#00F0FF', '#00F0FF', '#00F0FF'];
@@ -34,6 +35,8 @@ export class StartScene extends Phaser.Scene {
   private demoStreamG!: Phaser.GameObjects.Graphics;
   private demoTimer: Phaser.Time.TimerEvent | null = null;
   private readySignalled = false;
+  /** AUDIT P-1: reference để gỡ resize handler khi shutdown. */
+  private onResizeBound!: (g: Phaser.Structs.Size) => void;
 
   constructor() {
     super({ key: 'StartScene' });
@@ -156,6 +159,7 @@ export class StartScene extends Phaser.Scene {
       // B2 PRE-ROLL GATE: chưa sẵn sàng / đang pre-roll → không nhận tap.
       if (!inputGate.enabled) return;
       synthAudio.playClick();
+      startBgmOnce(this.game);   // AUDIT P-3: BGM start đúng 1 lần ở user gesture
       this.tweens.killTweensOf(this.startBtn);
       this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
       this.time.delayedCall(dur.scene, () => this.scene.start('GameplayScene'));
@@ -195,7 +199,12 @@ export class StartScene extends Phaser.Scene {
       ease: 'quad.out',
     });
 
-    this.scale.on('resize', (g: Phaser.Structs.Size) => this.onResize(g));
+    this.onResizeBound = (g: Phaser.Structs.Size) => this.onResize(g);
+    this.scale.on('resize', this.onResizeBound);
+    // AUDIT P-1: Phaser không tự gọi shutdown() → tự gỡ listener khi scene bị dừng.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off('resize', this.onResizeBound);
+    });
 
     // P0-5: mọi asset đã tải (BootScene) và nút PLAY đã nhận input → báo platform.
     this.signalReady();
@@ -224,6 +233,8 @@ export class StartScene extends Phaser.Scene {
   }
 
   private onResize(g: Phaser.Structs.Size) {
+    // AUDIT P-1: guard khi đang teardown (không đụng vào object đã destroy).
+    if (!this.bgObjects || !this.titleContainer) return;
     this.bgObjects.g.destroy();
     if (this.bgObjects.bgImage) this.bgObjects.bgImage.destroy();
     this.bgObjects = drawGalaxyBg(this);
@@ -322,5 +333,6 @@ export class StartScene extends Phaser.Scene {
       this.demoTimer.remove();
       this.demoTimer = null;
     }
+    this.scale.off('resize', this.onResizeBound);
   }
 }
