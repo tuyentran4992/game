@@ -29,20 +29,20 @@ export const color = {
   textStroke: 'rgba(11,11,30,0.72)',
 } as const;
 
-// Palette chất lỏng neon độ tương phản cao, 12 màu phân biệt cực rõ bằng mắt thường
+// Palette chất lỏng Studio Gemstone Candy — Đồng đều độ sáng, tươi tắn, không lóa mắt, phân biệt 100%
 export const liquidPalette = [
-  '#00F0FF', // 1. Electric Cyan (Xanh ngọc lân quang)
-  '#FF1493', // 2. Hot Neon Pink (Hồng cánh sen rực)
-  '#FFE600', // 3. Sunburst Yellow (Vàng nắng tươi)
-  '#39FF14', // 4. Neon Lime Green (Xanh lá chuối neon)
-  '#1E50FF', // 5. Royal Indigo Blue (Xanh dương hoàng gia đậm)
-  '#FF6B00', // 6. Vivid Orange (Cam rực rỡ)
-  '#9E00FF', // 7. Cosmic Violet Purple (Tím vũ trụ phát quang)
-  '#FF2A4D', // 8. Crimson Red (Đỏ san hô đậm)
-  '#00E5A3', // 9. Mint Emerald Green (Xanh ngọc lục bảo)
-  '#FFFFFF', // 10. Pure Snow White (Trắng ngọc trai tinh khôi)
-  '#C98600', // 11. Gold Bronze (Vàng đồng ánh kim)
-  '#A6B8FF', // 12. Sky Lavender (Xanh hoa oải hương nhạt)
+  '#00E5FF', // 1. Electric Cyan (Xanh ngọc kim cương)
+  '#FF2A8D', // 2. Neon Flamingo Pink (Hồng hạc dạ quang tươi rói)
+  '#FFD600', // 3. Sunburst Yellow (Vàng hoàng yến tươi sáng)
+  '#00E676', // 4. Vibrant Apple Lime (Xanh táo ngọc tươi mát)
+  '#2979FF', // 5. Royal Sapphire Blue (Xanh lam bảo ngọc rực rỡ)
+  '#FF6D00', // 6. Juicy Tangerine Orange (Cam mọng nước rực lửa)
+  '#AA00FF', // 7. Cosmic Amethyst Violet (Tím thạch anh dạ quang)
+  '#FF1744', // 8. Vivid Ruby Red (Đỏ hồng ngọc tươi đậm đà)
+  '#00BFA5', // 9. Mint Emerald Green (Xanh ngọc lục bảo)
+  '#FFFFFF', // 10. Pure Crystal White (Trắng pha lê tinh khôi)
+  '#FFAB00', // 11. Amber Gold (Vàng hổ phách ánh kim)
+  '#7986CB', // 12. Starry Sky Lavender (Xanh tím ánh sao)
 ] as const;
 
 // Typography (DESIGN-SYSTEM §1.2 — KHÔNG override)
@@ -113,15 +113,33 @@ export const z = {
 // Helper: fontStyle từ token
 export function fontStyle(token: { size: string; weight: string; lh: number }, colorStr: string): Phaser.Types.GameObjects.Text.TextStyle {
   return {
-    fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+    fontFamily: '"Outfit", "Fredoka", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
     fontSize: token.size,
-    // AUDIT §B5-3: pass real numeric weight token (900/800/…) — trước đây bị ép 'bold'.
     fontStyle: token.weight,
     color: colorStr,
     align: 'center',
-    // DESIGN-SPEC §7: HUD text luôn có viền đậm đọc trên galaxy / panel sáng.
     stroke: color.textStroke,
     strokeThickness: 3,
+  } as Phaser.Types.GameObjects.Text.TextStyle;
+}
+
+/** Font style đặc biệt cho tiêu đề lớn, số điểm, nút bấm 3D phong cách Studio */
+export function studioFontStyle(
+  fontSize: string | number,
+  colorStr: string,
+  weight: string = '800',
+  strokeColor: string = 'rgba(7,5,18,0.85)',
+  strokeThick: number = 4,
+): Phaser.Types.GameObjects.Text.TextStyle {
+  const sizeStr = typeof fontSize === 'number' ? `${fontSize}px` : fontSize;
+  return {
+    fontFamily: '"Fredoka", "Outfit", system-ui, -apple-system, sans-serif',
+    fontSize: sizeStr,
+    fontStyle: weight,
+    color: colorStr,
+    align: 'center',
+    stroke: strokeColor,
+    strokeThickness: strokeThick,
   } as Phaser.Types.GameObjects.Text.TextStyle;
 }
 

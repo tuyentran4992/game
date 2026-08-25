@@ -84,17 +84,6 @@ export class StartScene extends Phaser.Scene {
       duration: 450,
       delay: 180,
       ease: 'back.out',
-      onComplete: () => {
-        // nhịp "thở" nhẹ mời chạm (không che chữ, không đổi layout)
-        this.tweens.add({
-          targets: this.startBtn,
-          scale: 1.04,
-          duration: 1100,
-          yoyo: true,
-          repeat: -1,
-          ease: 'sine.inout',
-        });
-      },
     });
 
     this.startBtn.on('pointerdown', () => {
@@ -143,9 +132,9 @@ export class StartScene extends Phaser.Scene {
 
     this.onResizeBound = (g: Phaser.Structs.Size) => this.onResize(g);
     this.scale.on('resize', this.onResizeBound);
-    // AUDIT P-1: Phaser không tự gọi shutdown() → tự gỡ listener khi scene bị dừng.
+    // AUDIT P-1: Phaser không tự gọi shutdown() → tự gỡ listener và timer khi scene bị dừng.
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.scale.off('resize', this.onResizeBound);
+      this.shutdown();
     });
 
     // P0-5: mọi asset đã tải (BootScene) và nút PLAY đã nhận input → báo platform.
@@ -227,35 +216,58 @@ export class StartScene extends Phaser.Scene {
     };
   }
 
-  /** Title + glow + 2-tone (AUDIT §B5-1/§B5-3). `animate` = entrance tween lần đầu. */
+  /** Title + 3D Logo Plate + Neon Glow (Studio Grade) */
   private buildTitle(m: StartMetric, animate: boolean) {
     if (this.titleContainer) this.titleContainer.destroy();
     this.titleContainer = this.add.container(m.titleX, m.titleY).setDepth(z.hud);
 
-    // vầng sáng neon phía sau tiêu đề — RESPONSIVE (min(w-40, 460)), không còn band 380px cố định
-    const gw = Math.min(m.titleX * 2 - 40, 460);
-    const gh = Math.min(gw * 0.3, 116);
+    const gw = Math.min(m.titleX * 2 - 40, 480);
+    const gh = Math.min(gw * 0.28, 120);
+
+    // 1. Vầng sáng Neon phát quang phía sau tiêu đề
     const titleGlow = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
-    titleGlow.fillStyle(toColor(color.primary), 0.16);
-    titleGlow.fillRoundedRect(-gw / 2, -gh / 2, gw, gh, 34);
-    titleGlow.fillStyle(toColor(color.accent), 0.1);
-    titleGlow.fillRoundedRect(-gw * 0.42, -gh * 0.34, gw * 0.84, gh * 0.68, 26);
+    titleGlow.fillStyle(toColor(color.primary), 0.22);
+    titleGlow.fillRoundedRect(-gw / 2, -gh / 2, gw, gh, 36);
+    titleGlow.fillStyle(toColor(color.accent), 0.14);
+    titleGlow.fillRoundedRect(-gw * 0.44, -gh * 0.36, gw * 0.88, gh * 0.72, 28);
     this.titleContainer.add(titleGlow);
 
-    // Title chính — real weight 900 + stroke đậm (legibility) + 2-tone top-lit copy
-    const title1 = this.add.text(0, -20, 'NEON SORT', fontStyle(type.display, color.surface))
-      .setOrigin(0.5);
-    title1.setShadow(0, 3, 'rgba(0,0,0,0.7)', 6, false, true);
-    const title1Hi = this.add.text(0, -22, 'NEON SORT', fontStyle(type.display, color.primaryGrad))
-      .setOrigin(0.5).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.34);
-    this.titleContainer.add([title1, title1Hi]);
+    // 2. Tấm nền kính Dark Glassmorphism bo tròn (Sleek & Clean)
+    const bgPlate = this.add.graphics();
+    bgPlate.fillStyle(0x000000, 0.45);
+    bgPlate.fillRoundedRect(-gw / 2 + 4, -gh / 2 + 6, gw - 8, gh - 8, 30);
+    bgPlate.fillStyle(toColor('#0F0A28'), 0.88);
+    bgPlate.fillRoundedRect(-gw / 2 + 4, -gh / 2 + 2, gw - 8, gh - 8, 30);
+    bgPlate.lineStyle(2.5, toColor(color.primary), 0.9);
+    bgPlate.strokeRoundedRect(-gw / 2 + 4, -gh / 2 + 2, gw - 8, gh - 8, 30);
+    this.titleContainer.add(bgPlate);
 
-    // Subtitle — no ⚡ emoji; vector bolt flanking (AUDIT §B5-6)
-    const title2 = this.add.text(0, 34, 'GALAXY POUR', fontStyle(type.h1, color.accent))
-      .setOrigin(0.5);
-    title2.setShadow(0, 2, color.accent, 10, false, true);
-    const boltL = drawBolt(this, toColor(color.accent), 26).setPosition(-title2.width / 2 - 20, 34);
-    const boltR = drawBolt(this, toColor(color.accent), 26).setPosition(title2.width / 2 + 20, 34);
+    // 3. Title chính: NEON SORT (Fredoka 900 3D Chunky Text)
+    const title1 = this.add.text(0, -18, 'NEON SORT', {
+      fontFamily: '"Fredoka", "Outfit", sans-serif',
+      fontSize: '40px',
+      fontStyle: '900',
+      color: '#FFFFFF',
+      align: 'center',
+    }).setOrigin(0.5);
+    title1.setStroke('#3E0A72', 6);
+    title1.setShadow(0, 3, 'rgba(0,0,0,0.5)', 4, false, true);
+    this.titleContainer.add(title1);
+
+    // 4. Subtitle Badge: GALAXY POUR (Vàng/Cyan rực rỡ)
+    const title2 = this.add.text(0, 26, 'GALAXY POUR', {
+      fontFamily: '"Fredoka", "Outfit", sans-serif',
+      fontSize: '22px',
+      fontStyle: '800',
+      color: '#00E5FF',
+      align: 'center',
+      letterSpacing: 2,
+    }).setOrigin(0.5);
+    title2.setStroke('#003D4D', 4);
+    title2.setShadow(0, 2, 'rgba(0,229,255,0.4)', 6, false, true);
+
+    const boltL = drawBolt(this, toColor(color.accent), 20).setPosition(-title2.width / 2 - 16, 26);
+    const boltR = drawBolt(this, toColor(color.accent), 20).setPosition(title2.width / 2 + 16, 26);
     this.titleContainer.add([title2, boltL, boltR]);
 
     if (animate) this.titleContainer.setAlpha(0);
@@ -265,18 +277,11 @@ export class StartScene extends Phaser.Scene {
       duration: dur.slow,
       ease: 'cubic.out',
     });
-    // trôi nhẹ (neon "đang sống")
-    this.tweens.add({
-      targets: this.titleContainer,
-      y: m.titleY - 8,
-      duration: 2400,
-      yoyo: true,
-      repeat: -1,
-      ease: 'sine.inout',
-    });
+
+    // Neon glow pulse êm ái
     this.tweens.add({
       targets: titleGlow,
-      alpha: 0.55,
+      alpha: 0.75,
       duration: 1800,
       yoyo: true,
       repeat: -1,

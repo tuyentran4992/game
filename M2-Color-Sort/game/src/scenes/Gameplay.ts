@@ -6,6 +6,7 @@ import {
   renderLiquid,
   renderPourTransition,
   drawButton,
+  drawPanel,
   drawHudCapsule,
   drawPourStream,
   drawHintArc,
@@ -223,9 +224,15 @@ export class GameplayScene extends Phaser.Scene {
       levelX,
       topY,
       `Lv ${this.board.level}`,
-      fontStyle(type.score, color.accent),
+      {
+        fontFamily: '"Fredoka", "Outfit", sans-serif',
+        fontSize: '25px',
+        fontStyle: '800',
+        color: '#00E5FF',
+        align: 'center',
+      },
     ).setOrigin(0.5).setDepth(z.hud + 1);
-    this.levelLabel.setShadow(0, 2, 'rgba(0,0,0,0.6)', 4, false, true);
+    this.levelLabel.setShadow(0, 2, 'rgba(0,0,0,0.7)', 4, false, true);
     this.levelLabel.setData('testid', 'level-label');
     this.hudObjects.push(this.levelLabel);
 
@@ -242,9 +249,15 @@ export class GameplayScene extends Phaser.Scene {
       moveX + 12,
       topY,
       `${this.board.moveCount}`,
-      fontStyle(type.score, color.surface),
+      {
+        fontFamily: '"Fredoka", "Outfit", sans-serif',
+        fontSize: '25px',
+        fontStyle: '800',
+        color: '#FFFFFF',
+        align: 'center',
+      },
     ).setOrigin(0.5).setDepth(z.hud + 1);
-    this.moveLabel.setShadow(0, 2, 'rgba(0,0,0,0.6)', 4, false, true);
+    this.moveLabel.setShadow(0, 2, 'rgba(0,0,0,0.7)', 4, false, true);
     this.moveLabel.setData('testid', 'move-count');
     this.hudObjects.push(this.moveLabel);
 
@@ -574,7 +587,7 @@ export class GameplayScene extends Phaser.Scene {
               if (this.board.win) {
                 this.time.delayedCall(260, () => this.onLevelClear());
               } else if (this.board.stuck) {
-                this.showStuckTooltip();
+                this.showStuckModal();
               }
             },
           });
@@ -882,6 +895,7 @@ export class GameplayScene extends Phaser.Scene {
   private onUndo() {
     if (!inputGate.enabled || this.adBusy || this.isAnimating) return;
     this.clearHint();
+    this.hideStuckModal();
     const undone = undoMove(this.board);
     if (!undone) {
       synthAudio.playBuzz();
@@ -918,6 +932,7 @@ export class GameplayScene extends Phaser.Scene {
   private onRestart() {
     if (!inputGate.enabled || this.adBusy || this.isAnimating) return;
     this.clearHint();
+    this.hideStuckModal();
     this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
     this.time.delayedCall(dur.scene, () => {
       this.board = restartBoard(MECHANICS, this.board);
@@ -1043,7 +1058,7 @@ export class GameplayScene extends Phaser.Scene {
     this.clearHint();
     const hint = hintMove(this.board);
     if (!hint) {
-      this.showStuckTooltip(L('stuck_no_moves'));
+      this.showStuckModal();
       return false;
     }
 
@@ -1129,7 +1144,7 @@ export class GameplayScene extends Phaser.Scene {
       this.tweens.add({ targets: last.views.container, scale: 1, duration: dur.pop, ease: 'back.out' });
     }
     synthAudio.playRewardTube();
-    this.hideStuckTooltip();
+    this.hideStuckModal();
     this.refreshRewardButtons();   // hết suất → nút ＋1 xám lại ngay
     this.persist();   // P0-2: ống thưởng đã trả bằng quảng cáo → phải lưu ngay
   }
@@ -1151,70 +1166,167 @@ export class GameplayScene extends Phaser.Scene {
     });
   }
 
-  private hideStuckTooltip() {
-    if (!this.stuckTooltip) return;
-    const tip = this.stuckTooltip;
-    this.stuckTooltip = null;
-    this.tweens.add({
-      targets: tip,
-      alpha: 0,
-      duration: dur.base,
-      onComplete: () => tip.destroy(),
-    });
+  private stuckModal: Phaser.GameObjects.Container | null = null;
+  private stuckBackdrop: Phaser.GameObjects.Rectangle | null = null;
+
+  private hideStuckModal() {
+    if (this.stuckModal) {
+      const modal = this.stuckModal;
+      this.stuckModal = null;
+      this.tweens.add({
+        targets: modal,
+        alpha: 0,
+        y: modal.y + 15,
+        duration: dur.fast,
+        onComplete: () => modal.destroy(),
+      });
+    }
+    if (this.stuckBackdrop) {
+      const backdrop = this.stuckBackdrop;
+      this.stuckBackdrop = null;
+      this.tweens.add({
+        targets: backdrop,
+        alpha: 0,
+        duration: dur.fast,
+        onComplete: () => backdrop.destroy(),
+      });
+    }
   }
 
-  private showStuckTooltip(msg = L('stuck_no_moves')) {
-    if (this.stuckTooltip) return;
+  private showStuckModal() {
+    if (this.stuckModal || this.isAnimating || this.board.win) return;
     const { width, height } = this.scale;
-    const y = height - sp[5] - 92;
+    const cx = width / 2;
+    const cy = height / 2;
 
-    const t = this.add.text(0, 0, msg, fontStyle(type.small, color.warning))
-      .setOrigin(0.5);
-    t.setShadow(0, 2, color.shadow, 3, false, true);
+    synthAudio.playBuzz();
 
+    // 1. Lắc nhẹ các ống chưa hoàn thành để báo hiệu bị khóa
+    for (const t of this.tubeUIs) {
+      if (!this.sealedTubes.has(t.index)) {
+        this.shakeTube(t.index);
+      }
+    }
+
+    // 2. Nền mờ Translucent Backdrop
+    this.stuckBackdrop = this.add.rectangle(cx, cy, width, height, toColor('#000000'), 0.55)
+      .setDepth(z.overlay + 10)
+      .setInteractive();
+    this.stuckBackdrop.on('pointerdown', () => this.hideStuckModal());
+
+    // 3. Modal Container
+    const pw = Math.min(340, width - 40);
     const canExtra = this.board.extraTubeUsed < MECHANICS.reward.extraTube.maxExtra;
-    const w = t.width + sp[4] * 2, h = t.height + sp[3];
-    const g = this.add.graphics().setDepth(z.tutorial);
-    g.fillStyle(toColor('#120D2C'), 0.95);
-    g.fillRoundedRect(-w / 2, -h / 2, w, h, radius.md);
-    g.lineStyle(1.5, toColor(color.warning), 0.8);
-    g.strokeRoundedRect(-w / 2, -h / 2, w, h, radius.md);
+    const canUndo = this.board.history.length > 0;
+    const ph = canExtra ? 270 : 218;
 
-    const items: Phaser.GameObjects.GameObject[] = [g, t];
-    this.stuckTooltip = this.add.container(width / 2, y, items).setDepth(z.tutorial).setAlpha(0);
+    const modal = this.add.container(cx, cy + 25).setDepth(z.overlay + 11).setAlpha(0);
+    this.stuckModal = modal;
 
-    // Rewarded EXTRA TUBE (M2-06 / B2-6): lối vào CHÍNH giờ là slot toolbar cố định
-    // ('extra-tube-btn'). Tooltip chỉ là shortcut phụ + kéo chú ý xuống toolbar
-    // (không auto-hide mất cơ hội mua như trước).
-    if (canExtra) {
-      const extra = drawButton(this, 0, -h / 2 - 34, L('extra_tube_tip'), {
-        variant: 'glass',
-        width: 148,
+    // Glass panel
+    const panel = drawPanel(this, 0, 0, pw, ph);
+    modal.add(panel);
+
+    // Title: ⚠️ HẾT NƯỚC ĐI! / NO MOVES LEFT!
+    const title = this.add.text(0, -ph / 2 + 34, L('stuck_title'), {
+      fontFamily: '"Fredoka", "Outfit", sans-serif',
+      fontSize: '24px',
+      fontStyle: '900',
+      color: '#FFE600',
+      align: 'center',
+    }).setOrigin(0.5);
+    title.setStroke('#4D3300', 4);
+    title.setShadow(0, 2, 'rgba(0,0,0,0.6)', 3, false, true);
+    modal.add(title);
+
+    // Subtitle
+    const desc = this.add.text(0, -ph / 2 + 66, L('stuck_desc'), {
+      fontFamily: '"Outfit", sans-serif',
+      fontSize: '14px',
+      fontStyle: '600',
+      color: '#FFFFFF',
+      align: 'center',
+      wordWrap: { width: pw - 36 },
+    }).setOrigin(0.5).setAlpha(0.85);
+    modal.add(desc);
+
+    // Buttons
+    let btnY = -ph / 2 + 108;
+
+    // Button 1: Undo (QUAY LẠI ↺)
+    if (canUndo) {
+      const undoBtn = drawButton(this, 0, btnY, L('stuck_undo'), {
+        variant: 'primary',
+        width: pw - 48,
         height: 44,
-        textType: type.small,
-        testid: 'extra-tube-tip-btn',
+        fontSize: 16,
+        enableShimmer: true,
       });
-      extra.container.on('pointerdown', (
+      undoBtn.container.on('pointerdown', (
         _p: Phaser.Input.Pointer,
         _lx: number,
         _ly: number,
         event: Phaser.Types.Input.EventData,
       ) => {
         event.stopPropagation();
-        this.onExtraTubeTap();
+        this.hideStuckModal();
+        this.onUndo();
       });
-      this.stuckTooltip.add(extra.container);
-      this.pulseExtraTubeBtn();
+      modal.add(undoBtn.container);
+      btnY += 52;
     }
 
+    // Button 2: +1 Tube (＋1 ỐNG ▶)
+    if (canExtra) {
+      const extraBtn = drawButton(this, 0, btnY, L('extra_tube_tip'), {
+        variant: 'amber',
+        width: pw - 48,
+        height: 44,
+        fontSize: 16,
+        enableShimmer: true,
+      });
+      extraBtn.container.on('pointerdown', (
+        _p: Phaser.Input.Pointer,
+        _lx: number,
+        _ly: number,
+        event: Phaser.Types.Input.EventData,
+      ) => {
+        event.stopPropagation();
+        this.hideStuckModal();
+        this.onExtraTubeTap();
+      });
+      modal.add(extraBtn.container);
+      btnY += 52;
+    }
+
+    // Button 3: Restart (CHƠI LẠI ⟳)
+    const restartBtn = drawButton(this, 0, btnY, L('stuck_restart'), {
+      variant: 'ghost',
+      width: pw - 48,
+      height: 40,
+      fontSize: 15,
+      enableShimmer: false,
+    });
+    restartBtn.container.on('pointerdown', (
+      _p: Phaser.Input.Pointer,
+      _lx: number,
+      _ly: number,
+      event: Phaser.Types.Input.EventData,
+    ) => {
+      event.stopPropagation();
+      this.hideStuckModal();
+      this.onRestart();
+    });
+    modal.add(restartBtn.container);
+
+    // Entrance animation
     this.tweens.add({
-      targets: this.stuckTooltip,
+      targets: modal,
+      y: cy,
       alpha: 1,
       duration: dur.base,
-      ease: 'quad.out',
-      onComplete: () => this.time.delayedCall(4000, () => this.hideStuckTooltip()),
+      ease: 'back.out',
     });
-    synthAudio.playBuzz();
   }
 
   private showTutorial(width: number, height: number) {
@@ -1344,7 +1456,6 @@ export class GameplayScene extends Phaser.Scene {
     void ctx.saveNow();
     this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
     this.time.delayedCall(dur.scene, () => this.scene.start('GameplayScene'));
-    setTimeout(() => this.scene.start('GameplayScene'), dur.scene + 2500);
   }
 
   /** REPLAY — chơi lại ĐÚNG level vừa hoàn thành (board mới từ seed cố định). */

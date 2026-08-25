@@ -31,18 +31,18 @@ export const MECHANICS: MechanicsConfig = {
   capacity: 4,
   emptyTubesStart: 1,
   palette: [
-    { id: 'neon_cyan',      hex: '#00F0FF' }, // 1. Electric Cyan
-    { id: 'neon_pink',      hex: '#FF1493' }, // 2. Hot Neon Pink
-    { id: 'neon_yellow',    hex: '#FFE600' }, // 3. Sunburst Yellow
-    { id: 'neon_lime',      hex: '#39FF14' }, // 4. Neon Lime Green
-    { id: 'neon_blue',      hex: '#1E50FF' }, // 5. Royal Indigo Blue
-    { id: 'neon_orange',    hex: '#FF6B00' }, // 6. Vivid Orange
-    { id: 'neon_violet',    hex: '#9E00FF' }, // 7. Cosmic Violet Purple
-    { id: 'neon_red',       hex: '#FF2A4D' }, // 8. Crimson Red
-    { id: 'neon_emerald',   hex: '#00E5A3' }, // 9. Mint Emerald Green
-    { id: 'neon_white',     hex: '#FFFFFF' }, // 10. Pure Snow White
-    { id: 'neon_bronze',    hex: '#C98600' }, // 11. Gold Bronze
-    { id: 'neon_lavender',  hex: '#A6B8FF' }, // 12. Sky Lavender
+    { id: 'neon_cyan',      hex: '#00E5FF' }, // 1. Electric Cyan
+    { id: 'neon_pink',      hex: '#FF2A8D' }, // 2. Neon Flamingo Pink
+    { id: 'neon_yellow',    hex: '#FFD600' }, // 3. Sunburst Yellow
+    { id: 'neon_lime',      hex: '#00E676' }, // 4. Vibrant Apple Lime
+    { id: 'neon_blue',      hex: '#2979FF' }, // 5. Royal Sapphire Blue
+    { id: 'neon_orange',    hex: '#FF6D00' }, // 6. Juicy Tangerine Orange
+    { id: 'neon_violet',    hex: '#AA00FF' }, // 7. Cosmic Amethyst Violet
+    { id: 'neon_red',       hex: '#FF1744' }, // 8. Vivid Ruby Red
+    { id: 'neon_emerald',   hex: '#00BFA5' }, // 9. Mint Emerald Green
+    { id: 'neon_white',     hex: '#FFFFFF' }, // 10. Pure Crystal White
+    { id: 'neon_bronze',    hex: '#FFAB00' }, // 11. Amber Gold
+    { id: 'neon_lavender',  hex: '#7986CB' }, // 12. Starry Sky Lavender
   ],
   levelRamp: [
     // 🟢 Level 1–2: Khởi động siêu dễ (2 màu, 3 ống, 1 trống) -> Giải ~2-3 bước

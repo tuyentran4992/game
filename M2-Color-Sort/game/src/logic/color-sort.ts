@@ -170,9 +170,10 @@ export function solveBoard(tubes: Liquid[][], capacity: number, maxStates = 4000
   const startKey = serialize(tubes);
   const queue: { t: Liquid[][]; path: Move[] }[] = [{ t: tubes.map(t => t.slice()), path: [] }];
   const visited = new Set<string>([startKey]);
+  let head = 0;
 
-  while (queue.length > 0) {
-    const { t, path } = queue.shift()!;
+  while (head < queue.length) {
+    const { t, path } = queue[head++];
     const moves = legalMoves(t, capacity);
 
     // Ưu tiên các nước đi chất lượng cao trước

@@ -262,14 +262,24 @@ export class SdkHandler {
     }
   }
 
+  private cachedLanguage: string | null = null;
+
   /** i18n (AUDIT §B6 / SPEC §5): ngôn ngữ từ BACKEND ĐANG CHẠY + fallback 'en'. */
   getLanguage(): string {
-    if (this.pb) return this.pb.getLanguage();
+    if (this.cachedLanguage) return this.cachedLanguage;
+    if (this.pb) {
+      this.cachedLanguage = this.pb.getLanguage();
+      return this.cachedLanguage;
+    }
     const yt = this.yt();
     try {
-      if (isFn(yt?.system?.getLanguage)) return yt!.system!.getLanguage!() || 'en';
+      if (isFn(yt?.system?.getLanguage)) {
+        this.cachedLanguage = yt!.system!.getLanguage!() || 'en';
+        return this.cachedLanguage;
+      }
     } catch { /* ignore */ }
-    return 'en';
+    this.cachedLanguage = 'en';
+    return this.cachedLanguage;
   }
 
   // ------------------------------------------------------------- storage ----

@@ -89,7 +89,7 @@ const config: Phaser.Types.Core.GameConfig = {
   scale: { mode: Scale.RESIZE, width: '100%', height: '100%' },
   backgroundColor: '#070512',
   scene: [BootScene, StartScene, GameplayScene],
-  render: { antialias: true, roundPixels: true },
+  render: { antialias: true, roundPixels: false },
 };
 
 const game = new Phaser.Game(config);

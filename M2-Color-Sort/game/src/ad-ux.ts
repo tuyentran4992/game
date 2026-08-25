@@ -209,11 +209,12 @@ export function showAdConfirm(scene: Phaser.Scene, opts: AdConfirmOptions): Phas
     });
   };
 
-  const yes = drawButton(scene, 0, ph / 2 - 78, opts.confirmText ?? L('confirm_yes'), {
-    variant: 'primary',
+  const yes = drawButton(scene, 0, ph / 2 - 76, opts.confirmText ?? L('confirm_yes'), {
+    variant: 'amber',
     width: pw - sp[5] * 2,
-    height: 54,
-    textType: type.body,
+    height: 52,
+    fontSize: 20,
+    enableShimmer: true,
     testid: 'ad-confirm-yes',
   });
   yes.container.on('pointerdown', (
@@ -227,11 +228,12 @@ export function showAdConfirm(scene: Phaser.Scene, opts: AdConfirmOptions): Phas
   });
   root.add(yes.container);
 
-  const no = drawButton(scene, 0, ph / 2 - 22, opts.cancelText ?? L('confirm_no'), {
+  const no = drawButton(scene, 0, ph / 2 - 20, opts.cancelText ?? L('confirm_no'), {
     variant: 'ghost',
     width: pw - sp[5] * 2,
-    height: 44,
-    textType: type.small,
+    height: 42,
+    fontSize: 16,
+    enableShimmer: false,
     testid: 'ad-confirm-no',
   });
   no.container.on('pointerdown', (

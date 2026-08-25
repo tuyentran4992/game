@@ -24,6 +24,10 @@ export const COPY: Record<Lang, Record<string, string>> = {
     generating: 'Generating board…',
     tutorial_tap: 'Tap a tube to pour liquid',
     stuck_no_moves: 'No moves left! Use Undo or Restart',
+    stuck_title: 'NO MOVES LEFT!',
+    stuck_desc: 'No valid moves available. Choose an action:',
+    stuck_undo: 'UNDO ↺',
+    stuck_restart: 'RESTART ⟳',
     extra_tube_tip: '+1 TUBE ▶',
     // toasts
     hint_used: 'Hint already used — next level unlocks a new one',
@@ -58,6 +62,10 @@ export const COPY: Record<Lang, Record<string, string>> = {
     generating: 'Đang tạo bàn chơi…',
     tutorial_tap: 'Chạm một ống để rót chất lỏng',
     stuck_no_moves: 'Hết nước đi! Dùng Quay lại hoặc Chơi lại',
+    stuck_title: 'HẾT NƯỚC ĐI!',
+    stuck_desc: 'Không còn nước đi hợp lệ. Hãy chọn cách xử lý:',
+    stuck_undo: 'QUAY LẠI ↺',
+    stuck_restart: 'CHƠI LẠI ⟳',
     extra_tube_tip: '+1 ỐNG ▶',
     // toasts
     hint_used: 'Gợi ý đã dùng — cấp tiếp theo mở mới',
