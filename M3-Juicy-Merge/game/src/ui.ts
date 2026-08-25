@@ -117,7 +117,7 @@ export function drawButton(
     shimmer.closePath();
     shimmer.fillPath();
 
-    const maskG = scene.make.graphics({ add: false });
+    const maskG = scene.make.graphics();
     maskG.fillStyle(0xFFFFFF, 1);
     maskG.fillRoundedRect(x - w / 2, y - h / 2, w, h - bevel, rad);
     const mask = maskG.createGeometryMask();

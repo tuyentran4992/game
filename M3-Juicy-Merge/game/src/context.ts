@@ -138,6 +138,11 @@ class GameContext {
     this.engine.startNewGame();
   }
 
+  /** Persist current best/progress when leaving gameplay (e.g. back to Start menu). */
+  saveSession(): void {
+    void this.score.saveProgress();
+  }
+
   // --- Rewarded Ad Placements ------------------------------------------------
 
   /**
