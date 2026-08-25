@@ -85,9 +85,9 @@ export class MergeEngine {
     }
   }
 
-  setDailyMode(enabled: boolean): void {
+  setDailyMode(enabled: boolean, fruitLimit = 50): void {
     this.state.isDailyMode = enabled;
-    this.state.dailyDropsRemaining = 50;
+    this.state.dailyDropsRemaining = fruitLimit;
   }
 
   /** New run with a fresh seed (Retry, M3 §7). Defaults to the stored seed. */

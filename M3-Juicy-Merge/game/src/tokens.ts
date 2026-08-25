@@ -1,6 +1,4 @@
-// M3 Juicy Merge — tokens (DESIGN-SPEC M3, art kawaii fruit)
-// THAM CHIẾU design-system chung; override art-theme kawaii theo DESIGN-SPEC M3 §1.
-
+// M3 Juicy Merge — tokens (DESIGN-SPEC M3, Playgama-grade casual art tokens)
 import type Phaser from 'phaser';
 
 export type ColorKey =
@@ -8,30 +6,35 @@ export type ColorKey =
   | 'accent' | 'success' | 'danger' | 'warning'
   | 'surface' | 'surfaceAlt' | 'overlay'
   | 'textPrimary' | 'textSecondary' | 'textOnPrimary' | 'textStroke'
-  | 'shadow' | 'lane' | 'grass' | 'surfaceDim';
+  | 'shadow' | 'lane' | 'grass' | 'surfaceDim'
+  | 'woodLight' | 'woodDark' | 'gold' | 'goldDark';
 
 export const color: Record<ColorKey, string> = {
-  // art-theme kawaii (override design-system)
-  bgTop: '#FFF8E7',
-  bgBottom: '#FFE4C4',
-  primary: '#FF6B81',
-  primaryDark: '#E8556F',
-  primaryGrad: '#FF8FA3',
-  accent: '#7ED957',
-  success: '#2ECC71',
-  danger: '#E74C3C',
-  warning: '#FFC048',
+  // Vibrant Casual Tropical / Sunrise Sky Palette
+  bgTop: '#FFF3E3',        // Warm peach sunlight
+  bgBottom: '#D8EEFA',     // Soft crisp sky blue
+  primary: '#FF4D6D',      // Candy Pink Berry
+  primaryDark: '#C9184A',  // Deep 3D Pink Shadow
+  primaryGrad: '#FF758F',  // Glossy highlight
+  accent: '#06D6A0',       // Mint Cyan
+  success: '#10B981',      // Emerald Green
+  danger: '#EF4444',       // Vibrant Alert Red
+  warning: '#F59E0B',      // Golden Amber
   surface: '#FFFFFF',
-  surfaceAlt: '#F5F7FA',
-  surfaceDim: '#FFF3E0',
-  overlay: 'rgba(0,0,0,0.55)',
-  textPrimary: '#4A2C2A',
-  textSecondary: '#8a6d6a',
+  surfaceAlt: '#F8FAFC',
+  surfaceDim: '#FFF7ED',
+  overlay: 'rgba(15, 23, 42, 0.65)',
+  textPrimary: '#1E293B',  // Slate Dark
+  textSecondary: '#64748B',// Slate Muted
   textOnPrimary: '#FFFFFF',
-  textStroke: 'rgba(0,0,0,0.35)',
+  textStroke: '#0F172A',
   shadow: '#000000',
-  lane: '#7EC8FF',
-  grass: '#B8E6A8',
+  lane: '#38BDF8',
+  grass: '#10B981',
+  woodLight: '#9A6136',   // Rich polished cedar wood
+  woodDark: '#673E1A',    // Dark 3D bevel wood
+  gold: '#FBBF24',        // Metallic Gold highlight
+  goldDark: '#D97706',    // Dark gold bevel
 };
 
 export type TypeKey = 'display' | 'h1' | 'h2' | 'body' | 'small' | 'score';
@@ -44,7 +47,7 @@ export const type: Record<TypeKey, { size: number; weight: number }> = {
   score: { size: 30, weight: 800 },
 };
 
-// spacing 4px grid
+// Spacing grid
 export const sp: Record<number, number> = {
   1: 4, 2: 8, 3: 12, 4: 16, 5: 24, 6: 32, 7: 48, 8: 64,
 };
@@ -53,26 +56,25 @@ export const radius = {
   sm: 12, md: 20, lg: 32, pill: 999,
 };
 
-// z-layering (design-system §1.7)
+// z-layering
 export const z = {
-  bg: 0, actor: 10, hud: 20, tutorial: 30, overlay: 40, panel: 50,
+  bg: 0, bgParticles: 5, actor: 10, bucketGlass: 8, bucketFrame: 14, hud: 20, tutorial: 30, overlay: 40, panel: 50,
 };
 
-// motion durations (design-system §1.6)
+// motion durations
 export const dur = {
   fast: 120, base: 200, slow: 400, pop: 250, hover: 180, tn: 200, scene: 200,
 };
 
-// toColor: hỗ trợ hex + rgba trong canvas graphics
+// toColor: supports hex strings and converts to integer color value
 export function toColor(v: string): number {
   if (v.startsWith('#')) {
     return Number.parseInt(v.replace('#', ''), 16);
   }
-  // rgba fallback → đen
   return 0x000000;
 }
 
-// fontStyle: style text theo token type
+// fontStyle helper
 export function fontStyle(t: { size: number; weight: number }, col: string): Phaser.Types.GameObjects.Text.TextStyle {
   return {
     fontFamily: 'sans-serif',

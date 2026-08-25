@@ -30,9 +30,9 @@ describe('resolveMergeBatch — GC-02 path (collision -> merge)', () => {
     expect(e.state.score).toBe(100);
   });
 
-  it('two watermelons (tier 11) -> no plan (max tier, no further merge)', () => {
+  it('two galaxy watermelons (tier 14) -> no plan (max tier, no further merge)', () => {
     const e = new MergeEngine();
-    const plans = resolveMergeBatch([[fruit(1, 11), fruit(2, 11)]], 0, e);
+    const plans = resolveMergeBatch([[fruit(1, 14), fruit(2, 14)]], 0, e);
     expect(plans).toHaveLength(0);
     expect(e.state.score).toBe(0);
   });
@@ -74,7 +74,7 @@ describe('resolveMergeBatch — GC-02 path (collision -> merge)', () => {
       [
         [fruit(1, 0), fruit(2, 1)], // skip (different tier)
         [fruit(3, 2), fruit(4, 2)], // merge -> tier 3
-        [fruit(5, 11), fruit(6, 11)], // skip (max tier)
+        [fruit(5, 14), fruit(6, 14)], // skip (max tier)
       ],
       0, e,
     );

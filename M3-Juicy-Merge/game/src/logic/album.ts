@@ -10,18 +10,21 @@ export interface FruitInfo {
 }
 
 export const FRUIT_ENCYCLOPEDIA: readonly FruitInfo[] = [
-  { tier: 0, name: 'Cherry', emoji: '🍒', scoreGain: 1, description: 'Bé hạt tiêu nhưng cực kỳ mọng nước!' },
-  { tier: 1, name: 'Strawberry', emoji: '🍓', scoreGain: 3, description: 'Thơm ngọt ngào, điểm bắt đầu của mọi combo.' },
-  { tier: 2, name: 'Grape', emoji: '🍇', scoreGain: 6, description: 'Chùm nho tím lịm, lăn tròn lấp đầy khe hở.' },
-  { tier: 3, name: 'Dekopon', emoji: '🍊', scoreGain: 10, description: 'Quả quýt có chỏm đầu đáng yêu siêu mọng nước.' },
-  { tier: 4, name: 'Orange', emoji: '🍊', scoreGain: 15, description: 'Cam vàng rực rỡ, giàu vitamin giải tỏa căng thẳng.' },
-  { tier: 5, name: 'Apple', emoji: '🍎', scoreGain: 21, description: 'Táo đỏ giòn tan, vững chãi làm bệ đỡ cho cả thùng.' },
-  { tier: 6, name: 'Pear', emoji: '🍐', scoreGain: 28, description: 'Lê vàng thanh mát, hình dáng quả chuông độc đáo.' },
-  { tier: 7, name: 'Peach', emoji: '🍑', scoreGain: 36, description: 'Đào hồng mềm mịn bồng bềnh như mây.' },
-  { tier: 8, name: 'Pineapple', emoji: '🍍', scoreGain: 45, description: 'Dứa vua nhiệt đới, chạm vào đâu bừng sáng tới đó.' },
-  { tier: 9, name: 'Melon', emoji: '🍈', scoreGain: 55, description: 'Dưa lưới thơm lừng, bước đệm vĩ đại tới dưa hấu!' },
-  { tier: 10, name: 'Watermelon', emoji: '🍉', scoreGain: 66, description: 'SIÊU DƯA HẤU KHỔNG LỒ! Đỉnh cao của mọi người chơi!' },
-  { tier: 11, name: 'Double Watermelon', emoji: '👑', scoreGain: 100, description: 'HUYỀN THOẠI BẤT TỬ! Bậc thầy nông dân tối thượng!' },
+  { tier: 0, name: 'Cherry', emoji: '🍒', scoreGain: 1, description: 'Tiny but incredibly juicy!' },
+  { tier: 1, name: 'Strawberry', emoji: '🍓', scoreGain: 3, description: 'Sweet and fragrant, starting point of combos.' },
+  { tier: 2, name: 'Grape', emoji: '🍇', scoreGain: 6, description: 'Deep purple grape cluster filling every gap.' },
+  { tier: 3, name: 'Dekopon', emoji: '🍊', scoreGain: 10, description: 'Sweet plump mandarin with a cute top.' },
+  { tier: 4, name: 'Orange', emoji: '🍊', scoreGain: 15, description: 'Bright sunny orange packed with vitamins.' },
+  { tier: 5, name: 'Apple', emoji: '🍎', scoreGain: 21, description: 'Crisp red apple, solid base for the bucket.' },
+  { tier: 6, name: 'Pear', emoji: '🍐', scoreGain: 28, description: 'Refreshing yellow pear with a unique bell shape.' },
+  { tier: 7, name: 'Peach', emoji: '🍑', scoreGain: 36, description: 'Soft pink peach, gentle and fragrant.' },
+  { tier: 8, name: 'Pineapple', emoji: '🍍', scoreGain: 45, description: 'Tropical king with radiant golden diamonds.' },
+  { tier: 9, name: 'Melon', emoji: '🍈', scoreGain: 55, description: 'Aromatic honeydew melon, gateway to watermelon!' },
+  { tier: 10, name: 'Watermelon', emoji: '🍉', scoreGain: 66, description: 'GIANT WATERMELON! The classic achievement!' },
+  { tier: 11, name: 'Double Watermelon', emoji: '🍉🍉', scoreGain: 100, description: 'LEGENDARY WATERMELON! Peak of the classic orchard!' },
+  { tier: 12, name: 'Dragon Fruit', emoji: '🐉', scoreGain: 150, description: 'MYTHICAL DRAGON FRUIT! Unlocked after 3 Daily Challenges.' },
+  { tier: 13, name: 'Durian', emoji: '👑', scoreGain: 250, description: 'ROYAL GOLDEN DURIAN! Unlocked after 6 Daily Challenges.' },
+  { tier: 14, name: 'Galaxy Watermelon', emoji: '🌌', scoreGain: 500, description: 'COSMIC GALAXY WATERMELON! The Ultimate Tier 14 fruit.' },
 ];
 
 export interface AlbumProgress {
@@ -33,8 +36,8 @@ export interface AlbumProgress {
 }
 
 /**
- * Kiểm tra xem quả vừa ghép có phải là loại quả hoàn toàn mới chưa từng mở khóa hay không.
- * Trả về true nếu là quả mới và tự động thêm vào danh sách unlockedTiers.
+ * Check if the merged fruit is newly discovered.
+ * Returns true if new and automatically adds to unlockedTiers.
  */
 export function checkNewFruitUnlocked(
   tier: number,
@@ -49,18 +52,19 @@ export function checkNewFruitUnlocked(
 }
 
 /**
- * Tính toán tiến trình hoàn thành album và cấp danh hiệu tương ứng.
+ * Calculate album completion progress and rank title.
  */
 export function getAlbumProgress(unlockedTiers: Set<number> | readonly number[]): AlbumProgress {
   const count = unlockedTiers instanceof Set ? unlockedTiers.size : new Set(unlockedTiers).size;
   const totalCount = FRUIT_ENCYCLOPEDIA.length;
   const percentage = Math.round((count / totalCount) * 100);
 
-  let title = 'Tập Sự Vườn Cây 🌱';
-  if (count >= 12) title = 'Bậc Thầy Nông Dân 👑';
-  else if (count >= 9) title = 'Chuyên Gia Trái Cây 🍍';
-  else if (count >= 6) title = 'Nông Dân Chăm Chỉ 🍎';
-  else if (count >= 3) title = 'Người Làm Vườn Mới 🍓';
+  let title = 'Novice Planter 🌱';
+  if (count >= 15) title = 'Cosmic Fruit King 🌌';
+  else if (count >= 12) title = 'Master Harvester 👑';
+  else if (count >= 9) title = 'Fruit Specialist 🍍';
+  else if (count >= 6) title = 'Hardworking Farmer 🍎';
+  else if (count >= 3) title = 'Green Thumb 🍓';
 
   return {
     unlockedCount: count,

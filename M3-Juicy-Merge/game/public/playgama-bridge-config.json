@@ -1,0 +1,20 @@
+{
+  "advertisement": {
+    "minimumDelayBetweenInterstitial": 60,
+    "initialInterstitialDelay": 0,
+    "interstitial": {
+      "placements": [
+        { "id": "game_over" }
+      ]
+    },
+    "rewarded": {
+      "placements": [
+        { "id": "continue" }
+      ]
+    }
+  },
+  "platforms": {
+    "youtube": {},
+    "crazy_games": {}
+  }
+}

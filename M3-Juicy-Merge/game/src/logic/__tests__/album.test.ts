@@ -6,10 +6,13 @@ import {
 } from '../album';
 
 describe('Album Logic: Fruit Encyclopedia & Progress', () => {
-  it('contains all 12 tiers of fruits with full info', () => {
-    expect(FRUIT_ENCYCLOPEDIA.length).toBe(12);
+  it('contains all 15 tiers of fruits with full info', () => {
+    expect(FRUIT_ENCYCLOPEDIA.length).toBe(15);
     expect(FRUIT_ENCYCLOPEDIA[0].name).toBe('Cherry');
     expect(FRUIT_ENCYCLOPEDIA[10].name).toBe('Watermelon');
+    expect(FRUIT_ENCYCLOPEDIA[12].name).toBe('Dragon Fruit');
+    expect(FRUIT_ENCYCLOPEDIA[13].name).toBe('Durian');
+    expect(FRUIT_ENCYCLOPEDIA[14].name).toBe('Galaxy Watermelon');
   });
 
   it('checkNewFruitUnlocked detects first-time discovered fruits and updates set', () => {
@@ -31,20 +34,25 @@ describe('Album Logic: Fruit Encyclopedia & Progress', () => {
   it('getAlbumProgress calculates progress percentage and assigns appropriate titles', () => {
     const emptyProgress = getAlbumProgress([]);
     expect(emptyProgress.percentage).toBe(0);
-    expect(emptyProgress.title).toBe('Tập Sự Vườn Cây 🌱');
+    expect(emptyProgress.title).toBe('Novice Planter 🌱');
     expect(emptyProgress.isComplete).toBe(false);
 
     const midProgress = getAlbumProgress([0, 1, 2, 3, 4, 5]);
     expect(midProgress.unlockedCount).toBe(6);
-    expect(midProgress.percentage).toBe(50);
-    expect(midProgress.title).toBe('Nông Dân Chăm Chỉ 🍎');
+    expect(midProgress.percentage).toBe(40);
+    expect(midProgress.title).toBe('Hardworking Farmer 🍎');
     expect(midProgress.isComplete).toBe(false);
 
-    const fullTiers = Array.from({ length: 12 }, (_, i) => i);
+    const twelveProgress = getAlbumProgress(Array.from({ length: 12 }, (_, i) => i));
+    expect(twelveProgress.unlockedCount).toBe(12);
+    expect(twelveProgress.percentage).toBe(80);
+    expect(twelveProgress.title).toBe('Master Harvester 👑');
+
+    const fullTiers = Array.from({ length: 15 }, (_, i) => i);
     const completeProgress = getAlbumProgress(fullTiers);
-    expect(completeProgress.unlockedCount).toBe(12);
+    expect(completeProgress.unlockedCount).toBe(15);
     expect(completeProgress.percentage).toBe(100);
-    expect(completeProgress.title).toBe('Bậc Thầy Nông Dân 👑');
+    expect(completeProgress.title).toBe('Cosmic Fruit King 🌌');
     expect(completeProgress.isComplete).toBe(true);
   });
 });

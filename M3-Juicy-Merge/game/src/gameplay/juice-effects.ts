@@ -38,6 +38,17 @@ function randBetween(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+const FIREWORK_PALETTE = [
+  0xFFD700, // Golden
+  0xFF3366, // Hot Pink
+  0x00E5FF, // Cyan
+  0x76FF03, // Bright Lime
+  0x9D4EDD, // Violet Purple
+  0xFF9100, // Amber Orange
+  0xFFFFFF, // Pure White Sparkle
+  0xF72585, // Magenta
+];
+
 /**
  * Spawn radial juice droplets that burst outward, decelerate, and fade out.
  */
@@ -98,31 +109,31 @@ export function playJuiceSplash(
 }
 
 /**
- * Spawn celebratory star bursts for high-tier merges (Melon / Watermelon).
+ * Spawn celebratory star bursts for high-tier merges.
  */
 export function playStarBurst(
   scene: Phaser.Scene,
   x: number,
   y: number,
+  depth = 120,
 ): void {
-  const starCount = 12;
-  const starColors = [0xFFD700, 0xFF6B81, 0x7ED957, 0x00D2D3, 0xFFA502];
+  const starCount = 16;
 
   for (let i = 0; i < starCount; i++) {
     const angle = (Math.PI * 2 * i) / starCount + (Math.random() - 0.5) * 0.3;
-    const dist = randBetween(70, 150);
+    const dist = randBetween(80, 180);
     const targetX = x + Math.cos(angle) * dist;
-    const targetY = y + Math.sin(angle) * dist;
-    const col = starColors[i % starColors.length] ?? 0xFFD700;
+    const targetY = y + Math.sin(angle) * dist + randBetween(10, 40);
+    const col = FIREWORK_PALETTE[i % FIREWORK_PALETTE.length] ?? 0xFFD700;
 
-    const star = scene.add.graphics().setDepth(z.actor + 6);
+    const star = scene.add.graphics().setDepth(depth);
     star.fillStyle(col, 1);
     // Draw 4-point star diamond
     star.beginPath();
-    star.moveTo(0, -9);
-    star.lineTo(4, 0);
-    star.lineTo(0, 9);
-    star.lineTo(-4, 0);
+    star.moveTo(0, -10);
+    star.lineTo(5, 0);
+    star.lineTo(0, 10);
+    star.lineTo(-5, 0);
     star.closePath();
     star.fillPath();
     star.setPosition(x, y);
@@ -131,11 +142,11 @@ export function playStarBurst(
       targets: star,
       x: targetX,
       y: targetY,
-      rotation: Math.PI * 2,
+      rotation: Math.PI * 3,
       scaleX: 0.2,
       scaleY: 0.2,
       alpha: 0,
-      duration: randBetween(400, 600),
+      duration: randBetween(500, 800),
       ease: 'Cubic.easeOut',
       onComplete: () => star.destroy(),
     });
@@ -143,16 +154,130 @@ export function playStarBurst(
 }
 
 /**
- * Trigger jackpot climax for high tier (Melon / Watermelon):
- * Screen shake + flash + star bursts.
+ * Spawns an individual multi-layered firework explosion with glowing sparks and confetti.
+ */
+export function spawnFireworkBurst(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  depth = 150,
+): void {
+  const themeColor = FIREWORK_PALETTE[randBetween(0, FIREWORK_PALETTE.length - 1)] ?? 0xFFD700;
+  const secondaryColor = FIREWORK_PALETTE[randBetween(0, FIREWORK_PALETTE.length - 1)] ?? 0xFFFFFF;
+
+  // 1. Shockwave glow ring
+  const ring = scene.add.graphics().setDepth(depth);
+  ring.lineStyle(4, themeColor, 1);
+  ring.strokeCircle(x, y, 10);
+  ring.fillStyle(0xFFFFFF, 0.8);
+  ring.fillCircle(x, y, 6);
+
+  scene.tweens.add({
+    targets: ring,
+    scaleX: 5.5,
+    scaleY: 5.5,
+    alpha: 0,
+    duration: 350,
+    ease: 'Quad.easeOut',
+    onComplete: () => ring.destroy(),
+  });
+
+  // 2. Radial Spark Particles (32 sparks)
+  const sparkCount = 32;
+  for (let i = 0; i < sparkCount; i++) {
+    const angle = (Math.PI * 2 * i) / sparkCount + (Math.random() - 0.5) * 0.25;
+    const speed = randBetween(60, 190);
+    const targetX = x + Math.cos(angle) * speed;
+    const targetY = y + Math.sin(angle) * speed + randBetween(30, 80); // gravity fall
+    const col = i % 2 === 0 ? themeColor : secondaryColor;
+    const sparkSize = randBetween(3, 7);
+
+    const spark = scene.add.graphics().setDepth(depth + 1);
+    spark.fillStyle(col, 1);
+    spark.fillCircle(0, 0, sparkSize);
+    spark.fillStyle(0xFFFFFF, 0.8);
+    spark.fillCircle(-1, -1, Math.max(1, sparkSize * 0.4));
+    spark.setPosition(x, y);
+
+    scene.tweens.add({
+      targets: spark,
+      x: targetX,
+      y: targetY,
+      scaleX: 0.1,
+      scaleY: 0.1,
+      alpha: 0,
+      duration: randBetween(600, 1000),
+      ease: 'Cubic.easeOut',
+      onComplete: () => spark.destroy(),
+    });
+  }
+
+  // 3. Floating / Tumbling Confetti Slips (12 pieces)
+  const confettiCount = 12;
+  for (let i = 0; i < confettiCount; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = randBetween(40, 120);
+    const targetX = x + Math.cos(angle) * dist + (Math.random() - 0.5) * 60;
+    const targetY = y + Math.sin(angle) * dist + randBetween(80, 180); // fluttering down
+    const cCol = FIREWORK_PALETTE[i % FIREWORK_PALETTE.length] ?? 0xFFD700;
+
+    const confetti = scene.add.graphics().setDepth(depth + 2);
+    confetti.fillStyle(cCol, 1);
+    confetti.fillRoundedRect(-5, -3, 10, 6, 2);
+    confetti.setPosition(x, y);
+
+    scene.tweens.add({
+      targets: confetti,
+      x: targetX,
+      y: targetY,
+      rotation: Math.PI * 4 * (Math.random() > 0.5 ? 1 : -1),
+      scaleX: 0.4,
+      scaleY: 0.4,
+      alpha: { from: 1, to: 0 },
+      duration: randBetween(900, 1400),
+      ease: 'Sine.easeOut',
+      onComplete: () => confetti.destroy(),
+    });
+  }
+}
+
+/**
+ * Launch a full multi-rocket firework celebration show across the screen.
+ */
+export function playFireworksCelebration(
+  scene: Phaser.Scene,
+  burstCount = 7,
+  depth = 150,
+): void {
+  const { width, height } = scene.scale;
+
+  for (let i = 0; i < burstCount; i++) {
+    const delay = i * randBetween(180, 260);
+    scene.time.delayedCall(delay, () => {
+      const bx = randBetween(Math.round(width * 0.15), Math.round(width * 0.85));
+      const by = randBetween(Math.round(height * 0.15), Math.round(height * 0.55));
+      spawnFireworkBurst(scene, bx, by, depth);
+      
+      // Light camera pop on first and last burst
+      if (i === 0 || i === burstCount - 1) {
+        scene.cameras.main.shake(120, 0.005);
+      }
+    });
+  }
+}
+
+/**
+ * Trigger jackpot climax for high tier (Melon / Watermelon / Cosmic):
+ * Screen shake + flash + massive fireworks show!
  */
 export function playJackpotClimax(
   scene: Phaser.Scene,
   x: number,
   y: number,
+  depth = 150,
 ): void {
-  // Gentle camera shake and white flash
-  scene.cameras.main.shake(160, 0.008);
-  scene.cameras.main.flash(100, 255, 255, 255, false);
-  playStarBurst(scene, x, y);
+  scene.cameras.main.shake(180, 0.009);
+  scene.cameras.main.flash(120, 255, 255, 255, false);
+  spawnFireworkBurst(scene, x, y, depth);
+  playStarBurst(scene, x, y, depth);
 }

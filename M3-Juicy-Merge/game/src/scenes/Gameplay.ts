@@ -2,14 +2,14 @@ import Phaser from 'phaser';
 import { CONFIG } from '../logic/config';
 import { ctx } from '../context';
 import { color, z, type, fontStyle, toColor, dur, radius } from '../tokens';
-import { drawBackground, drawMuteButton } from '../ui';
+import { drawBackground, drawMuteButton, drawButton } from '../ui';
 import { computeBucketLayout, type BucketLayout } from '../gameplay/physics-layout';
 import { resolveFruitTexture, fruitRadius, fruitDiameter } from '../gameplay/fruit-sprite';
 import { type CollidingFruit, type MergePlan } from '../gameplay/merge-handler';
 import { checkGameOver } from '../logic/game-over';
 import { isWorldSettled } from '../logic/settle';
 import { fruitsAboveLine } from '../logic/continue';
-import { playJuiceSplash, playJackpotClimax, computeComboDetune } from '../gameplay/juice-effects';
+import { playJuiceSplash, playJackpotClimax, playFireworksCelebration, computeComboDetune } from '../gameplay/juice-effects';
 import { computeShakeImpulse } from '../logic/powerups';
 import { DAILY_TARGET_SCORE } from '../logic/daily-challenge';
 
@@ -72,6 +72,7 @@ export class GameplayScene extends Phaser.Scene {
   private dangerCountdownText!: Phaser.GameObjects.Text;
   private dailyBannerText?: Phaser.GameObjects.Text;
   private dailyVictoryCelebrated = false;
+  private cosmicVictoryCelebrated = false;
 
   /** Deferred merge queue processed outside the Matter solver loop. */
   private pendingMerges: MergePlan[] = [];
@@ -93,6 +94,7 @@ export class GameplayScene extends Phaser.Scene {
     this.lastMotionMs = 0;
     this.wasNearDanger = false;
     this.dangerStartTime = null;
+    this.cosmicVictoryCelebrated = false;
 
     this.setupPhysics();
     this.drawBucket();
@@ -152,42 +154,83 @@ export class GameplayScene extends Phaser.Scene {
     );
   }
 
-  // --- Bucket visual (Clean container with transparent interior) ------------
+  // --- Bucket visual (Playgama-grade Frosted Glass & Cedar Wood 3D Container) ------------
   private drawBucket(): void {
     const L = this.layout;
     const H = L.bucketBottomY - L.bucketTopY;
-    const g = this.add.graphics().setDepth(z.bg + 1);
+    const g = this.add.graphics().setDepth(z.bucketGlass);
 
-    // Subtle clear glass interior fill
-    g.fillStyle(0xffffff, 0.18);
+    // 1. Soft Ambient Outer Drop Shadow behind bucket
+    g.fillStyle(0x000000, 0.14);
+    g.fillRoundedRect(L.bucketX0 - 6, L.bucketTopY + 8, L.bucketWidth + 12, H + 10, { tl: 0, tr: 0, bl: radius.lg, br: radius.lg });
+
+    // 2. Frosted Glass Backing Plate (smooth semi-transparent milky white)
+    g.fillStyle(0xFFFFFF, 0.36);
     g.fillRoundedRect(L.bucketX0, L.bucketTopY, L.bucketWidth, H, { tl: 0, tr: 0, bl: radius.md, br: radius.md });
 
-    // Inner subtle shadow & sheen
-    g.fillStyle(0x000000, 0.04);
-    g.fillRect(L.bucketX0, L.bucketTopY, 12, H);
-    g.fillRect(L.bucketX1 - 12, L.bucketTopY, 12, H);
+    // Inner Glass Highlights & Edge Refractions
+    g.lineStyle(2, 0xFFFFFF, 0.85);
+    g.strokeRoundedRect(L.bucketX0 + 1, L.bucketTopY + 1, L.bucketWidth - 2, H - 2, { tl: 0, tr: 0, bl: radius.md, br: radius.md });
 
-    // Left wooden pillar
-    g.fillStyle(0x8B5A2B, 1);
-    g.fillRoundedRect(L.bucketX0 - 14, L.bucketTopY - 10, 14, H + 10, { tl: 6, tr: 6, bl: 0, br: 0 });
-    g.fillStyle(0xA67039, 1);
-    g.fillRect(L.bucketX0 - 12, L.bucketTopY - 6, 4, H + 4);
+    g.fillStyle(0x000000, 0.05);
+    g.fillRect(L.bucketX0, L.bucketTopY, 14, H);
+    g.fillRect(L.bucketX1 - 14, L.bucketTopY, 14, H);
 
-    // Right wooden pillar
-    g.fillStyle(0x8B5A2B, 1);
-    g.fillRoundedRect(L.bucketX1, L.bucketTopY - 10, 14, H + 10, { tl: 6, tr: 6, bl: 0, br: 0 });
-    g.fillStyle(0xA67039, 1);
-    g.fillRect(L.bucketX1 + 2, L.bucketTopY - 6, 4, H + 4);
+    // 3. Left & Right 3D Cedar Wood Pillars (Rendered on top of glass)
+    const fg = this.add.graphics().setDepth(z.bucketFrame);
 
-    // Bottom wooden base & floor beam
-    g.fillStyle(0x4A2800, 0.3);
-    g.fillRoundedRect(L.bucketX0 - 20, L.bucketBottomY + 4, L.bucketWidth + 40, 28, radius.sm);
-    g.fillStyle(0x6D4018, 1);
-    g.fillRoundedRect(L.bucketX0 - 20, L.bucketBottomY, L.bucketWidth + 40, 26, radius.sm);
-    g.fillStyle(0x8B5A2B, 1);
-    g.fillRect(L.bucketX0 - 18, L.bucketBottomY + 2, L.bucketWidth + 36, 6);
-    g.fillStyle(0xA67039, 1);
-    g.fillRect(L.bucketX0 - 18, L.bucketBottomY + 3, L.bucketWidth + 36, 2);
+    // Left Pillar
+    fg.fillStyle(0x000000, 0.18);
+    fg.fillRoundedRect(L.bucketX0 - 18, L.bucketTopY - 12 + 4, 18, H + 12, 6);
+    fg.fillStyle(0x7A431D, 1);
+    fg.fillRoundedRect(L.bucketX0 - 18, L.bucketTopY - 12, 18, H + 12, 6);
+    fg.fillStyle(0x9A6136, 1);
+    fg.fillRect(L.bucketX0 - 16, L.bucketTopY - 10, 8, H + 8);
+    fg.fillStyle(0xC7844E, 0.8);
+    fg.fillRect(L.bucketX0 - 15, L.bucketTopY - 8, 3, H + 4);
+    // Golden Post Cap
+    fg.fillStyle(0xFBBF24, 1);
+    fg.fillCircle(L.bucketX0 - 9, L.bucketTopY - 14, 9);
+    fg.fillStyle(0xFFFFFF, 0.8);
+    fg.fillCircle(L.bucketX0 - 11, L.bucketTopY - 16, 3);
+
+    // Right Pillar
+    fg.fillStyle(0x000000, 0.18);
+    fg.fillRoundedRect(L.bucketX1, L.bucketTopY - 12 + 4, 18, H + 12, 6);
+    fg.fillStyle(0x7A431D, 1);
+    fg.fillRoundedRect(L.bucketX1, L.bucketTopY - 12, 18, H + 12, 6);
+    fg.fillStyle(0x9A6136, 1);
+    fg.fillRect(L.bucketX1 + 2, L.bucketTopY - 10, 8, H + 8);
+    fg.fillStyle(0xC7844E, 0.8);
+    fg.fillRect(L.bucketX1 + 3, L.bucketTopY - 8, 3, H + 4);
+    // Golden Post Cap
+    fg.fillStyle(0xFBBF24, 1);
+    fg.fillCircle(L.bucketX1 + 9, L.bucketTopY - 14, 9);
+    fg.fillStyle(0xFFFFFF, 0.8);
+    fg.fillCircle(L.bucketX1 + 7, L.bucketTopY - 16, 3);
+
+    // 4. Sturdy 3D Wooden Base Foundation & Floor Beam
+    fg.fillStyle(0x000000, 0.25);
+    fg.fillRoundedRect(L.bucketX0 - 24, L.bucketBottomY + 8, L.bucketWidth + 48, 32, radius.sm);
+    // Dark bottom bevel
+    fg.fillStyle(0x4A2508, 1);
+    fg.fillRoundedRect(L.bucketX0 - 24, L.bucketBottomY + 6, L.bucketWidth + 48, 28, radius.sm);
+    // Main base body
+    fg.fillStyle(0x6E3915, 1);
+    fg.fillRoundedRect(L.bucketX0 - 24, L.bucketBottomY, L.bucketWidth + 48, 28, radius.sm);
+    // Gold metallic top strip
+    fg.fillStyle(0xF59E0B, 1);
+    fg.fillRect(L.bucketX0 - 20, L.bucketBottomY + 2, L.bucketWidth + 40, 5);
+    fg.fillStyle(0xFDE68A, 0.9);
+    fg.fillRect(L.bucketX0 - 18, L.bucketBottomY + 3, L.bucketWidth + 36, 2);
+
+    // Golden Corner Rivets
+    fg.fillStyle(0xFBBF24, 1);
+    fg.fillCircle(L.bucketX0 - 10, L.bucketBottomY + 16, 5);
+    fg.fillCircle(L.bucketX1 + 10, L.bucketBottomY + 16, 5);
+    fg.fillStyle(0xFFFFFF, 0.9);
+    fg.fillCircle(L.bucketX0 - 11, L.bucketBottomY + 15, 2);
+    fg.fillCircle(L.bucketX1 + 9, L.bucketBottomY + 15, 2);
 
     // Container anchor for QA
     const bucket = this.add.container(L.bucketX0, L.bucketTopY).setDepth(z.actor);
@@ -210,7 +253,7 @@ export class GameplayScene extends Phaser.Scene {
     const startY = this.layout.spawnY + r + 4;
     const endY = this.layout.bucketBottomY - 10;
 
-    this.aimLine.lineStyle(2, 0x8B5A2B, 0.35);
+    this.aimLine.lineStyle(2, 0x9A6136, 0.4);
     const dash = 12, gap = 8;
     for (let y = startY; y < endY; y += dash + gap) {
       const y2 = Math.min(y + dash, endY);
@@ -225,7 +268,7 @@ export class GameplayScene extends Phaser.Scene {
   private drawDangerLine(): void {
     const L = this.layout;
     const g = this.add.graphics().setDepth(z.hud);
-    this.drawDangerLineStroke(g, 0.7);
+    this.drawDangerLineStroke(g, 0.8);
     g.setData('testid', 'danger-line');
     this.dangerLine = g;
   }
@@ -233,8 +276,13 @@ export class GameplayScene extends Phaser.Scene {
   private drawDangerLineStroke(g: Phaser.GameObjects.Graphics, alpha: number): void {
     const L = this.layout;
     g.clear();
-    g.lineStyle(4, toColor(color.danger), alpha);
-    const dash = 22, gap = 14;
+    // Ambient red glow behind danger line
+    g.lineStyle(8, 0xEF4444, alpha * 0.35);
+    g.lineBetween(L.bucketX0, L.dangerY, L.bucketX1, L.dangerY);
+
+    // Crisp dashed hazard line
+    g.lineStyle(3.5, 0xEF4444, alpha);
+    const dash = 20, gap = 12;
     for (let x = L.bucketX0; x < L.bucketX1; x += dash + gap) {
       const x2 = Math.min(x + dash, L.bucketX1);
       g.beginPath();
@@ -250,8 +298,8 @@ export class GameplayScene extends Phaser.Scene {
         this.dangerLine.setData('pulsing', true);
         this.tweens.add({
           targets: this.dangerLine,
-          alpha: { from: 1, to: 0.3 },
-          duration: 350,
+          alpha: { from: 1, to: 0.25 },
+          duration: 300,
           yoyo: true,
           repeat: -1,
           ease: 'Sine.easeInOut',
@@ -260,7 +308,7 @@ export class GameplayScene extends Phaser.Scene {
     } else {
       this.tweens.killTweensOf(this.dangerLine);
       this.dangerLine.setData('pulsing', false);
-      this.drawDangerLineStroke(this.dangerLine, 0.7);
+      this.drawDangerLineStroke(this.dangerLine, 0.8);
       this.dangerLine.setAlpha(1);
     }
   }
@@ -389,117 +437,138 @@ export class GameplayScene extends Phaser.Scene {
     this.updateHud();
   }
 
-  // --- HUD & Strategic Power-ups --------------------------------------------
+  // --- HUD & Strategic Power-ups (Playgama-grade 3D Casual HUD) ------------
   private createHud(): void {
     const { width } = this.scale;
 
-    // 1. Score & Best Score Card
-    const scoreX = 24;
+    // 1. Score & Best Score Plaque (Frosted Glass & Gold Trim)
+    const scoreX = 14;
     const scoreBg = this.add.graphics().setDepth(z.hud);
-    scoreBg.fillStyle(toColor(color.surface), 0.94);
-    scoreBg.fillRoundedRect(scoreX, 16, 166, 56, radius.md);
-    scoreBg.lineStyle(2, toColor(color.primary), 0.5);
-    scoreBg.strokeRoundedRect(scoreX, 16, 166, 56, radius.md);
+    // Soft shadow
+    scoreBg.fillStyle(0x000000, 0.14);
+    scoreBg.fillRoundedRect(scoreX, 18, 174, 72, radius.md);
+    // Frosted body
+    scoreBg.fillStyle(0xFFFFFF, 0.96);
+    scoreBg.fillRoundedRect(scoreX, 16, 174, 72, radius.md);
+    scoreBg.lineStyle(2, 0xF59E0B, 0.9);
+    scoreBg.strokeRoundedRect(scoreX, 16, 174, 72, radius.md);
 
-    this.scoreText = this.add.text(scoreX + 14, 33, 'SCORE 0', {
+    this.scoreText = this.add.text(scoreX + 12, 36, '💎 SCORE 0', {
       fontFamily: 'sans-serif',
-      fontSize: '15px',
+      fontSize: '19px',
       fontStyle: 'bold',
-      color: '#1F2937',
+      color: '#0F172A',
     }).setOrigin(0, 0.5).setDepth(z.hud + 1);
     this.scoreText.setData('testid', 'score-label');
 
-    this.bestScoreText = this.add.text(scoreX + 14, 55, `BEST ${ctx.engine.state.bestScore}`, {
+    this.bestScoreText = this.add.text(scoreX + 12, 62, `🏆 BEST ${ctx.engine.state.bestScore}`, {
       fontFamily: 'sans-serif',
-      fontSize: '12px',
+      fontSize: '14px',
       fontStyle: 'bold',
       color: '#D97706',
     }).setOrigin(0, 0.5).setDepth(z.hud + 1);
 
-    // 2. Next Fruit & Swap Button
-    this.swapButtonBaseX = 198;
+    // 2. Next Fruit & Swap Powerup Capsule
+    this.swapButtonBaseX = 196;
     const swapContainer = this.add.container(this.swapButtonBaseX, 16).setDepth(z.hud);
     this.swapButtonContainer = swapContainer;
     swapContainer.setData('testid', 'next-fruit');
 
     const swapBg = this.add.graphics();
-    swapBg.fillStyle(toColor(color.surface), 0.94);
-    swapBg.fillRoundedRect(0, 0, 200, 56, radius.md);
-    swapBg.lineStyle(2, 0x3B82F6, 0.6);
-    swapBg.strokeRoundedRect(0, 0, 200, 56, radius.md);
+    swapBg.fillStyle(0x000000, 0.14);
+    swapBg.fillRoundedRect(0, 2, 206, 72, radius.md);
+    swapBg.fillStyle(0xFFFFFF, 0.96);
+    swapBg.fillRoundedRect(0, 0, 206, 72, radius.md);
+    swapBg.lineStyle(2, 0x38BDF8, 0.9);
+    swapBg.strokeRoundedRect(0, 0, 206, 72, radius.md);
+
+    // Circular glowing preview pedestals
+    swapBg.fillStyle(0xF1F5F9, 1);
+    swapBg.fillCircle(120, 36, 23);
+    swapBg.lineStyle(1.5, 0xE2E8F0, 1);
+    swapBg.strokeCircle(120, 36, 23);
+
+    swapBg.fillStyle(0xF1F5F9, 1);
+    swapBg.fillCircle(174, 36, 17);
+    swapBg.lineStyle(1.5, 0xE2E8F0, 1);
+    swapBg.strokeCircle(174, 36, 17);
     swapContainer.add(swapBg);
 
-    const swapTitle = this.add.text(10, 16, 'NEXT 🔄', {
+    const swapTitle = this.add.text(12, 24, 'NEXT 🔄', {
       fontFamily: 'sans-serif',
-      fontSize: '12px',
+      fontSize: '15px',
       fontStyle: 'bold',
-      color: '#2563EB',
+      color: '#0284C7',
     }).setOrigin(0, 0.5);
     swapContainer.add(swapTitle);
 
-    this.swapCountText = this.add.text(10, 38, `x${ctx.engine.powerups.swapCount} Swap`, {
+    this.swapCountText = this.add.text(12, 50, `x${ctx.engine.powerups.swapCount} Swap`, {
       fontFamily: 'sans-serif',
-      fontSize: '11px',
+      fontSize: '14px',
       fontStyle: 'bold',
-      color: '#10B981',
+      color: '#059669',
     }).setOrigin(0, 0.5);
     swapContainer.add(this.swapCountText);
 
     const key0 = resolveFruitTexture(this, 0);
-    this.nextPreview1 = this.add.image(110, 28, key0).setDisplaySize(34, 34);
-    this.nextPreview2 = this.add.image(160, 28, key0).setDisplaySize(24, 24).setAlpha(0.75);
+    this.nextPreview1 = this.add.image(120, 36, key0).setDisplaySize(40, 40);
+    this.nextPreview2 = this.add.image(174, 36, key0).setDisplaySize(28, 28).setAlpha(0.75);
     swapContainer.add(this.nextPreview1);
     swapContainer.add(this.nextPreview2);
 
-    swapContainer.setSize(200, 56);
+    swapContainer.setSize(206, 72);
     swapContainer.setInteractive({ useHandCursor: true });
     swapContainer.on('pointerdown', () => this.onSwapFruit());
 
-    // 3. Bucket Shake Button
-    this.shakeButtonBaseX = 406;
+    // 3. Bucket Shake Button (Purple 3D Candy Capsule)
+    this.shakeButtonBaseX = 410;
     const shakeContainer = this.add.container(this.shakeButtonBaseX, 16).setDepth(z.hud);
     this.shakeButtonContainer = shakeContainer;
     shakeContainer.setData('testid', 'shake-btn');
 
     const shakeBg = this.add.graphics();
-    shakeBg.fillStyle(toColor(color.surface), 0.94);
-    shakeBg.fillRoundedRect(0, 0, 110, 56, radius.md);
-    shakeBg.lineStyle(2, 0x8B5CF6, 0.6);
-    shakeBg.strokeRoundedRect(0, 0, 110, 56, radius.md);
+    shakeBg.fillStyle(0x000000, 0.14);
+    shakeBg.fillRoundedRect(0, 2, 122, 72, radius.md);
+    shakeBg.fillStyle(0xFFFFFF, 0.96);
+    shakeBg.fillRoundedRect(0, 0, 122, 72, radius.md);
+    shakeBg.lineStyle(2, 0xA855F7, 0.9);
+    shakeBg.strokeRoundedRect(0, 0, 122, 72, radius.md);
     shakeContainer.add(shakeBg);
 
-    const shakeTitle = this.add.text(55, 18, '📳 SHAKE', {
+    const shakeTitle = this.add.text(61, 24, '📳 SHAKE', {
       fontFamily: 'sans-serif',
-      fontSize: '12px',
+      fontSize: '15px',
       fontStyle: 'bold',
       color: '#7C3AED',
     }).setOrigin(0.5);
     shakeContainer.add(shakeTitle);
 
-    this.shakeCountText = this.add.text(55, 38, `x${ctx.engine.powerups.shakeCount}`, {
+    this.shakeCountText = this.add.text(61, 50, `x${ctx.engine.powerups.shakeCount}`, {
       fontFamily: 'sans-serif',
-      fontSize: '12px',
+      fontSize: '16px',
       fontStyle: 'bold',
       color: '#8B5CF6',
     }).setOrigin(0.5);
     shakeContainer.add(this.shakeCountText);
 
-    shakeContainer.setSize(110, 56);
+    shakeContainer.setSize(122, 72);
     shakeContainer.setInteractive({ useHandCursor: true });
     shakeContainer.on('pointerdown', () => this.onShakeBucket());
 
-    // 4. Fruit Album Button 📖
-    const albumContainer = this.add.container(524, 16).setDepth(z.hud);
+    // 4. Fruit Album Button 📖 (Emerald 3D Square)
+    const albumContainer = this.add.container(540, 16).setDepth(z.hud);
     const albumBg = this.add.graphics();
-    albumBg.fillStyle(toColor(color.surface), 0.94);
-    albumBg.fillRoundedRect(0, 0, 56, 56, radius.md);
-    albumBg.lineStyle(2, 0x10B981, 0.6);
-    albumBg.strokeRoundedRect(0, 0, 56, 56, radius.md);
+    albumBg.fillStyle(0x000000, 0.14);
+    albumBg.fillRoundedRect(0, 2, 72, 72, radius.md);
+    albumBg.fillStyle(0xFFFFFF, 0.96);
+    albumBg.fillRoundedRect(0, 0, 72, 72, radius.md);
+    albumBg.lineStyle(2, 0x10B981, 0.9);
+    albumBg.strokeRoundedRect(0, 0, 72, 72, radius.md);
     albumContainer.add(albumBg);
 
-    const albumIcon = this.add.text(28, 28, '📖', { fontSize: '24px' }).setOrigin(0.5);
+    const albumIcon = this.add.text(36, 36, '📖', { fontSize: '32px' }).setOrigin(0.5);
     albumContainer.add(albumIcon);
-    albumContainer.setSize(56, 56);
+    albumContainer.setSize(72, 72);
     albumContainer.setInteractive({ useHandCursor: true });
     albumContainer.on('pointerdown', () => {
       this.lastUiClickTime = this.time.now;
@@ -509,18 +578,21 @@ export class GameplayScene extends Phaser.Scene {
 
     // 5. Daily Challenge Sub-Header Banner (if active)
     if (ctx.isDailyMode) {
-      const bannerW = 500;
-      const bannerH = 40;
-      const bannerY = 88;
+      const diff = ctx.getCurrentDailyDifficulty();
+      const bannerW = Math.min(540, width - 40);
+      const bannerH = 46;
+      const bannerY = 98;
       const bannerBg = this.add.graphics().setDepth(z.hud);
+      bannerBg.fillStyle(0x000000, 0.12);
+      bannerBg.fillRoundedRect(width / 2 - bannerW / 2, bannerY + 2, bannerW, bannerH, 23);
       bannerBg.fillStyle(0xFFFFFF, 0.96);
-      bannerBg.fillRoundedRect(width / 2 - bannerW / 2, bannerY, bannerW, bannerH, 20);
+      bannerBg.fillRoundedRect(width / 2 - bannerW / 2, bannerY, bannerW, bannerH, 23);
       bannerBg.lineStyle(2, 0xF59E0B, 0.9);
-      bannerBg.strokeRoundedRect(width / 2 - bannerW / 2, bannerY, bannerW, bannerH, 20);
+      bannerBg.strokeRoundedRect(width / 2 - bannerW / 2, bannerY, bannerW, bannerH, 23);
 
-      this.dailyBannerText = this.add.text(width / 2, bannerY + bannerH / 2, `📅 Thử Thách: Còn 50 quả   •   Mục tiêu: ${DAILY_TARGET_SCORE}đ 🎯`, {
+      this.dailyBannerText = this.add.text(width / 2, bannerY + bannerH / 2, `📅 Day ${diff.dayLevel}/12: ${diff.fruitLimit} fruits left   •   Goal: ${diff.targetScore} pts 🎯`, {
         fontFamily: 'sans-serif',
-        fontSize: '14px',
+        fontSize: '16px',
         fontStyle: 'bold',
         color: '#B45309',
       }).setOrigin(0.5).setDepth(z.hud + 1);
@@ -530,8 +602,8 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private updateHud(): void {
-    this.scoreText.setText(`SCORE ${ctx.engine.state.score}`);
-    this.bestScoreText.setText(`BEST ${Math.max(ctx.engine.state.bestScore, ctx.engine.state.score)}`);
+    this.scoreText.setText(`💎 SCORE ${ctx.engine.state.score}`);
+    this.bestScoreText.setText(`🏆 BEST ${Math.max(ctx.engine.state.bestScore, ctx.engine.state.score)}`);
     if (this.swapCountText) {
       this.swapCountText.setText(`x${ctx.engine.powerups.swapCount} Swap`);
       this.swapCountText.setColor(ctx.engine.powerups.swapCount > 0 ? '#10B981' : '#9CA3AF');
@@ -541,13 +613,14 @@ export class GameplayScene extends Phaser.Scene {
       this.shakeCountText.setColor(ctx.engine.powerups.shakeCount > 0 ? '#8B5CF6' : '#9CA3AF');
     }
     if (this.dailyBannerText && ctx.isDailyMode) {
+      const diff = ctx.getCurrentDailyDifficulty();
       const remaining = ctx.engine.state.dailyDropsRemaining;
-      const reached = ctx.engine.state.score >= DAILY_TARGET_SCORE;
+      const reached = ctx.engine.state.score >= diff.targetScore;
       if (reached) {
-        this.dailyBannerText.setText(`🎉 HOÀN THÀNH: ${ctx.engine.state.score}/${DAILY_TARGET_SCORE}đ (Còn ${remaining} quả) 🏆`);
+        this.dailyBannerText.setText(`🎉 DAY ${diff.dayLevel} COMPLETED: ${ctx.engine.state.score}/${diff.targetScore} pts (Left ${remaining}) 🏆`);
         this.dailyBannerText.setColor('#059669');
       } else {
-        this.dailyBannerText.setText(`📅 Thử Thách: Còn ${remaining}/50 quả   •   Mục tiêu: ${DAILY_TARGET_SCORE}đ 🎯`);
+        this.dailyBannerText.setText(`📅 Day ${diff.dayLevel}/12: ${remaining}/${diff.fruitLimit} fruits left   •   Goal: ${diff.targetScore} pts 🎯`);
         this.dailyBannerText.setColor('#B45309');
       }
     }
@@ -563,8 +636,8 @@ export class GameplayScene extends Phaser.Scene {
     const key1 = resolveFruitTexture(this, t1);
     const key2 = resolveFruitTexture(this, t2);
 
-    this.nextPreview1.setTexture(key1);
-    this.nextPreview2.setTexture(key2);
+    this.nextPreview1.setTexture(key1).setDisplaySize(34, 34);
+    this.nextPreview2.setTexture(key2).setDisplaySize(24, 24);
   }
 
   // --- Swap & Shake Handlers -------------------------------------------------
@@ -695,8 +768,9 @@ export class GameplayScene extends Phaser.Scene {
     const { width } = this.scale;
     const cy = this.layout.dangerY - 50;
 
-    // Golden sparks
-    playJackpotClimax(this, width / 2, cy);
+    // Golden sparks & fireworks
+    playJackpotClimax(this, width / 2, cy, z.overlay + 30);
+    playFireworksCelebration(this, 5, z.overlay + 30);
     this.playSfx('sfx_merge_big', 0.8, 200);
 
     const banner = this.add.text(width / 2, cy, '🎉 NEW RECORD! 🎉', {
@@ -729,10 +803,11 @@ export class GameplayScene extends Phaser.Scene {
     const { width } = this.scale;
     const cy = this.layout.dangerY - 50;
 
-    playJackpotClimax(this, width / 2, cy);
+    playJackpotClimax(this, width / 2, cy, z.overlay + 30);
+    playFireworksCelebration(this, 4, z.overlay + 30);
     this.playSfx('sfx_merge_big', 0.9, 300);
 
-    const banner = this.add.text(width / 2, cy, `🌟 MỞ KHÓA MỚI: ${name.toUpperCase()}! 🌟`, {
+    const banner = this.add.text(width / 2, cy, `🌟 NEW DISCOVERY: ${name.toUpperCase()}! 🌟`, {
       fontFamily: 'sans-serif',
       fontSize: '24px',
       fontStyle: 'bold',
@@ -768,23 +843,29 @@ export class GameplayScene extends Phaser.Scene {
     });
   }
 
-  private celebrateDailyVictory(): void {
+  private celebrateDailyVictory(rewardName?: string): void {
     const { width } = this.scale;
     const cy = this.layout.dangerY - 50;
+    const diff = ctx.getCurrentDailyDifficulty();
 
-    playJackpotClimax(this, width / 2, cy);
+    playJackpotClimax(this, width / 2, cy, z.overlay + 30);
+    playFireworksCelebration(this, 6, z.overlay + 30);
     this.playSfx('sfx_merge_big', 0.9, 200);
 
-    const banner = this.add.text(width / 2, cy, `🏆 ĐẠT MỤC TIÊU NGÀY (${DAILY_TARGET_SCORE}đ)! 🏆`, {
+    const bannerText = rewardName
+      ? `🏆 DAY ${diff.dayLevel} WON! UNLOCKED ${rewardName}! 🌟`
+      : `🏆 DAY ${diff.dayLevel} GOAL REACHED (${diff.targetScore} pts)! 🏆`;
+
+    const banner = this.add.text(width / 2, cy, bannerText, {
       fontFamily: 'sans-serif',
-      fontSize: '24px',
+      fontSize: rewardName ? '20px' : '22px',
       fontStyle: 'bold',
       color: '#F59E0B',
     }).setOrigin(0.5).setDepth(z.overlay + 10).setStroke('#FFFFFF', 8).setScale(0.4).setAlpha(0);
 
     this.tweens.add({
       targets: banner,
-      scale: 1.2,
+      scale: 1.15,
       alpha: 1,
       duration: dur.pop,
       ease: 'Back.easeOut',
@@ -794,10 +875,155 @@ export class GameplayScene extends Phaser.Scene {
           alpha: 0,
           y: cy - 60,
           duration: dur.slow,
-          delay: 1200,
+          delay: 1500,
           onComplete: () => banner.destroy(),
         });
       },
+    });
+  }
+
+  private showCosmicVictoryModal(): void {
+    const { width, height } = this.scale;
+    const cx = width / 2;
+    const cy = height / 2;
+
+    // 1. Fireworks Show: Multiple grand bursts across screen above the modal!
+    playJackpotClimax(this, cx, cy - 80, z.overlay + 60);
+    playJackpotClimax(this, cx - 140, cy + 40, z.overlay + 60);
+    playJackpotClimax(this, cx + 140, cy + 40, z.overlay + 60);
+    playFireworksCelebration(this, 12, z.overlay + 60);
+    this.playSfx('sfx_merge_big', 1.0, 100);
+
+    // 2. Modal Container
+    const modal = this.add.container(cx, cy).setDepth(z.overlay + 50);
+
+    // Dark cosmic nebula backdrop
+    const backdrop = this.add.rectangle(0, 0, width, height, 0x0B081E, 0.88);
+    backdrop.setInteractive(); // Block input behind modal
+    modal.add(backdrop);
+
+    // Main Card
+    const cardW = Math.min(520, width - 40);
+    const cardH = 580;
+    const cardBg = this.add.graphics();
+    cardBg.fillStyle(0x18122B, 0.98);
+    cardBg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, radius.lg);
+    cardBg.lineStyle(3, 0xA855F7, 0.9);
+    cardBg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, radius.lg);
+    modal.add(cardBg);
+
+    // Crown Icon
+    const crown = this.add.text(0, -cardH / 2 + 38, '👑', { fontSize: '42px' }).setOrigin(0.5);
+    modal.add(crown);
+
+    // Title
+    const title = this.add.text(0, -cardH / 2 + 82, 'COSMIC VICTORY!', {
+      fontFamily: 'sans-serif',
+      fontSize: '28px',
+      fontStyle: 'bold',
+      color: '#FBBF24',
+    }).setOrigin(0.5).setStroke('#FFFFFF', 3);
+    modal.add(title);
+
+    // Subtitle
+    const subtitle = this.add.text(0, -cardH / 2 + 120, 'You created the Ultimate Tier 14\nGalaxy Watermelon! 🌌', {
+      fontFamily: 'sans-serif',
+      fontSize: '15px',
+      fontStyle: 'bold',
+      color: '#E2E8F0',
+      align: 'center',
+    }).setOrigin(0.5);
+    modal.add(subtitle);
+
+    // Rotating Glowing Halo behind fruit
+    const halo = this.add.graphics();
+    halo.fillStyle(0x9333EA, 0.35);
+    halo.fillCircle(0, -20, 80);
+    modal.add(halo);
+
+    // Galaxy Watermelon Sprite (Tier 14)
+    const key14 = resolveFruitTexture(this, 14);
+    const fruitSprite = this.add.image(0, -20, key14).setDisplaySize(130, 130);
+    modal.add(fruitSprite);
+
+    this.tweens.add({
+      targets: fruitSprite,
+      scaleX: 1.08,
+      scaleY: 1.08,
+      duration: 700,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    // Reward Badge
+    const badgeW = cardW - 60;
+    const badgeH = 50;
+    const badgeY = 95;
+    const badgeBg = this.add.graphics();
+    badgeBg.fillStyle(0x3B0764, 0.9);
+    badgeBg.fillRoundedRect(-badgeW / 2, badgeY - badgeH / 2, badgeW, badgeH, radius.md);
+    badgeBg.lineStyle(1.5, 0xF59E0B, 0.8);
+    badgeBg.strokeRoundedRect(-badgeW / 2, badgeY - badgeH / 2, badgeW, badgeH, radius.md);
+    modal.add(badgeBg);
+
+    const badgeTxt = this.add.text(0, badgeY, '💎 +500 JACKPOT PTS • COSMIC MASTER 🌌', {
+      fontFamily: 'sans-serif',
+      fontSize: '14px',
+      fontStyle: 'bold',
+      color: '#FDE047',
+    }).setOrigin(0.5);
+    modal.add(badgeTxt);
+
+    // Buttons
+    const btnW = cardW - 70;
+    const { container: keepPlayingBtn } = drawButton(this, 0, 175, '▶  KEEP PLAYING', {
+      testid: 'cosmic-keep-playing-btn',
+      variant: 'primary',
+      width: btnW,
+      height: 64,
+      fontSize: 22,
+    });
+    modal.add(keepPlayingBtn);
+
+    keepPlayingBtn.on('pointerdown', () => {
+      this.tweens.add({
+        targets: modal,
+        alpha: 0,
+        scale: 0.9,
+        duration: dur.base,
+        ease: 'Cubic.easeIn',
+        onComplete: () => modal.destroy(),
+      });
+    });
+
+    const { container: menuBtn } = drawButton(this, 0, 245, '🏠  MAIN MENU', {
+      testid: 'cosmic-menu-btn',
+      variant: 'ghost',
+      width: btnW,
+      height: 56,
+      fontSize: 20,
+    });
+    modal.add(menuBtn);
+
+    menuBtn.on('pointerdown', () => {
+      ctx.saveSession();
+      this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
+      this.time.delayedCall(dur.scene, () => {
+        this.scene.stop('GameplayScene');
+        this.scene.start('StartScene');
+      });
+    });
+
+    // Pop-in entrance animation
+    modal.setScale(0.7);
+    modal.setAlpha(0);
+    this.tweens.add({
+      targets: modal,
+      scale: 1,
+      alpha: 1,
+      duration: dur.pop,
+      ease: 'Back.easeOut',
     });
   }
 
@@ -1032,8 +1258,12 @@ export class GameplayScene extends Phaser.Scene {
     if (plans.length > 0) {
       this.lastMotionMs = this.time.now;
       
-      // 1. Process Fruit Discovery in Album
+      // 1. Process Fruit Discovery in Album & Cosmic Victory
       for (const plan of plans) {
+        if (plan.newTier === 14 && !this.cosmicVictoryCelebrated) {
+          this.cosmicVictoryCelebrated = true;
+          this.showCosmicVictoryModal();
+        }
         ctx.discoverFruit(plan.newTier).then(({ isNew, info }) => {
           if (isNew) {
             this.celebrateNewFruitDiscovery(info.name);
@@ -1061,10 +1291,13 @@ export class GameplayScene extends Phaser.Scene {
       }
 
       // 3. Process Daily Challenge Victory
-      if (ctx.isDailyMode && ctx.engine.state.score >= DAILY_TARGET_SCORE && !this.dailyVictoryCelebrated) {
+      const diff = ctx.getCurrentDailyDifficulty();
+      if (ctx.isDailyMode && ctx.engine.state.score >= diff.targetScore && !this.dailyVictoryCelebrated) {
         this.dailyVictoryCelebrated = true;
-        ctx.recordDailyVictory(ctx.engine.state.score);
-        this.celebrateDailyVictory();
+        ctx.recordDailyVictory(ctx.engine.state.score).then(({ milestoneReward }) => {
+          this.celebrateDailyVictory(milestoneReward ? `${milestoneReward.name} ${milestoneReward.emoji}` : undefined);
+          this.updateHud();
+        });
       }
 
       this.updateHud();

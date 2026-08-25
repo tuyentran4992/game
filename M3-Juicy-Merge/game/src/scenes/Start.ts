@@ -1,22 +1,17 @@
 import Phaser from 'phaser';
-import { color, type, z, dur, fontStyle } from '../tokens';
+import { color, type, z, dur, radius } from '../tokens';
 import { drawButton, drawBackground, drawMuteButton } from '../ui';
 import { fruitKey } from '../assets';
 import { fruitDiameter } from '../gameplay/fruit-sprite';
 import { ctx } from '../context';
 import { getAlbumProgress } from '../logic/album';
 
-// Start scene (step 14b) — title + decorative fruit chain + Play button, per
-// DESIGN-SPEC §3.1 mockup. The real `logo` PNG was not generated (image API
-// refused), so the title is Phaser text with a stroke (the mockup's "logo chữ có
-// color.text.stroke"); the 12-fruit chain + corner watermelon are the gen'd
-// sprites, used decoratively.
 export class StartScene extends Phaser.Scene {
-  /** Tracked decor images so a resize rebuilds them cleanly (destroy + redraw). */
   private chainImages: Phaser.GameObjects.Image[] = [];
+  private chainBackdrop?: Phaser.GameObjects.Graphics;
   private cornerImage?: Phaser.GameObjects.Image;
-  /** Button containers, repositioned together on resize (FIT keeps world fixed). */
   private menuButtons: Phaser.GameObjects.Container[] = [];
+  private logoContainer?: Phaser.GameObjects.Container;
 
   constructor() { super({ key: 'StartScene' }); }
 
@@ -24,27 +19,45 @@ export class StartScene extends Phaser.Scene {
     const { width, height } = this.scale;
     drawBackground(this);
 
-    // --- Title (fallback for the un-gen'd logo) -----------------------------
-    const title = this.add.text(width / 2, height * 0.26, 'JUICE MERGE', {
-      ...fontStyle(type.display, color.primaryDark),
-      fontSize: '60px',
-    })
-      .setOrigin(0.5).setDepth(z.hud)
-      .setStroke(color.textStroke, 8);
-    title.setData('testid', 'start-title');
+    // --- 1. 3D Juicy Casual Logo ---------------------------------------------
+    this.createJuicyLogo(width / 2, height * 0.22);
 
-    // --- Decorative fruit chain (cherry -> watermelon, mockup §3.1) ---------
-    this.drawFruitChain(width / 2, height * 0.40);
+    // --- 2. Decorative Fruit Evolution Chain ---------------------------------
+    this.drawFruitChain(width / 2, height * 0.38);
 
     const btnW = Math.min(440, width - 64);
 
-    // --- 1. Play Classic Mode Button ----------------------------------------
-    const { container: playBtn } = drawButton(this, width / 2, height * 0.54, '▶  Chơi Cổ Điển', {
+    // --- 3. Streak Progress Indicator Card -----------------------------------
+    const streak = ctx.score.dailyStreakCount || 0;
+    const diff = ctx.getCurrentDailyDifficulty();
+    const streakY = height * 0.47;
+    
+    // Frosted gold streak capsule (Enlarged and bold)
+    const streakH = 50;
+    const streakBg = this.add.graphics().setDepth(z.hud);
+    streakBg.fillStyle(0x000000, 0.12);
+    streakBg.fillRoundedRect(width / 2 - btnW / 2, streakY - streakH / 2 + 2, btnW, streakH, 25);
+    streakBg.fillStyle(0xFFFFFF, 0.96);
+    streakBg.fillRoundedRect(width / 2 - btnW / 2, streakY - streakH / 2, btnW, streakH, 25);
+    streakBg.lineStyle(2, 0xF59E0B, 0.9);
+    streakBg.strokeRoundedRect(width / 2 - btnW / 2, streakY - streakH / 2, btnW, streakH, 25);
+
+    const streakTxt = this.add.text(width / 2, streakY, `🔥 Daily Streak: ${streak}/12 Days  •  🐉 Day 3  👑 Day 6  🌌 Day 12`, {
+      fontFamily: 'sans-serif',
+      fontSize: '16px',
+      fontStyle: 'bold',
+      color: '#92400E',
+    }).setOrigin(0.5).setDepth(z.hud + 1);
+
+    // --- 4. Main Menu Buttons ------------------------------------------------
+    // A. Classic Mode Button (Pink Candy)
+    const { container: playBtn } = drawButton(this, width / 2, height * 0.56, 'Classic Mode', {
       testid: 'start-btn',
       variant: 'primary',
+      icon: '▶',
       width: btnW,
       height: 76,
-      fontSize: 26,
+      fontSize: 27,
     });
     playBtn.on('pointerdown', () => {
       this.startBgm();
@@ -54,14 +67,17 @@ export class StartScene extends Phaser.Scene {
     });
     this.menuButtons.push(playBtn);
 
-    // --- 2. Daily Challenge Mode Button -------------------------------------
+    // B. Daily Challenge Button (Golden Amber)
     const isCompletedToday = ctx.isDailyCompletedToday();
-    const dailyLabel = isCompletedToday ? '📅  Thử Thách Ngày (✓)' : '📅  Thử Thách Ngày';
-    const { container: dailyBtn } = drawButton(this, width / 2, height * 0.63, dailyLabel, {
+    const dailyLabel = isCompletedToday
+      ? `Daily Challenge (Completed ✓)`
+      : `Daily Challenge: Day ${diff.dayLevel}/12 🔥`;
+    const { container: dailyBtn } = drawButton(this, width / 2, height * 0.66, dailyLabel, {
       testid: 'daily-btn',
       variant: 'amber',
+      icon: '📅',
       width: btnW,
-      height: 70,
+      height: 74,
       fontSize: 24,
     });
     dailyBtn.on('pointerdown', () => {
@@ -71,14 +87,15 @@ export class StartScene extends Phaser.Scene {
       this.time.delayedCall(dur.scene, () => this.scene.start('GameplayScene'));
     });
 
-    // --- 3. Fruit Album / Encyclopedia Button -------------------------------
+    // C. Fruit Album Button (Emerald Mint)
     const unlocked = ctx.score.getUnlockedTiers();
     const albumProgress = getAlbumProgress(unlocked);
-    const { container: albumBtn } = drawButton(this, width / 2, height * 0.72, `📖  Bộ Sưu Tập (${albumProgress.unlockedCount}/12)`, {
+    const { container: albumBtn } = drawButton(this, width / 2, height * 0.76, `Fruit Album (${albumProgress.unlockedCount}/${albumProgress.totalCount})`, {
       testid: 'album-btn',
       variant: 'emerald',
+      icon: '📖',
       width: btnW,
-      height: 66,
+      height: 72,
       fontSize: 24,
     });
     albumBtn.on('pointerdown', () => {
@@ -87,17 +104,17 @@ export class StartScene extends Phaser.Scene {
     });
     this.menuButtons.push(dailyBtn, albumBtn);
 
-    // --- Corner watermelon decoration (alpha 0.5, mockup §3.1) ---------------
+    // --- 5. Ambient Mascot Decor ---------------------------------------------
     this.drawCornerDecor(width, height);
 
     // Mute toggle in the top-right corner
     drawMuteButton(this);
 
     this.scale.on('resize', (g: Phaser.Structs.Size) => {
-      title.setPosition(g.width / 2, g.height * 0.26);
-      this.drawFruitChain(g.width / 2, g.height * 0.40);
+      if (this.logoContainer) this.logoContainer.setPosition(g.width / 2, g.height * 0.22);
+      this.drawFruitChain(g.width / 2, g.height * 0.38);
       const menux = g.width / 2;
-      const ry = [0.54, 0.63, 0.72];
+      const ry = [0.56, 0.66, 0.76];
       this.menuButtons.forEach((btn, i) => {
         if (ry[i] !== undefined && btn) btn.setPosition(menux, g.height * ry[i]!);
       });
@@ -105,46 +122,119 @@ export class StartScene extends Phaser.Scene {
     });
   }
 
-  /** Start the looping BGM (light volume so it never gets harsh on mobile).
-   *  Guarded: no-op if the asset is missing or already playing. The global mute
-   *  flag (set from sdk.isAudioEnabled in main) silences it automatically. */
+  private createJuicyLogo(cx: number, cy: number): void {
+    this.logoContainer = this.add.container(cx, cy).setDepth(z.hud);
+
+    // 1. 3D Shadow Layer
+    const shadow = this.add.text(0, 6, 'JUICE MERGE', {
+      fontFamily: 'sans-serif',
+      fontSize: '56px',
+      fontStyle: 'bold',
+      color: '#7A0C2E',
+    }).setOrigin(0.5).setStroke('#50071C', 10);
+    this.logoContainer.add(shadow);
+
+    // 2. Main 3D White Outlined Logo
+    const mainTitle = this.add.text(0, 0, 'JUICE MERGE', {
+      fontFamily: 'sans-serif',
+      fontSize: '56px',
+      fontStyle: 'bold',
+      color: '#FF4D6D',
+    }).setOrigin(0.5).setStroke('#FFFFFF', 8);
+    mainTitle.setData('testid', 'start-title');
+    this.logoContainer.add(mainTitle);
+
+    // 3. Sparkling decorative icons
+    const starL = this.add.text(-195, -20, '✨', { fontSize: '28px' }).setOrigin(0.5);
+    const starR = this.add.text(195, -20, '✨', { fontSize: '28px' }).setOrigin(0.5);
+    this.logoContainer.add([starL, starR]);
+
+    // 4. Mascot Fruit Wobble (Strawberry & Watermelon)
+    if (this.textures.exists(fruitKey(1))) {
+      const mascot1 = this.add.image(-220, 10, fruitKey(1)).setDisplaySize(50, 50);
+      this.logoContainer.add(mascot1);
+      this.tweens.add({
+        targets: mascot1,
+        angle: { from: -10, to: 10 },
+        y: '-=6',
+        duration: 900,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
+
+    if (this.textures.exists(fruitKey(11))) {
+      const mascot2 = this.add.image(220, 10, fruitKey(11)).setDisplaySize(58, 58);
+      this.logoContainer.add(mascot2);
+      this.tweens.add({
+        targets: mascot2,
+        angle: { from: 8, to: -8 },
+        y: '-=8',
+        duration: 1100,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
+
+    // Gentle logo breathing animation
+    this.tweens.add({
+      targets: this.logoContainer,
+      y: cy - 6,
+      scaleX: 1.02,
+      scaleY: 1.02,
+      duration: 1800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+  }
+
   private startBgm(): void {
     if (!this.cache.audio.exists('bgm_main')) return;
-    if (this.sound.get('bgm_main')) return; // already playing
+    if (this.sound.get('bgm_main')) return;
     this.sound.play('bgm_main', { loop: true, volume: 0.4 });
   }
 
-  /** Lay the 12-fruit chain (cherry -> watermelon) in a horizontal row, small
-   *  sprites so the player previews the full merge line. Idempotent across
-   *  resizes: prior images are destroyed before rebuilding. */
   private drawFruitChain(cx: number, cy: number): void {
     for (const img of this.chainImages) img.destroy();
     this.chainImages = [];
+    this.chainBackdrop?.destroy();
+
     const n = 12;
-    const slot = 54; // fixed slot width; sprites scale to a uniform preview size
+    const maxChainW = Math.min(660, this.scale.width - 32);
+    const slot = maxChainW / n;
     const x0 = cx - (slot * (n - 1)) / 2;
+    const size = Math.min(42, slot - 4);
+
+    // Frosted Capsule Backdrop for fruit chain
+    this.chainBackdrop = this.add.graphics().setDepth(z.hud - 1);
+    this.chainBackdrop.fillStyle(0xFFFFFF, 0.90);
+    this.chainBackdrop.fillRoundedRect(cx - maxChainW / 2 - 8, cy - 26, maxChainW + 16, 52, 26);
+    this.chainBackdrop.lineStyle(2, 0xCBD5E1, 0.8);
+    this.chainBackdrop.strokeRoundedRect(cx - maxChainW / 2 - 8, cy - 26, maxChainW + 16, 52, 26);
+
     for (let tier = 0; tier < n; tier++) {
       const key = fruitKey(tier);
-      if (!this.textures.exists(key)) continue; // skip missing (dev pre-asset)
-      const size = 48; // uniform small preview size for the chain
+      if (!this.textures.exists(key)) continue;
       const img = this.add.image(x0 + tier * slot, cy, key)
         .setDisplaySize(size, size)
         .setDepth(z.hud)
-        .setAlpha(0.92);
+        .setAlpha(0.98);
       this.chainImages.push(img);
     }
   }
 
-  /** Large watermelon in the bottom-right corner at low alpha as ambient decor. */
   private drawCornerDecor(w: number, h: number): void {
     this.cornerImage?.destroy();
     const key = fruitKey(11); // watermelon
     if (!this.textures.exists(key)) return;
-    const size = fruitDiameter(11); // biggest tier, ~244
-    this.cornerImage = this.add.image(w - 8, h - 8, key)
+    const size = fruitDiameter(11);
+    this.cornerImage = this.add.image(w - 12, h - 12, key)
       .setOrigin(1, 1)
       .setDisplaySize(size * 0.9, size * 0.9)
       .setDepth(z.bg + 1)
-      .setAlpha(0.5);
+      .setAlpha(0.45);
   }
 }

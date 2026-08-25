@@ -50,7 +50,7 @@ describe('GC-03: merge 2 different-tier → null, no score change', () => {
   });
 });
 
-describe('GC-04: top tier — melon merges to watermelon; watermelon does not merge', () => {
+describe('GC-04: top tier — watermelon merges up to galaxy_watermelon (tier 14)', () => {
   it('two melons (tier 10) → watermelon (tier 11) + jackpot 100', () => {
     const e = new MergeEngine();
     const r = e.merge(10, 10);
@@ -61,32 +61,50 @@ describe('GC-04: top tier — melon merges to watermelon; watermelon does not me
     expect(e.state.score).toBe(100);
   });
 
-  it('two watermelons (tier 11) → null (max tier, no further merge)', () => {
+  it('two watermelons (tier 11) → dragonfruit (tier 12) + 150', () => {
+    const e = new MergeEngine();
+    const r = e.merge(11, 11);
+    expect(r).not.toBeNull();
+    expect(r!.tier).toBe(12);
+    expect(CHAIN12[12]).toBe('dragonfruit');
+    expect(r!.scoreGain).toBe(150);
+  });
+
+  it('two durians (tier 13) → galaxy_watermelon (tier 14) + 500', () => {
+    const e = new MergeEngine();
+    const r = e.merge(13, 13);
+    expect(r).not.toBeNull();
+    expect(r!.tier).toBe(14);
+    expect(CHAIN12[14]).toBe('galaxy_watermelon');
+    expect(r!.scoreGain).toBe(500);
+  });
+
+  it('two galaxy watermelons (tier 14) → null (max tier, no further merge)', () => {
     const e = new MergeEngine();
     const before = e.state.score;
-    expect(e.merge(11, 11)).toBeNull();
+    expect(e.merge(14, 14)).toBeNull();
     expect(e.state.score).toBe(before);
   });
 
-  it('CONFIG.maxTier is the watermelon index (11)', () => {
-    expect(CONFIG.maxTier).toBe(11);
-    expect(CHAIN12[CONFIG.maxTier]).toBe('watermelon');
+  it('CONFIG.maxTier is the galaxy_watermelon index (14)', () => {
+    expect(CONFIG.maxTier).toBe(14);
+    expect(CHAIN12[CONFIG.maxTier]).toBe('galaxy_watermelon');
   });
 });
 
 describe('GC-10: cumulative score = sum(scorePerTier) across merges', () => {
-  it('one merge per tier 0→11 yields total = sum(scorePerTier[1..11])', () => {
+  it('one merge per tier 0→14 yields total = sum(scorePerTier[1..14])', () => {
     const e = new MergeEngine();
     let expected = 0;
-    for (let k = 0; k <= 10; k++) {
+    for (let k = 0; k <= 13; k++) {
       const r = e.merge(k, k);
       expect(r).not.toBeNull();
       expect(r!.tier).toBe(k + 1);
       expected += SCORE_TIER[k + 1];
     }
     expect(e.state.score).toBe(expected);
-    // sum of [3,6,10,15,21,28,36,45,55,66,100]
-    expect(expected).toBe(385);
+    // sum of [3,6,10,15,21,28,36,45,55,66,100,150,250,500] = 1285
+    expect(expected).toBe(1285);
   });
 
   it('building one watermelon from a full binary merge tree scores every merge', () => {

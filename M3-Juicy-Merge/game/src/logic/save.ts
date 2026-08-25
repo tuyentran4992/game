@@ -5,6 +5,8 @@
 // Payload shape (DATA-MODEL §1.3): { best_score, schema_version }.
 // On load failure → default 0, never crash.
 
+import { getUnlockedMilestoneTiers } from './daily-challenge';
+
 /** Edge-side persistence + score reporting. The SDK is one implementation; tests
  *  inject a mock. Keeping this an interface means the logic module has no SDK import. */
 export interface SaveAdapter {
@@ -13,12 +15,13 @@ export interface SaveAdapter {
   sendScore(score: number): void;
 }
 
-/** Persisted save payload (M3-08 + Phase 3). Bumping schema_version enables migration later. */
+/** Persisted save payload (M3-08 + Phase 3 + Option A). Bumping schema_version enables migration later. */
 export interface SavePayload {
   best_score: number;
   unlocked_tiers?: number[];
   daily_completed_date?: string;
   daily_best_score?: number;
+  daily_streak_count?: number;
   schema_version: number;
 }
 
@@ -33,6 +36,7 @@ export class ScoreStore {
   unlockedTiers?: Set<number>;
   dailyCompletedDate?: string | null;
   dailyBestScore?: number;
+  dailyStreakCount = 0;
   private loaded = false;
 
   constructor(private readonly adapter: SaveAdapter) {}
@@ -48,6 +52,16 @@ export class ScoreStore {
       }
       this.dailyCompletedDate = data && typeof data.daily_completed_date === 'string' ? data.daily_completed_date : null;
       this.dailyBestScore = data && typeof data.daily_best_score === 'number' ? data.daily_best_score : 0;
+      this.dailyStreakCount = data && typeof data.daily_streak_count === 'number' ? data.daily_streak_count : 0;
+
+      // Đồng bộ các quả Thần Thoại nếu streak đã đạt mốc
+      if (this.dailyStreakCount > 0) {
+        const milestoneTiers = getUnlockedMilestoneTiers(this.dailyStreakCount);
+        const unlocked = this.getUnlockedTiers();
+        for (const t of milestoneTiers) {
+          unlocked.add(t);
+        }
+      }
     } catch (e) {
       // Corrupt storage / adapter error → start fresh, never crash (M3-08).
       console.warn('loadData failed, starting fresh', e);
@@ -55,6 +69,7 @@ export class ScoreStore {
       this.unlockedTiers = undefined;
       this.dailyCompletedDate = null;
       this.dailyBestScore = 0;
+      this.dailyStreakCount = 0;
     }
     this.loaded = true;
   }
@@ -89,6 +104,9 @@ export class ScoreStore {
     if (typeof this.dailyBestScore === 'number' && this.dailyBestScore > 0) {
       payload.daily_best_score = this.dailyBestScore;
     }
+    if (typeof this.dailyStreakCount === 'number' && this.dailyStreakCount > 0) {
+      payload.daily_streak_count = this.dailyStreakCount;
+    }
     try {
       return await this.adapter.saveData(payload);
     } catch (e) {
@@ -114,8 +132,14 @@ export class ScoreStore {
       if (typeof this.dailyBestScore === 'number' && this.dailyBestScore > 0) {
         payload.daily_best_score = this.dailyBestScore;
       }
+      if (typeof this.dailyStreakCount === 'number' && this.dailyStreakCount > 0) {
+        payload.daily_streak_count = this.dailyStreakCount;
+      }
       try {
-        await this.adapter.saveData(payload);
+        const saved = await this.adapter.saveData(payload);
+        if (!saved) {
+          console.warn('saveData returned false, keeping bestScore in session');
+        }
       } catch (e) {
         console.warn('saveData failed, keeping session best', e);
       }

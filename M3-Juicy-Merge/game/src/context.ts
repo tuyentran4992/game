@@ -4,7 +4,15 @@ import { MergeEngine } from './logic/merge-engine';
 import { ScoreStore, type SaveAdapter } from './logic/save';
 import { CONFIG } from './logic/config';
 import { checkNewFruitUnlocked, type FruitInfo } from './logic/album';
-import { getDailySeed, getTodayDateString, isDailyCompletedToday } from './logic/daily-challenge';
+import {
+  getDailySeed,
+  getTodayDateString,
+  isDailyCompletedToday,
+  getDailyDifficulty,
+  checkMilestoneJustUnlocked,
+  type MilestoneReward,
+  type DailyDifficulty,
+} from './logic/daily-challenge';
 
 /** SaveAdapter backed by the Playables SDK (BR-11). Injected into ScoreStore so
  *  the logic layer has no SDK import — tests inject a mock adapter instead. */
@@ -56,13 +64,21 @@ class GameContext {
   }
 
   /**
-   * Khởi động chế độ Daily Challenge.
+   * Lấy cấu hình độ khó hiện tại của Daily Challenge.
+   */
+  getCurrentDailyDifficulty(): DailyDifficulty {
+    return getDailyDifficulty(this.score.dailyStreakCount);
+  }
+
+  /**
+   * Khởi động chế độ Daily Challenge với độ khó tương ứng ngày hiện tại.
    */
   startDailyChallenge(): void {
     this.isDailyMode = true;
     const todayStr = getTodayDateString();
     const seed = getDailySeed(todayStr);
-    this.engine.setDailyMode(true);
+    const diff = this.getCurrentDailyDifficulty();
+    this.engine.setDailyMode(true, diff.fruitLimit);
     this.engine.reseed(seed);
     this.engine.startNewGame();
   }
@@ -77,13 +93,26 @@ class GameContext {
   }
 
   /**
-   * Đánh dấu hoàn thành Daily Challenge hôm nay.
+   * Đánh dấu hoàn thành Daily Challenge hôm nay và mở khóa phần thưởng mốc.
    */
-  async recordDailyVictory(score: number): Promise<void> {
+  async recordDailyVictory(score: number): Promise<{ milestoneReward: MilestoneReward | null; currentStreak: number }> {
     const todayStr = getTodayDateString();
+    const alreadyWonToday = this.isDailyCompletedToday();
+
+    let milestoneReward: MilestoneReward | null = null;
+    if (!alreadyWonToday) {
+      this.score.dailyStreakCount = (this.score.dailyStreakCount || 0) + 1;
+      milestoneReward = checkMilestoneJustUnlocked(this.score.dailyStreakCount);
+      if (milestoneReward) {
+        this.score.getUnlockedTiers().add(milestoneReward.tier);
+      }
+    }
+
     this.score.dailyCompletedDate = todayStr;
     this.score.dailyBestScore = Math.max(this.score.dailyBestScore ?? 0, score);
     await this.score.saveProgress();
+
+    return { milestoneReward, currentStreak: this.score.dailyStreakCount };
   }
 
   isDailyCompletedToday(): boolean {
