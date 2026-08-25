@@ -1,0 +1,22 @@
+{
+  "title": "Juicy Merge: Fruit Pop",
+  "short_desc": "Drop fruit, merge two of a kind into a bigger one! A juicy physics puzzle — grow the chain to a giant watermelon and set records.",
+  "genre": [
+    "Puzzle",
+    "Casual"
+  ],
+  "theme": "fruity kawaii merge",
+  "version": "0.1.0",
+  "publisher": {
+    "name": "ExcelToApp Games",
+    "contact_email": "games@exceltoapp.vn"
+  },
+  "thumbnails": {
+    "1:1": "thumbnail_1x1.png",
+    "9:16": "thumbnail_9x16.png",
+    "16:9": "thumbnail_16x9.png"
+  },
+  "preview_video": {
+    "16:9": "preview_16x9.mp4"
+  }
+}
