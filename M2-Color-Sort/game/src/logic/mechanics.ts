@@ -86,13 +86,42 @@ export function rampForLevel(cfg: MechanicsConfig, level: number): RampStep {
   return step;
 }
 
-// Chọn `count` màu palette cho level
+// ── Perceptual colour guard (DESIGN-SPEC §7 / AUDIT §B5-5): delta-E > 30, assoc §4.3.
+// CIE76 in L*a*b — "cấm dùng 2 màu quá giống nhau trong cùng level".
+function hexToLab(hex: string): { L: number; a: number; b: number } {
+  const raw = parseInt(hex.slice(1), 16);
+  const sr = ((raw >> 16) & 255) / 255;
+  const sg = ((raw >> 8) & 255) / 255;
+  const sb = (raw & 255) / 255;
+  const ls = (t: number) => (t > 0.04045 ? Math.pow((t + 0.055) / 1.055, 2.4) : t / 12.92);
+  const r = ls(sr), g = ls(sg), b = ls(sb);
+  let X = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047;
+  const Y = r * 0.2126 + g * 0.7152 + b * 0.0722;
+  let Z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883;
+  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  const fx = f(X), fy = f(Y), fz = f(Z);
+  return { L: 116 * fy - 16, a: 500 * (fx - fy), b: 200 * (fy - fz) };
+}
+
+function deltaE(hexA: string, hexB: string): number {
+  const A = hexToLab(hexA), B = hexToLab(hexB);
+  return Math.hypot(A.L - B.L, A.a - B.a, A.b - B.b);
+}
+
+/** DESIGN-SPEC §7: mỗi level chỉ dùng subset màu KHÔNG có cặp quá giống (delta-E > 30). */
 export function colorsForLevel(cfg: MechanicsConfig, level: number): PaletteColor[] {
   const step = rampForLevel(cfg, level);
   const need = step.colors;
   const out: PaletteColor[] = [];
-  for (let i = 0; i < need; i++) {
-    out.push(cfg.palette[i % cfg.palette.length]);
+  for (const c of cfg.palette) {
+    if (out.every((o) => deltaE(c.hex, o.hex) >= 30)) out.push(c);
+    if (out.length >= need) break;
+  }
+  // fallback an toàn nếu palette thiếu màu phân biệt (append theo thứ tự còn thiếu).
+  for (const c of cfg.palette) {
+    if (out.length >= need) break;
+    if (out.indexOf(c) >= 0) continue;
+    out.push(c);
   }
   return out;
 }

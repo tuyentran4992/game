@@ -9,6 +9,8 @@ import {
   drawHudCapsule,
   drawPourStream,
   drawHintArc,
+  drawMovesArrow,
+  drawSoundIcon,
   showGhostPreview,
   clearGhostPreview,
   sealTube,
@@ -18,11 +20,12 @@ import {
   TubeViews,
   GalaxyBgObjects,
 } from '../ui';
+import { LevelClearOverlay } from '../level-clear-overlay';
 import { ctx } from '../context';
 import { sdk } from '../sdk-instance';
 import { inputGate } from '../input-gate';
 import { showAdConfirm, showAdLoading, showToast } from '../ad-ux';
-import { AD_WATCHDOG_MS, canBuyExtraTube, hintGrant, raceTimeout } from '../logic/ad-pacing';
+import { AD_FLOW_TIMEOUT_MS, AD_WATCHDOG_MS, canBuyExtraTube, hintGrant, raceTimeout } from '../logic/ad-pacing';
 import { startBgmOnce } from '../bgm';
 import { MECHANICS } from '../logic/mechanics';
 import { computeBoardLayout, tubePosition, BoardLayout } from '../logic/layout';
@@ -37,6 +40,7 @@ import {
   isClean,
   moveCount as legalMoveCount,
   getCachedBoard,
+  prefetchBoard,
   BoardState,
 } from '../logic/color-sort';
 
@@ -54,7 +58,9 @@ export class GameplayScene extends Phaser.Scene {
   private selected: number | null = null;
   private levelLabel!: Phaser.GameObjects.Text;
   private moveLabel!: Phaser.GameObjects.Text;
-  private audioBtnText!: Phaser.GameObjects.Text;
+  private audioIconG!: Phaser.GameObjects.Graphics;
+  /** AUDIT §B5-4: in-scene level-clear overlay (board preserved). */
+  private clearOverlay: LevelClearOverlay | null = null;
   private bgObjects!: GalaxyBgObjects;
   private stuckTooltip: Phaser.GameObjects.Container | null = null;
   private isAnimating = false;
@@ -222,45 +228,45 @@ export class GameplayScene extends Phaser.Scene {
     this.levelLabel.setData('testid', 'level-label');
     this.hudObjects.push(this.levelLabel);
 
-    // 2. MOVES COUNTER
+    // 2. MOVES COUNTER (⤵ → vector arrow, AUDIT §B5-6)
     const moveW = 130, moveH = 46;
     const moveX = levelX + levelW / 2 + moveW / 2 + 12;
     this.hudObjects.push(drawHudCapsule(this, moveX, topY, moveW, moveH, color.primaryDark));
 
+    const moveIcon = drawMovesArrow(this, toColor(color.accent), 30)
+      .setPosition(moveX - 30, topY).setDepth(z.hud + 1);
+    this.hudObjects.push(moveIcon);
+
     this.moveLabel = this.add.text(
-      moveX,
+      moveX + 12,
       topY,
-      `⤵ ${this.board.moveCount}`,
+      `${this.board.moveCount}`,
       fontStyle(type.score, color.surface),
     ).setOrigin(0.5).setDepth(z.hud + 1);
     this.moveLabel.setShadow(0, 2, 'rgba(0,0,0,0.6)', 4, false, true);
     this.moveLabel.setData('testid', 'move-count');
     this.hudObjects.push(this.moveLabel);
 
-    // 3. AUDIO TOGGLE
+    // 3. AUDIO TOGGLE (🔊/🔇 → vector sound icon, AUDIT §B5-6)
     const audioW = 54, audioH = 46;
     const audioX = width - sp[4] - audioW / 2 - 8;
     const audioCapsule = drawHudCapsule(this, audioX, topY, audioW, audioH, color.accent);
     this.hudObjects.push(audioCapsule);
 
-    this.audioBtnText = this.add.text(
-      audioX,
-      topY,
-      synthAudio.isMuted() ? '🔇' : '🔊',
-      fontStyle(type.h2, color.surface),
-    ).setOrigin(0.5).setDepth(z.hud + 1);
-    this.audioBtnText.setData('testid', 'audio-toggle');
-    this.hudObjects.push(this.audioBtnText);
+    this.audioIconG = drawSoundIcon(this, toColor(color.surface), 30, synthAudio.isMuted())
+      .setPosition(audioX, topY).setDepth(z.hud + 1);
+    this.audioIconG.setData('testid', 'audio-toggle');
+    this.hudObjects.push(this.audioIconG);
 
     const audioZone = this.add.zone(audioX, topY, audioW, audioH).setDepth(z.hud + 2).setInteractive({ useHandCursor: true });
     audioZone.on('pointerdown', () => {
       // MỘT DÒNG: bus audio duy nhất (synth + sfx file) — DESIGN-SPEC §7
       synthAudio.setMuted(!synthAudio.isMuted());
-      this.audioBtnText.setText(synthAudio.isMuted() ? '🔇' : '🔊');
+      this.redrawAudioIcon();
       ctx.setMuted(synthAudio.isMuted());   // P0-2: mute sống qua reload
       synthAudio.playClick();
       this.tweens.add({
-        targets: [this.audioBtnText, audioCapsule],
+        targets: [this.audioIconG, audioCapsule],
         scale: 0.9,
         duration: dur.fast,
         yoyo: true,
@@ -270,6 +276,12 @@ export class GameplayScene extends Phaser.Scene {
     this.hudObjects.push(audioZone);
 
     this.renderSealPips(width);
+  }
+
+  /** Vẽ lại icon âm lượng (mute/unmute) vào graphics đã tồn tại (AUDIT §B5-6). */
+  private redrawAudioIcon() {
+    if (!this.audioIconG) return;
+    drawSoundIcon(this, toColor(color.surface), 30, synthAudio.isMuted(), this.audioIconG);
   }
 
   /** Dãy pip nhỏ dưới HUD: số ống đã SEAL / tổng số màu (2 kênh: hình + màu). */
@@ -669,7 +681,7 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private bumpMoveLabel() {
-    this.moveLabel.setText(`⤵ ${this.board.moveCount}`);
+    this.moveLabel.setText(`${this.board.moveCount}`);
     this.tweens.killTweensOf(this.moveLabel);
     this.moveLabel.setScale(1);
     this.tweens.add({
@@ -912,7 +924,7 @@ export class GameplayScene extends Phaser.Scene {
       for (const t of this.tubeUIs) unsealTube(this, t.views);
       this.sealedTubes.clear();
       synthAudio.resetSealScale(0);
-      this.moveLabel.setText(`⤵ 0`);
+      this.moveLabel.setText(`0`);
 
       // P0-3: số ống của board sau restart PHẢI khớp số tube UI. Nếu lệch
       // (ống thưởng), dựng lại toàn bộ board thay vì render vào UI không tồn tại.
@@ -963,7 +975,7 @@ export class GameplayScene extends Phaser.Scene {
     if (!grant.requiresAd) {
       if (this.applyHint()) {
         ctx.markFreeHintUsed();
-        showToast(this, 'First hint is free ✨ — next one needs a short ad');
+        showToast(this, 'First hint is free — next one needs a short ad');
         this.refreshRewardButtons();
       }
       return;
@@ -1030,7 +1042,7 @@ export class GameplayScene extends Phaser.Scene {
     this.clearHint();
     const hint = hintMove(this.board);
     if (!hint) {
-      this.showStuckTooltip('No moves left! Use ↺ Undo or ⟳ Restart 💡');
+      this.showStuckTooltip('No moves left! Use Undo or Restart');
       return false;
     }
 
@@ -1150,7 +1162,7 @@ export class GameplayScene extends Phaser.Scene {
     });
   }
 
-  private showStuckTooltip(msg = 'No moves left! Use ↺ Undo or ⟳ Restart 💡') {
+  private showStuckTooltip(msg = 'No moves left! Use Undo or Restart') {
     if (this.stuckTooltip) return;
     const { width, height } = this.scale;
     const y = height - sp[5] - 92;
@@ -1205,15 +1217,35 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private showTutorial(width: number, height: number) {
-    const t = this.add.text(width / 2, height * 0.36, 'Tap a tube to pour liquid ✨', fontStyle(type.body, color.surface))
-      .setOrigin(0.5).setDepth(z.tutorial).setAlpha(0);
-    t.setShadow(0, 2, color.shadow, 4, false, true);
+    // AUDIT §B5-1/§B5-7: upper clear space right ABOVE the board + dark backdrop so it
+    // never covers the tube mouths; wordWrap so it never clips at 320 px.
+    const boardTop = this.layout ? this.layout.startY : height * 0.3;
+    const y = Math.max(sp[4] + 64, boardTop - 46);
+    const wrapW = Math.min(width - 48, 460);
+    const msg = 'Tap a tube to pour liquid';
+
+    const t = this.add.text(0, 0, msg, {
+      ...fontStyle(type.body, color.surface),
+      fontStyle: type.body.weight,
+      wordWrap: { width: wrapW },
+    }).setOrigin(0.5);
+
+    const w = Math.min(t.width + sp[6], width - 40);
+    const h = t.height + sp[4];
+
+    const g = this.add.graphics().setDepth(z.tutorial);
+    g.fillStyle(toColor('#120D2C'), 0.92);
+    g.fillRoundedRect(-w / 2, -h / 2, w, h, radius.md);
+    g.lineStyle(1.5, toColor(color.accent), 0.55);
+    g.strokeRoundedRect(-w / 2, -h / 2, w, h, radius.md);
+
+    const root = this.add.container(width / 2, y, [g, t]).setDepth(z.tutorial).setAlpha(0);
     this.tweens.add({
-      targets: t,
+      targets: root,
       alpha: 1,
       duration: dur.base,
       onComplete: () => this.time.delayedCall(3000, () => {
-        this.tweens.add({ targets: t, alpha: 0, duration: dur.base, onComplete: () => t.destroy() });
+        this.tweens.add({ targets: root, alpha: 0, duration: dur.base, onComplete: () => root.destroy() });
       }),
     });
     ctx.tutorialSeen = true;
@@ -1232,7 +1264,7 @@ export class GameplayScene extends Phaser.Scene {
     synthAudio.playLevelClear(this.sealedTubes.size);
     this.playSfx('sfx_clear', 0.5);
 
-    // flash các ống đã seal + burst hạt neon từ giữa board
+    // flash các ống đã seal + burst hạt neon từ giữa board (finish moment preserved)
     this.tubeUIs.forEach((t, i) => {
       if (!this.sealedTubes.has(t.index)) return;
       this.tweens.add({
@@ -1256,22 +1288,70 @@ export class GameplayScene extends Phaser.Scene {
     const cy = this.layout ? this.layout.startY + this.layout.boardH / 2 - this.layout.tubeH / 2 : this.scale.height * 0.45;
     spawnNeonBurst(this, cx, cy, liquidPalette, 34, Math.min(280, this.scale.width * 0.55), z.tutorial);
 
-    ctx.onLevelClear(this.board.level, this.board.moveCount);
+    const level = this.board.level;
+    const moves = this.board.moveCount;
+    const prevBest = ctx.getBestMovesForLevel(level);      // trước khi onLevelClear cập nhật
+    const newBest = prevBest === 0 || moves < prevBest;     // "★ NEW BEST" moment (§B5-4)
+
+    ctx.onLevelClear(level, moves);
     void ctx.saveNow();   // P0-2: level clear → flush ngay (không chờ debounce)
 
-    // chuyển scene mượt (fade) — DESIGN-SPEC §5 A8
-    this.time.delayedCall(360, () => {
-      this.cameras.main.fadeOut(dur.base, 0, 0, 0);
-      this.time.delayedCall(dur.base, () => {
-        this.scene.start('LevelClearScene', {
-          level: this.board.level,
-          moves: this.board.moveCount,
-          optimal: this.board.optimalMoves,
-          best: ctx.getBestMovesForLevel(this.board.level),
-          seals: this.sealedTubes.size,
-        });
+    // AUDIT §B5-4: in-scene overlay ABOVE the board (no scene swap → board không biến mất);
+    // panel re-render & reflow on resize (fix clipped title / NEXT below fold).
+    this.time.delayedCall(300, () => {
+      this.clearOverlay = new LevelClearOverlay(this, {
+        level,
+        moves,
+        optimal: this.board.optimalMoves,
+        best: newBest ? moves : prevBest,
+        newBest,
+        seals: this.sealedTubes.size,
+        onNext: () => this.advanceToNext(level, moves),
+        onReplay: () => this.replayLevel(level),
       });
     });
+  }
+
+  /** NEXT LEVEL — interstitial pacing (AUDIT §B2-2/B2-3, M2-07) rồi sang level kế. */
+  private async advanceToNext(level: number, _moves: number) {
+    const now = Date.now();
+    // §B3: pre-generate level N+1 NGAY trong lúc overlay (CPU nhàn) → không freeze.
+    prefetchBoard(MECHANICS, level + 1);
+    const wantAd = MECHANICS.ad.interstitialAfterClear
+      && ctx.canShowInterstitial(level, now)
+      && sdk.isInterstitialAvailable();
+
+    if (wantAd) {
+      ctx.markInterstitialShown(now);
+      const spinner = showAdLoading(this, 'Ad loading…');
+      try {
+        await raceTimeout(
+          sdk.requestInterstitialAd(AD_FLOW_TIMEOUT_MS).then(() => true),
+          AD_FLOW_TIMEOUT_MS,
+          false,
+        );
+      } catch (e) {
+        console.warn('[ads] interstitial failed, continuing', e);
+      } finally {
+        spinner.destroy();
+      }
+    }
+
+    if (!this.scene.isActive()) return;
+    ctx.currentLevel = level + 1;
+    ctx.clearSession();          // P0-2: level mới → không resume board cũ
+    void ctx.saveNow();
+    this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
+    this.time.delayedCall(dur.scene, () => this.scene.start('GameplayScene'));
+    setTimeout(() => this.scene.start('GameplayScene'), dur.scene + 2500);
+  }
+
+  /** REPLAY — chơi lại ĐÚNG level vừa hoàn thành (board mới từ seed cố định). */
+  private replayLevel(level: number) {
+    ctx.currentLevel = level;
+    ctx.clearSession();
+    this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
+    this.time.delayedCall(dur.scene, () => this.scene.start('GameplayScene'));
   }
 
   private playSfx(key: string, volume = 0.35) {

@@ -25,6 +25,8 @@ export const color = {
   textOnPrimary: '#FFFFFF',
   overlay: '#000000',
   shadow: '#000000',
+  /** DESIGN-SPEC §7 — HUD text luôn có viền tối đọc trên galaxy biến đổi */
+  textStroke: 'rgba(11,11,30,0.72)',
 } as const;
 
 // Palette chất lỏng neon độ tương phản cao, 12 màu phân biệt cực rõ bằng mắt thường
@@ -113,9 +115,13 @@ export function fontStyle(token: { size: string; weight: string; lh: number }, c
   return {
     fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
     fontSize: token.size,
-    fontStyle: 'bold',
+    // AUDIT §B5-3: pass real numeric weight token (900/800/…) — trước đây bị ép 'bold'.
+    fontStyle: token.weight,
     color: colorStr,
     align: 'center',
+    // DESIGN-SPEC §7: HUD text luôn có viền đậm đọc trên galaxy / panel sáng.
+    stroke: color.textStroke,
+    strokeThickness: 3,
   } as Phaser.Types.GameObjects.Text.TextStyle;
 }
 

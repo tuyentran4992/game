@@ -3,7 +3,6 @@ import { Scale, AUTO } from 'phaser';
 import { sdk } from './sdk-instance';
 import { StartScene } from './scenes/Start';
 import { GameplayScene } from './scenes/Gameplay';
-import { LevelClearScene } from './scenes/LevelClear';
 import { ctx } from './context';
 import { inputGate } from './input-gate';
 import { synthAudio } from './audio';
@@ -88,7 +87,7 @@ const config: Phaser.Types.Core.GameConfig = {
   parent: 'game',
   scale: { mode: Scale.RESIZE, width: '100%', height: '100%' },
   backgroundColor: '#070512',
-  scene: [BootScene, StartScene, GameplayScene, LevelClearScene],
+  scene: [BootScene, StartScene, GameplayScene],
   render: { antialias: true, roundPixels: true },
 };
 
@@ -100,7 +99,7 @@ synthAudio.attachSoundManager(game.sound);
 synthAudio.setMuted(!sdk.isAudioEnabled());
 
 // ---- pause / mute pass-through tới ytgame.system.* (M2-11) ----
-const PAUSABLE = ['GameplayScene', 'StartScene', 'LevelClearScene'];
+const PAUSABLE = ['GameplayScene', 'StartScene'];
 
 // ---- B2 PRE-ROLL GATE: KHÔNG nhận tap trước khi game sẵn sàng / khi đang ad ----
 // Đóng cổng NGAY từ boot (màn loading + pre-roll của platform không ăn tap nào),

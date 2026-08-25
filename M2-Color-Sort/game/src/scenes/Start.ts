@@ -4,6 +4,7 @@ import {
   drawButton,
   drawGalaxyBg,
   drawTube,
+  drawBolt,
   renderLiquid,
   renderPourTransition,
   drawPourStream,
@@ -23,6 +24,14 @@ import { startBgmOnce } from '../bgm';
 const DEMO_SRC = ['#FF1493', '#00F0FF', '#00F0FF', '#00F0FF'];
 const DEMO_DST = ['#00F0FF'];
 const DEMO_POUR = 3;
+
+/** Layout metrics cho 1 viewport — fractions + min-height guard (AUDIT §B5-1). */
+interface StartMetric {
+  landscape: boolean; tablet: boolean; short: boolean; tubeFactor: number;
+  tubeW: number; tubeH: number; hintSize: number;
+  titleX: number; demoX: number; rightX: number;
+  titleY: number; demoY: number; hintY: number; btnY: number; capY: number;
+}
 
 export class StartScene extends Phaser.Scene {
   private bgObjects!: GalaxyBgObjects;
@@ -47,86 +56,18 @@ export class StartScene extends Phaser.Scene {
     const { width, height } = this.scale;
     this.bgObjects = drawGalaxyBg(this);
 
+    const m = this.metric(width, height);
+
     // 1. Logo / Title container (Crisp & Static, zero text scaling jitter)
-    this.titleContainer = this.add.container(width / 2, height * 0.2).setDepth(z.hud).setAlpha(0);
-
-    // vầng sáng neon phía sau tiêu đề (rẻ: 2 rounded rect ADD blend)
-    const titleGlow = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
-    titleGlow.fillStyle(toColor(color.primary), 0.16);
-    titleGlow.fillRoundedRect(-190, -52, 380, 108, 34);
-    titleGlow.fillStyle(toColor(color.accent), 0.1);
-    titleGlow.fillRoundedRect(-160, -34, 320, 72, 26);
-    this.titleContainer.add(titleGlow);
-
-    const title1 = this.add.text(0, -18, 'NEON SORT', fontStyle(type.display, color.surface))
-      .setOrigin(0.5);
-    title1.setShadow(0, 3, 'rgba(0,0,0,0.7)', 6, false, true);
-
-    const title2 = this.add.text(0, 30, '⚡ GALAXY POUR ⚡', fontStyle(type.h1, color.accent))
-      .setOrigin(0.5);
-    title2.setShadow(0, 2, color.accent, 10, false, true);
-
-    this.titleContainer.add([title1, title2]);
-
-    // Smooth single entrance transition
-    this.tweens.add({
-      targets: this.titleContainer,
-      alpha: 1,
-      duration: dur.slow,
-      ease: 'cubic.out',
-    });
-    // trôi nhẹ (neon "đang sống")
-    this.tweens.add({
-      targets: this.titleContainer,
-      y: height * 0.2 - 8,
-      duration: 2400,
-      yoyo: true,
-      repeat: -1,
-      ease: 'sine.inout',
-    });
-    this.tweens.add({
-      targets: titleGlow,
-      alpha: 0.55,
-      duration: 1800,
-      yoyo: true,
-      repeat: -1,
-      ease: 'sine.inout',
-    });
+    this.buildTitle(m, true);
 
     // 2. Demo ống nghiệm — vòng lặp ĐỔ + SEAL (dạy cơ chế trước khi bấm Play)
-    this.demoContainer = this.add.container(width / 2, height * 0.46).setDepth(z.actor).setScale(0.85).setAlpha(0);
-    this.demoTubes = [];
-
-    const tubeA = drawTube(this, 76, 180, 4);
-    tubeA.container.setPosition(-56, 0);
-    renderLiquid(tubeA, DEMO_SRC);
-    this.demoContainer.add(tubeA.container);
-    this.demoTubes.push(tubeA);
-
-    const tubeB = drawTube(this, 76, 180, 4);
-    tubeB.container.setPosition(56, 0);
-    renderLiquid(tubeB, DEMO_DST);
-    this.demoContainer.add(tubeB.container);
-    this.demoTubes.push(tubeB);
-
-    this.demoStreamG = this.add.graphics().setDepth(z.actor + 3);
-    this.demoContainer.add(this.demoStreamG);
-
-    // Smooth entrance
-    this.tweens.add({
-      targets: this.demoContainer,
-      scale: 1,
-      alpha: 1,
-      duration: 450,
-      delay: 100,
-      ease: 'back.out',
-      onComplete: () => this.runDemoCycle(),
-    });
+    this.buildDemo(m, true);
 
     // 3. Neon Play Button (data-testid: start-btn)
-    const { container } = drawButton(this, width / 2, height * 0.72, '▶ PLAY', {
+    const { container } = drawButton(this, m.rightX, m.btnY, 'PLAY', {
       testid: 'start-btn',
-      width: 270,
+      width: Math.min(270, width - 72),
       height: 72,
       variant: 'primary',
       glowColor: color.primary,
@@ -168,8 +109,8 @@ export class StartScene extends Phaser.Scene {
     // 4. Caption Level
     const startLevel = Math.max(1, ctx.currentLevel);
     this.caption = this.add.text(
-      width / 2,
-      height * 0.81,
+      m.rightX,
+      m.capY,
       `Start Level ${startLevel}`,
       fontStyle(type.small, color.accent),
     ).setOrigin(0.5).setDepth(z.hud).setAlpha(0);
@@ -184,13 +125,13 @@ export class StartScene extends Phaser.Scene {
     });
 
     // 5. Dòng gợi ý cơ chế (copy MỚI — English only)
+    // AUDIT §B5-1: wordWrap + responsive font size (>=14, min(18, w/22)).
     this.hintLine = this.add.text(
-      width / 2,
-      height * 0.61,
+      m.rightX,
+      m.hintY,
       'Pour a tube into one solid color to seal it',
-      fontStyle(type.small, color.surface),
+      this.hintStyle(width, m.hintSize),
     ).setOrigin(0.5).setDepth(z.hud).setAlpha(0);
-    this.hintLine.setShadow(0, 2, color.shadow, 4, false, true);
     this.tweens.add({
       targets: this.hintLine,
       alpha: 0.75,
@@ -232,6 +173,159 @@ export class StartScene extends Phaser.Scene {
     });
   }
 
+  /** Styling chung cho hint line: wordWrap + responsive size (AUDIT §B5-1). */
+  private hintStyle(w: number, fontSize: number): Phaser.Types.GameObjects.Text.TextStyle {
+    return {
+      ...fontStyle(type.small, color.surface),
+      fontStyle: type.small.weight,
+      fontSize: `${fontSize}px`,
+      wordWrap: { width: Math.min(w - 48, 460) },
+    };
+  }
+
+  // ==========================================================================
+  // RESPONSIVE START LAYOUT — fractions + min-height guard + landscape 2-col
+  // (AUDIT §B5-1: short viewport / rotation NEVER collides title/demo/btn/caption)
+  // ==========================================================================
+  private metric(w: number, h: number) {
+    const landscape = w > h;
+    const tablet = w >= 700;
+    const short = h < 560;
+    const tubeFactor = tablet
+      ? (landscape ? 1.2 : 1.55)
+      : (short ? (landscape ? 0.7 : 0.85) : 1.0);
+    const tubeW = Math.round(76 * tubeFactor);
+    const tubeH = Math.round(180 * tubeFactor);
+    const demoHalf = Math.round(tubeH * 0.5);
+    const hintSize = Math.max(14, Math.min(18, w / 22));
+    const cx = w / 2;
+
+    let titleX = cx, demoX = cx, rightX = cx;
+    let titleY: number, demoY: number, hintY: number, btnY: number, capY: number;
+
+    if (landscape) {
+      // 2 cột: title trên giữa · demo trái · (hint / PLAY / caption) phải
+      demoX = w * 0.3;
+      rightX = w * 0.68;
+      titleY = Math.max(h * 0.14, 34);
+      demoY = Math.max(h * 0.5, demoHalf + 40);
+      hintY = Math.max(h * 0.36, 84);
+      btnY = Math.min(h * 0.55, h - 60);
+      capY = Math.min(h - 26, btnY + 92);
+    } else {
+      titleY = Math.max(h * 0.16, 78);
+      demoY = titleY + demoHalf + (tablet ? 96 : 64);
+      hintY = demoY + demoHalf + 20;
+      btnY = Math.max(hintY + 70, h * 0.74);
+      capY = Math.min(h - 34, btnY + 82);
+    }
+
+    return {
+      landscape, tablet, short, tubeFactor, tubeW, tubeH, hintSize,
+      titleX, demoX, rightX, titleY, demoY, hintY, btnY, capY,
+    };
+  }
+
+  /** Title + glow + 2-tone (AUDIT §B5-1/§B5-3). `animate` = entrance tween lần đầu. */
+  private buildTitle(m: StartMetric, animate: boolean) {
+    if (this.titleContainer) this.titleContainer.destroy();
+    this.titleContainer = this.add.container(m.titleX, m.titleY).setDepth(z.hud);
+
+    // vầng sáng neon phía sau tiêu đề — RESPONSIVE (min(w-40, 460)), không còn band 380px cố định
+    const gw = Math.min(m.titleX * 2 - 40, 460);
+    const gh = Math.min(gw * 0.3, 116);
+    const titleGlow = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
+    titleGlow.fillStyle(toColor(color.primary), 0.16);
+    titleGlow.fillRoundedRect(-gw / 2, -gh / 2, gw, gh, 34);
+    titleGlow.fillStyle(toColor(color.accent), 0.1);
+    titleGlow.fillRoundedRect(-gw * 0.42, -gh * 0.34, gw * 0.84, gh * 0.68, 26);
+    this.titleContainer.add(titleGlow);
+
+    // Title chính — real weight 900 + stroke đậm (legibility) + 2-tone top-lit copy
+    const title1 = this.add.text(0, -20, 'NEON SORT', fontStyle(type.display, color.surface))
+      .setOrigin(0.5);
+    title1.setShadow(0, 3, 'rgba(0,0,0,0.7)', 6, false, true);
+    const title1Hi = this.add.text(0, -22, 'NEON SORT', fontStyle(type.display, color.primaryGrad))
+      .setOrigin(0.5).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.34);
+    this.titleContainer.add([title1, title1Hi]);
+
+    // Subtitle — no ⚡ emoji; vector bolt flanking (AUDIT §B5-6)
+    const title2 = this.add.text(0, 34, 'GALAXY POUR', fontStyle(type.h1, color.accent))
+      .setOrigin(0.5);
+    title2.setShadow(0, 2, color.accent, 10, false, true);
+    const boltL = drawBolt(this, toColor(color.accent), 26).setPosition(-title2.width / 2 - 20, 34);
+    const boltR = drawBolt(this, toColor(color.accent), 26).setPosition(title2.width / 2 + 20, 34);
+    this.titleContainer.add([title2, boltL, boltR]);
+
+    if (animate) this.titleContainer.setAlpha(0);
+    this.tweens.add({
+      targets: this.titleContainer,
+      alpha: 1,
+      duration: dur.slow,
+      ease: 'cubic.out',
+    });
+    // trôi nhẹ (neon "đang sống")
+    this.tweens.add({
+      targets: this.titleContainer,
+      y: m.titleY - 8,
+      duration: 2400,
+      yoyo: true,
+      repeat: -1,
+      ease: 'sine.inout',
+    });
+    this.tweens.add({
+      targets: titleGlow,
+      alpha: 0.55,
+      duration: 1800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'sine.inout',
+    });
+  }
+
+  /** Demo tubes — sized by metric (larger on tablets, AUDIT §B5-1). */
+  private buildDemo(m: StartMetric, animate: boolean) {
+    if (this.demoContainer) {
+      for (const t of this.demoTubes) this.tweens.killTweensOf(t.container);
+      this.demoContainer.destroy();
+    }
+    this.demoTubes = [];
+    this.demoContainer = this.add.container(m.demoX, m.demoY).setDepth(z.actor);
+
+    const offsetX = Math.round(56 * m.tubeFactor);
+
+    const tubeA = drawTube(this, m.tubeW, m.tubeH, 4);
+    tubeA.container.setPosition(-offsetX, 0);
+    renderLiquid(tubeA, DEMO_SRC);
+    this.demoContainer.add(tubeA.container);
+    this.demoTubes.push(tubeA);
+
+    const tubeB = drawTube(this, m.tubeW, m.tubeH, 4);
+    tubeB.container.setPosition(offsetX, 0);
+    renderLiquid(tubeB, DEMO_DST);
+    this.demoContainer.add(tubeB.container);
+    this.demoTubes.push(tubeB);
+
+    this.demoStreamG = this.add.graphics().setDepth(z.actor + 3);
+    this.demoContainer.add(this.demoStreamG);
+
+    if (animate) {
+      this.demoContainer.setScale(0.85).setAlpha(0);
+      this.tweens.add({
+        targets: this.demoContainer,
+        scale: 1,
+        alpha: 1,
+        duration: 450,
+        delay: 100,
+        ease: 'back.out',
+        onComplete: () => this.runDemoCycle(),
+      });
+    } else {
+      this.demoContainer.setScale(1).setAlpha(1);
+      this.runDemoCycle();
+    }
+  }
+
   private onResize(g: Phaser.Structs.Size) {
     // AUDIT P-1: guard khi đang teardown (không đụng vào object đã destroy).
     if (!this.bgObjects || !this.titleContainer) return;
@@ -239,21 +333,15 @@ export class StartScene extends Phaser.Scene {
     if (this.bgObjects.bgImage) this.bgObjects.bgImage.destroy();
     this.bgObjects = drawGalaxyBg(this);
 
-    this.tweens.killTweensOf(this.titleContainer);
-    this.titleContainer.setPosition(g.width / 2, g.height * 0.2);
-    this.tweens.add({
-      targets: this.titleContainer,
-      y: g.height * 0.2 - 8,
-      duration: 2400,
-      yoyo: true,
-      repeat: -1,
-      ease: 'sine.inout',
-    });
-
-    this.demoContainer.setPosition(g.width / 2, g.height * 0.46);
-    this.startBtn.setPosition(g.width / 2, g.height * 0.72);
-    this.caption.setPosition(g.width / 2, g.height * 0.81);
-    this.hintLine.setPosition(g.width / 2, g.height * 0.61);
+    const m = this.metric(g.width, g.height);
+    // §B5-1: re-flow toàn bộ (title glow responsive, demo size, hint font/wrap).
+    this.buildTitle(m, false);
+    this.buildDemo(m, false);
+    this.startBtn.setPosition(m.rightX, m.btnY);
+    this.caption.setPosition(m.rightX, m.capY);
+    this.hintLine.setPosition(m.rightX, m.hintY)
+      .setFontSize(m.hintSize)
+      .setWordWrapWidth(Math.min(g.width - 48, 460));
   }
 
   // ==========================================================================
@@ -267,7 +355,8 @@ export class StartScene extends Phaser.Scene {
     unsealTube(this, dst);
     renderLiquid(src, DEMO_SRC);
     renderLiquid(dst, DEMO_DST);
-    src.container.setPosition(-56, 0).setAngle(0);
+    const off = Math.abs(src.container.x);
+    src.container.setPosition(-off, 0).setAngle(0);
     this.demoStreamG.clear();
 
     const srcBase = DEMO_SRC.slice(0, DEMO_SRC.length - DEMO_POUR);
@@ -277,7 +366,7 @@ export class StartScene extends Phaser.Scene {
     // 1. Nghiêng về phía ống đích
     this.tweens.add({
       targets: src.container,
-      x: 56 - src.width * 0.66,
+      x: off - src.width * 0.66,
       y: -dst.height * 0.52,
       angle: 52,
       duration: 420,
@@ -312,7 +401,7 @@ export class StartScene extends Phaser.Scene {
             // 3. Ống đích về chỗ + SEAL (frost + ring khép + shimmer)
             this.tweens.add({
               targets: src.container,
-              x: -56,
+              x: -off,
               y: 0,
               angle: 0,
               duration: 320,

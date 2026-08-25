@@ -251,10 +251,19 @@ export function renderLiquid(views: TubeViews, contentIn: string[] | undefined |
 
   if (content.length > 0) {
     const topColInfo = getCachedLiquidColor(content[content.length - 1]);
-    ambientGlow.fillStyle(topColInfo.base, 0.18);
+    // AUDIT §B5-2: halo alpha proportional to fill (0.10 + 0.14*fill) — NOT binary.
+    const fillRatio = content.length / Math.max(1, capacity);
+    const haloAlpha = 0.10 + 0.14 * fillRatio;
+    ambientGlow.fillStyle(topColInfo.base, haloAlpha);
     ambientGlow.fillRoundedRect(-halfW - 5, -halfH - 5, tubeW + 10, tubeH + 10, 32);
-    ambientGlow.fillStyle(topColInfo.base, 0.25);
+    ambientGlow.fillStyle(topColInfo.base, 0.22);
     ambientGlow.fillEllipse(0, halfH - 2, tubeW * 0.75, 14);
+  } else {
+    // AUDIT §B5-2: empty tube never reads flat/dark — faint neutral rim glow (accent ~0.07).
+    ambientGlow.fillStyle(toColor(color.accent), 0.07);
+    ambientGlow.fillRoundedRect(-halfW - 5, -halfH - 5, tubeW + 10, tubeH + 10, 32);
+    ambientGlow.fillStyle(toColor(color.accent), 0.05);
+    ambientGlow.fillEllipse(0, halfH - 2, tubeW * 0.6, 10);
   }
 
   if (content.length === 0) {
@@ -801,6 +810,139 @@ export function drawToolbarIcon(
   return g;
 }
 
+// ============================================================================
+// 8b. VECTOR ICONS — thay emoji (🔊/🔇, ⤵, ★, ⚡) render đồng nhất mọi OS/WebView.
+//     AUDIT §B5-3/B5-6: drop emoji from HUD/panel strings; draw vector equivalents.
+// ============================================================================
+export function drawSoundIcon(
+  scene: Phaser.Scene,
+  col: number,
+  size = 30,
+  muted = false,
+  target?: Phaser.GameObjects.Graphics,
+): Phaser.GameObjects.Graphics {
+  const g = target ?? scene.add.graphics();
+  if (target) g.clear();
+  const s = size;
+  const lw = Math.max(2.4, s * 0.12);
+  const bodyW = s * 0.4, bodyH = s * 0.5;
+
+  g.fillStyle(col, 1);
+  // speaker box (left)
+  g.fillRoundedRect(-bodyW - s * 0.06, -bodyH / 2, bodyW * 0.5, bodyH, 2);
+  // cone flare (right)
+  g.fillTriangle(-bodyW * 0.5, -bodyH * 0.42, -bodyW * 0.5, bodyH * 0.42, bodyW * 0.14, 0);
+
+  if (muted) {
+    // X over the speaker
+    g.lineStyle(lw, col, 1);
+    const bx = bodyW * 0.14;
+    g.beginPath();
+    g.moveTo(bx + s * 0.02, -bodyH * 0.22);
+    g.lineTo(bx + s * 0.34, bodyH * 0.22);
+    g.moveTo(bx + s * 0.34, -bodyH * 0.22);
+    g.lineTo(bx + s * 0.02, bodyH * 0.22);
+    g.strokePath();
+  } else {
+    // two sound arcs
+    g.lineStyle(lw, col, 0.95);
+    g.beginPath();
+    g.arc(bodyW * 0.1, 0, bodyH * 0.3, -Math.PI / 2.5, Math.PI / 2.5, false);
+    g.strokePath();
+    g.beginPath();
+    g.arc(bodyW * 0.1, 0, bodyH * 0.56, -Math.PI / 3.2, Math.PI / 3.2, false);
+    g.strokePath();
+  }
+  return g;
+}
+
+export function drawMovesArrow(
+  scene: Phaser.Scene,
+  col: number,
+  size = 30,
+): Phaser.GameObjects.Graphics {
+  const g = scene.add.graphics();
+  const s = size;
+  const lw = Math.max(2.6, s * 0.12);
+
+  // gentle down-left curve
+  const startX = s * 0.12, startY = -s * 0.3;
+  const endX = -s * 0.08, endY = s * 0.18;
+  const ctrlX = -s * 0.3, ctrlY = -s * 0.02;
+
+  g.lineStyle(lw, col, 1);
+  g.beginPath();
+  g.moveTo(startX, startY);
+  const SEGS = 16;
+  for (let i = 1; i <= SEGS; i++) {
+    const t = i / SEGS;
+    const u = 1 - t;
+    const x = u * u * startX + 2 * u * t * ctrlX + t * t * endX;
+    const y = u * u * startY + 2 * u * t * ctrlY + t * t * endY;
+    g.lineTo(x, y);
+  }
+  g.strokePath();
+
+  // arrowhead pointing down-left
+  const ang = Math.atan2(ctrlY - endY, ctrlX - endX);
+  const ah = s * 0.26;
+  const lx = endX - Math.cos(ang - 0.6) * ah;
+  const ly = endY - Math.sin(ang - 0.6) * ah;
+  const rx = endX - Math.cos(ang + 0.6) * ah;
+  const ry = endY - Math.sin(ang + 0.6) * ah;
+  g.fillStyle(col, 1);
+  g.fillTriangle(endX, endY, lx, ly, rx, ry);
+  return g;
+}
+
+export function drawStar(
+  scene: Phaser.Scene,
+  col: number,
+  size = 30,
+  filled = true,
+): Phaser.GameObjects.Graphics {
+  const g = scene.add.graphics();
+  const R = size / 2;
+  const r = R * 0.4;
+  if (filled) g.fillStyle(col, 1);
+  else g.lineStyle(Math.max(2, size * 0.1), col, 0.7);
+
+  g.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const outer = i * 2 * (Math.PI / 5) - Math.PI / 2;
+    const inner = (i * 2 + 1) * (Math.PI / 5) - Math.PI / 2;
+    const px = Math.cos(outer) * R, py = Math.sin(outer) * R;
+    const qx = Math.cos(inner) * r, qy = Math.sin(inner) * r;
+    if (i === 0) g.moveTo(px, py);
+    else g.lineTo(px, py);
+    g.lineTo(qx, qy);
+  }
+  g.closePath();
+  if (filled) g.fillPath();
+  else g.strokePath();
+  return g;
+}
+
+export function drawBolt(
+  scene: Phaser.Scene,
+  col: number,
+  size = 30,
+): Phaser.GameObjects.Graphics {
+  const g = scene.add.graphics();
+  const s = size * 0.5;
+  g.fillStyle(col, 1);
+  g.beginPath();
+  g.moveTo(s * 0.22, -s);
+  g.lineTo(-s * 0.32, -s * 0.02);
+  g.lineTo(s * 0.03, -s * 0.02);
+  g.lineTo(-s * 0.22, s);
+  g.lineTo(s * 0.32, s * 0.02);
+  g.lineTo(-s * 0.03, s * 0.02);
+  g.closePath();
+  g.fillPath();
+  return g;
+}
+
 export interface ButtonOptions {
   width?: number;
   height?: number;
@@ -833,16 +975,35 @@ export function drawButton(
   g.fillRoundedRect(-width / 2 - 3, -height / 2 - 3, width + 6, height + 6, radiusVal + 3);
 
   if (variant === 'primary') {
+    // AUDIT §B5-3: remove the "2010 glossy gel" slab; use 1px inner top highlight +
+    // subtle vertical gradient + real neon glow (postFX blur 24) + 2px primaryDark border.
     g.fillStyle(toColor(color.primaryDark), 1);
-    g.fillRoundedRect(-width / 2, -height / 2 + 3, width, height, radiusVal);
+    g.fillRoundedRect(-width / 2, -height / 2, width, height, radiusVal);
+
     g.fillStyle(toColor(color.primary), 1);
     g.fillRoundedRect(-width / 2, -height / 2, width, height - 3, radiusVal);
 
-    g.fillStyle(toColor('#FFFFFF'), 0.25);
-    g.fillRoundedRect(-width / 2 + 8, -height / 2 + 2, width - 16, (height - 3) * 0.45, radiusVal - 2);
+    // subtle vertical gradient · top lit (primaryGrad, low alpha — NOT a gel slab)
+    g.fillStyle(toColor(color.primaryGrad), 0.26);
+    g.fillRoundedRect(-width / 2 + 6, -height / 2 + 6, width - 12, (height - 3) * 0.4, radiusVal - 4);
 
-    g.lineStyle(1.5, toColor('#FFFFFF'), 0.6);
+    // 1px inner top highlight
+    g.fillStyle(toColor('#FFFFFF'), 0.14);
+    g.fillRoundedRect(-width / 2 + 9, -height / 2 + 4, width - 18, 2, 1);
+
+    // 2px primaryDark bottom border (spec §3.5)
+    g.lineStyle(2, toColor(color.primaryDark), 1);
+    g.lineBetween(-width / 2 + 6, -height / 2 + height - 2, width / 2 - 6, -height / 2 + height - 2);
+
+    // fine neon hairline outline
+    g.lineStyle(1.5, toColor('#FFFFFF'), 0.26);
     g.strokeRoundedRect(-width / 2, -height / 2, width, height - 3, radiusVal);
+
+    // REAL neon glow — postFX blur 24 (glow.primary). WebGL only, no-op on Canvas.
+    const isWebGL = scene.game.renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer;
+    if (container.postFX && isWebGL) {
+      container.postFX.addGlow(toColor(glowHex), 0.55, 0, false, 0.15, glow.primary.blur);
+    }
   } else if (variant === 'ghost') {
     g.fillStyle(toColor('#120D2C'), 0.85);
     g.fillRoundedRect(-width / 2, -height / 2, width, height, radiusVal);
