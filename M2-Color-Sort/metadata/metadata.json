@@ -1,0 +1,22 @@
+{
+  "title": "Neon Sort: Galaxy Pour",
+  "short_desc": "Pour and sort vibrant glowing neon liquids into crystal glass tubes under cosmic starry skies. A relaxing physics color-sort puzzle with 500+ galaxy levels.",
+  "genre": [
+    "Puzzle",
+    "Casual"
+  ],
+  "theme": "neon galaxy color sort",
+  "version": "0.1.0",
+  "publisher": {
+    "name": "ExcelToApp Games",
+    "contact_email": "games@exceltoapp.vn"
+  },
+  "thumbnails": {
+    "1:1": "thumbnail_1x1.png",
+    "9:16": "thumbnail_9x16.png",
+    "16:9": "thumbnail_16x9.png"
+  },
+  "preview_video": {
+    "16:9": "preview_16x9.mp4"
+  }
+}
