@@ -73,6 +73,8 @@ export class GameplayScene extends Phaser.Scene {
   private dailyBannerText?: Phaser.GameObjects.Text;
   private dailyVictoryCelebrated = false;
   private cosmicVictoryCelebrated = false;
+  private isPromptingRefill = false;
+  private hasClaimedDailyExtraDrops = false;
 
   /** Deferred merge queue processed outside the Matter solver loop. */
   private pendingMerges: MergePlan[] = [];
@@ -348,6 +350,12 @@ export class GameplayScene extends Phaser.Scene {
     this.refreshDangerLine(nearDanger);
 
     if (hasDangerFruit) {
+      if (this.isPromptingRefill) {
+        this.dangerStartTime = null;
+        this.dangerCountdownText?.setAlpha(0);
+        return;
+      }
+
       if (this.dangerStartTime === null) {
         this.dangerStartTime = time;
         this.playSfx('sfx_danger');
@@ -645,15 +653,7 @@ export class GameplayScene extends Phaser.Scene {
     this.lastUiClickTime = this.time.now;
     if (this.gameOverTriggered) return;
     if (!ctx.engine.canSwap()) {
-      // Gentle reject wobble
-      this.tweens.add({
-        targets: this.swapButtonContainer,
-        x: { from: this.swapButtonBaseX - 5, to: this.swapButtonBaseX + 5 },
-        duration: 40,
-        yoyo: true,
-        repeat: 2,
-        onComplete: () => this.swapButtonContainer.setX(this.swapButtonBaseX),
-      });
+      this.promptRefillPowerups();
       return;
     }
 
@@ -686,15 +686,7 @@ export class GameplayScene extends Phaser.Scene {
     this.lastUiClickTime = this.time.now;
     if (this.gameOverTriggered || this.isShakingBucket) return;
     if (!ctx.engine.canShake()) {
-      // Gentle reject wobble
-      this.tweens.add({
-        targets: this.shakeButtonContainer,
-        x: { from: this.shakeButtonBaseX - 5, to: this.shakeButtonBaseX + 5 },
-        duration: 40,
-        yoyo: true,
-        repeat: 2,
-        onComplete: () => this.shakeButtonContainer.setX(this.shakeButtonBaseX),
-      });
+      this.promptRefillPowerups();
       return;
     }
 
@@ -734,6 +726,209 @@ export class GameplayScene extends Phaser.Scene {
       scaleX: { from: 0.95, to: 1 },
       scaleY: { from: 0.95, to: 1 },
       duration: dur.fast,
+      ease: 'Back.easeOut',
+    });
+  }
+
+  // --- Rewarded Ad Prompts & Rescue Power-ups ---------------------------------
+
+  private promptRefillPowerups(): void {
+    if (this.isPromptingRefill || this.gameOverTriggered) return;
+    this.isPromptingRefill = true;
+    const { width, height } = this.scale;
+    const cx = width / 2;
+    const cy = height / 2;
+
+    const backdrop = this.add.rectangle(cx, cy, width, height, 0x0F172A, 0.72)
+      .setDepth(z.overlay + 20).setInteractive();
+
+    const modal = this.add.container(cx, cy).setDepth(z.overlay + 21).setScale(0.85).setAlpha(0);
+    const cardW = Math.min(520, width - 40);
+    const cardH = 390;
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x000000, 0.28);
+    bg.fillRoundedRect(-cardW / 2, -cardH / 2 + 8, cardW, cardH, radius.lg);
+    bg.fillStyle(0xFFFFFF, 0.98);
+    bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, radius.lg);
+    bg.fillStyle(0x10B981, 1);
+    bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, 16, { tl: radius.lg, tr: radius.lg, bl: 0, br: 0 });
+    bg.lineStyle(2.5, 0x10B981, 0.9);
+    bg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, radius.lg);
+    modal.add(bg);
+
+    const icon = this.add.text(0, -cardH / 2 + 50, '🎁', { fontSize: '40px' }).setOrigin(0.5);
+    const title = this.add.text(0, -cardH / 2 + 95, 'REFILL POWER-UPS', {
+      fontFamily: 'sans-serif',
+      fontSize: '24px',
+      fontStyle: 'bold',
+      color: '#065F46',
+    }).setOrigin(0.5);
+
+    const desc = this.add.text(0, -cardH / 2 + 148, 'You are out of power-ups!\nWatch a short video to instantly receive\n+2 Swaps 🔄 & +2 Shakes 📳!', {
+      fontFamily: 'sans-serif',
+      fontSize: '15px',
+      fontStyle: 'bold',
+      align: 'center',
+      color: '#1E293B',
+    }).setOrigin(0.5);
+    modal.add([icon, title, desc]);
+
+    const btnW = cardW - 64;
+    const { container: watchBtn } = drawButton(this, 0, 50, '▶  WATCH AD (+2 🔄 & +2 📳)', {
+      variant: 'emerald',
+      width: btnW,
+      height: 60,
+      fontSize: 20,
+    });
+    modal.add(watchBtn);
+
+    const { container: cancelBtn } = drawButton(this, 0, 122, '✕  CANCEL', {
+      variant: 'ghost',
+      width: btnW,
+      height: 48,
+      fontSize: 17,
+    });
+    modal.add(cancelBtn);
+
+    const closeModal = (): void => {
+      this.tweens.add({
+        targets: modal,
+        scale: 0.85,
+        alpha: 0,
+        duration: dur.fast,
+        ease: 'Back.easeIn',
+        onComplete: () => {
+          backdrop.destroy();
+          modal.destroy();
+          this.isPromptingRefill = false;
+        },
+      });
+    };
+
+    cancelBtn.on('pointerdown', closeModal);
+    backdrop.on('pointerdown', closeModal);
+
+    watchBtn.on('pointerdown', async () => {
+      watchBtn.disableInteractive();
+      const success = await ctx.refillPowerupsViaAd();
+      if (success) {
+        closeModal();
+        this.updateHud();
+        this.floatPowerupPopup('+2 🔄 & +2 📳 ADDED!', cx, cy - 80, '#10B981');
+        playFireworksCelebration(this, 4, z.overlay + 30);
+      } else {
+        watchBtn.setInteractive({ useHandCursor: true });
+      }
+    });
+
+    this.tweens.add({
+      targets: modal,
+      scale: 1,
+      alpha: 1,
+      duration: dur.pop,
+      ease: 'Back.easeOut',
+    });
+  }
+
+  private showDailyExtraDropsModal(): void {
+    if (this.gameOverTriggered) return;
+    const { width, height } = this.scale;
+    const cx = width / 2;
+    const cy = height / 2;
+    const diff = ctx.getCurrentDailyDifficulty();
+    const needed = diff.targetScore - ctx.engine.state.score;
+
+    const backdrop = this.add.rectangle(cx, cy, width, height, 0x0F172A, 0.72)
+      .setDepth(z.overlay + 20).setInteractive();
+
+    const modal = this.add.container(cx, cy).setDepth(z.overlay + 21).setScale(0.85).setAlpha(0);
+    const cardW = Math.min(520, width - 40);
+    const cardH = 390;
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x000000, 0.28);
+    bg.fillRoundedRect(-cardW / 2, -cardH / 2 + 8, cardW, cardH, radius.lg);
+    bg.fillStyle(0xFFFFFF, 0.98);
+    bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, radius.lg);
+    bg.fillStyle(0xF59E0B, 1);
+    bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, 16, { tl: radius.lg, tr: radius.lg, bl: 0, br: 0 });
+    bg.lineStyle(2.5, 0xF59E0B, 0.9);
+    bg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, radius.lg);
+    modal.add(bg);
+
+    const icon = this.add.text(0, -cardH / 2 + 50, '📅', { fontSize: '40px' }).setOrigin(0.5);
+    const title = this.add.text(0, -cardH / 2 + 95, 'OUT OF DROPS!', {
+      fontFamily: 'sans-serif',
+      fontSize: '24px',
+      fontStyle: 'bold',
+      color: '#B45309',
+    }).setOrigin(0.5);
+
+    const desc = this.add.text(0, -cardH / 2 + 148, `You only need ${needed} pts to win Day ${diff.dayLevel}!\nWatch a short video to receive\n+15 EXTRA DROPS & save your streak?`, {
+      fontFamily: 'sans-serif',
+      fontSize: '15px',
+      fontStyle: 'bold',
+      align: 'center',
+      color: '#1E293B',
+    }).setOrigin(0.5);
+    modal.add([icon, title, desc]);
+
+    const btnW = cardW - 64;
+    const { container: watchBtn } = drawButton(this, 0, 50, '▶  +15 DROPS (Watch Ad)', {
+      variant: 'amber',
+      width: btnW,
+      height: 60,
+      fontSize: 20,
+    });
+    modal.add(watchBtn);
+
+    const { container: endBtn } = drawButton(this, 0, 122, '✕  END RUN', {
+      variant: 'ghost',
+      width: btnW,
+      height: 48,
+      fontSize: 17,
+    });
+    modal.add(endBtn);
+
+    const closeModal = (): void => {
+      this.tweens.add({
+        targets: modal,
+        scale: 0.85,
+        alpha: 0,
+        duration: dur.fast,
+        ease: 'Back.easeIn',
+        onComplete: () => {
+          backdrop.destroy();
+          modal.destroy();
+        },
+      });
+    };
+
+    endBtn.on('pointerdown', () => {
+      closeModal();
+      this.triggerGameOver();
+    });
+
+    watchBtn.on('pointerdown', async () => {
+      watchBtn.disableInteractive();
+      const success = await ctx.grantDailyExtraDropsViaAd();
+      if (success) {
+        this.hasClaimedDailyExtraDrops = true;
+        closeModal();
+        this.updateHud();
+        this.floatPowerupPopup('+15 DROPS ADDED! 🎯', cx, cy - 80, '#F59E0B');
+        playFireworksCelebration(this, 4, z.overlay + 30);
+      } else {
+        watchBtn.setInteractive({ useHandCursor: true });
+      }
+    });
+
+    this.tweens.add({
+      targets: modal,
+      scale: 1,
+      alpha: 1,
+      duration: dur.pop,
       ease: 'Back.easeOut',
     });
   }
@@ -1153,7 +1348,12 @@ export class GameplayScene extends Phaser.Scene {
     if (ctx.isDailyMode && ctx.engine.state.dailyDropsRemaining <= 0) {
       this.time.delayedCall(2000, () => {
         if (!this.gameOverTriggered) {
-          this.triggerGameOver();
+          const diff = ctx.getCurrentDailyDifficulty();
+          if (ctx.engine.state.score < diff.targetScore && !this.hasClaimedDailyExtraDrops) {
+            this.showDailyExtraDropsModal();
+          } else {
+            this.triggerGameOver();
+          }
         }
       });
     }

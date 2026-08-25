@@ -28,6 +28,10 @@ class GameContext {
   readonly score: ScoreStore;
   isDailyMode = false;
 
+  // Smart Interstitial Cooldown Tracker
+  private lastInterstitialTime = 0;
+  private gameplayStartTime = 0;
+
   constructor() {
     // Seed from config (M3-04): deterministic when set, else default 1.
     const seed = CONFIG.seed ?? 1;
@@ -75,6 +79,7 @@ class GameContext {
    */
   startDailyChallenge(): void {
     this.isDailyMode = true;
+    this.recordGameplayStart();
     const todayStr = getTodayDateString();
     const seed = getDailySeed(todayStr);
     const diff = this.getCurrentDailyDifficulty();
@@ -88,6 +93,7 @@ class GameContext {
    */
   startClassicMode(): void {
     this.isDailyMode = false;
+    this.recordGameplayStart();
     this.engine.setDailyMode(false);
     this.startNewTurn();
   }
@@ -122,6 +128,7 @@ class GameContext {
   /** Start a fresh turn on Retry (M3-04): a brand-new random seed for run variety
    *  + a clean engine reset (score=0, playCount=0, continue available again). */
   startNewTurn(): void {
+    this.recordGameplayStart();
     if (this.isDailyMode) {
       this.startDailyChallenge();
       return;
@@ -129,6 +136,67 @@ class GameContext {
     const seed = (Math.floor(Math.random() * 0x100000000)) >>> 0;
     this.engine.reseed(seed);
     this.engine.startNewGame();
+  }
+
+  // --- Rewarded Ad Placements ------------------------------------------------
+
+  /**
+   * Xem quảng cáo để bơm thêm +2 lượt Swap và +2 lượt Shake ngay trong ván chơi.
+   */
+  async refillPowerupsViaAd(): Promise<boolean> {
+    const earned = await this.sdk.requestRewardedAd('powerup_refill');
+    if (earned) {
+      this.engine.powerups.swapCount += 2;
+      this.engine.powerups.shakeCount += 2;
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Xem quảng cáo để nhân đôi điểm số cuối trận (2X Final Score).
+   */
+  async doubleFinalScoreViaAd(currentScore: number): Promise<number | null> {
+    const earned = await this.sdk.requestRewardedAd('double_score');
+    if (earned) {
+      const doubled = currentScore * 2;
+      this.engine.state.score = doubled;
+      await this.onGameOver(doubled);
+      return doubled;
+    }
+    return null;
+  }
+
+  /**
+   * Xem quảng cáo nhận thêm +15 lượt thả trong Daily Challenge khi hết lượt.
+   */
+  async grantDailyExtraDropsViaAd(): Promise<boolean> {
+    const earned = await this.sdk.requestRewardedAd('daily_extra_drops');
+    if (earned) {
+      this.engine.state.dailyDropsRemaining += 15;
+      return true;
+    }
+    return false;
+  }
+
+  // --- Smart Interstitial Cooldown ------------------------------------------
+
+  recordGameplayStart(): void {
+    this.gameplayStartTime = Date.now();
+  }
+
+  /**
+   * Kích hoạt Interstitial thông minh nếu đã chơi >= 40s và cách lần ad trước >= 80s.
+   */
+  async triggerSmartInterstitial(): Promise<void> {
+    const now = Date.now();
+    const playedDuration = now - this.gameplayStartTime;
+    const cooldownDuration = now - this.lastInterstitialTime;
+
+    if (playedDuration >= 40000 && cooldownDuration >= 80000) {
+      this.lastInterstitialTime = now;
+      await this.sdk.requestInterstitialAd();
+    }
   }
 }
 

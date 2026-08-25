@@ -128,23 +128,22 @@ export class GameOverScene extends Phaser.Scene {
     panel.add(bestVal);
     bestVal.setData('testid', 'best-score');
 
-    // 4. Buttons (Playgama 3D Candy Buttons)
-    const canContinue = ctx.engine.canContinue();
+    // 4. Action Buttons (Playgama 3D Candy Buttons)
     const btnW = panelW - 64;
-    const btnH = 74;
+    const canContinue = ctx.engine.canContinue();
 
     if (canContinue) {
-      const continueY = 60;
-      const retryY = 150;
-      const homeY = 235;
+      const continueY = 35;
+      const retryY = 125;
+      const homeY = 210;
 
-      const res = drawButton(this, 0, continueY, 'CONTINUE', {
+      const res = drawButton(this, 0, continueY, 'CONTINUE (Watch Ad)', {
         testid: 'continue-btn',
         variant: 'primary',
         icon: '▶',
         width: btnW,
-        height: btnH,
-        fontSize: 24,
+        height: 70,
+        fontSize: 23,
       });
       this.continueBtn = res;
       panel.add(res.container);
@@ -155,7 +154,7 @@ export class GameOverScene extends Phaser.Scene {
         variant: 'amber',
         icon: '🔄',
         width: btnW,
-        height: btnH,
+        height: 70,
         fontSize: 24,
       });
       this.retryBtn = retryBtn;
@@ -171,22 +170,23 @@ export class GameOverScene extends Phaser.Scene {
         fontSize: 20,
       });
       panel.add(homeBtn);
-      homeBtn.on('pointerdown', () => {
+      homeBtn.on('pointerdown', async () => {
+        await ctx.triggerSmartInterstitial();
         this.scene.stop('GameplayScene');
         this.scene.stop('GameOverScene');
         this.scene.start('StartScene');
       });
     } else {
-      const retryY = 80;
-      const homeY = 175;
+      const retryY = 65;
+      const homeY = 160;
 
       const { container: retryBtn } = drawButton(this, 0, retryY, 'PLAY AGAIN', {
         testid: 'retry-btn',
         variant: 'amber',
         icon: '🔄',
         width: btnW,
-        height: btnH,
-        fontSize: 24,
+        height: 74,
+        fontSize: 25,
       });
       this.retryBtn = retryBtn;
       panel.add(retryBtn);
@@ -201,7 +201,8 @@ export class GameOverScene extends Phaser.Scene {
         fontSize: 21,
       });
       panel.add(homeBtn);
-      homeBtn.on('pointerdown', () => {
+      homeBtn.on('pointerdown', async () => {
+        await ctx.triggerSmartInterstitial();
         this.scene.stop('GameplayScene');
         this.scene.stop('GameOverScene');
         this.scene.start('StartScene');
@@ -209,22 +210,14 @@ export class GameOverScene extends Phaser.Scene {
     }
 
     panel.setScale(0.85).setAlpha(0);
-    const reveal = (): void => {
-      if (this.sys.settings.status >= Phaser.Scenes.SHUTDOWN) return;
-      this.input.enabled = true;
-      this.tweens.add({
-        targets: panel,
-        scale: 1, alpha: 1,
-        duration: dur.base, ease: 'Back.easeOut',
-      });
-    };
-
-    if (ctx.engine.shouldShowInterstitial()) {
-      this.input.enabled = false;
-      void ctx.sdk.requestInterstitialAd().finally(reveal);
-    } else {
-      reveal();
-    }
+    this.input.enabled = true;
+    this.tweens.add({
+      targets: panel,
+      scale: 1,
+      alpha: 1,
+      duration: dur.base,
+      ease: 'Back.easeOut',
+    });
   }
 
   private showRecordBadge(panel: Phaser.GameObjects.Container, y: number): void {
@@ -273,7 +266,8 @@ export class GameOverScene extends Phaser.Scene {
     });
   }
 
-  private onRetry(): void {
+  private async onRetry(): Promise<void> {
+    await ctx.triggerSmartInterstitial();
     ctx.startNewTurn();
     this.scene.start('GameplayScene');
   }

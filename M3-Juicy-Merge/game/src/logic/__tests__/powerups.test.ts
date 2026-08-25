@@ -95,4 +95,22 @@ describe('Powerups Logic: Reward evaluation', () => {
     expect(Number.isFinite(impulse1.fx)).toBe(true);
     expect(Number.isFinite(impulse1.fy)).toBe(true);
   });
+
+  it('refill powerups adds +2 swap and +2 shake to depleted state', () => {
+    const state = createInitialPowerupState();
+    // Deplete counts
+    consumeSwap(state);
+    consumeSwap(state);
+    consumeShake(state);
+    expect(state.swapCount).toBe(0);
+    expect(state.shakeCount).toBe(0);
+
+    // Simulate ad refill
+    grantSwap(state, 2);
+    grantShake(state, 2);
+    expect(state.swapCount).toBe(2);
+    expect(state.shakeCount).toBe(2);
+    expect(canSwapFruit(state)).toBe(true);
+    expect(canShakeBucket(state)).toBe(true);
+  });
 });
