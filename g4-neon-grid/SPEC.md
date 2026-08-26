@@ -208,6 +208,7 @@ Achievement popup (khi mới unlock):
 - **Stack:** Phaser 3 WebGL · TypeScript · Vite · pnpm workspace.
 - **Resolution:** 720×1280 (portrait 9:16), Scale.FIT, auto-center.
 - **Font:** Poppins (Google Fonts) — loaded in index.html.
+- **Theme architecture:** `packages/core/src/theme.ts` = interface `GameTheme`. Mỗi game tự implement trong `src/ui/theme.ts`. Component nhận `theme` qua parameter. **KHÔNG import `@game/core/tokens` trong scene** — chỉ import từ `src/ui/theme.ts`.
 - **SDK:** `@game/sdk` handler — initialize before gameReady.
 - **Save:** `@game/sdk.saveData({ score, achievements, skins, daily, ... })` + localStorage fallback.
 - **Daily seed:** `seed = dateToSeed(new Date())` — deterministic, same for all players.

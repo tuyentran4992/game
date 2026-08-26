@@ -1,25 +1,21 @@
 # M4: DESIGN-SPEC — "Neon Grid" (Block Puzzle · Neon Cyberpunk)
 
-> **Tầng 2 (per-module).** THAM CHIẾU `docs/DESIGN-SYSTEM.md` (tầng 1 chung) cho token cơ bản. File này giữ: layout màn cụ thể + art-theme Neon Cyberpunk + bố cục các màn + data-testid.
-> **Kiến trúc mới:** `packages/core/src/tokens.ts` = code implementation của design system. Token mới trong `src/ui/theme.ts` override cho game.
-> Cập nhật: 2026-08-26 · Art-theme: **NEON CYBERPUNK** (nền tối, khối neon phát sáng, grid cyan).
+> **Tầng 2 (per-module).** Layout màn cụ thể + art-theme Neon Cyberpunk + bố cục + data-testid.
+> **Kiến trúc theme:** `packages/core/src/theme.ts` = interface `GameTheme`. Mỗi game tự tạo `src/ui/theme.ts` implement interface này. Component nhận `theme` qua parameter.
+> **Cập nhật:** 2026-08-26 · Art-theme: **NEON CYBERPUNK** (nền tối, khối neon phát sáng, grid cyan).
 
 ---
 
 ## 1. DESIGN TOKENS
 
-### 1.1 Kiến trúc theme (QUAN TRỌNG — áp dụng cho M5+)
+### 1.1 Kiến trúc theme (QUAN TRỌNG — cho mọi game)
 - **Interface chung:** `packages/core/src/theme.ts` → `GameTheme` — định nghĩa cấu trúc theme.
-- **Mỗi game tự tạo theme riêng:** `src/ui/theme.ts` → implement `GameTheme` với màu sắc, font, gradient của game đó.
+- **Mỗi game tự tạo theme riêng:** `src/ui/theme.ts` → implement `GameTheme`.
 - **Component nhận theme qua parameter:** `Button`, `Panel`, `Modal`, `ScoreText` đều có `theme?: GameTheme`.
 - **Fallback:** nếu không truyền `theme`, component dùng giá trị mặc định từ `@game/core/tokens`.
-- **KHÔNG import** `@game/core/tokens` trong scene game — chỉ import từ game's theme riêng.
+- **CẤM import `@game/core/tokens` trong scene** — chỉ import từ game's theme riêng.
 
-### 1.2 Tham chiếu
-- **Token chung (fallback):** `packages/core/src/tokens.ts` — giá trị generic, không game-specific.
-- **Theme M4:** `g4-neon-grid/src/ui/theme.ts` — implement `GameTheme` với palette neon cyan.
-
-### 1.2 Theme override (Neon Grid)
+### 1.2 Theme Neon Grid (M4)
 | Token | Giá trị | Ghi chú |
 |-------|---------|---------|
 | `bg` | `#0a0a1a` | Deep navy-black |
