@@ -1,0 +1,148 @@
+/**
+ * Neon Grid — Phaser Render Adapter
+ *
+ * Thin layer: converts game logic state → Phaser objects.
+ * All game logic lives in src/logic/ (pure TS, no Phaser).
+ */
+
+import Phaser from 'phaser';
+import { GRID_SIZE, type Grid, type Shape, type Position } from '../logic/board';
+import { theme, getBlockColor } from '../ui/theme';
+
+const CELL = 64;        // px per cell
+const PAD = 4;          // px gap between cells
+const GRID_PX = CELL * GRID_SIZE + PAD * (GRID_SIZE - 1);
+const BORDER_R = 6;     // cell corner radius
+
+export class GridRenderer {
+  private scene: Phaser.Scene;
+  private graphics: Phaser.GameObjects.Graphics;
+  private x: number;
+  private y: number;
+
+  constructor(scene: Phaser.Scene, x: number, y: number) {
+    this.scene = scene;
+    this.x = x;
+    this.y = y;
+    this.graphics = scene.add.graphics();
+  }
+
+  /** Draw the full grid background */
+  drawBackground(): void {
+    const g = this.graphics;
+    const w = GRID_PX;
+    const h = GRID_PX;
+
+    // Grid background
+    g.fillStyle(theme.gridBg, 1);
+    g.fillRoundedRect(this.x, this.y, w, h, 8);
+
+    // Grid lines (subtle)
+    for (let i = 0; i <= GRID_SIZE; i++) {
+      const pos = this.x + i * (CELL + PAD);
+      g.lineStyle(1, theme.gridLine, 0.3);
+      // Vertical
+      g.lineBetween(pos, this.y, pos, this.y + h);
+      // Horizontal
+      g.lineBetween(this.x, this.y + i * (CELL + PAD), this.x + w, this.y + i * (CELL + PAD));
+    }
+
+    // Border glow
+    g.lineStyle(2, theme.gridLineGlow, 0.15);
+    g.strokeRoundedRect(this.x, this.y, w, h, 8);
+  }
+
+  /** Draw the grid state */
+  drawGrid(grid: Grid): void {
+    const g = this.graphics;
+    for (let r = 0; r < GRID_SIZE; r++) {
+      for (let c = 0; c < GRID_SIZE; c++) {
+        const val = grid[r][c];
+        if (val === null) continue;
+
+        const cx = this.x + c * (CELL + PAD);
+        const cy = this.y + r * (CELL + PAD);
+        const color = getBlockColor(val);
+
+        // Glow
+        g.fillStyle(color.glow, 0.2);
+        g.fillRoundedRect(cx - 2, cy - 2, CELL + 4, CELL + 4, BORDER_R + 2);
+
+        // Block fill
+        g.fillStyle(color.fill, 0.9);
+        g.fillRoundedRect(cx, cy, CELL, CELL, BORDER_R);
+
+        // Inner highlight (top edge)
+        g.fillStyle(0xffffff, 0.15);
+        g.fillRoundedRect(cx + 3, cy + 2, CELL - 6, CELL / 2, { tl: BORDER_R - 2, tr: BORDER_R - 2, bl: 0, br: 0 });
+      }
+    }
+  }
+
+  /** Draw a ghost (preview) of where a shape would be placed */
+  drawGhost(shape: Shape, pos: Position, grid: Grid): void {
+    const g = this.graphics;
+    const color = getBlockColor(shape.color);
+
+    for (let r = 0; r < shape.cells.length; r++) {
+      for (let c = 0; c < shape.cells[r].length; c++) {
+        if (shape.cells[r][c] === 0) continue;
+        const gridRow = pos.row + r;
+        const gridCol = pos.col + c;
+        if (gridRow >= GRID_SIZE || gridCol >= GRID_SIZE) continue;
+        if (grid[gridRow][gridCol] !== null) continue;
+
+        const cx = this.x + gridCol * (CELL + PAD);
+        const cy = this.y + gridRow * (CELL + PAD);
+
+        g.fillStyle(color.glow, 0.15);
+        g.fillRoundedRect(cx, cy, CELL, CELL, BORDER_R);
+        g.lineStyle(2, color.glow, 0.4);
+        g.strokeRoundedRect(cx, cy, CELL, CELL, BORDER_R);
+      }
+    }
+  }
+
+  /** Draw highlight animation for cleared cells */
+  drawClearHighlight(rows: number[], cols: number[], progress: number): void {
+    const g = this.graphics;
+    const alpha = 1 - progress;
+
+    for (const r of rows) {
+      const cy = this.y + r * (CELL + PAD);
+      g.fillStyle(0x00f5ff, alpha * 0.5);
+      g.fillRoundedRect(this.x, cy, GRID_PX, CELL, 4);
+    }
+    for (const c of cols) {
+      const cx = this.x + c * (CELL + PAD);
+      g.fillStyle(0x00f5ff, alpha * 0.5);
+      g.fillRoundedRect(cx, this.y, CELL, GRID_PX, 4);
+    }
+  }
+
+  /** Convert screen coordinates to grid position */
+  screenToGrid(screenX: number, screenY: number): Position | null {
+    const col = Math.floor((screenX - this.x) / (CELL + PAD));
+    const row = Math.floor((screenY - this.y) / (CELL + PAD));
+    if (row < 0 || row >= GRID_SIZE || col < 0 || col >= GRID_SIZE) return null;
+    return { row, col };
+  }
+
+  /** Get grid pixel position for a cell */
+  gridToPixel(row: number, col: number): { x: number; y: number } {
+    return {
+      x: this.x + col * (CELL + PAD) + CELL / 2,
+      y: this.y + row * (CELL + PAD) + CELL / 2,
+    };
+  }
+
+  clear(): void {
+    this.graphics.clear();
+  }
+
+  destroy(): void {
+    this.graphics.destroy();
+  }
+}
+
+export { CELL, GRID_PX };

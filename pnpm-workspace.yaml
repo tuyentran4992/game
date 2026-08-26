@@ -1,0 +1,5 @@
+packages:
+  - 'packages/*'
+  - 'g4-*'
+allowBuilds:
+  esbuild: true

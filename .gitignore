@@ -1,28 +1,26 @@
-# dependencies
+# Dependencies
 node_modules/
+.pnpm-store/
 
-# build artifacts
+# Build output
 dist/
 build/
 
-# python
-__pycache__/
-*.pyc
-.venv/
-.Python
+# OS
+.DS_Store
+Thumbs.db
 
-# env & secrets
-.env
-*.env
-*.log
-
-# editor / OS
+# IDE
 .vscode/
 .idea/
-.DS_Store
 
-# QA / cache temp
-cache/
-*.bak
-# AI-asset cache
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
 .gen_cache/
+
+# Environment
+.env
+.env.local

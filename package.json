@@ -1,0 +1,13 @@
+{
+  "name": "game-factory",
+  "private": true,
+  "scripts": {
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter g4-* dev"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

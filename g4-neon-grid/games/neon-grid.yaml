@@ -1,0 +1,30 @@
+# Neon Grid — Block Puzzle
+# Game config for pipeline
+
+game:
+  id: neon-grid
+  name: "Neon Grid"
+  description: "Neon block puzzle — place blocks, clear lines, beat your high score!"
+  type: puzzle
+  orientation: portrait
+  target: 13+
+
+grid:
+  size: 8
+  cell: 64
+  padding: 4
+
+pieces:
+  count: 3
+  per_turn: 3
+  colors: 7
+
+scoring:
+  line_base: 100
+  combo_multiplier: 0.5
+  level_threshold: 500
+
+ads:
+  interstitial: game_over
+  rewarded: hint
+  pre_roll: true
