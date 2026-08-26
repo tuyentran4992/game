@@ -6,9 +6,9 @@
 //
 // Tier convention is 0-based (0 = cherry ... 11 = watermelon).
 
-import Phaser from 'phaser';
-import { color, toColor } from '../tokens';
-import { fruitKey } from '../assets';
+import Phaser from "phaser";
+import { color, toColor } from "../tokens";
+import { fruitKey } from "../assets";
 
 /** Sprite diameter (world px) per tier 0..14 — DESIGN-SPEC (48 → 320). */
 export const FRUIT_SIZES: readonly number[] = [
@@ -17,14 +17,26 @@ export const FRUIT_SIZES: readonly number[] = [
 
 /** Fallback fill color per tier (DESIGN-SPEC) for the geometric circle. */
 export const FRUIT_COLORS: readonly string[] = [
-  '#D32F2F', '#FF5C8A', '#9C27B0', '#FF9800', '#C62828', '#F57C00',
-  '#E53935', '#E2D24A', '#FFB6C1', '#FDD835', '#81C784', '#4CAF50',
-  '#EC4899', '#F59E0B', '#8B5CF6',
+  "#D32F2F",
+  "#FF5C8A",
+  "#9C27B0",
+  "#FF9800",
+  "#C62828",
+  "#F57C00",
+  "#E53935",
+  "#E2D24A",
+  "#FFB6C1",
+  "#FDD835",
+  "#81C784",
+  "#4CAF50",
+  "#EC4899",
+  "#F59E0B",
+  "#8B5CF6",
 ];
 
 /** Diameter of a fruit of {@link tier} (world px). */
 export function fruitDiameter(tier: number): number {
-  return FRUIT_SIZES[tier] ?? FRUIT_SIZES[0];
+  return FRUIT_SIZES[tier] ?? FRUIT_SIZES[0] ?? 48;
 }
 
 /** Physics radius of a fruit of {@link tier} = diameter / 2. */
@@ -59,12 +71,13 @@ export function resolveFruitTexture(scene: Phaser.Scene, tier: number): string {
 function generateFallbackTexture(scene: Phaser.Scene, tier: number): void {
   const size = fruitDiameter(tier);
   const r = size / 2;
-  const base = FRUIT_COLORS[tier] ?? FRUIT_COLORS[0];
+  const base = FRUIT_COLORS[tier] ?? FRUIT_COLORS[0] ?? "#D32F2F";
   const g = scene.add.graphics();
 
   // Special Legendary Outer Glow ring (Tier 12+)
   if (tier >= 12) {
-    const glowColor = tier === 12 ? 0xF472B6 : (tier === 13 ? 0xFBBF24 : 0xA78BFA);
+    const glowColor =
+      tier === 12 ? 0xf472b6 : tier === 13 ? 0xfbbf24 : 0xa78bfa;
     g.fillStyle(glowColor, 0.45);
     g.fillCircle(r, r, r);
   }
@@ -78,13 +91,13 @@ function generateFallbackTexture(scene: Phaser.Scene, tier: number): void {
   // Visual leaf or crown accent
   if (tier === 13) {
     // Sầu riêng: Gai vàng + vương miện hoàng gia
-    g.fillStyle(0xFDE047, 1);
+    g.fillStyle(0xfde047, 1);
     g.fillTriangle(r, r * 0.15, r - 16, r * 0.45, r + 16, r * 0.45);
   } else if (tier === 14) {
     // Dưa hấu thiên hà: Ngôi sao vũ trụ trung tâm
-    g.fillStyle(0xFFFFFF, 0.9);
+    g.fillStyle(0xffffff, 0.9);
     g.fillCircle(r, r, r * 0.35);
-    g.fillStyle(0x7C3AED, 1);
+    g.fillStyle(0x7c3aed, 1);
     g.fillCircle(r, r, r * 0.25);
   } else {
     // Standard leaf accent
@@ -98,9 +111,9 @@ function generateFallbackTexture(scene: Phaser.Scene, tier: number): void {
 
 /** Darken a hex color by {@link amount} (0..1) → hex string. */
 function darken(hex: string, amount: number): string {
-  const n = Number.parseInt(hex.replace('#', ''), 16);
+  const n = Number.parseInt(hex.replace("#", ""), 16);
   const r = Math.max(0, Math.round(((n >> 16) & 255) * (1 - amount)));
   const g = Math.max(0, Math.round(((n >> 8) & 255) * (1 - amount)));
   const b = Math.max(0, Math.round((n & 255) * (1 - amount)));
-  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
 }

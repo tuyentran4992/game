@@ -84,7 +84,6 @@ export class PlaygamaBackend {
   private ready = false;
   private initPromise: Promise<void>;
   private audioOn = true;
-  private paused = false;
 
   // Hàng đợi gọi dồn tới khi ready (main.ts gọi tức thì lúc boot).
   private pendingOnPause: Array<() => void> = [];
@@ -145,7 +144,9 @@ export class PlaygamaBackend {
   private _subscribe(event: string, cb: () => void, wantTrue: boolean): void {
     try {
       this.bridge.advertisement.on(event, (v: unknown) => {
-        if (v === wantTrue) { if (wantTrue) this.paused = true; else this.paused = false; cb(); }
+        if (v === wantTrue) {
+          cb();
+        }
       });
     } catch { /* no-op */ }
   }
@@ -161,7 +162,8 @@ export class PlaygamaBackend {
 
   private _subscribeAudio(cb: (enabled: boolean) => void): void {
     try {
-      this.bridge.advertisement.on(this.bridge.EVENT_NAME.AUDIO_STATE_CHANGED, (v: unknown) => {
+      const eventName = this.bridge.EVENT_NAME?.AUDIO_STATE_CHANGED ?? 'audio_state_changed';
+      this.bridge.advertisement.on(eventName, (v: unknown) => {
         this.audioOn = v !== false;
         cb(this.audioOn);
       });
@@ -254,14 +256,17 @@ export class PlaygamaBackend {
             const entries: LeaderboardEntry[] = list.map((rawItem, idx) => {
               const item = rawItem as Record<string, unknown>;
               const player = item.player as Record<string, unknown> | undefined;
-              return {
+              const entry: LeaderboardEntry = {
                 id: (item.id as string | number) ?? idx + 1,
                 name: String(item.name || player?.name || item.title || `Player #${idx + 1}`),
                 score: Number(item.score || item.scoreFormatted || 0),
                 rank: Number(item.rank || idx + 1),
-                avatar: typeof item.avatar === 'string' ? item.avatar : undefined,
                 isUser: Boolean(item.isUser || item.isCurrentPlayer),
               };
+              if (typeof item.avatar === 'string') {
+                entry.avatar = item.avatar;
+              }
+              return entry;
             });
 
             let userEntry: LeaderboardEntry | null = null;
@@ -274,6 +279,9 @@ export class PlaygamaBackend {
                 rank: Number(rawUser.rank || 1),
                 isUser: true,
               };
+              if (typeof rawUser.avatar === 'string') {
+                userEntry.avatar = rawUser.avatar;
+              }
             } else {
               userEntry = entries.find(e => e.isUser) ?? {
                 id: 'me',
@@ -360,7 +368,8 @@ export class PlaygamaBackend {
       const done = () => { if (!settled) { settled = true; resolve(); } };
       const sub = (state: unknown) => { if (state === 'closed' || state === 'failed') done(); };
       try {
-        this.bridge.advertisement.on(this.bridge.EVENT_NAME.INTERSTITIAL_STATE_CHANGED, sub);
+        const eventName = this.bridge.EVENT_NAME?.INTERSTITIAL_STATE_CHANGED ?? 'interstitial_state_changed';
+        this.bridge.advertisement.on(eventName, sub);
         this.bridge.advertisement.showInterstitial();
       } catch { done(); }
       setTimeout(done, 15000);
@@ -382,7 +391,8 @@ export class PlaygamaBackend {
         else if (state === 'closed' || state === 'failed') settle(false);
       };
       try {
-        this.bridge.advertisement.on(this.bridge.EVENT_NAME.REWARDED_STATE_CHANGED, sub);
+        const eventName = this.bridge.EVENT_NAME?.REWARDED_STATE_CHANGED ?? 'rewarded_state_changed';
+        this.bridge.advertisement.on(eventName, sub);
         this.bridge.advertisement.showRewarded(placement);
       } catch { settle(true); }
       setTimeout(() => settle(true), 30000);

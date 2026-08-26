@@ -6,7 +6,7 @@
 // Mobile-first portrait world (720×1280): the bucket fills most of the vertical
 // space, centered horizontally, with the drop mouth near the top third.
 
-import { CONFIG, type MechanicsConfig } from '../logic/config';
+import { CONFIG, type MechanicsConfig } from "../logic/config";
 
 export interface BucketLayout {
   /** Left inner edge X of the bucket playfield. */
@@ -49,7 +49,14 @@ export function computeBucketLayout(
   const spawnY = bucketTopY + Math.round(bucketHeight * cfg.dropStartRatio);
   const dangerY = bucketTopY + Math.round(bucketHeight * cfg.dangerLineRatio);
   return {
-    bucketX0, bucketX1, bucketWidth, bucketTopY, bucketBottomY,
-    bucketHeight, spawnY, dangerY, wallThickness: 24,
+    bucketX0,
+    bucketX1,
+    bucketWidth,
+    bucketTopY,
+    bucketBottomY,
+    bucketHeight,
+    spawnY,
+    dangerY,
+    wallThickness: 24,
   };
 }

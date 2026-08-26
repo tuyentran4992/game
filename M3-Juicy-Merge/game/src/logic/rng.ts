@@ -5,7 +5,7 @@
 // drop-count-scaled (config.dropSpawnPool): low tiers dominate early; higher tiers
 // unlock as the player drops more fruit. Tier convention is 0-based (0 = cherry).
 
-import { CONFIG, type DropSpawnBand, type DropTierWeight } from './config';
+import { CONFIG, type DropSpawnBand, type DropTierWeight } from "./config";
 
 /**
  * Seeded PRNG (mulberry32). Deterministic for a given 32-bit seed.
@@ -54,7 +54,10 @@ export class DropQueue {
   private readonly queue: number[] = []; // length 2: the upcoming tiers
   private generated = 0; // fruits generated so far (drives band selection)
 
-  constructor(seed: number, pool: readonly DropSpawnBand[] = CONFIG.dropSpawnPool) {
+  constructor(
+    seed: number,
+    pool: readonly DropSpawnBand[] = CONFIG.dropSpawnPool,
+  ) {
     this.rng = new SeededRng(seed);
     this.pool = pool;
     // Pre-fill the 2-fruit preview. Uses band for generated indices 0 and 1.
@@ -74,14 +77,14 @@ export class DropQueue {
    */
   swapFront(currentTier: number): number {
     if (this.queue.length === 0) return currentTier;
-    const nextTier = this.queue[0];
+    const nextTier = this.queue[0] ?? currentTier;
     this.queue[0] = currentTier;
     return nextTier;
   }
 
   /** Consume the front fruit and refill the back; returns the dropped tier. */
   nextFruit(): number {
-    const tier = this.queue.shift() as number;
+    const tier = this.queue.shift() ?? 0;
     this.queue.push(this.generate());
     return tier;
   }
@@ -104,7 +107,10 @@ export class DropQueue {
 
   private activeBand(drops: number): DropSpawnBand {
     // Largest minDrops that is <= drops. Pool is assumed sorted ascending.
-    let active = this.pool[0];
+    let active = this.pool[0] ?? {
+      minDrops: 0,
+      weights: [{ tier: 0, weight: 1 }],
+    };
     for (const band of this.pool) {
       if (band.minDrops <= drops) active = band;
       else break;
@@ -119,6 +125,7 @@ export class DropQueue {
       r -= w.weight;
       if (r < 0) return w.tier;
     }
-    return weights[weights.length - 1].tier;
+    const last = weights[weights.length - 1];
+    return last ? last.tier : 0;
   }
 }

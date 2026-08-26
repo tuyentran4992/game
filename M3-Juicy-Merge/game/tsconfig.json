@@ -1,15 +1,14 @@
 {
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "esModuleInterop": true,
-    "strict": true,
-    "skipLibCheck": true,
-    "noEmit": true,
-    "outDir": "./dist",
-    "types": []
-  },
-  "include": ["src"]
+  "files": [],
+  "references": [
+    {
+      "path": "./tools/tsconfig.client.json"
+    },
+    {
+      "path": "./tools/tsconfig.server.json"
+    },
+    {
+      "path": "./tools/tsconfig.shared.json"
+    }
+  ]
 }

@@ -62,9 +62,11 @@ export function grantShake(state: PowerupState, count = 1): number {
  * - Combo x3: Thưởng +1 lượt Đổi quả (Swap)
  * - Combo x5: Thưởng +1 lượt Lắc thùng (Shake)
  */
-export function evaluateComboReward(comboCount: number): 'swap' | 'shake' | null {
-  if (comboCount === 3) return 'swap';
-  if (comboCount === 5) return 'shake';
+export function evaluateComboReward(
+  comboCount: number,
+): "swap" | "shake" | null {
+  if (comboCount === 3) return "swap";
+  if (comboCount === 5) return "shake";
   return null;
 }
 
@@ -76,13 +78,13 @@ export function evaluateScoreMilestoneReward(
   currentScore: number,
   lastMilestone: number,
   step = SCORE_MILESTONE_STEP,
-): { newMilestone: number; reward: 'shake' | null } {
+): { newMilestone: number; reward: "shake" | null } {
   if (currentScore < step) {
     return { newMilestone: lastMilestone, reward: null };
   }
   const currentLevel = Math.floor(currentScore / step) * step;
   if (currentLevel > lastMilestone) {
-    return { newMilestone: currentLevel, reward: 'shake' };
+    return { newMilestone: currentLevel, reward: "shake" };
   }
   return { newMilestone: lastMilestone, reward: null };
 }

@@ -1,16 +1,16 @@
 // M3 Juicy Merge — Juice & Game Feel visual/audio effects module
-import type Phaser from 'phaser';
-import { FRUIT_COLORS, fruitRadius } from './fruit-sprite';
-import { toColor, z, dur } from '../tokens';
+import type Phaser from "phaser";
+import { FRUIT_COLORS, fruitRadius } from "./fruit-sprite";
+import { toColor, z, dur } from "../tokens";
 
 /** Musical detune scale in cents for combo streaks (Do-Re-Mi-Fa-Sol-La-Si-Do). */
 export const COMBO_DETUNE_STEPS: readonly number[] = [
-  0,    // Combo 1: Base (Do)
-  200,  // Combo 2: +2 semitones (Re)
-  400,  // Combo 3: +4 semitones (Mi)
-  500,  // Combo 4: +5 semitones (Fa)
-  700,  // Combo 5: +7 semitones (Sol)
-  900,  // Combo 6: +9 semitones (La)
+  0, // Combo 1: Base (Do)
+  200, // Combo 2: +2 semitones (Re)
+  400, // Combo 3: +4 semitones (Mi)
+  500, // Combo 4: +5 semitones (Fa)
+  700, // Combo 5: +7 semitones (Sol)
+  900, // Combo 6: +9 semitones (La)
   1100, // Combo 7: +11 semitones (Si)
   1200, // Combo 8+: Octave (+12 semitones)
 ];
@@ -30,7 +30,7 @@ export function computeComboDetune(comboCount: number): number {
  * Pure function, fully unit-testable.
  */
 export function getFruitJuiceColor(tier: number): number {
-  const hex = FRUIT_COLORS[tier] ?? FRUIT_COLORS[0] ?? '#FF5C8A';
+  const hex = FRUIT_COLORS[tier] ?? FRUIT_COLORS[0] ?? "#FF5C8A";
   return toColor(hex);
 }
 
@@ -39,14 +39,14 @@ function randBetween(min: number, max: number): number {
 }
 
 const FIREWORK_PALETTE = [
-  0xFFD700, // Golden
-  0xFF3366, // Hot Pink
-  0x00E5FF, // Cyan
-  0x76FF03, // Bright Lime
-  0x9D4EDD, // Violet Purple
-  0xFF9100, // Amber Orange
-  0xFFFFFF, // Pure White Sparkle
-  0xF72585, // Magenta
+  0xffd700, // Golden
+  0xff3366, // Hot Pink
+  0x00e5ff, // Cyan
+  0x76ff03, // Bright Lime
+  0x9d4edd, // Violet Purple
+  0xff9100, // Amber Orange
+  0xffffff, // Pure White Sparkle
+  0xf72585, // Magenta
 ];
 
 /**
@@ -66,7 +66,7 @@ export function playJuiceSplash(
   const ring = scene.add.graphics().setDepth(z.actor + 4);
   ring.lineStyle(4, juiceColor, 0.9);
   ring.strokeCircle(x, y, r * 0.5);
-  ring.fillStyle(0xFFFFFF, 0.5);
+  ring.fillStyle(0xffffff, 0.5);
   ring.fillCircle(x, y, r * 0.3);
 
   scene.tweens.add({
@@ -75,13 +75,14 @@ export function playJuiceSplash(
     scaleY: 1.8,
     alpha: 0,
     duration: dur.pop,
-    ease: 'Cubic.easeOut',
+    ease: "Cubic.easeOut",
     onComplete: () => ring.destroy(),
   });
 
   // Radial juicy droplets
   for (let i = 0; i < dropletCount; i++) {
-    const angle = (Math.PI * 2 * i) / dropletCount + (Math.random() - 0.5) * 0.4;
+    const angle =
+      (Math.PI * 2 * i) / dropletCount + (Math.random() - 0.5) * 0.4;
     const speed = randBetween(Math.round(r * 1.2), Math.round(r * 2.8));
     const targetX = x + Math.cos(angle) * speed;
     const targetY = y + Math.sin(angle) * speed + randBetween(5, 20); // slight downward arc
@@ -90,8 +91,12 @@ export function playJuiceSplash(
     const droplet = scene.add.graphics().setDepth(z.actor + 5);
     droplet.fillStyle(juiceColor, 0.95);
     droplet.fillCircle(0, 0, dropletSize);
-    droplet.fillStyle(0xFFFFFF, 0.7);
-    droplet.fillCircle(-dropletSize * 0.25, -dropletSize * 0.25, dropletSize * 0.35);
+    droplet.fillStyle(0xffffff, 0.7);
+    droplet.fillCircle(
+      -dropletSize * 0.25,
+      -dropletSize * 0.25,
+      dropletSize * 0.35,
+    );
     droplet.setPosition(x, y);
 
     scene.tweens.add({
@@ -102,7 +107,7 @@ export function playJuiceSplash(
       scaleY: 0.2,
       alpha: 0,
       duration: randBetween(260, 380),
-      ease: 'Quad.easeOut',
+      ease: "Quad.easeOut",
       onComplete: () => droplet.destroy(),
     });
   }
@@ -124,7 +129,7 @@ export function playStarBurst(
     const dist = randBetween(80, 180);
     const targetX = x + Math.cos(angle) * dist;
     const targetY = y + Math.sin(angle) * dist + randBetween(10, 40);
-    const col = FIREWORK_PALETTE[i % FIREWORK_PALETTE.length] ?? 0xFFD700;
+    const col = FIREWORK_PALETTE[i % FIREWORK_PALETTE.length] ?? 0xffd700;
 
     const star = scene.add.graphics().setDepth(depth);
     star.fillStyle(col, 1);
@@ -147,7 +152,7 @@ export function playStarBurst(
       scaleY: 0.2,
       alpha: 0,
       duration: randBetween(500, 800),
-      ease: 'Cubic.easeOut',
+      ease: "Cubic.easeOut",
       onComplete: () => star.destroy(),
     });
   }
@@ -162,14 +167,16 @@ export function spawnFireworkBurst(
   y: number,
   depth = 150,
 ): void {
-  const themeColor = FIREWORK_PALETTE[randBetween(0, FIREWORK_PALETTE.length - 1)] ?? 0xFFD700;
-  const secondaryColor = FIREWORK_PALETTE[randBetween(0, FIREWORK_PALETTE.length - 1)] ?? 0xFFFFFF;
+  const themeColor =
+    FIREWORK_PALETTE[randBetween(0, FIREWORK_PALETTE.length - 1)] ?? 0xffd700;
+  const secondaryColor =
+    FIREWORK_PALETTE[randBetween(0, FIREWORK_PALETTE.length - 1)] ?? 0xffffff;
 
   // 1. Shockwave glow ring
   const ring = scene.add.graphics().setDepth(depth);
   ring.lineStyle(4, themeColor, 1);
   ring.strokeCircle(x, y, 10);
-  ring.fillStyle(0xFFFFFF, 0.8);
+  ring.fillStyle(0xffffff, 0.8);
   ring.fillCircle(x, y, 6);
 
   scene.tweens.add({
@@ -178,7 +185,7 @@ export function spawnFireworkBurst(
     scaleY: 5.5,
     alpha: 0,
     duration: 350,
-    ease: 'Quad.easeOut',
+    ease: "Quad.easeOut",
     onComplete: () => ring.destroy(),
   });
 
@@ -195,7 +202,7 @@ export function spawnFireworkBurst(
     const spark = scene.add.graphics().setDepth(depth + 1);
     spark.fillStyle(col, 1);
     spark.fillCircle(0, 0, sparkSize);
-    spark.fillStyle(0xFFFFFF, 0.8);
+    spark.fillStyle(0xffffff, 0.8);
     spark.fillCircle(-1, -1, Math.max(1, sparkSize * 0.4));
     spark.setPosition(x, y);
 
@@ -207,7 +214,7 @@ export function spawnFireworkBurst(
       scaleY: 0.1,
       alpha: 0,
       duration: randBetween(600, 1000),
-      ease: 'Cubic.easeOut',
+      ease: "Cubic.easeOut",
       onComplete: () => spark.destroy(),
     });
   }
@@ -219,7 +226,7 @@ export function spawnFireworkBurst(
     const dist = randBetween(40, 120);
     const targetX = x + Math.cos(angle) * dist + (Math.random() - 0.5) * 60;
     const targetY = y + Math.sin(angle) * dist + randBetween(80, 180); // fluttering down
-    const cCol = FIREWORK_PALETTE[i % FIREWORK_PALETTE.length] ?? 0xFFD700;
+    const cCol = FIREWORK_PALETTE[i % FIREWORK_PALETTE.length] ?? 0xffd700;
 
     const confetti = scene.add.graphics().setDepth(depth + 2);
     confetti.fillStyle(cCol, 1);
@@ -235,7 +242,7 @@ export function spawnFireworkBurst(
       scaleY: 0.4,
       alpha: { from: 1, to: 0 },
       duration: randBetween(900, 1400),
-      ease: 'Sine.easeOut',
+      ease: "Sine.easeOut",
       onComplete: () => confetti.destroy(),
     });
   }
@@ -254,10 +261,16 @@ export function playFireworksCelebration(
   for (let i = 0; i < burstCount; i++) {
     const delay = i * randBetween(180, 260);
     scene.time.delayedCall(delay, () => {
-      const bx = randBetween(Math.round(width * 0.15), Math.round(width * 0.85));
-      const by = randBetween(Math.round(height * 0.15), Math.round(height * 0.55));
+      const bx = randBetween(
+        Math.round(width * 0.15),
+        Math.round(width * 0.85),
+      );
+      const by = randBetween(
+        Math.round(height * 0.15),
+        Math.round(height * 0.55),
+      );
       spawnFireworkBurst(scene, bx, by, depth);
-      
+
       // Light camera pop on first and last burst
       if (i === 0 || i === burstCount - 1) {
         scene.cameras.main.shake(120, 0.005);

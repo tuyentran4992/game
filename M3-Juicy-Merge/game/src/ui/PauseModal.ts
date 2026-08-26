@@ -1,8 +1,7 @@
-import Phaser from 'phaser';
-import { color, z, dur, radius } from '../tokens';
-import { drawButton } from '../ui';
-import { ctx } from '../context';
-import { sdk } from '../sdk-instance';
+import Phaser from "phaser";
+import { z, dur } from "../tokens";
+import { drawButton } from "../ui";
+import { ctx } from "../context";
 
 export interface PauseModalCallbacks {
   onResume: () => void;
@@ -27,13 +26,13 @@ export class PauseModal {
 
     // 2. Dim background (intercepts touches)
     const backdrop = scene.add.graphics();
-    backdrop.fillStyle(0x0F172A, 0.72);
+    backdrop.fillStyle(0x0f172a, 0.72);
     backdrop.fillRect(0, 0, width, height);
     backdrop.setInteractive(
       new Phaser.Geom.Rectangle(0, 0, width, height),
-      Phaser.Geom.Rectangle.Contains
+      Phaser.Geom.Rectangle.Contains,
     );
-    backdrop.on('pointerdown', () => this.resume());
+    backdrop.on("pointerdown", () => this.resume());
     this.root.add(backdrop);
 
     // 3. Panel Container
@@ -48,47 +47,53 @@ export class PauseModal {
     g.fillRoundedRect(-pw / 2, -ph / 2 + 8, pw, ph, 28);
 
     // White Card Body
-    g.fillStyle(0xFFFFFF, 0.99);
+    g.fillStyle(0xffffff, 0.99);
     g.fillRoundedRect(-pw / 2, -ph / 2, pw, ph, 28);
 
     // Golden Border
-    g.lineStyle(3.5, 0xF59E0B, 1);
+    g.lineStyle(3.5, 0xf59e0b, 1);
     g.strokeRoundedRect(-pw / 2, -ph / 2, pw, ph, 28);
 
     // Top Header Banner
     const headerH = 64;
-    g.fillStyle(0xFEF3C7, 1);
+    g.fillStyle(0xfef3c7, 1);
     g.fillRoundedRect(-pw / 2 + 14, -ph / 2 + 14, pw - 28, headerH, 18);
-    g.lineStyle(1.5, 0xF59E0B, 0.6);
+    g.lineStyle(1.5, 0xf59e0b, 0.6);
     g.strokeRoundedRect(-pw / 2 + 14, -ph / 2 + 14, pw - 28, headerH, 18);
     panel.add(g);
 
     // Title
-    const title = scene.add.text(0, -ph / 2 + 46, '⏸️ GAME PAUSED', {
-      fontFamily: 'sans-serif',
-      fontSize: '22px',
-      fontStyle: 'bold',
-      color: '#92400E',
-    }).setOrigin(0.5).setStroke('#FFFFFF', 4);
+    const title = scene.add
+      .text(0, -ph / 2 + 46, "⏸️ GAME PAUSED", {
+        fontFamily: "sans-serif",
+        fontSize: "22px",
+        fontStyle: "bold",
+        color: "#92400E",
+      })
+      .setOrigin(0.5)
+      .setStroke("#FFFFFF", 4);
     panel.add(title);
 
     // Close Button (✕)
     const closeBtnBg = scene.add.graphics();
-    closeBtnBg.fillStyle(0xFF4757, 1);
+    closeBtnBg.fillStyle(0xff4757, 1);
     closeBtnBg.fillCircle(pw / 2 - 36, -ph / 2 + 46, 17);
-    closeBtnBg.lineStyle(2, 0xFFFFFF, 1);
+    closeBtnBg.lineStyle(2, 0xffffff, 1);
     closeBtnBg.strokeCircle(pw / 2 - 36, -ph / 2 + 46, 17);
 
-    const closeBtnTxt = scene.add.text(pw / 2 - 36, -ph / 2 + 46, '✕', {
-      fontFamily: 'sans-serif',
-      fontSize: '15px',
-      fontStyle: 'bold',
-      color: '#FFFFFF',
-    }).setOrigin(0.5);
+    const closeBtnTxt = scene.add
+      .text(pw / 2 - 36, -ph / 2 + 46, "✕", {
+        fontFamily: "sans-serif",
+        fontSize: "15px",
+        fontStyle: "bold",
+        color: "#FFFFFF",
+      })
+      .setOrigin(0.5);
 
-    const closeHit = scene.add.zone(pw / 2 - 36, -ph / 2 + 46, 42, 42)
+    const closeHit = scene.add
+      .zone(pw / 2 - 36, -ph / 2 + 46, 42, 42)
       .setInteractive({ useHandCursor: true });
-    closeHit.on('pointerdown', () => this.resume());
+    closeHit.on("pointerdown", () => this.resume());
     panel.add([closeBtnBg, closeBtnTxt, closeHit]);
 
     // 4. Mini Stats Box (Score & Best Score)
@@ -96,42 +101,62 @@ export class PauseModal {
     const statsBoxH = 74;
     const statsY = -ph / 2 + 135;
     const statsG = scene.add.graphics();
-    statsG.fillStyle(0xF8FAFC, 1);
-    statsG.fillRoundedRect(-statsBoxW / 2, statsY - statsBoxH / 2, statsBoxW, statsBoxH, 16);
-    statsG.lineStyle(1.5, 0xE2E8F0, 1);
-    statsG.strokeRoundedRect(-statsBoxW / 2, statsY - statsBoxH / 2, statsBoxW, statsBoxH, 16);
+    statsG.fillStyle(0xf8fafc, 1);
+    statsG.fillRoundedRect(
+      -statsBoxW / 2,
+      statsY - statsBoxH / 2,
+      statsBoxW,
+      statsBoxH,
+      16,
+    );
+    statsG.lineStyle(1.5, 0xe2e8f0, 1);
+    statsG.strokeRoundedRect(
+      -statsBoxW / 2,
+      statsY - statsBoxH / 2,
+      statsBoxW,
+      statsBoxH,
+      16,
+    );
     panel.add(statsG);
 
     const curScore = ctx.engine.state.score;
     const bestScore = Math.max(ctx.engine.state.bestScore, curScore);
 
-    const scoreNum = scene.add.text(-statsBoxW / 4, statsY - 10, `${curScore.toLocaleString()}`, {
-      fontFamily: 'sans-serif',
-      fontSize: '20px',
-      fontStyle: 'bold',
-      color: '#0284C7',
-    }).setOrigin(0.5);
+    const scoreNum = scene.add
+      .text(-statsBoxW / 4, statsY - 10, `${curScore.toLocaleString()}`, {
+        fontFamily: "sans-serif",
+        fontSize: "20px",
+        fontStyle: "bold",
+        color: "#0284C7",
+      })
+      .setOrigin(0.5);
 
-    const scoreLbl = scene.add.text(-statsBoxW / 4, statsY + 14, '💎 CURRENT', {
-      fontFamily: 'sans-serif',
-      fontSize: '12px',
-      fontStyle: 'bold',
-      color: '#64748B',
-    }).setOrigin(0.5);
+    const scoreLbl = scene.add
+      .text(-statsBoxW / 4, statsY + 14, "💎 CURRENT", {
+        fontFamily: "sans-serif",
+        fontSize: "12px",
+        fontStyle: "bold",
+        color: "#64748B",
+      })
+      .setOrigin(0.5);
 
-    const bestNum = scene.add.text(statsBoxW / 4, statsY - 10, `${bestScore.toLocaleString()}`, {
-      fontFamily: 'sans-serif',
-      fontSize: '20px',
-      fontStyle: 'bold',
-      color: '#B45309',
-    }).setOrigin(0.5);
+    const bestNum = scene.add
+      .text(statsBoxW / 4, statsY - 10, `${bestScore.toLocaleString()}`, {
+        fontFamily: "sans-serif",
+        fontSize: "20px",
+        fontStyle: "bold",
+        color: "#B45309",
+      })
+      .setOrigin(0.5);
 
-    const bestLbl = scene.add.text(statsBoxW / 4, statsY + 14, '🏆 BEST SCORE', {
-      fontFamily: 'sans-serif',
-      fontSize: '12px',
-      fontStyle: 'bold',
-      color: '#64748B',
-    }).setOrigin(0.5);
+    const bestLbl = scene.add
+      .text(statsBoxW / 4, statsY + 14, "🏆 BEST SCORE", {
+        fontFamily: "sans-serif",
+        fontSize: "12px",
+        fontStyle: "bold",
+        color: "#64748B",
+      })
+      .setOrigin(0.5);
 
     panel.add([scoreNum, scoreLbl, bestNum, bestLbl]);
 
@@ -143,35 +168,57 @@ export class PauseModal {
 
     const soundContainer = scene.add.container(0, soundY);
     const soundBg = scene.add.graphics();
-    soundBg.fillStyle(0xF1F5F9, 1);
-    soundBg.fillRoundedRect(-soundBtnW / 2, -soundBtnH / 2, soundBtnW, soundBtnH, 12);
-    soundBg.lineStyle(1.5, 0xCBD5E1, 1);
-    soundBg.strokeRoundedRect(-soundBtnW / 2, -soundBtnH / 2, soundBtnW, soundBtnH, 12);
+    soundBg.fillStyle(0xf1f5f9, 1);
+    soundBg.fillRoundedRect(
+      -soundBtnW / 2,
+      -soundBtnH / 2,
+      soundBtnW,
+      soundBtnH,
+      12,
+    );
+    soundBg.lineStyle(1.5, 0xcbd5e1, 1);
+    soundBg.strokeRoundedRect(
+      -soundBtnW / 2,
+      -soundBtnH / 2,
+      soundBtnW,
+      soundBtnH,
+      12,
+    );
     soundContainer.add(soundBg);
 
-    this.soundBtnTxt = scene.add.text(
-      0, 0,
-      isMuted ? '🔇 Sound & Music: MUTED' : '🔊 Sound & Music: ON',
-      {
-        fontFamily: 'sans-serif',
-        fontSize: '14px',
-        fontStyle: 'bold',
-        color: isMuted ? '#EF4444' : '#059669',
-      }
-    ).setOrigin(0.5);
+    this.soundBtnTxt = scene.add
+      .text(
+        0,
+        0,
+        isMuted ? "🔇 Sound & Music: MUTED" : "🔊 Sound & Music: ON",
+        {
+          fontFamily: "sans-serif",
+          fontSize: "14px",
+          fontStyle: "bold",
+          color: isMuted ? "#EF4444" : "#059669",
+        },
+      )
+      .setOrigin(0.5);
     soundContainer.add(this.soundBtnTxt);
 
     soundContainer.setInteractive(
-      new Phaser.Geom.Rectangle(-soundBtnW / 2, -soundBtnH / 2, soundBtnW, soundBtnH),
-      Phaser.Geom.Rectangle.Contains
+      new Phaser.Geom.Rectangle(
+        -soundBtnW / 2,
+        -soundBtnH / 2,
+        soundBtnW,
+        soundBtnH,
+      ),
+      Phaser.Geom.Rectangle.Contains,
     );
-    if (soundContainer.input) soundContainer.input.cursor = 'pointer';
+    if (soundContainer.input) soundContainer.input.cursor = "pointer";
 
-    soundContainer.on('pointerdown', () => {
+    soundContainer.on("pointerdown", () => {
       scene.sound.mute = !scene.sound.mute;
       const nowMuted = scene.sound.mute;
-      this.soundBtnTxt.setText(nowMuted ? '🔇 Sound & Music: MUTED' : '🔊 Sound & Music: ON');
-      this.soundBtnTxt.setColor(nowMuted ? '#EF4444' : '#059669');
+      this.soundBtnTxt.setText(
+        nowMuted ? "🔇 Sound & Music: MUTED" : "🔊 Sound & Music: ON",
+      );
+      this.soundBtnTxt.setColor(nowMuted ? "#EF4444" : "#059669");
     });
     panel.add(soundContainer);
 
@@ -180,37 +227,55 @@ export class PauseModal {
     const btnH = 58;
 
     // A. Resume Button (Pink Candy Primary)
-    const { container: resumeBtn } = drawButton(scene, 0, -ph / 2 + 285, 'RESUME GAME', {
-      variant: 'primary',
-      icon: '▶️',
-      width: btnW,
-      height: btnH,
-      fontSize: 18,
-    });
+    const { container: resumeBtn } = drawButton(
+      scene,
+      0,
+      -ph / 2 + 285,
+      "RESUME GAME",
+      {
+        variant: "primary",
+        icon: "▶️",
+        width: btnW,
+        height: btnH,
+        fontSize: 18,
+      },
+    );
     panel.add(resumeBtn);
-    resumeBtn.on('pointerdown', () => this.resume());
+    resumeBtn.on("pointerdown", () => this.resume());
 
     // B. Restart Button (Amber)
-    const { container: restartBtn } = drawButton(scene, 0, -ph / 2 + 365, 'RESTART GAME', {
-      variant: 'amber',
-      icon: '🔄',
-      width: btnW,
-      height: btnH,
-      fontSize: 18,
-    });
+    const { container: restartBtn } = drawButton(
+      scene,
+      0,
+      -ph / 2 + 365,
+      "RESTART GAME",
+      {
+        variant: "amber",
+        icon: "🔄",
+        width: btnW,
+        height: btnH,
+        fontSize: 18,
+      },
+    );
     panel.add(restartBtn);
-    restartBtn.on('pointerdown', () => this.restart());
+    restartBtn.on("pointerdown", () => this.restart());
 
     // C. Main Menu Button (Ghost)
-    const { container: homeBtn } = drawButton(scene, 0, -ph / 2 + 445, 'MAIN MENU', {
-      variant: 'ghost',
-      icon: '🏠',
-      width: btnW,
-      height: 52,
-      fontSize: 17,
-    });
+    const { container: homeBtn } = drawButton(
+      scene,
+      0,
+      -ph / 2 + 445,
+      "MAIN MENU",
+      {
+        variant: "ghost",
+        icon: "🏠",
+        width: btnW,
+        height: 52,
+        fontSize: 17,
+      },
+    );
     panel.add(homeBtn);
-    homeBtn.on('pointerdown', () => this.home());
+    homeBtn.on("pointerdown", () => this.home());
 
     // Entrance Animation
     panel.setScale(0.85).setAlpha(0);
@@ -219,7 +284,7 @@ export class PauseModal {
       scale: 1,
       alpha: 1,
       duration: dur.base,
-      ease: 'Back.easeOut',
+      ease: "Back.easeOut",
     });
   }
 
@@ -231,7 +296,7 @@ export class PauseModal {
       alpha: 0,
       scale: 0.9,
       duration: dur.fast,
-      ease: 'Back.easeIn',
+      ease: "Back.easeIn",
       onComplete: () => {
         this.destroy();
         this.callbacks.onResume();

@@ -1,14 +1,15 @@
-import Phaser from 'phaser';
-import { ctx } from '../context';
-import { color, type, z, dur, fontStyle, radius } from '../tokens';
-import { drawButton, drawMuteButton, type ButtonResult } from '../ui';
-import { playFireworksCelebration } from '../gameplay/juice-effects';
+import Phaser from "phaser";
+import { ctx } from "../context";
+import { z, dur, radius } from "../tokens";
+import { drawButton, drawMuteButton, type ButtonResult } from "../ui";
+import { playFireworksCelebration } from "../gameplay/juice-effects";
 
 export class GameOverScene extends Phaser.Scene {
   private continueBtn: ButtonResult | null = null;
-  private retryBtn: Phaser.GameObjects.Container | null = null;
 
-  constructor() { super({ key: 'GameOverScene' }); }
+  constructor() {
+    super({ key: "GameOverScene" });
+  }
 
   create(): void {
     const { width, height } = this.scale;
@@ -19,8 +20,11 @@ export class GameOverScene extends Phaser.Scene {
     void ctx.onGameOver(score);
 
     // 1. Dim overlay
-    this.add.rectangle(0, 0, width, height, 0x0F172A)
-      .setOrigin(0).setAlpha(0.68).setDepth(z.overlay);
+    this.add
+      .rectangle(0, 0, width, height, 0x0f172a)
+      .setOrigin(0)
+      .setAlpha(0.68)
+      .setDepth(z.overlay);
 
     drawMuteButton(this);
 
@@ -33,22 +37,31 @@ export class GameOverScene extends Phaser.Scene {
     const card = this.add.graphics();
     // Outer drop shadow
     card.fillStyle(0x000000, 0.28);
-    card.fillRoundedRect(-panelW / 2, -panelH / 2 + 10, panelW, panelH, radius.lg);
+    card.fillRoundedRect(
+      -panelW / 2,
+      -panelH / 2 + 10,
+      panelW,
+      panelH,
+      radius.lg,
+    );
 
     // Frosted white glass body
-    card.fillStyle(0xFFFFFF, 0.98);
+    card.fillStyle(0xffffff, 0.98);
     card.fillRoundedRect(-panelW / 2, -panelH / 2, panelW, panelH, radius.lg);
 
     const diff = ctx.getCurrentDailyDifficulty();
     const isDailyWin = ctx.isDailyMode && score >= diff.targetScore;
 
     // Top Header Banner Accent
-    card.fillStyle(isDailyWin ? 0xF59E0B : 0xFF4D6D, 1);
+    card.fillStyle(isDailyWin ? 0xf59e0b : 0xff4d6d, 1);
     card.fillRoundedRect(-panelW / 2, -panelH / 2, panelW, 20, {
-      tl: radius.lg, tr: radius.lg, bl: 0, br: 0,
+      tl: radius.lg,
+      tr: radius.lg,
+      bl: 0,
+      br: 0,
     });
     // Inner outline
-    card.lineStyle(2.5, isDailyWin ? 0xF59E0B : 0xFF4D6D, 0.9);
+    card.lineStyle(2.5, isDailyWin ? 0xf59e0b : 0xff4d6d, 0.9);
     card.strokeRoundedRect(-panelW / 2, -panelH / 2, panelW, panelH, radius.lg);
     panel.add(card);
 
@@ -57,20 +70,25 @@ export class GameOverScene extends Phaser.Scene {
     }
 
     // 2. Title & Trophy Icon
-    const trophyIcon = isDailyWin ? '🏆' : (isNewRecord ? '👑' : '🍉');
-    const trophy = this.add.text(0, -panelH / 2 + 65, trophyIcon, { fontSize: '44px' }).setOrigin(0.5);
+    const trophyIcon = isDailyWin ? "🏆" : isNewRecord ? "👑" : "🍉";
+    const trophy = this.add
+      .text(0, -panelH / 2 + 65, trophyIcon, { fontSize: "44px" })
+      .setOrigin(0.5);
     panel.add(trophy);
 
-    const titleText = isDailyWin ? 'DAILY VICTORY' : 'GAME OVER';
-    const titleColor = isDailyWin ? '#B45309' : '#C9184A';
-    const title = this.add.text(0, -panelH / 2 + 115, titleText, {
-      fontFamily: 'sans-serif',
-      fontSize: '32px',
-      fontStyle: 'bold',
-      color: titleColor,
-    }).setOrigin(0.5).setStroke('#FFFFFF', 4);
+    const titleText = isDailyWin ? "DAILY VICTORY" : "GAME OVER";
+    const titleColor = isDailyWin ? "#B45309" : "#C9184A";
+    const title = this.add
+      .text(0, -panelH / 2 + 115, titleText, {
+        fontFamily: "sans-serif",
+        fontSize: "32px",
+        fontStyle: "bold",
+        color: titleColor,
+      })
+      .setOrigin(0.5)
+      .setStroke("#FFFFFF", 4);
     panel.add(title);
-    title.setData('testid', 'gameover-title');
+    title.setData("testid", "gameover-title");
 
     if (isNewRecord) {
       this.showRecordBadge(panel, -panelH / 2 + 155);
@@ -85,52 +103,83 @@ export class GameOverScene extends Phaser.Scene {
     const scoreCardBg = this.add.graphics();
     // Drop shadow
     scoreCardBg.fillStyle(0x000000, 0.18);
-    scoreCardBg.fillRoundedRect(-scoreCardW / 2, scoreCardY - scoreCardH / 2 + 5, scoreCardW, scoreCardH, radius.md);
+    scoreCardBg.fillRoundedRect(
+      -scoreCardW / 2,
+      scoreCardY - scoreCardH / 2 + 5,
+      scoreCardW,
+      scoreCardH,
+      radius.md,
+    );
     // Body
-    scoreCardBg.fillStyle(0xFFFFFF, 1);
-    scoreCardBg.fillRoundedRect(-scoreCardW / 2, scoreCardY - scoreCardH / 2, scoreCardW, scoreCardH, radius.md);
-    scoreCardBg.lineStyle(2.5, 0xF59E0B, 0.9);
-    scoreCardBg.strokeRoundedRect(-scoreCardW / 2, scoreCardY - scoreCardH / 2, scoreCardW, scoreCardH, radius.md);
+    scoreCardBg.fillStyle(0xffffff, 1);
+    scoreCardBg.fillRoundedRect(
+      -scoreCardW / 2,
+      scoreCardY - scoreCardH / 2,
+      scoreCardW,
+      scoreCardH,
+      radius.md,
+    );
+    scoreCardBg.lineStyle(2.5, 0xf59e0b, 0.9);
+    scoreCardBg.strokeRoundedRect(
+      -scoreCardW / 2,
+      scoreCardY - scoreCardH / 2,
+      scoreCardW,
+      scoreCardH,
+      radius.md,
+    );
     // Center divider
-    scoreCardBg.lineStyle(2, 0xE2E8F0, 1);
-    scoreCardBg.lineBetween(0, scoreCardY - scoreCardH / 2 + 12, 0, scoreCardY + scoreCardH / 2 - 12);
+    scoreCardBg.lineStyle(2, 0xe2e8f0, 1);
+    scoreCardBg.lineBetween(
+      0,
+      scoreCardY - scoreCardH / 2 + 12,
+      0,
+      scoreCardY + scoreCardH / 2 - 12,
+    );
     panel.add(scoreCardBg);
 
     // Left Column: SCORE
     const leftColX = -scoreCardW / 4;
-    const finalLabel = this.add.text(leftColX, scoreCardY - 26, '💎 FINAL SCORE', {
-      fontFamily: 'sans-serif',
-      fontSize: '13px',
-      fontStyle: 'bold',
-      color: '#0284C7',
-    }).setOrigin(0.5);
-    const finalVal = this.add.text(leftColX, scoreCardY + 16, `${score}`, {
-      fontFamily: 'sans-serif',
-      fontSize: '34px',
-      fontStyle: 'bold',
-      color: '#0F172A',
-    }).setOrigin(0.5);
+    const finalLabel = this.add
+      .text(leftColX, scoreCardY - 26, "💎 FINAL SCORE", {
+        fontFamily: "sans-serif",
+        fontSize: "13px",
+        fontStyle: "bold",
+        color: "#0284C7",
+      })
+      .setOrigin(0.5);
+    const finalVal = this.add
+      .text(leftColX, scoreCardY + 16, `${score}`, {
+        fontFamily: "sans-serif",
+        fontSize: "34px",
+        fontStyle: "bold",
+        color: "#0F172A",
+      })
+      .setOrigin(0.5);
     panel.add(finalLabel);
     panel.add(finalVal);
-    finalVal.setData('testid', 'final-score');
+    finalVal.setData("testid", "final-score");
 
     // Right Column: BEST
     const rightColX = scoreCardW / 4;
-    const bestLabel = this.add.text(rightColX, scoreCardY - 26, '🏆 ALL-TIME BEST', {
-      fontFamily: 'sans-serif',
-      fontSize: '13px',
-      fontStyle: 'bold',
-      color: '#D97706',
-    }).setOrigin(0.5);
-    const bestVal = this.add.text(rightColX, scoreCardY + 16, `${best}`, {
-      fontFamily: 'sans-serif',
-      fontSize: '34px',
-      fontStyle: 'bold',
-      color: '#B45309',
-    }).setOrigin(0.5);
+    const bestLabel = this.add
+      .text(rightColX, scoreCardY - 26, "🏆 ALL-TIME BEST", {
+        fontFamily: "sans-serif",
+        fontSize: "13px",
+        fontStyle: "bold",
+        color: "#D97706",
+      })
+      .setOrigin(0.5);
+    const bestVal = this.add
+      .text(rightColX, scoreCardY + 16, `${best}`, {
+        fontFamily: "sans-serif",
+        fontSize: "34px",
+        fontStyle: "bold",
+        color: "#B45309",
+      })
+      .setOrigin(0.5);
     panel.add(bestLabel);
     panel.add(bestVal);
-    bestVal.setData('testid', 'best-score');
+    bestVal.setData("testid", "best-score");
 
     // 4. Action Buttons (Playgama 3D Candy Buttons)
     const btnW = panelW - 64;
@@ -141,111 +190,139 @@ export class GameOverScene extends Phaser.Scene {
       const retryY = 125;
       const homeY = 210;
 
-      const res = drawButton(this, 0, continueY, 'CONTINUE (Watch Ad)', {
-        testid: 'continue-btn',
-        variant: 'primary',
-        icon: '▶',
+      const res = drawButton(this, 0, continueY, "CONTINUE (Watch Ad)", {
+        testid: "continue-btn",
+        variant: "primary",
+        icon: "▶",
         width: btnW,
         height: 70,
         fontSize: 23,
       });
       this.continueBtn = res;
       panel.add(res.container);
-      res.container.on('pointerdown', () => { void this.onContinue(); });
-
-      const { container: retryBtn } = drawButton(this, 0, retryY, 'PLAY AGAIN', {
-        testid: 'retry-btn',
-        variant: 'amber',
-        icon: '🔄',
-        width: btnW,
-        height: 70,
-        fontSize: 24,
+      res.container.on("pointerdown", () => {
+        void this.onContinue();
       });
-      this.retryBtn = retryBtn;
+
+      const { container: retryBtn } = drawButton(
+        this,
+        0,
+        retryY,
+        "PLAY AGAIN",
+        {
+          testid: "retry-btn",
+          variant: "amber",
+          icon: "🔄",
+          width: btnW,
+          height: 70,
+          fontSize: 24,
+        },
+      );
       panel.add(retryBtn);
-      retryBtn.on('pointerdown', () => this.onRetry());
+      retryBtn.on("pointerdown", () => this.onRetry());
 
       const halfBtnW = (btnW - 14) / 2;
-      const { container: homeBtn } = drawButton(this, -btnW / 4 - 3, homeY, 'MAIN MENU', {
-        testid: 'home-btn',
-        variant: 'ghost',
-        icon: '🏠',
-        width: halfBtnW,
-        height: 56,
-        fontSize: 16,
-      });
+      const { container: homeBtn } = drawButton(
+        this,
+        -btnW / 4 - 3,
+        homeY,
+        "MAIN MENU",
+        {
+          testid: "home-btn",
+          variant: "ghost",
+          icon: "🏠",
+          width: halfBtnW,
+          height: 56,
+          fontSize: 16,
+        },
+      );
       panel.add(homeBtn);
-      homeBtn.on('pointerdown', async () => {
-        await ctx.triggerSmartInterstitial();
-        this.scene.stop('GameplayScene');
-        this.scene.stop('GameOverScene');
-        this.scene.start('StartScene');
+      homeBtn.on("pointerdown", () => {
+        this.scene.stop("GameplayScene");
+        this.scene.stop("GameOverScene");
+        this.scene.start("StartScene");
       });
 
-      const { container: leaderBtn } = drawButton(this, btnW / 4 + 3, homeY, 'RANKING', {
-        testid: 'ranking-btn',
-        variant: 'purple',
-        icon: '🏆',
-        width: halfBtnW,
-        height: 56,
-        fontSize: 16,
-      });
+      const { container: leaderBtn } = drawButton(
+        this,
+        btnW / 4 + 3,
+        homeY,
+        "RANKING",
+        {
+          testid: "ranking-btn",
+          variant: "purple",
+          icon: "🏆",
+          width: halfBtnW,
+          height: 56,
+          fontSize: 16,
+        },
+      );
       panel.add(leaderBtn);
-      leaderBtn.on('pointerdown', async () => {
-        const openedNative = await ctx.sdk.showLeaderboard('best_score');
-        if (!openedNative) {
-          const { LeaderboardModal } = await import('../ui/LeaderboardModal');
-          new LeaderboardModal(this);
-        }
+      leaderBtn.on("pointerdown", async () => {
+        const { LeaderboardModal } = await import("../ui/LeaderboardModal");
+        new LeaderboardModal(this);
       });
     } else {
       const retryY = 65;
       const homeY = 160;
 
-      const { container: retryBtn } = drawButton(this, 0, retryY, 'PLAY AGAIN', {
-        testid: 'retry-btn',
-        variant: 'amber',
-        icon: '🔄',
-        width: btnW,
-        height: 74,
-        fontSize: 25,
-      });
-      this.retryBtn = retryBtn;
+      const { container: retryBtn } = drawButton(
+        this,
+        0,
+        retryY,
+        "PLAY AGAIN",
+        {
+          testid: "retry-btn",
+          variant: "amber",
+          icon: "🔄",
+          width: btnW,
+          height: 74,
+          fontSize: 25,
+        },
+      );
       panel.add(retryBtn);
-      retryBtn.on('pointerdown', () => this.onRetry());
+      retryBtn.on("pointerdown", () => this.onRetry());
 
       const halfBtnW = (btnW - 14) / 2;
-      const { container: homeBtn } = drawButton(this, -btnW / 4 - 3, homeY, 'MAIN MENU', {
-        testid: 'home-btn',
-        variant: 'ghost',
-        icon: '🏠',
-        width: halfBtnW,
-        height: 60,
-        fontSize: 16,
-      });
+      const { container: homeBtn } = drawButton(
+        this,
+        -btnW / 4 - 3,
+        homeY,
+        "MAIN MENU",
+        {
+          testid: "home-btn",
+          variant: "ghost",
+          icon: "🏠",
+          width: halfBtnW,
+          height: 60,
+          fontSize: 16,
+        },
+      );
       panel.add(homeBtn);
-      homeBtn.on('pointerdown', async () => {
-        await ctx.triggerSmartInterstitial();
-        this.scene.stop('GameplayScene');
-        this.scene.stop('GameOverScene');
-        this.scene.start('StartScene');
+      homeBtn.on("pointerdown", () => {
+        this.scene.stop("GameplayScene");
+        this.scene.stop("GameOverScene");
+        this.scene.start("StartScene");
       });
 
-      const { container: leaderBtn } = drawButton(this, btnW / 4 + 3, homeY, 'RANKING', {
-        testid: 'ranking-btn',
-        variant: 'purple',
-        icon: '🏆',
-        width: halfBtnW,
-        height: 60,
-        fontSize: 16,
-      });
+      const { container: leaderBtn } = drawButton(
+        this,
+        btnW / 4 + 3,
+        homeY,
+        "RANKING",
+        {
+          testid: "ranking-btn",
+          variant: "purple",
+          icon: "🏆",
+          width: halfBtnW,
+          height: 60,
+          fontSize: 16,
+        },
+      );
       panel.add(leaderBtn);
-      leaderBtn.on('pointerdown', async () => {
-        const openedNative = await ctx.sdk.showLeaderboard('best_score');
-        if (!openedNative) {
-          const { LeaderboardModal } = await import('../ui/LeaderboardModal');
-          new LeaderboardModal(this);
-        }
+      leaderBtn.on("pointerdown", async () => {
+        const { LeaderboardModal } = await import("../ui/LeaderboardModal");
+        new LeaderboardModal(this);
       });
     }
 
@@ -256,59 +333,49 @@ export class GameOverScene extends Phaser.Scene {
       scale: 1,
       alpha: 1,
       duration: dur.base,
-      ease: 'Back.easeOut',
+      ease: "Back.easeOut",
     });
   }
 
-  private showRecordBadge(panel: Phaser.GameObjects.Container, y: number): void {
-    const badge = this.add.text(0, y, '✨ NEW RECORD BROKEN! ✨', {
-      fontFamily: 'sans-serif',
-      fontSize: '16px',
-      fontStyle: 'bold',
-      color: '#D97706',
-    }).setOrigin(0.5).setStroke('#FFFFFF', 4);
-    badge.setData('testid', 'record-popup');
+  private showRecordBadge(
+    panel: Phaser.GameObjects.Container,
+    y: number,
+  ): void {
+    const badge = this.add
+      .text(0, y, "✨ NEW RECORD BROKEN! ✨", {
+        fontFamily: "sans-serif",
+        fontSize: "16px",
+        fontStyle: "bold",
+        color: "#D97706",
+      })
+      .setOrigin(0.5)
+      .setStroke("#FFFFFF", 4);
+    badge.setData("testid", "record-popup");
     panel.add(badge);
     badge.setScale(0.4).setAlpha(0);
     this.tweens.add({
       targets: badge,
-      scale: 1, alpha: 1,
-      duration: dur.pop, ease: 'Back.easeOut',
+      scale: 1,
+      alpha: 1,
+      duration: dur.pop,
+      ease: "Back.easeOut",
     });
   }
 
-  private async onContinue(): Promise<void> {
+  private onContinue(): void {
     if (!ctx.engine.canContinue()) return;
     this.continueBtn?.container.disableInteractive();
-    const earned = await ctx.sdk.requestRewardedAd('continue');
-    if (!earned) {
-      this.showRewardDenied();
-      return;
-    }
     ctx.engine.useContinue();
-    const gameplay = this.scene.get('GameplayScene') as { clearFruitsAboveDanger?: () => void };
+    const gameplay = this.scene.get("GameplayScene") as {
+      clearFruitsAboveDanger?: () => void;
+    };
     gameplay.clearFruitsAboveDanger?.();
-    this.scene.resume('GameplayScene');
-    this.scene.stop('GameOverScene');
+    this.scene.resume("GameplayScene");
+    this.scene.stop("GameOverScene");
   }
 
-  private showRewardDenied(): void {
-    if (!this.continueBtn) return;
-    this.continueBtn.container.disableInteractive();
-    this.continueBtn.container.setAlpha(0.45);
-    const hint = this.add.text(0, 260, 'Ad not completed', fontStyle(type.small, color.textSecondary))
-      .setOrigin(0.5);
-    this.tweens.add({
-      targets: hint,
-      alpha: { from: 0, to: 1 },
-      duration: dur.base,
-      yoyo: true, repeat: 1, repeatDelay: 600,
-    });
-  }
-
-  private async onRetry(): Promise<void> {
-    await ctx.triggerSmartInterstitial();
+  private onRetry(): void {
     ctx.startNewTurn();
-    this.scene.start('GameplayScene');
+    this.scene.start("GameplayScene");
   }
 }

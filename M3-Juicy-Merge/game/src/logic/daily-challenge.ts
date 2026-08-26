@@ -21,9 +21,9 @@ export interface MilestoneReward {
 }
 
 export const DAILY_MILESTONES: readonly MilestoneReward[] = [
-  { tier: 12, name: 'Dragon Fruit', emoji: '🐉', milestoneDay: 3 },
-  { tier: 13, name: 'Royal Durian', emoji: '👑', milestoneDay: 6 },
-  { tier: 14, name: 'Galaxy Watermelon', emoji: '🌌', milestoneDay: 12 },
+  { tier: 12, name: "Dragon Fruit", emoji: "🐉", milestoneDay: 3 },
+  { tier: 13, name: "Royal Durian", emoji: "👑", milestoneDay: 6 },
+  { tier: 14, name: "Galaxy Watermelon", emoji: "🌌", milestoneDay: 12 },
 ];
 
 /**
@@ -34,17 +34,39 @@ export function getDailyDifficulty(completedDaysCount = 0): DailyDifficulty {
 
   if (dayLevel === 1) return { dayLevel: 1, fruitLimit: 50, targetScore: 350 };
   if (dayLevel === 2) return { dayLevel: 2, fruitLimit: 50, targetScore: 380 };
-  if (dayLevel === 3) return { dayLevel: 3, fruitLimit: 50, targetScore: 400, unlockedLegendaryTier: 12, rewardName: 'Dragon Fruit 🐉' };
+  if (dayLevel === 3)
+    return {
+      dayLevel: 3,
+      fruitLimit: 50,
+      targetScore: 400,
+      unlockedLegendaryTier: 12,
+      rewardName: "Dragon Fruit 🐉",
+    };
   if (dayLevel === 4) return { dayLevel: 4, fruitLimit: 48, targetScore: 450 };
   if (dayLevel === 5) return { dayLevel: 5, fruitLimit: 48, targetScore: 480 };
-  if (dayLevel === 6) return { dayLevel: 6, fruitLimit: 46, targetScore: 500, unlockedLegendaryTier: 13, rewardName: 'Royal Durian 👑' };
+  if (dayLevel === 6)
+    return {
+      dayLevel: 6,
+      fruitLimit: 46,
+      targetScore: 500,
+      unlockedLegendaryTier: 13,
+      rewardName: "Royal Durian 👑",
+    };
   if (dayLevel === 7) return { dayLevel: 7, fruitLimit: 45, targetScore: 550 };
   if (dayLevel === 8) return { dayLevel: 8, fruitLimit: 45, targetScore: 580 };
   if (dayLevel === 9) return { dayLevel: 9, fruitLimit: 45, targetScore: 600 };
-  if (dayLevel === 10) return { dayLevel: 10, fruitLimit: 44, targetScore: 620 };
-  if (dayLevel === 11) return { dayLevel: 11, fruitLimit: 44, targetScore: 650 };
+  if (dayLevel === 10)
+    return { dayLevel: 10, fruitLimit: 44, targetScore: 620 };
+  if (dayLevel === 11)
+    return { dayLevel: 11, fruitLimit: 44, targetScore: 650 };
   // Day 12+ (Cosmic Boss Day)
-  return { dayLevel, fruitLimit: 42, targetScore: 700, unlockedLegendaryTier: 14, rewardName: 'Galaxy Watermelon 🌌' };
+  return {
+    dayLevel,
+    fruitLimit: 42,
+    targetScore: 700,
+    unlockedLegendaryTier: 14,
+    rewardName: "Galaxy Watermelon 🌌",
+  };
 }
 
 export interface DailyChallengeState {
@@ -61,8 +83,8 @@ export interface DailyChallengeState {
  */
 export function getTodayDateString(date = new Date()): string {
   const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
 
@@ -74,7 +96,7 @@ export function getDailySeed(dateStr: string): number {
   let hash = 0;
   for (let i = 0; i < dateStr.length; i++) {
     const char = dateStr.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash >>> 0;
   }
   return hash || 20260823;
@@ -122,7 +144,9 @@ export function evaluateDailyVictory(
 /**
  * Kiểm tra các quả Thần Thoại cần được mở khóa dựa trên tổng số ngày thắng thử thách.
  */
-export function getUnlockedMilestoneTiers(completedDaysCount: number): number[] {
+export function getUnlockedMilestoneTiers(
+  completedDaysCount: number,
+): number[] {
   const tiers: number[] = [];
   for (const m of DAILY_MILESTONES) {
     if (completedDaysCount >= m.milestoneDay) {
@@ -135,6 +159,10 @@ export function getUnlockedMilestoneTiers(completedDaysCount: number): number[] 
 /**
  * Kiểm tra xem khi hoàn thành mốc số ngày newCount có mở khóa quả mới không.
  */
-export function checkMilestoneJustUnlocked(newCompletedDays: number): MilestoneReward | null {
-  return DAILY_MILESTONES.find((m) => m.milestoneDay === newCompletedDays) ?? null;
+export function checkMilestoneJustUnlocked(
+  newCompletedDays: number,
+): MilestoneReward | null {
+  return (
+    DAILY_MILESTONES.find((m) => m.milestoneDay === newCompletedDays) ?? null
+  );
 }

@@ -15,7 +15,7 @@
 // inputs: it does not mutate `pairs`; it does mutate engine state (score/combo),
 // which is the intended side effect delegated to the engine.
 
-import type { MergeEngine } from '../logic/merge-engine';
+import type { MergeEngine } from "../logic/merge-engine";
 
 /** A fruit in a collision pair, identified by a scene-assigned stable id. */
 export interface CollidingFruit {
@@ -57,7 +57,12 @@ export function resolveMergeBatch(
     if (!result) continue;
     claimed.add(a.id);
     claimed.add(b.id);
-    plans.push({ aId: a.id, bId: b.id, newTier: result.tier, scoreGain: result.scoreGain });
+    plans.push({
+      aId: a.id,
+      bId: b.id,
+      newTier: result.tier,
+      scoreGain: result.scoreGain,
+    });
   }
   return plans;
 }

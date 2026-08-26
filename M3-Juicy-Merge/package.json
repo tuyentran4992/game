@@ -1,0 +1,17 @@
+{
+  "name": "m3-juicy-merge-root",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix game run dev:web",
+    "dev:web": "npm --prefix game run dev:web",
+    "dev:reddit": "npm --prefix game run dev:reddit",
+    "build": "npm --prefix game run build:reddit",
+    "build:web": "npm --prefix game run build:web",
+    "build:reddit": "npm --prefix game run build:reddit",
+    "package:playgama": "npm --prefix game run package:playgama",
+    "launch:reddit": "npm --prefix game run launch:reddit",
+    "test": "npm --prefix game run test",
+    "test:types": "npm --prefix game run test:types",
+    "lint": "npm --prefix game run lint"
+  }
+}

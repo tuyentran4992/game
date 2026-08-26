@@ -203,6 +203,20 @@ class GameContext {
       await this.sdk.requestInterstitialAd();
     }
   }
+
+  async getLeaderboardEntries(quantityTop = 10, userScore = 0) {
+    return this.sdk.getLeaderboardEntries('best_score', quantityTop, userScore);
+  }
+
+  private audioEnabled = true;
+
+  isAudioEnabled(): boolean {
+    return this.audioEnabled && this.sdk.isAudioEnabled();
+  }
+
+  setAudioEnabled(enabled: boolean): void {
+    this.audioEnabled = enabled;
+  }
 }
 
 export const ctx = new GameContext();

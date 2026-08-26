@@ -23,7 +23,11 @@ export interface FruitPos {
  * @param dangerY  y-coordinate of the danger line (fruits with y < dangerY are above it).
  * @param settled  whether all bodies have come to rest (scene-derived).
  */
-export function checkGameOver(fruits: readonly FruitPos[], dangerY: number, settled: boolean): boolean {
+export function checkGameOver(
+  fruits: readonly FruitPos[],
+  dangerY: number,
+  settled: boolean,
+): boolean {
   if (!settled) return false;
   return fruits.some((f) => f.y < dangerY);
 }
