@@ -8,11 +8,16 @@
 
 ## 1. DESIGN TOKENS
 
-### 1.1 Tham chiếu
-- **Token chung:** `packages/core/src/tokens.ts` (palette, gradients, fonts, spacing, radius, shadows, animation, layout).
-- **Font:** Poppins (display/heading/body) + JetBrains Mono (score) — loaded via Google Fonts.
-- **Spacing:** 4px grid (xs=4, sm=8, md=16, lg=24, xl=32, xxl=48).
-- **Radius:** sm=6, md=12, lg=20, xl=28, full=999.
+### 1.1 Kiến trúc theme (QUAN TRỌNG — áp dụng cho M5+)
+- **Interface chung:** `packages/core/src/theme.ts` → `GameTheme` — định nghĩa cấu trúc theme.
+- **Mỗi game tự tạo theme riêng:** `src/ui/theme.ts` → implement `GameTheme` với màu sắc, font, gradient của game đó.
+- **Component nhận theme qua parameter:** `Button`, `Panel`, `Modal`, `ScoreText` đều có `theme?: GameTheme`.
+- **Fallback:** nếu không truyền `theme`, component dùng giá trị mặc định từ `@game/core/tokens`.
+- **KHÔNG import** `@game/core/tokens` trong scene game — chỉ import từ game's theme riêng.
+
+### 1.2 Tham chiếu
+- **Token chung (fallback):** `packages/core/src/tokens.ts` — giá trị generic, không game-specific.
+- **Theme M4:** `g4-neon-grid/src/ui/theme.ts` — implement `GameTheme` với palette neon cyan.
 
 ### 1.2 Theme override (Neon Grid)
 | Token | Giá trị | Ghi chú |
