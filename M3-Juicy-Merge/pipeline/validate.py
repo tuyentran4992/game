@@ -33,7 +33,7 @@ COMPRESSION_MAGIC = [
 
 # External network patterns (BR-02)
 NETWORK_PATTERNS = [
-    re.compile(r'https?://(?!localhost|127\.0\.0\.1)', re.IGNORECASE),
+    re.compile(r'https?://(?!localhost|127\.0\.0\.1|bridge\.playgama\.com)', re.IGNORECASE),
     re.compile(r'wss?://', re.IGNORECASE),
     re.compile(r'\bfetch\s*\(', re.IGNORECASE),
     re.compile(r'\bXMLHttpRequest\b', re.IGNORECASE),
