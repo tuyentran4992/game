@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { color, type, z, dur, radius } from '../tokens';
-import { drawButton, drawBackground, drawMuteButton } from '../ui';
+import { drawButton, drawBackground, drawMuteButton, drawLeaderboardButton } from '../ui';
 import { fruitKey } from '../assets';
 import { fruitDiameter } from '../gameplay/fruit-sprite';
 import { ctx } from '../context';
@@ -121,8 +121,9 @@ export class StartScene extends Phaser.Scene {
     // --- 5. Ambient Mascot Decor ---------------------------------------------
     this.drawCornerDecor(width, height);
 
-    // Mute toggle in the top-right corner
+    // Mute toggle in the top-right corner, Leaderboard in the top-left corner
     drawMuteButton(this);
+    drawLeaderboardButton(this, 50, 50);
 
     this.scale.on('resize', (g: Phaser.Structs.Size) => {
       if (this.logoContainer) this.logoContainer.setPosition(g.width / 2, g.height * 0.22);

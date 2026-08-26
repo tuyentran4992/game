@@ -144,9 +144,35 @@ export class SdkHandler {
     return null;
   }
 
-  sendScore(score: number): void {
-    if (this.pb) { this.pb.sendScore(score); return; }
+  sendScore(score: number, leaderboardName = 'best_score'): void {
+    if (this.pb) { this.pb.sendScore(score, leaderboardName); return; }
     this.ytgame?.sendScore?.(score);
+  }
+
+  async setScore(score: number, leaderboardName = 'best_score'): Promise<boolean> {
+    if (this.pb) return this.pb.setScore(score, leaderboardName);
+    this.ytgame?.sendScore?.(score);
+    return true;
+  }
+
+  async getLeaderboardEntries(leaderboardName = 'best_score', quantityTop = 10, userScore = 0) {
+    if (this.pb) return this.pb.getLeaderboardEntries(leaderboardName, quantityTop, userScore);
+    // Mock data khi chạy fallback
+    return {
+      entries: [
+        { name: '🍉 WatermelonKing', score: 3850, rank: 1 },
+        { name: '🐉 DragonMaster', score: 3120, rank: 2 },
+        { name: '🍍 PineQueen', score: 2680, rank: 3 },
+        { name: '🍇 GrapeNinja', score: 2150, rank: 4 },
+        { name: '🍓 BerryPop', score: 1820, rank: 5 },
+      ],
+      userEntry: { name: '⭐ You (Me)', score: userScore, rank: 6, isUser: true },
+    };
+  }
+
+  async showLeaderboard(leaderboardName = 'best_score'): Promise<boolean> {
+    if (this.pb) return this.pb.showNativeLeaderboard(leaderboardName);
+    return false;
   }
 
   async requestInterstitialAd(): Promise<void> {

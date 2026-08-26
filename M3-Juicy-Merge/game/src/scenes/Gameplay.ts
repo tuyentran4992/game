@@ -12,6 +12,7 @@ import { fruitsAboveLine } from '../logic/continue';
 import { playJuiceSplash, playJackpotClimax, playFireworksCelebration, computeComboDetune } from '../gameplay/juice-effects';
 import { computeShakeImpulse } from '../logic/powerups';
 import { DAILY_TARGET_SCORE } from '../logic/daily-challenge';
+import { PauseModal } from '../ui/PauseModal';
 
 interface DroppedFruit {
   id: number;
@@ -75,6 +76,7 @@ export class GameplayScene extends Phaser.Scene {
   private cosmicVictoryCelebrated = false;
   private isPromptingRefill = false;
   private hasClaimedDailyExtraDrops = false;
+  private isPaused = false;
 
   /** Deferred merge queue processed outside the Matter solver loop. */
   private pendingMerges: MergePlan[] = [];
@@ -336,6 +338,7 @@ export class GameplayScene extends Phaser.Scene {
 
   // --- Update loop & Settle detection ----------------------------------------
   update(time: number): void {
+    if (this.isPaused) return;
     if (this.pendingMerges.length > 0) {
       this.processPendingMerges();
     }
@@ -476,108 +479,115 @@ export class GameplayScene extends Phaser.Scene {
     const { width } = this.scale;
 
     // 1. Score & Best Score Plaque (Solar Gold 3D Toy Plaque)
-    const scoreX = 14;
-    const scoreW = 176;
-    const scoreH = 74;
+    const scoreX = 10;
+    const scoreW = 156;
+    const scoreH = 72;
     const scoreBg = this.add.graphics().setDepth(z.hud);
 
     // Drop shadow
     scoreBg.fillStyle(0x000000, 0.22);
-    scoreBg.fillRoundedRect(scoreX, 16 + 6, scoreW, scoreH, radius.md);
+    scoreBg.fillRoundedRect(scoreX, 16 + 5, scoreW, scoreH, radius.md);
     // 3D Bevel Base (Amber dark)
     scoreBg.fillStyle(0xB45309, 1);
-    scoreBg.fillRoundedRect(scoreX, 16 + 6, scoreW, scoreH, radius.md);
+    scoreBg.fillRoundedRect(scoreX, 16 + 5, scoreW, scoreH, radius.md);
     // Main Solar Gold face
     scoreBg.fillStyle(0xF59E0B, 1);
-    scoreBg.fillRoundedRect(scoreX, 16, scoreW, scoreH - 6, radius.md);
+    scoreBg.fillRoundedRect(scoreX, 16, scoreW, scoreH - 5, radius.md);
     // Specular shine
     scoreBg.fillStyle(0xFDE68A, 0.45);
-    scoreBg.fillRoundedRect(scoreX + 6, 19, scoreW - 12, 28, radius.sm);
+    scoreBg.fillRoundedRect(scoreX + 6, 19, scoreW - 12, 26, radius.sm);
     scoreBg.lineStyle(2, 0x78350F, 0.9);
     scoreBg.strokeRoundedRect(scoreX, 16, scoreW, scoreH, radius.md);
 
-    this.scoreText = this.add.text(scoreX + 12, 36, '💎 SCORE 0', {
+    this.scoreText = this.add.text(scoreX + 10, 35, '💎 SCORE 0', {
       fontFamily: 'sans-serif',
-      fontSize: '18px',
+      fontSize: '16px',
       fontStyle: 'bold',
       color: '#FFFFFF',
     }).setOrigin(0, 0.5).setStroke('#78350F', 5).setDepth(z.hud + 1);
     this.scoreText.setData('testid', 'score-label');
 
-    this.bestScoreText = this.add.text(scoreX + 12, 62, `🏆 BEST ${ctx.engine.state.bestScore}`, {
+    this.bestScoreText = this.add.text(scoreX + 10, 60, `🏆 BEST ${ctx.engine.state.bestScore}`, {
       fontFamily: 'sans-serif',
-      fontSize: '13px',
+      fontSize: '12px',
       fontStyle: 'bold',
       color: '#FEF08A',
     }).setOrigin(0, 0.5).setStroke('#78350F', 4).setDepth(z.hud + 1);
 
     // 2. Next Fruit & Swap Powerup Capsule (Cyan Mint 3D Capsule)
-    this.swapButtonBaseX = 198;
+    this.swapButtonBaseX = 174;
     const swapContainer = this.add.container(this.swapButtonBaseX, 16).setDepth(z.hud);
     this.swapButtonContainer = swapContainer;
     swapContainer.setData('testid', 'next-fruit');
 
-    const swapW = 206;
-    const swapH = 74;
+    const swapW = 186;
+    const swapH = 72;
     const swapBg = this.add.graphics();
 
     // Drop shadow
     swapBg.fillStyle(0x000000, 0.22);
-    swapBg.fillRoundedRect(0, 6, swapW, swapH, radius.md);
+    swapBg.fillRoundedRect(0, 5, swapW, swapH, radius.md);
     // 3D Bevel base (Dark Cyan)
     swapBg.fillStyle(0x047857, 1);
-    swapBg.fillRoundedRect(0, 6, swapW, swapH, radius.md);
+    swapBg.fillRoundedRect(0, 5, swapW, swapH, radius.md);
     // Main Mint Cyan face
     swapBg.fillStyle(0x06D6A0, 1);
-    swapBg.fillRoundedRect(0, 0, swapW, swapH - 6, radius.md);
+    swapBg.fillRoundedRect(0, 0, swapW, swapH - 5, radius.md);
     // Specular gloss
     swapBg.fillStyle(0xA7F3D0, 0.45);
-    swapBg.fillRoundedRect(6, 3, swapW - 12, 28, radius.sm);
+    swapBg.fillRoundedRect(6, 3, swapW - 12, 26, radius.sm);
     swapBg.lineStyle(2, 0x064E3B, 0.9);
     swapBg.strokeRoundedRect(0, 0, swapW, swapH, radius.md);
 
     // Circular glowing preview pedestals
     swapBg.fillStyle(0xFFFFFF, 0.92);
-    swapBg.fillCircle(122, 34, 23);
+    swapBg.fillCircle(112, 33, 21);
     swapBg.lineStyle(2, 0x047857, 0.8);
-    swapBg.strokeCircle(122, 34, 23);
+    swapBg.strokeCircle(112, 33, 21);
 
     swapBg.fillStyle(0xFFFFFF, 0.88);
-    swapBg.fillCircle(174, 34, 17);
+    swapBg.fillCircle(158, 33, 15);
     swapBg.lineStyle(1.5, 0x047857, 0.8);
-    swapBg.strokeCircle(174, 34, 17);
+    swapBg.strokeCircle(158, 33, 15);
     swapContainer.add(swapBg);
 
-    const swapTitle = this.add.text(12, 24, 'NEXT 🔄', {
+    const swapTitle = this.add.text(10, 23, 'NEXT 🔄', {
       fontFamily: 'sans-serif',
-      fontSize: '15px',
+      fontSize: '14px',
       fontStyle: 'bold',
       color: '#FFFFFF',
     }).setOrigin(0, 0.5).setStroke('#064E3B', 5);
     swapContainer.add(swapTitle);
 
-    this.swapCountText = this.add.text(12, 50, `x${ctx.engine.powerups.swapCount} Swap`, {
+    this.swapCountText = this.add.text(10, 48, `x${ctx.engine.powerups.swapCount} Swap`, {
       fontFamily: 'sans-serif',
-      fontSize: '13px',
+      fontSize: '12px',
       fontStyle: 'bold',
       color: '#FEF08A',
     }).setOrigin(0, 0.5).setStroke('#064E3B', 4);
     swapContainer.add(this.swapCountText);
 
     const key0 = resolveFruitTexture(this, 0);
-    this.nextPreview1 = this.add.image(122, 34, key0).setDisplaySize(40, 40);
-    this.nextPreview2 = this.add.image(174, 34, key0).setDisplaySize(28, 28).setAlpha(0.85);
+    this.nextPreview1 = this.add.image(112, 33, key0).setDisplaySize(36, 36);
+    this.nextPreview2 = this.add.image(158, 33, key0).setDisplaySize(24, 24).setAlpha(0.85);
     swapContainer.add(this.nextPreview1);
     swapContainer.add(this.nextPreview2);
 
-    swapContainer.setSize(swapW, swapH);
-    swapContainer.setInteractive({ useHandCursor: true });
-    swapContainer.on('pointerdown', () => this.onSwapFruit());
+    // Exact geometric hit zone starting from 0, 0
+    swapContainer.setInteractive(
+      new Phaser.Geom.Rectangle(0, 0, swapW, swapH),
+      Phaser.Geom.Rectangle.Contains
+    );
+    if (swapContainer.input) swapContainer.input.cursor = 'pointer';
+    swapContainer.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      this.lastUiClickTime = this.time.now;
+      this.onSwapFruit();
+    });
 
     // 3. Bucket Shake Button (Royal Purple 3D Candy Capsule)
-    this.shakeButtonBaseX = 412;
-    const shakeW = 120;
-    const shakeH = 74;
+    this.shakeButtonBaseX = 368;
+    const shakeW = 104;
+    const shakeH = 72;
     const shakeContainer = this.add.container(this.shakeButtonBaseX, 16).setDepth(z.hud);
     this.shakeButtonContainer = shakeContainer;
     shakeContainer.setData('testid', 'shake-btn');
@@ -585,65 +595,107 @@ export class GameplayScene extends Phaser.Scene {
     const shakeBg = this.add.graphics();
     // Drop shadow
     shakeBg.fillStyle(0x000000, 0.22);
-    shakeBg.fillRoundedRect(0, 6, shakeW, shakeH, radius.md);
+    shakeBg.fillRoundedRect(0, 5, shakeW, shakeH, radius.md);
     // 3D Bevel base (Dark Purple)
     shakeBg.fillStyle(0x5B21B6, 1);
-    shakeBg.fillRoundedRect(0, 6, shakeW, shakeH, radius.md);
+    shakeBg.fillRoundedRect(0, 5, shakeW, shakeH, radius.md);
     // Main Royal Purple face
     shakeBg.fillStyle(0x8B5CF6, 1);
-    shakeBg.fillRoundedRect(0, 0, shakeW, shakeH - 6, radius.md);
+    shakeBg.fillRoundedRect(0, 0, shakeW, shakeH - 5, radius.md);
     // Specular gloss
     shakeBg.fillStyle(0xDDD6FE, 0.45);
-    shakeBg.fillRoundedRect(6, 3, shakeW - 12, 28, radius.sm);
+    shakeBg.fillRoundedRect(6, 3, shakeW - 12, 26, radius.sm);
     shakeBg.lineStyle(2, 0x4C1D95, 0.9);
     shakeBg.strokeRoundedRect(0, 0, shakeW, shakeH, radius.md);
     shakeContainer.add(shakeBg);
 
-    const shakeTitle = this.add.text(60, 24, '📳 SHAKE', {
+    const shakeTitle = this.add.text(52, 23, '📳 SHAKE', {
       fontFamily: 'sans-serif',
-      fontSize: '14px',
+      fontSize: '13px',
       fontStyle: 'bold',
       color: '#FFFFFF',
     }).setOrigin(0.5).setStroke('#4C1D95', 5);
     shakeContainer.add(shakeTitle);
 
-    this.shakeCountText = this.add.text(60, 50, `x${ctx.engine.powerups.shakeCount}`, {
+    this.shakeCountText = this.add.text(52, 48, `x${ctx.engine.powerups.shakeCount}`, {
       fontFamily: 'sans-serif',
-      fontSize: '15px',
+      fontSize: '13px',
       fontStyle: 'bold',
       color: '#FEF08A',
     }).setOrigin(0.5).setStroke('#4C1D95', 4);
     shakeContainer.add(this.shakeCountText);
 
-    shakeContainer.setSize(shakeW, shakeH);
-    shakeContainer.setInteractive({ useHandCursor: true });
-    shakeContainer.on('pointerdown', () => this.onShakeBucket());
+    // Exact geometric hit zone starting from 0, 0
+    shakeContainer.setInteractive(
+      new Phaser.Geom.Rectangle(0, 0, shakeW, shakeH),
+      Phaser.Geom.Rectangle.Contains
+    );
+    if (shakeContainer.input) shakeContainer.input.cursor = 'pointer';
+    shakeContainer.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      this.lastUiClickTime = this.time.now;
+      this.onShakeBucket();
+    });
 
     // 4. Fruit Album Button 📖 (Coral Emerald 3D Square)
-    const albumContainer = this.add.container(540, 16).setDepth(z.hud);
-    const albumW = 74;
-    const albumH = 74;
+    const albumContainer = this.add.container(480, 16).setDepth(z.hud);
+    const albumW = 62;
+    const albumH = 72;
     const albumBg = this.add.graphics();
     albumBg.fillStyle(0x000000, 0.22);
-    albumBg.fillRoundedRect(0, 6, albumW, albumH, radius.md);
+    albumBg.fillRoundedRect(0, 5, albumW, albumH, radius.md);
     albumBg.fillStyle(0x047857, 1);
-    albumBg.fillRoundedRect(0, 6, albumW, albumH, radius.md);
+    albumBg.fillRoundedRect(0, 5, albumW, albumH, radius.md);
     albumBg.fillStyle(0x10B981, 1);
-    albumBg.fillRoundedRect(0, 0, albumW, albumH - 6, radius.md);
+    albumBg.fillRoundedRect(0, 0, albumW, albumH - 5, radius.md);
     albumBg.fillStyle(0xA7F3D0, 0.45);
-    albumBg.fillRoundedRect(6, 3, albumW - 12, 28, radius.sm);
+    albumBg.fillRoundedRect(6, 3, albumW - 12, 26, radius.sm);
     albumBg.lineStyle(2, 0x064E3B, 0.9);
     albumBg.strokeRoundedRect(0, 0, albumW, albumH, radius.md);
     albumContainer.add(albumBg);
 
-    const albumIcon = this.add.text(37, 34, '📖', { fontSize: '32px' }).setOrigin(0.5);
+    const albumIcon = this.add.text(31, 33, '📖', { fontSize: '26px' }).setOrigin(0.5);
     albumContainer.add(albumIcon);
-    albumContainer.setSize(albumW, albumH);
-    albumContainer.setInteractive({ useHandCursor: true });
-    albumContainer.on('pointerdown', () => {
+
+    // Exact geometric hit zone starting from 0, 0
+    albumContainer.setInteractive(
+      new Phaser.Geom.Rectangle(0, 0, albumW, albumH),
+      Phaser.Geom.Rectangle.Contains
+    );
+    if (albumContainer.input) albumContainer.input.cursor = 'pointer';
+    albumContainer.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       this.lastUiClickTime = this.time.now;
       this.scene.pause();
       this.scene.launch('AlbumScene', { returnScene: 'GameplayScene' });
+    });
+
+    // 5. Pause Button ⏸️ (Slate Blue 3D Square)
+    const pauseContainer = this.add.container(550, 16).setDepth(z.hud);
+    const pauseW = 62;
+    const pauseH = 72;
+    const pauseBg = this.add.graphics();
+    pauseBg.fillStyle(0x000000, 0.22);
+    pauseBg.fillRoundedRect(0, 5, pauseW, pauseH, radius.md);
+    pauseBg.fillStyle(0x1E293B, 1);
+    pauseBg.fillRoundedRect(0, 5, pauseW, pauseH, radius.md);
+    pauseBg.fillStyle(0x334155, 1);
+    pauseBg.fillRoundedRect(0, 0, pauseW, pauseH - 5, radius.md);
+    pauseBg.fillStyle(0x64748B, 0.45);
+    pauseBg.fillRoundedRect(6, 3, pauseW - 12, 26, radius.sm);
+    pauseBg.lineStyle(2, 0x0F172A, 0.9);
+    pauseBg.strokeRoundedRect(0, 0, pauseW, pauseH, radius.md);
+    pauseContainer.add(pauseBg);
+
+    const pauseIcon = this.add.text(31, 33, '⏸️', { fontSize: '24px' }).setOrigin(0.5);
+    pauseContainer.add(pauseIcon);
+
+    pauseContainer.setInteractive(
+      new Phaser.Geom.Rectangle(0, 0, pauseW, pauseH),
+      Phaser.Geom.Rectangle.Contains
+    );
+    if (pauseContainer.input) pauseContainer.input.cursor = 'pointer';
+    pauseContainer.on('pointerdown', () => {
+      this.lastUiClickTime = this.time.now;
+      this.onPauseGame();
     });
 
     // 5. Daily Challenge Sub-Header Banner (if active)
@@ -791,6 +843,45 @@ export class GameplayScene extends Phaser.Scene {
       scaleY: { from: 0.95, to: 1 },
       duration: dur.fast,
       ease: 'Back.easeOut',
+    });
+  }
+
+  // --- Pause Modal & Menu Navigation -----------------------------------------
+  private onPauseGame(): void {
+    if (this.gameOverTriggered || this.isPromptingRefill || this.isPaused) return;
+    this.isPaused = true;
+    this.matter.world.pause();
+    this.aimLine.clear();
+
+    new PauseModal(this, {
+      onResume: () => {
+        this.isPaused = false;
+        this.lastMotionMs = this.time.now;
+        this.lastUiClickTime = this.time.now;
+        this.matter.world.resume();
+        this.refreshAimLine();
+      },
+      onRestart: () => {
+        this.isPaused = false;
+        this.lastMotionMs = this.time.now;
+        this.lastUiClickTime = this.time.now;
+        this.matter.world.resume();
+        ctx.engine.startNewGame();
+        for (const f of this.fruits) {
+          this.removeFruit(f);
+        }
+        this.fruits = [];
+        this.ghostTier = ctx.engine.nextFruit();
+        this.refreshGhost();
+        this.updateHud();
+        this.refreshAimLine();
+      },
+      onHome: async () => {
+        this.isPaused = false;
+        await ctx.triggerSmartInterstitial();
+        this.scene.stop('GameplayScene');
+        this.scene.start('StartScene');
+      },
     });
   }
 
@@ -1375,23 +1466,25 @@ export class GameplayScene extends Phaser.Scene {
 
   // --- Input -----------------------------------------------------------------
   private bindInput(): void {
+    const HUD_SAFE_Y = Math.min(130, this.layout.spawnY - 30);
+
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
-      if (p.worldY < this.layout.spawnY - 30) return;
+      if (this.isPaused || this.gameOverTriggered || p.worldY < HUD_SAFE_Y) return;
       this.ghostX = this.clampGhostX(p.worldX);
       this.ghost.x = this.ghostX;
       this.refreshAimLine();
     });
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      if (p.worldY < this.layout.spawnY - 30) return;
+      if (this.isPaused || this.gameOverTriggered || p.worldY < HUD_SAFE_Y) return;
       this.ghostX = this.clampGhostX(p.worldX);
       this.ghost.x = this.ghostX;
       this.refreshAimLine();
     });
 
     this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
-      if (p.worldY < this.layout.spawnY - 30) return;
-      if (this.time.now - this.lastUiClickTime < 350) return;
+      if (this.isPaused || this.gameOverTriggered || p.worldY < HUD_SAFE_Y) return;
+      if (this.time.now - this.lastUiClickTime < 450) return;
       this.tryDrop();
     });
   }

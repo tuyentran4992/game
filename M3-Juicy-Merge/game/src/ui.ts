@@ -429,3 +429,42 @@ export function drawMuteButton(scene: Phaser.Scene): Phaser.GameObjects.Containe
   });
   return container;
 }
+
+// --- Leaderboard Button ------------------------------------------------------
+export function drawLeaderboardButton(scene: Phaser.Scene, x = 50, y = 50): Phaser.GameObjects.Container {
+  const container = scene.add.container(x, y).setDepth(60);
+  const iconBg = scene.add.graphics();
+  // 3D round bubble backdrop
+  iconBg.fillStyle(0x000000, 0.18);
+  iconBg.fillCircle(0, 4, 26);
+
+  iconBg.fillStyle(0xFFFFFF, 0.98);
+  iconBg.fillCircle(0, 0, 26);
+  iconBg.lineStyle(2.5, 0xF59E0B, 1);
+  iconBg.strokeCircle(0, 0, 26);
+
+  const trophyText = scene.add.text(0, 0, '🏆', { fontSize: '24px' }).setOrigin(0.5);
+  container.add([iconBg, trophyText]);
+
+  const hit = scene.add.rectangle(0, 0, 70, 70, 0x000000, 0)
+    .setInteractive({ useHandCursor: true });
+  hit.setData('testid', 'leaderboard-btn');
+  container.add(hit);
+
+  hit.on('pointerdown', async () => {
+    scene.tweens.add({
+      targets: container,
+      scale: { from: 0.88, to: 1 },
+      duration: dur.fast,
+      ease: 'Back.easeOut',
+    });
+    // Thử mở Native Popup của Playgama / Platform trước, nếu không có thì bật In-game Modal
+    const openedNative = await sdk.showLeaderboard('best_score');
+    if (!openedNative) {
+      const { LeaderboardModal } = await import('./ui/LeaderboardModal');
+      new LeaderboardModal(scene);
+    }
+  });
+
+  return container;
+}

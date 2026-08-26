@@ -15,6 +15,20 @@
 //   PAUSE_STATE_CHANGED / AUDIO_STATE_CHANGED / INTERSTITIAL_STATE_CHANGED /
 //   REWARDED_STATE_CHANGED (payload thường là boolean hoặc state string).
 
+export interface LeaderboardEntry {
+  id?: string | number;
+  name: string;
+  score: number;
+  rank: number;
+  avatar?: string;
+  isUser?: boolean;
+}
+
+export interface LeaderboardData {
+  entries: LeaderboardEntry[];
+  userEntry?: LeaderboardEntry | null;
+}
+
 export interface PlaygamaBridgeLike {
   initialize(): Promise<void>;
   EVENT_NAME: Record<string, string>;
@@ -36,6 +50,18 @@ export interface PlaygamaBridgeLike {
     showRewarded(placement?: string): void;
     on(event: string, cb: (state: unknown) => void): void;
   };
+  leaderboard?: {
+    isSupported?: boolean;
+    isNativePopupSupported?: boolean;
+    setScore?(options: { score: number; leaderboardName?: string }): Promise<void>;
+    getEntries?(options: {
+      leaderboardName?: string;
+      quantityTop?: number;
+      includeUser?: boolean;
+      quantityAround?: number;
+    }): Promise<unknown>;
+    showNativePopup?(options: { leaderboardName?: string }): Promise<void>;
+  };
 }
 
 declare global {
@@ -51,6 +77,7 @@ export function getBridge(): PlaygamaBridgeLike | null {
 }
 
 export const LOCAL_KEY = 'save';
+export const DEFAULT_LEADERBOARD_NAME = 'best_score';
 
 export class PlaygamaBackend {
   private bridge: PlaygamaBridgeLike;
@@ -159,18 +186,170 @@ export class PlaygamaBackend {
   async loadData(): Promise<unknown | null> {
     if (!this.ready) return null;
     try {
-      const arr = await this.bridge.storage.get([LOCAL_KEY]);
-      const raw = Array.isArray(arr) ? arr[0] : null;
+      const res = await this.bridge.storage.get([LOCAL_KEY]);
+      let raw: unknown = null;
+      if (Array.isArray(res)) {
+        raw = res[0];
+      } else if (res && typeof res === 'object') {
+        raw = (res as Record<string, unknown>)[LOCAL_KEY] ?? (res as Record<string, unknown>)['0'] ?? res;
+      }
       if (raw == null) return null;
-      return JSON.parse(String(raw));
+      if (typeof raw === 'object') return raw;
+      if (typeof raw === 'string') {
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return null;
+        }
+      }
+      return null;
     } catch (e) {
       console.warn('bridge.storage.get failed', e);
       return null;
     }
   }
 
-  sendScore(_score: number): void {
-    // Playgama không có sendScore trực tiếp — dùng storage/leaderboard nếu cần.
+  // --- Leaderboard Integration (Playgama Bridge SDK v2) ---
+
+  async setScore(score: number, leaderboardName = DEFAULT_LEADERBOARD_NAME): Promise<boolean> {
+    if (!this.ready) return false;
+    if (this.bridge.leaderboard?.isSupported && typeof this.bridge.leaderboard?.setScore === 'function') {
+      try {
+        await this.bridge.leaderboard.setScore({ score, leaderboardName });
+        return true;
+      } catch (e) {
+        console.warn('bridge.leaderboard.setScore failed', e);
+      }
+    }
+    return false;
+  }
+
+  sendScore(score: number, leaderboardName = DEFAULT_LEADERBOARD_NAME): void {
+    void this.setScore(score, leaderboardName);
+  }
+
+  async getLeaderboardEntries(
+    leaderboardName = DEFAULT_LEADERBOARD_NAME,
+    quantityTop = 10,
+    userScore = 0
+  ): Promise<LeaderboardData> {
+    if (this.ready && this.bridge.leaderboard?.isSupported && typeof this.bridge.leaderboard?.getEntries === 'function') {
+      try {
+        const raw = await this.bridge.leaderboard.getEntries({
+          leaderboardName,
+          quantityTop,
+          includeUser: true,
+          quantityAround: 3,
+        });
+
+        if (raw && typeof raw === 'object') {
+          // Chuẩn hóa dữ liệu trả về từ Bridge Playgama
+          const list = Array.isArray((raw as Record<string, unknown>).entries)
+            ? (raw as { entries: Array<Record<string, unknown>> }).entries
+            : Array.isArray(raw)
+            ? (raw as Array<Record<string, unknown>>)
+            : [];
+
+          if (list.length > 0) {
+            const entries: LeaderboardEntry[] = list.map((rawItem, idx) => {
+              const item = rawItem as Record<string, unknown>;
+              const player = item.player as Record<string, unknown> | undefined;
+              return {
+                id: (item.id as string | number) ?? idx + 1,
+                name: String(item.name || player?.name || item.title || `Player #${idx + 1}`),
+                score: Number(item.score || item.scoreFormatted || 0),
+                rank: Number(item.rank || idx + 1),
+                avatar: typeof item.avatar === 'string' ? item.avatar : undefined,
+                isUser: Boolean(item.isUser || item.isCurrentPlayer),
+              };
+            });
+
+            let userEntry: LeaderboardEntry | null = null;
+            const rawUser = (raw as Record<string, unknown>).userEntry as Record<string, unknown> | undefined;
+            if (rawUser) {
+              userEntry = {
+                id: (rawUser.id as string | number) ?? 'me',
+                name: String(rawUser.name || 'You'),
+                score: Number(rawUser.score || userScore),
+                rank: Number(rawUser.rank || 1),
+                isUser: true,
+              };
+            } else {
+              userEntry = entries.find(e => e.isUser) ?? {
+                id: 'me',
+                name: 'You',
+                score: userScore,
+                rank: entries.findIndex(e => e.score <= userScore) + 1 || entries.length + 1,
+                isUser: true,
+              };
+            }
+
+            return { entries, userEntry };
+          }
+        }
+      } catch (e) {
+        console.warn('bridge.leaderboard.getEntries failed, fallback mock', e);
+      }
+    }
+
+    // Fallback Mock Leaderboard cho môi trường dev / local test
+    return this._getMockLeaderboard(userScore);
+  }
+
+  async showNativeLeaderboard(leaderboardName = DEFAULT_LEADERBOARD_NAME): Promise<boolean> {
+    if (!this.ready) return false;
+    if (this.bridge.leaderboard?.isNativePopupSupported && typeof this.bridge.leaderboard?.showNativePopup === 'function') {
+      try {
+        await this.bridge.leaderboard.showNativePopup({ leaderboardName });
+        return true;
+      } catch (e) {
+        console.warn('bridge.leaderboard.showNativePopup failed', e);
+      }
+    }
+    return false;
+  }
+
+  private _getMockLeaderboard(userScore: number): LeaderboardData {
+    interface MockPlayer {
+      name: string;
+      score: number;
+      isUser?: boolean;
+    }
+
+    const mockPlayers: MockPlayer[] = [
+      { name: '🍉 WatermelonKing', score: 3850 },
+      { name: '🐉 DragonMaster', score: 3120 },
+      { name: '🍍 PineQueen', score: 2680 },
+      { name: '🍇 GrapeNinja', score: 2150 },
+      { name: '🍓 BerryPop', score: 1820 },
+      { name: '🍑 PeachLover', score: 1450 },
+      { name: '🍊 JuicyChamp', score: 1180 },
+      { name: '🍎 RedApple', score: 920 },
+      { name: '🍐 GreenPear', score: 650 },
+      { name: '🍒 SweetCherry', score: 420 },
+    ];
+
+    const allList: MockPlayer[] = [...mockPlayers, { name: '⭐ You (Me)', score: userScore, isUser: true }];
+    allList.sort((a, b) => b.score - a.score);
+
+    const userIndex = allList.findIndex(p => p.isUser);
+    const userRank = userIndex >= 0 ? userIndex + 1 : mockPlayers.length + 1;
+
+    const entries: LeaderboardEntry[] = allList.slice(0, 10).map((p, idx) => ({
+      name: p.name,
+      score: p.score,
+      rank: idx + 1,
+      isUser: Boolean(p.isUser),
+    }));
+
+    const userEntry: LeaderboardEntry = {
+      name: '⭐ You (Me)',
+      score: userScore,
+      rank: userRank,
+      isUser: true,
+    };
+
+    return { entries, userEntry };
   }
 
   async requestInterstitialAd(): Promise<void> {
@@ -211,4 +390,4 @@ export class PlaygamaBackend {
   }
 }
 
-const PAUSE = 'pause_state_changed';
+const PAUSE = 'pause_state_changed';

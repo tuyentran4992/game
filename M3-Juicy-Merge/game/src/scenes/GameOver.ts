@@ -165,13 +165,14 @@ export class GameOverScene extends Phaser.Scene {
       panel.add(retryBtn);
       retryBtn.on('pointerdown', () => this.onRetry());
 
-      const { container: homeBtn } = drawButton(this, 0, homeY, 'MAIN MENU', {
+      const halfBtnW = (btnW - 14) / 2;
+      const { container: homeBtn } = drawButton(this, -btnW / 4 - 3, homeY, 'MAIN MENU', {
         testid: 'home-btn',
         variant: 'ghost',
         icon: '🏠',
-        width: btnW,
+        width: halfBtnW,
         height: 56,
-        fontSize: 20,
+        fontSize: 16,
       });
       panel.add(homeBtn);
       homeBtn.on('pointerdown', async () => {
@@ -179,6 +180,23 @@ export class GameOverScene extends Phaser.Scene {
         this.scene.stop('GameplayScene');
         this.scene.stop('GameOverScene');
         this.scene.start('StartScene');
+      });
+
+      const { container: leaderBtn } = drawButton(this, btnW / 4 + 3, homeY, 'RANKING', {
+        testid: 'ranking-btn',
+        variant: 'purple',
+        icon: '🏆',
+        width: halfBtnW,
+        height: 56,
+        fontSize: 16,
+      });
+      panel.add(leaderBtn);
+      leaderBtn.on('pointerdown', async () => {
+        const openedNative = await ctx.sdk.showLeaderboard('best_score');
+        if (!openedNative) {
+          const { LeaderboardModal } = await import('../ui/LeaderboardModal');
+          new LeaderboardModal(this);
+        }
       });
     } else {
       const retryY = 65;
@@ -196,13 +214,14 @@ export class GameOverScene extends Phaser.Scene {
       panel.add(retryBtn);
       retryBtn.on('pointerdown', () => this.onRetry());
 
-      const { container: homeBtn } = drawButton(this, 0, homeY, 'MAIN MENU', {
+      const halfBtnW = (btnW - 14) / 2;
+      const { container: homeBtn } = drawButton(this, -btnW / 4 - 3, homeY, 'MAIN MENU', {
         testid: 'home-btn',
         variant: 'ghost',
         icon: '🏠',
-        width: btnW,
+        width: halfBtnW,
         height: 60,
-        fontSize: 21,
+        fontSize: 16,
       });
       panel.add(homeBtn);
       homeBtn.on('pointerdown', async () => {
@@ -210,6 +229,23 @@ export class GameOverScene extends Phaser.Scene {
         this.scene.stop('GameplayScene');
         this.scene.stop('GameOverScene');
         this.scene.start('StartScene');
+      });
+
+      const { container: leaderBtn } = drawButton(this, btnW / 4 + 3, homeY, 'RANKING', {
+        testid: 'ranking-btn',
+        variant: 'purple',
+        icon: '🏆',
+        width: halfBtnW,
+        height: 60,
+        fontSize: 16,
+      });
+      panel.add(leaderBtn);
+      leaderBtn.on('pointerdown', async () => {
+        const openedNative = await ctx.sdk.showLeaderboard('best_score');
+        if (!openedNative) {
+          const { LeaderboardModal } = await import('../ui/LeaderboardModal');
+          new LeaderboardModal(this);
+        }
       });
     }
 
