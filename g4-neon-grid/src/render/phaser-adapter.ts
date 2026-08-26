@@ -6,8 +6,9 @@
  */
 
 import Phaser from 'phaser';
+import type { GameTheme } from '@game/core';
 import { GRID_SIZE, type Grid, type Shape, type Position } from '../logic/board';
-import { theme, getBlockColor } from '../ui/theme';
+import { getBlockColor } from '../ui/theme';
 
 const CELL = 64;        // px per cell
 const PAD = 4;          // px gap between cells
@@ -19,40 +20,36 @@ export class GridRenderer {
   private graphics: Phaser.GameObjects.Graphics;
   private x: number;
   private y: number;
+  private theme: GameTheme;
 
-  constructor(scene: Phaser.Scene, x: number, y: number) {
+  constructor(scene: Phaser.Scene, x: number, y: number, theme: GameTheme) {
     this.scene = scene;
     this.x = x;
     this.y = y;
+    this.theme = theme;
     this.graphics = scene.add.graphics();
   }
 
-  /** Draw the full grid background */
   drawBackground(): void {
     const g = this.graphics;
     const w = GRID_PX;
     const h = GRID_PX;
+    const t = this.theme;
 
-    // Grid background
-    g.fillStyle(theme.gridBg, 1);
+    g.fillStyle(t.colors.surfaceDark, 0.8);
     g.fillRoundedRect(this.x, this.y, w, h, 8);
 
-    // Grid lines (subtle)
     for (let i = 0; i <= GRID_SIZE; i++) {
       const pos = this.x + i * (CELL + PAD);
-      g.lineStyle(1, theme.gridLine, 0.3);
-      // Vertical
+      g.lineStyle(1, t.colors.textMuted, 0.15);
       g.lineBetween(pos, this.y, pos, this.y + h);
-      // Horizontal
       g.lineBetween(this.x, this.y + i * (CELL + PAD), this.x + w, this.y + i * (CELL + PAD));
     }
 
-    // Border glow
-    g.lineStyle(2, theme.gridLineGlow, 0.15);
+    g.lineStyle(2, t.colors.primary, 0.15);
     g.strokeRoundedRect(this.x, this.y, w, h, 8);
   }
 
-  /** Draw the grid state */
   drawGrid(grid: Grid): void {
     const g = this.graphics;
     for (let r = 0; r < GRID_SIZE; r++) {
@@ -64,22 +61,18 @@ export class GridRenderer {
         const cy = this.y + r * (CELL + PAD);
         const color = getBlockColor(val);
 
-        // Glow
         g.fillStyle(color.glow, 0.2);
         g.fillRoundedRect(cx - 2, cy - 2, CELL + 4, CELL + 4, BORDER_R + 2);
 
-        // Block fill
         g.fillStyle(color.fill, 0.9);
         g.fillRoundedRect(cx, cy, CELL, CELL, BORDER_R);
 
-        // Inner highlight (top edge)
         g.fillStyle(0xffffff, 0.15);
         g.fillRoundedRect(cx + 3, cy + 2, CELL - 6, CELL / 2, { tl: BORDER_R - 2, tr: BORDER_R - 2, bl: 0, br: 0 });
       }
     }
   }
 
-  /** Draw a ghost (preview) of where a shape would be placed */
   drawGhost(shape: Shape, pos: Position, grid: Grid): void {
     const g = this.graphics;
     const color = getBlockColor(shape.color);
@@ -103,24 +96,23 @@ export class GridRenderer {
     }
   }
 
-  /** Draw highlight animation for cleared cells */
   drawClearHighlight(rows: number[], cols: number[], progress: number): void {
     const g = this.graphics;
     const alpha = 1 - progress;
+    const color = this.theme.colors.primary;
 
     for (const r of rows) {
       const cy = this.y + r * (CELL + PAD);
-      g.fillStyle(0x00f5ff, alpha * 0.5);
+      g.fillStyle(color, alpha * 0.5);
       g.fillRoundedRect(this.x, cy, GRID_PX, CELL, 4);
     }
     for (const c of cols) {
       const cx = this.x + c * (CELL + PAD);
-      g.fillStyle(0x00f5ff, alpha * 0.5);
+      g.fillStyle(color, alpha * 0.5);
       g.fillRoundedRect(cx, this.y, CELL, GRID_PX, 4);
     }
   }
 
-  /** Convert screen coordinates to grid position */
   screenToGrid(screenX: number, screenY: number): Position | null {
     const col = Math.floor((screenX - this.x) / (CELL + PAD));
     const row = Math.floor((screenY - this.y) / (CELL + PAD));
@@ -128,7 +120,6 @@ export class GridRenderer {
     return { row, col };
   }
 
-  /** Get grid pixel position for a cell */
   gridToPixel(row: number, col: number): { x: number; y: number } {
     return {
       x: this.x + col * (CELL + PAD) + CELL / 2,
@@ -136,13 +127,8 @@ export class GridRenderer {
     };
   }
 
-  clear(): void {
-    this.graphics.clear();
-  }
-
-  destroy(): void {
-    this.graphics.destroy();
-  }
+  clear(): void { this.graphics.clear(); }
+  destroy(): void { this.graphics.destroy(); }
 }
 
 export { CELL, GRID_PX };

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { palette, gradients, fonts, fontSizes, radius, shadows, spacing, animation } from '../tokens';
+import type { GameTheme } from '../theme';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
@@ -9,26 +9,15 @@ export interface ButtonStyle {
   width?: number;
   height?: number;
   fontSize?: number;
-  /** Icon character/emoji prepended to label */
   icon?: string;
-  /** If true, shows a pulsing glow animation */
   pulse?: boolean;
-  /** Disable interaction */
   disabled?: boolean;
+  theme: GameTheme;
 }
 
 /**
  * Professional gradient button with drop shadow, press state, and optional glow.
- *
- * Usage:
- * ```ts
- * const btn = new Button(scene, 360, 600, {
- *   variant: 'primary',
- *   label: 'Play',
- *   pulse: true,
- * });
- * btn.onClick(() => startGame());
- * ```
+ * Theme-agnostic: accepts a GameTheme for colors, fonts, radii, shadows.
  */
 export class Button {
   private scene: Phaser.Scene;
@@ -38,6 +27,7 @@ export class Button {
   private shadow: Phaser.GameObjects.Graphics;
   private glow: Phaser.GameObjects.Graphics | null = null;
   private _disabled = false;
+  private theme: GameTheme;
 
   public x: number;
   public y: number;
@@ -55,15 +45,18 @@ export class Button {
     this.width = style.width ?? 280;
     this.height = style.height ?? 64;
     this._disabled = style.disabled ?? false;
+    this.theme = style.theme;
+
+    const t = this.theme;
 
     this.container = scene.add.container(x, y);
 
-    // Shadow layer (behind bg)
+    // Shadow
     this.shadow = scene.add.graphics();
     this.drawShadow();
     this.container.add(this.shadow);
 
-    // Glow layer (behind bg, for pulse)
+    // Glow
     if (style.pulse) {
       this.glow = scene.add.graphics();
       this.drawGlow();
@@ -79,9 +72,9 @@ export class Button {
     // Label
     const fullLabel = style.icon ? `${style.icon}  ${style.label}` : style.label;
     this.labelText = scene.add.text(0, 0, fullLabel, {
-      fontFamily: fonts.heading.family,
-      fontSize: `${style.fontSize ?? fontSizes.button}px`,
-      fontStyle: `bold`,
+      fontFamily: t.fonts.heading,
+      fontSize: `${style.fontSize ?? t.fontSizes.button}px`,
+      fontStyle: 'bold',
       color: '#ffffff',
       stroke: '#00000055',
       strokeThickness: 2,
@@ -121,80 +114,64 @@ export class Button {
     });
   }
 
-  onClick(cb: () => void): void {
-    this.clickCallback = cb;
-  }
-
-  setDisabled(disabled: boolean): void {
-    this._disabled = disabled;
-    this.labelText.setAlpha(disabled ? 0.5 : 1);
-  }
-
-  setLabel(label: string): void {
-    this.labelText.setText(label);
-  }
-
-  destroy(): void {
-    this.container.destroy();
-  }
-
-  getContainer(): Phaser.GameObjects.Container {
-    return this.container;
-  }
-
-  // ── Private drawing ────────────────────────────────────────────────
+  onClick(cb: () => void): void { this.clickCallback = cb; }
+  setDisabled(disabled: boolean): void { this._disabled = disabled; this.labelText.setAlpha(disabled ? 0.5 : 1); }
+  setLabel(label: string): void { this.labelText.setText(label); }
+  destroy(): void { this.container.destroy(); }
+  getContainer(): Phaser.GameObjects.Container { return this.container; }
 
   private drawShadow(): void {
     this.shadow.clear();
-    const s = shadows.button;
+    const s = this.theme.shadows.button;
     this.shadow.fillStyle(s.color, s.alpha);
     this.shadow.fillRoundedRect(
       -this.width / 2 + s.distance,
       -this.height / 2 + s.distance,
-      this.width,
-      this.height,
-      radius.md,
+      this.width, this.height,
+      this.theme.radii.md,
     );
   }
 
   private drawGlow(): void {
     if (!this.glow) return;
     this.glow.clear();
-    const g = this.variant === 'primary' ? shadows.glowCyan : shadows.glowMagenta;
+    const g = this.theme.shadows.glow;
     this.glow.fillStyle(g.color, g.alpha * 0.4);
-    this.glow.fillRoundedRect(-this.width / 2 - 4, -this.height / 2 - 4, this.width + 8, this.height + 8, radius.md + 4);
+    this.glow.fillRoundedRect(-this.width / 2 - 4, -this.height / 2 - 4, this.width + 8, this.height + 8, this.theme.radii.md + 4);
   }
 
   private drawBg(hovered: boolean): void {
     this.bg.clear();
-    const g = this.getGradient();
-    this.bg.fillGradientStyle(g.topLeft, g.topRight, g.bottomLeft, g.bottomRight, 1);
-
-    // Border glow
-    if (this.variant === 'ghost') {
-      this.bg.lineStyle(2, palette.neonCyan, 0.8);
-    }
-
-    this.bg.fillRoundedRect(-this.width / 2, -this.height / 2, this.width, this.height, radius.md);
+    const t = this.theme;
+    const grad = this.getGradient();
+    this.bg.fillGradientStyle(grad.topLeft, grad.topRight, grad.bottomLeft, grad.bottomRight, 1);
 
     if (this.variant === 'ghost') {
-      this.bg.strokeRoundedRect(-this.width / 2, -this.height / 2, this.width, this.height, radius.md);
+      this.bg.lineStyle(2, t.colors.primary, 0.8);
     }
 
-    // Inner highlight (top edge)
+    this.bg.fillRoundedRect(-this.width / 2, -this.height / 2, this.width, this.height, t.radii.md);
+
+    if (this.variant === 'ghost') {
+      this.bg.strokeRoundedRect(-this.width / 2, -this.height / 2, this.width, this.height, t.radii.md);
+    }
+
+    // Inner highlight
     if (!hovered) {
       this.bg.fillStyle(0xffffff, 0.08);
-      this.bg.fillRoundedRect(-this.width / 2 + 4, -this.height / 2 + 2, this.width - 8, this.height / 3, { tl: radius.md, tr: radius.md, bl: 0, br: 0 });
+      this.bg.fillRoundedRect(-this.width / 2 + 4, -this.height / 2 + 2, this.width - 8, this.height / 3,
+        { tl: t.radii.md, tr: t.radii.md, bl: 0, br: 0 });
     }
   }
 
-  private getGradient(): { topLeft: number; topRight: number; bottomLeft: number; bottomRight: number } {
+  private getGradient() {
+    const t = this.theme;
     switch (this.variant) {
-      case 'primary': return gradients.btnPrimary;
-      case 'secondary': return gradients.btnSecondary;
-      case 'danger': return gradients.blockNeonRed;
-      case 'ghost': return gradients.btnGhost;
-      default: return gradients.btnPrimary;
+      case 'primary': return t.gradients.btnPrimary;
+      case 'secondary': return t.gradients.btnSecondary;
+      case 'danger': return { topLeft: t.colors.error, topRight: t.colors.error, bottomLeft: t.colors.error, bottomRight: t.colors.error };
+      case 'ghost': return { topLeft: 0xffffff, topRight: 0xffffff, bottomLeft: 0xccccdd, bottomRight: 0xccccdd };
+      default: return t.gradients.btnPrimary;
     }
   }
 
