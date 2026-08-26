@@ -6,13 +6,12 @@
 
 import Phaser from 'phaser';
 import { Button } from '@game/core/ui';
-import { fonts } from '@game/core/tokens';
 import { ParticleEmitter } from '@game/core/ui';
 import { GridRenderer } from '../render/phaser-adapter';
 import { soundFx } from '../audio/audio-synth';
 import { saveManager } from '../logic/save-manager';
 import { isDailyAvailableToday } from '../logic/daily';
-import { getActiveSkinPalette } from '../ui/theme';
+import { theme, fonts, getActiveSkinPalette } from '../ui/theme';
 
 export class StartScene extends Phaser.Scene {
   private muteBtnText!: Phaser.GameObjects.Text;
@@ -102,6 +101,7 @@ export class StartScene extends Phaser.Scene {
       stroke: '#080816',
       strokeThickness: 4,
     }).setOrigin(0.5);
+    title.setData('testid', 'start-title');
 
     // Subtle gentle floating animation for title
     this.tweens.add({
@@ -138,7 +138,9 @@ export class StartScene extends Phaser.Scene {
       height: 64,
       fontSize: 24,
       pulse: true,
+      theme,
     });
+    playBtn.getContainer().setData('testid', 'play-btn');
 
     playBtn.onClick(() => {
       soundFx.playButtonClick();
@@ -158,7 +160,9 @@ export class StartScene extends Phaser.Scene {
       width: 290,
       height: 56,
       fontSize: 20,
+      theme,
     });
+    dailyBtn.getContainer().setData('testid', 'daily-btn');
 
     dailyBtn.onClick(() => {
       soundFx.playButtonClick();
@@ -189,7 +193,9 @@ export class StartScene extends Phaser.Scene {
       width: 290,
       height: 56,
       fontSize: 20,
+      theme,
     });
+    skinsBtn.getContainer().setData('testid', 'skins-btn');
 
     skinsBtn.onClick(() => {
       soundFx.playButtonClick();
@@ -209,26 +215,29 @@ export class StartScene extends Phaser.Scene {
     const bestScore = saveManager.getBestScore();
     const achCount = saveManager.getUnlockedAchievementsCount();
 
-    this.add.text(cx - 85, cy + 257, `🏆 BEST: ${bestScore.toLocaleString()}`, {
+    const bestText = this.add.text(cx - 85, cy + 257, `🏆 BEST: ${bestScore.toLocaleString()}`, {
       fontFamily: fonts.mono.family,
       fontSize: '15px',
       fontStyle: 'bold',
       color: '#ffd000',
     }).setOrigin(0.5);
+    bestText.setData('testid', 'best-score');
 
-    this.add.text(cx + 90, cy + 257, `🎖️ BADGES: ${achCount}/15`, {
+    const achText = this.add.text(cx + 90, cy + 257, `🎖️ BADGES: ${achCount}/15`, {
       fontFamily: fonts.mono.family,
       fontSize: '15px',
       fontStyle: 'bold',
       color: '#00f5ff',
     }).setOrigin(0.5);
+    achText.setData('testid', 'achievement-count');
 
     // Version
-    this.add.text(cx, this.scale.height - 35, 'v2.0 · Cyberpunk Meta Edition', {
+    const versionLabel = this.add.text(cx, this.scale.height - 35, 'v2.0 · Cyberpunk Meta Edition', {
       fontFamily: fonts.body.family,
       fontSize: '14px',
       color: '#555588',
     }).setOrigin(0.5);
+    versionLabel.setData('testid', 'version-label');
   }
 
   private createFloatingBlocks(cx: number, cy: number): void {

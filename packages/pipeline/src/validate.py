@@ -8,8 +8,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from pipeline.config import load_config, find_config_for_game_dir, TYPE_EXTENSIONS
-from pipeline.assets import build_manifest
+from .config import load_config, find_config_for_game_dir, TYPE_EXTENSIONS
+from .assets import build_manifest
 
 # Limits (BR-03)
 LIMIT_BUNDLE_INITIAL_MIB = 30
@@ -88,8 +88,8 @@ def run_validation(game_dir: Path, project_root: Path) -> dict[str, Any]:
     else:
         cfg = {"assets": [], "metadata": {}, "mechanics": {}}
 
-    assets_dir = project_root / "assets" / "raw"
-    game_src = project_root / "game"
+    assets_dir = game_dir / "assets" if (game_dir / "assets").exists() else project_root / "assets" / "raw"
+    game_src = game_dir if (game_dir / "src").exists() else project_root / "game"
 
     # Collect all files
     asset_files = list(assets_dir.glob("**/*")) if assets_dir.exists() else []

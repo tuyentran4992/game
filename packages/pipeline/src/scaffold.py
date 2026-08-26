@@ -2,7 +2,7 @@
 from pathlib import Path
 from typing import Any
 
-from pipeline.config import load_config, validate_config
+from .config import load_config, validate_config
 
 
 PHASER_VERSION = "3.80.1"

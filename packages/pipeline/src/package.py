@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from pipeline.config import load_config, find_config_for_game_dir
+from .config import load_config, find_config_for_game_dir
 
 
 def package(game_dir: Path, project_root: Path, build_dir: Path) -> int:

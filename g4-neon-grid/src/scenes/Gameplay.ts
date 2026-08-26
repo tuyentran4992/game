@@ -4,7 +4,6 @@
 
 import Phaser from 'phaser';
 import { ParticleEmitter } from '@game/core/ui';
-import { fonts } from '@game/core/tokens';
 import { sdk } from '@game/sdk';
 import {
   createEmptyGrid,
@@ -21,7 +20,7 @@ import { pickPieces, getAllShapes } from '../logic/shapes';
 import { scorePlacement } from '../logic/scoring';
 import { GridRenderer, CELL, PAD, GRID_PX } from '../render/phaser-adapter';
 import { soundFx } from '../audio/audio-synth';
-import { getActiveSkinPalette, theme } from '../ui/theme';
+import { getActiveSkinPalette, theme, fonts } from '../ui/theme';
 import { saveManager } from '../logic/save-manager';
 import { createDailyChallenge, getDailyGoalLines } from '../logic/daily';
 import { createMulberry32 } from '../logic/prng';
@@ -226,6 +225,7 @@ export class GameplayScene extends Phaser.Scene {
       stroke: '#040410',
       strokeThickness: 3,
     }).setOrigin(0.5);
+    this.scoreTextObj.setData('testid', 'score-label');
 
     // Right: Best Score / Target
     const bestBoxX = cx + 140;
@@ -352,8 +352,9 @@ export class GameplayScene extends Phaser.Scene {
     const startX = cx - (3 * btnW + 2 * gap) / 2 + btnW / 2;
 
     // Helper to build power-up button
-    const buildBtn = (x: number, label: string, color: number, onClick: () => void) => {
+    const buildBtn = (x: number, label: string, color: number, testid: string, onClick: () => void) => {
       const cont = this.add.container(x, toolbarY);
+      cont.setData('testid', testid);
       const bg = this.add.graphics();
       this.drawPowerUpButtonBg(bg, btnW, btnH, color);
       cont.add(bg);
@@ -396,14 +397,14 @@ export class GameplayScene extends Phaser.Scene {
     };
 
     // 1. Undo Button
-    const undo = buildBtn(startX, `↺ Undo (${this.powerUps.undoRemaining})`, 0x00f5ff, () => this.handleUndo());
+    const undo = buildBtn(startX, `↺ Undo (${this.powerUps.undoRemaining})`, 0x00f5ff, 'undo-btn', () => this.handleUndo());
     this.undoBtnText = undo.txt;
 
     // 2. Shuffle Button
-    buildBtn(startX + btnW + gap, '🔀 Shuffle 🎬', 0xffd000, () => this.handleShuffle());
+    buildBtn(startX + btnW + gap, '🔀 Shuffle 🎬', 0xffd000, 'shuffle-btn', () => this.handleShuffle());
 
     // 3. Bomb Button
-    buildBtn(startX + 2 * (btnW + gap), '💣 Bomb 🎬', 0xff2255, () => this.handleBombToggle());
+    buildBtn(startX + 2 * (btnW + gap), '💣 Bomb 🎬', 0xff2255, 'bomb-btn', () => this.handleBombToggle());
 
     // Bomb Targeting Mode Banner (Hidden)
     this.bombModeIndicator = this.add.container(cx, this.gridY - 24);
@@ -534,6 +535,7 @@ export class GameplayScene extends Phaser.Scene {
     const progressY = this.scale.height - 75;
 
     this.dailyProgressContainer = this.add.container(cx, progressY);
+    this.dailyProgressContainer.setData('testid', 'daily-progress');
 
     const bg = this.add.graphics();
     bg.fillStyle(0x101026, 0.85);
@@ -599,6 +601,7 @@ export class GameplayScene extends Phaser.Scene {
       const slotCenterY = trayY + slotH / 2;
 
       const container = this.add.container(slotX, slotCenterY);
+      container.setData('testid', `piece-${i}`);
       const cardGraphic = this.add.graphics();
       const shapeGraphic = this.add.graphics();
 
@@ -1153,6 +1156,7 @@ export class GameplayScene extends Phaser.Scene {
     soundFx.playComboFanfare();
 
     const overlay = this.add.container(0, 0).setDepth(500);
+    overlay.setData('testid', 'daily-complete-popup');
 
     const bg = this.add.graphics();
     bg.fillStyle(0x04040e, 0.88);
@@ -1190,12 +1194,14 @@ export class GameplayScene extends Phaser.Scene {
       fontStyle: 'bold',
       color: '#00ff88',
     }).setOrigin(0.5);
+    rewardLabel.setData('testid', 'daily-reward');
     modalContent.add(rewardLabel);
 
     const claimBtn = this.createModalButton(cx, cy + 90, '🎁  CLAIM & CONTINUE', '#00f5ff', () => {
       soundFx.playButtonClick();
       overlay.destroy();
     });
+    claimBtn.setData('testid', 'daily-claim-btn');
     modalContent.add(claimBtn);
 
     ParticleEmitter.burst(this, cx, cy - 140, 0xffd000, 30);
@@ -1278,6 +1284,7 @@ export class GameplayScene extends Phaser.Scene {
       fontStyle: '800',
       color: titleColor,
     }).setOrigin(0.5);
+    title.setData('testid', 'title-label');
     modalContent.add(title);
 
     // Score
@@ -1287,6 +1294,7 @@ export class GameplayScene extends Phaser.Scene {
       fontStyle: 'bold',
       color: '#ffffff',
     }).setOrigin(0.5);
+    scoreVal.setData('testid', 'score-label');
     modalContent.add(scoreVal);
 
     // Sub-stats (Best, Lines, Streak)
@@ -1328,6 +1336,7 @@ export class GameplayScene extends Phaser.Scene {
         fontStyle: 'bold',
         color: '#00ff88',
       }).setOrigin(0.5);
+      achBadge.setData('testid', 'achievement-title');
       modalContent.add(achBadge);
       offsetAction += 40;
     }
@@ -1338,6 +1347,7 @@ export class GameplayScene extends Phaser.Scene {
       overlay.destroy();
       this.scene.restart({ isDaily: this.isDailyMode });
     });
+    retryBtn.setData('testid', 'retry-btn');
     modalContent.add(retryBtn);
 
     // Menu Button
@@ -1346,6 +1356,7 @@ export class GameplayScene extends Phaser.Scene {
       overlay.destroy();
       this.scene.start('Start');
     });
+    menuBtn.setData('testid', 'menu-btn');
     modalContent.add(menuBtn);
 
     modalContent.setScale(0.85);

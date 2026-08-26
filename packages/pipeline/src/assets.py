@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from pipeline.config import load_config, validate_config, TYPE_EXTENSIONS
+from .config import load_config, validate_config, TYPE_EXTENSIONS
 
 
 @dataclass

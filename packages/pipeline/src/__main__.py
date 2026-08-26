@@ -7,11 +7,11 @@ from pathlib import Path
 if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
-from pipeline.config import load_config, validate_config, find_config_for_game_dir
-from pipeline.scaffold import scaffold as scaffold_cmd
-from pipeline.assets import generate_assets, build_manifest
-from pipeline.validate import run_validation
-from pipeline.package import package as package_cmd
+from .config import load_config, validate_config, find_config_for_game_dir
+from .scaffold import scaffold as scaffold_cmd
+from .assets import generate_assets, build_manifest
+from .validate import run_validation
+from .package import package as package_cmd
 
 
 def main(argv: list[str] | None = None) -> int:

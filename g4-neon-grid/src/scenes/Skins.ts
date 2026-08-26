@@ -6,11 +6,11 @@
 
 import Phaser from 'phaser';
 import { Button } from '@game/core/ui';
-import { fonts } from '@game/core/tokens';
 import { SKINS, getSkinById } from '../logic/skins';
 import { saveManager } from '../logic/save-manager';
 import { soundFx } from '../audio/audio-synth';
 import { GridRenderer } from '../render/phaser-adapter';
+import { theme, fonts } from '../ui/theme';
 import type { Skin } from '../logic/types';
 
 export class SkinsScene extends Phaser.Scene {
@@ -40,7 +40,7 @@ export class SkinsScene extends Phaser.Scene {
     }
 
     // 2. Title
-    this.add.text(cx, 70, '🎨 CYBER SKINS', {
+    const title = this.add.text(cx, 70, '🎨 CYBER SKINS', {
       fontFamily: fonts.display.family,
       fontSize: '36px',
       fontStyle: '800',
@@ -48,6 +48,7 @@ export class SkinsScene extends Phaser.Scene {
       stroke: '#080816',
       strokeThickness: 4,
     }).setOrigin(0.5);
+    title.setData('testid', 'skins-title');
 
     // 3. Grid of 7 Skins (3 columns)
     this.createSkinsGrid(cx, 130);
@@ -66,12 +67,14 @@ export class SkinsScene extends Phaser.Scene {
       fontStyle: 'bold',
       color: '#ffffff',
     }).setOrigin(0.5);
+    this.currentLabel.setData('testid', 'skin-current-label');
 
     this.conditionLabel = this.add.text(cx, 755, activeSkin.unlockCondition, {
       fontFamily: fonts.body.family,
       fontSize: '15px',
       color: '#8888bb',
     }).setOrigin(0.5);
+    this.conditionLabel.setData('testid', 'skin-unlock-condition');
 
     // 5. Back Button
     const backBtn = new Button(this, cx, 860, {
@@ -80,7 +83,9 @@ export class SkinsScene extends Phaser.Scene {
       width: 280,
       height: 60,
       fontSize: 22,
+      theme,
     });
+    backBtn.getContainer().setData('testid', 'skin-back-btn');
 
     backBtn.onClick(() => {
       soundFx.playButtonClick();
@@ -108,6 +113,7 @@ export class SkinsScene extends Phaser.Scene {
       const y = startY + row * (cardH + gapY) + cardH / 2;
 
       const container = this.add.container(x, y);
+      container.setData('testid', `skin-${skin.id}`);
       this.skinCards.push(container);
 
       this.renderSkinCard(container, skin, cardW, cardH);
