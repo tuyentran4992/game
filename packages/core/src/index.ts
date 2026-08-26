@@ -1,4 +1,4 @@
-export { tokens } from './tokens';
+export * from './tokens';
 export type { GameTheme } from './theme';
 export { Button, type ButtonStyle, type ButtonVariant } from './ui/Button';
 export { Panel } from './ui/Panel';

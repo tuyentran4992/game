@@ -25,7 +25,7 @@
     "@hono/node-server": "^2.1.0",
     "devvit": "^0.14.0",
     "hono": "^4.13.0",
-    "phaser": "^3.80.1"
+    "phaser": "^4.2.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",

@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:standalone": "tsc --noEmit && vite build --mode standalone",
+    "build:playgama": "tsc --noEmit && vite build --mode playgama",
+    "build:ytgame": "tsc --noEmit && vite build --mode ytgame",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "preview": "vite preview"
@@ -13,7 +16,7 @@
   "dependencies": {
     "@game/core": "workspace:*",
     "@game/sdk": "workspace:*",
-    "phaser": "^3.80.0"
+    "phaser": "^4.2.1"
   },
   "devDependencies": {
     "typescript": "^5.5.0",

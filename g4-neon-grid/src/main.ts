@@ -25,6 +25,7 @@ const config: Phaser.Types.Core.GameConfig = {
     antialiasGL: true,
     roundPixels: false,
     powerPreference: 'high-performance',
+    preserveDrawingBuffer: true,
   },
   scene: [StartScene, GameplayScene, SkinsScene],
 };
@@ -33,7 +34,11 @@ const config: Phaser.Types.Core.GameConfig = {
 async function startApp(): Promise<void> {
   if (document.fonts) {
     try {
-      await document.fonts.ready;
+      // Race fonts.ready against a timeout to prevent hanging in headless/offline environments
+      await Promise.race([
+        document.fonts.ready,
+        new Promise(resolve => setTimeout(resolve, 3000)),
+      ]);
     } catch {
       // ignore font loading error and proceed
     }

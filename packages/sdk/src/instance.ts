@@ -3,6 +3,7 @@
  * Simulates all SDK operations without real ads/platform calls.
  */
 import type { SDKBackend } from './index';
+import type { LeaderboardData } from './types';
 
 export class MockBackend implements SDKBackend {
   private _audioEnabled = true;
@@ -24,13 +25,16 @@ export class MockBackend implements SDKBackend {
     return true;
   }
 
+  isRewardedAvailable(): boolean {
+    return false; // Mock: no real ads
+  }
+
   isAudioEnabled(): boolean {
     return this._audioEnabled;
   }
 
   async saveData(data: Record<string, unknown>): Promise<void> {
     this._data = { ...this._data, ...data };
-    // Persist to localStorage as fallback
     try {
       localStorage.setItem('game_save', JSON.stringify(this._data));
     } catch { /* ignore */ }
@@ -48,6 +52,47 @@ export class MockBackend implements SDKBackend {
 
   async sendScore(_score: number): Promise<void> {
     console.log(`[SDK Mock] Score sent: ${_score}`);
+  }
+
+  async setScore(score: number, _leaderboardName?: string): Promise<boolean> {
+    console.log(`[SDK Mock] Score set: ${score}`);
+    return true;
+  }
+
+  async getLeaderboardEntries(
+    _leaderboardName?: string,
+    _quantityTop?: number,
+    userScore?: number
+  ): Promise<LeaderboardData> {
+    const mockPlayers = [
+      { name: '🍉 WatermelonKing', score: 3850 },
+      { name: '🐉 DragonMaster', score: 3120 },
+      { name: '🍍 PineQueen', score: 2680 },
+      { name: '🍇 GrapeNinja', score: 2150 },
+      { name: '🍓 BerryPop', score: 1820 },
+      { name: '🍑 PeachLover', score: 1450 },
+      { name: '🍊 JuicyChamp', score: 1180 },
+      { name: '🍎 RedApple', score: 920 },
+      { name: '🍐 GreenPear', score: 650 },
+      { name: '🍒 SweetCherry', score: 420 },
+    ];
+    const allList = [...mockPlayers, { name: '⭐ You (Me)', score: userScore ?? 0, isUser: true }];
+    allList.sort((a, b) => b.score - a.score);
+    const userIndex = allList.findIndex(p => (p as any).isUser);
+    return {
+      entries: allList.slice(0, 10).map((p, idx) => ({
+        name: p.name,
+        score: p.score,
+        rank: idx + 1,
+        isUser: Boolean((p as any).isUser),
+      })),
+      userEntry: { name: '⭐ You (Me)', score: userScore ?? 0, rank: Math.max(userIndex + 1, 1), isUser: true },
+    };
+  }
+
+  async showNativeLeaderboard(_leaderboardName?: string): Promise<boolean> {
+    console.log('[SDK Mock] Native leaderboard (mock)');
+    return false;
   }
 
   gameReady(): void {
