@@ -37,9 +37,7 @@ def package(game_dir: Path, project_root: Path, build_dir: Path) -> int:
     # Remove old outputs
     if zip_path.exists():
         zip_path.unlink()
-    if metadata_dir.exists():
-        shutil.rmtree(metadata_dir)
-    metadata_dir.mkdir(parents=True)
+    metadata_dir.mkdir(parents=True, exist_ok=True)
 
     # --- Create zip ---
     game_src = project_root / "game"
@@ -52,17 +50,22 @@ def package(game_dir: Path, project_root: Path, build_dir: Path) -> int:
         return 1
 
     with ZipFile(zip_path, "w", ZIP_DEFLATED) as zf:
-        # Entry index.html từ dist (trỏ ./assets/index-*.js + ./raw/ đúng)
-        zf.write(dist_dir / "index.html", "index.html")
-        # JS bundle
-        for f in sorted((dist_dir / "assets").glob("*")):
+        # Root files in dist (index.html, playgama-bridge-config.json, etc.)
+        for f in sorted(dist_dir.glob("*")):
             if f.is_file():
-                zf.write(f, f"assets/{f.name}")
+                zf.write(f, f.name)
+        # JS bundle
+        assets_subdir = dist_dir / "assets"
+        if assets_subdir.exists():
+            for f in sorted(assets_subdir.glob("*")):
+                if f.is_file():
+                    zf.write(f, f"assets/{f.name}")
         # Asset raw (preload baseURL './raw/')
         raw_dir = dist_dir / "raw"
-        for f in (sorted(raw_dir.glob("*")) if raw_dir.exists() else []):
-            if f.is_file():
-                zf.write(f, f"raw/{f.name}")
+        if raw_dir.exists():
+            for f in sorted(raw_dir.glob("*")):
+                if f.is_file():
+                    zf.write(f, f"raw/{f.name}")
 
     # --- Create metadata ---
     _write_metadata(cfg, metadata_dir, project_root)
@@ -122,14 +125,16 @@ def _write_metadata(cfg: dict, metadata_dir: Path, project_root: Path) -> None:
         json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8"
     )
 
-    # Generate placeholder thumbnails (BR-07: 1:1, 5:7, 16:9)
-    # Small placeholders — real thumbnails from gameplay screenshots in production
-    _create_placeholder_png(metadata_dir / "thumbnail_1x1.png", 16, 16, cfg)
-    _create_placeholder_png(metadata_dir / "thumbnail_5x7.png", 14, 20, cfg)
-    _create_placeholder_png(metadata_dir / "thumbnail_16x9.png", 32, 18, cfg)
+    # Generate placeholder thumbnails (BR-07: 1:1, 5:7, 16:9) if not present
+    for thumb_name, (w, h) in [("thumbnail_1x1.png", (16, 16)), ("thumbnail_5x7.png", (14, 20)), ("thumbnail_16x9.png", (32, 18))]:
+        thumb_path = metadata_dir / thumb_name
+        if not thumb_path.exists() or thumb_path.stat().st_size < 1000:
+            _create_placeholder_png(thumb_path, w, h, cfg)
 
-    # Generate placeholder preview video (BR-07: 16:9)
-    _create_placeholder_mp4(metadata_dir / "preview_16x9.mp4")
+    # Generate placeholder preview video (BR-07: 16:9) if not present
+    preview_path = metadata_dir / "preview_16x9.mp4"
+    if not preview_path.exists() or preview_path.stat().st_size < 1000:
+        _create_placeholder_mp4(preview_path)
 
 
 def _create_placeholder_png(path: Path, width: int, height: int, cfg: dict) -> None:

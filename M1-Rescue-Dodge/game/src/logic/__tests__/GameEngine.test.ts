@@ -123,11 +123,16 @@ describe('GameEngine — difficulty curve (BR-17)', () => {
     expect(engine.difficulty(20).speed).toBe(MECHANICS.startSpeed + MECHANICS.speedIncreasePerSec * 10);
   });
 
-  it('tốc độ bị chặn bởi maxSpeed để vừa vặn phản xạ con người', () => {
-    // Thời gian chơi cực lâu hoặc level cực cao
+  it('tốc độ sau mốc 440 tăng siêu chậm (soft cap K=1.5) thay vì bị chặn cứng', () => {
+    // Level 10
+    const diffLvl10 = engine.difficulty(45, 10);
+    expect(diffLvl10.speed).toBeGreaterThan(440);
+    expect(diffLvl10.speed).toBeLessThan(470);
+
+    // Thời gian chơi cực lâu hoặc level cực cao vẫn tăng chậm, không phát nổ
     const crazyDiff = engine.difficulty(1000, 20);
-    expect(crazyDiff.speed).toBe(MECHANICS.maxSpeed);
-    expect(crazyDiff.speed).toBeLessThanOrEqual(440);
+    expect(crazyDiff.speed).toBeGreaterThan(440);
+    expect(crazyDiff.speed).toBeLessThan(560);
   });
 
   it('spawn rate tăng sau 10s và chặn bởi spawnRateMax', () => {

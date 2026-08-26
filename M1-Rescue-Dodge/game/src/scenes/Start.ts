@@ -34,13 +34,13 @@ export class StartScene extends Phaser.Scene {
     this.overlay = this.add.graphics().setDepth(z.bg + 1);
 
     // 2. Top Bar
-    const isAudio = sdk.isAudioEnabled();
+    const isAudio = !this.sound.mute && sdk.isAudioEnabled();
     this.audioBtn = this.add.text(34, 38, isAudio ? '🔊' : '🔇', { fontSize: '26px' })
       .setOrigin(0.5).setDepth(z.hud).setInteractive({ useHandCursor: true });
     this.audioBtn.on('pointerdown', () => {
-      const cur = sdk.isAudioEnabled();
-      this.sound.mute = cur;
-      this.audioBtn.setText(!cur ? '🔊' : '🔇');
+      const nowMuted = !this.sound.mute;
+      this.sound.mute = nowMuted;
+      this.audioBtn.setText(nowMuted ? '🔇' : '🔊');
     });
 
     this.fishPillG = this.add.graphics().setDepth(z.hud);

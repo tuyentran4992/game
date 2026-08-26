@@ -1,3 +1,5 @@
+allowBuilds:
+  esbuild: set this to true or false
 # pnpm-workspace.yaml — config M1 Rescue-Dodge (pnpm 11)
 # cho phép esbuild build script (vite cần native binary)
 onlyBuiltDependencies:

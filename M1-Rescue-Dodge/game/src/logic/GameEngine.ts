@@ -401,7 +401,14 @@ export class GameEngine {
     }
     const levelBonus = this.cfg.levelSpeedStep * (level - 1);
     const rawSpeed = this.cfg.startSpeed + ramp + levelBonus;
-    const speed = Math.min(this.cfg.maxSpeed, rawSpeed);
+
+    // Phương án 2: Dưới mốc 440 px/s giữ nguyên; trên 440 px/s tăng siêu chậm theo hàm căn bậc hai (K = 1.5)
+    const softCap = this.cfg.maxSpeed;
+    let speed = rawSpeed;
+    if (rawSpeed > softCap) {
+      const delta = rawSpeed - softCap;
+      speed = softCap + 1.5 * Math.sqrt(delta);
+    }
 
     let spawn = 1;
     if (elapsedSec > warm) {

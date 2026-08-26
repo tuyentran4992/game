@@ -37,7 +37,7 @@ export class GameOverScene extends Phaser.Scene {
     const pw = Math.min(330, width - 32);
     const canCont = ctx.engine.canContinue();
     const isShort = height < 560;
-    const ph = isShort ? (canCont ? 460 : 400) : (canCont ? 500 : 435);
+    const ph = isShort ? (canCont ? 505 : 445) : (canCont ? 555 : 495);
     const cx = width / 2;
     const cy = height / 2;
 
@@ -246,7 +246,26 @@ export class GameOverScene extends Phaser.Scene {
           continueBtn.container.setAlpha(1).setInteractive({ useHandCursor: true });
         }
       });
+      curY += contBtnH + (isShort ? 10 : 12);
     }
+
+    // Nút Ghost: "🏠 Main Menu"
+    const menuBtnH = isShort ? 38 : 42;
+    const menuBtn = drawButton(this, 0, curY + menuBtnH / 2, '🏠 Main Menu', {
+      variant: 'ghost',
+      width: btnWidth,
+      height: menuBtnH,
+      textType: { size: isShort ? '13px' : '14px', weight: '800', lh: 1 },
+      testid: 'menu-btn',
+    });
+    this.root.add(menuBtn.container);
+    menuBtn.container.on('pointerdown', () => {
+      menuBtn.container.disableInteractive();
+      this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
+      this.time.delayedCall(dur.scene, () => {
+        this.scene.start('StartScene');
+      });
+    });
 
     // 11. Card Entrance Animation (Back.out pop)
     this.tweens.add({

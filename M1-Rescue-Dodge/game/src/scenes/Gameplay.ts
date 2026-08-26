@@ -3,6 +3,7 @@ import { color, type, sp, radius, z, dur, fontStyle, paletteForLevel, toColor } 
 import { ctx } from '../context';
 import { sdk } from '../sdk-instance';
 import { MECHANICS, BeeType } from '../logic/mechanics';
+import { PauseModal } from '../ui/PauseModal';
 
 interface Bee {
   container: Phaser.GameObjects.Container;
@@ -26,6 +27,13 @@ interface Item {
 }
 
 export class GameplayScene extends Phaser.Scene {
+  private pauseBtnContainer!: Phaser.GameObjects.Container;
+  private pauseBtnText!: Phaser.GameObjects.Text;
+  private audioBtnContainer!: Phaser.GameObjects.Container;
+  private audioBtnText!: Phaser.GameObjects.Text;
+  private pauseModal?: PauseModal;
+  private isPaused = false;
+
   private scoreLabel!: Phaser.GameObjects.Text;
   private levelLabel!: Phaser.GameObjects.Text;
   private fishLabel!: Phaser.GameObjects.Text;
@@ -138,6 +146,7 @@ export class GameplayScene extends Phaser.Scene {
     this.currentLane = 1;
     this.moveSeq = 0;
     this.running = false;
+    this.isPaused = false;
     this.muted = !sdk.isAudioEnabled();
 
     this.lanes = this.computeLanes(width, height);
@@ -145,21 +154,54 @@ export class GameplayScene extends Phaser.Scene {
 
     // HUD Safe-Zone
     const hudY = Math.max(38, height * 0.05);
+    const btnSize = 34;
 
-    this.scoreLabel = this.add.text(width * 0.18, hudY, String(ctx.engine.score), fontStyle(type.score, color.textOnAccent))
-      .setOrigin(0.5).setDepth(z.hud);
+    // 1. Pause Button (Top-Left 1)
+    this.pauseBtnContainer = this.add.container(28, hudY).setDepth(z.hud);
+    const pauseBg = this.add.graphics();
+    pauseBg.fillStyle(0x0F172A, 0.45);
+    pauseBg.fillCircle(0, 0, btnSize / 2);
+    pauseBg.lineStyle(1.5, 0xFFFFFF, 0.7);
+    pauseBg.strokeCircle(0, 0, btnSize / 2);
+    this.pauseBtnText = this.add.text(0, 0, '⏸️', { fontSize: '15px' }).setOrigin(0.5);
+    this.pauseBtnContainer.add([pauseBg, this.pauseBtnText]);
+    this.pauseBtnContainer.setSize(btnSize, btnSize).setInteractive({ useHandCursor: true });
+    this.pauseBtnContainer.on('pointerdown', () => {
+      this.playSfx('sfx_click', 0.35);
+      this.openPauseModal();
+    });
+
+    // 2. Audio Button (Top-Left 2)
+    const isAudioOn = !this.sound.mute && sdk.isAudioEnabled();
+    this.audioBtnContainer = this.add.container(68, hudY).setDepth(z.hud);
+    const audioBg = this.add.graphics();
+    audioBg.fillStyle(0x0F172A, 0.45);
+    audioBg.fillCircle(0, 0, btnSize / 2);
+    audioBg.lineStyle(1.5, 0xFFFFFF, 0.7);
+    audioBg.strokeCircle(0, 0, btnSize / 2);
+    this.audioBtnText = this.add.text(0, 0, isAudioOn ? '🔊' : '🔇', { fontSize: '15px' }).setOrigin(0.5);
+    this.audioBtnContainer.add([audioBg, this.audioBtnText]);
+    this.audioBtnContainer.setSize(btnSize, btnSize).setInteractive({ useHandCursor: true });
+    this.audioBtnContainer.on('pointerdown', () => {
+      this.toggleAudio();
+    });
+
+    // 3. Score Label (Center Top)
+    this.scoreLabel = this.add.text(width / 2, hudY - 4, String(ctx.engine.score), fontStyle(type.score, color.textOnAccent))
+      .setOrigin(0.5, 0.5).setDepth(z.hud);
     this.scoreLabel.setData('testid', 'score-label');
 
-    this.levelLabel = this.add.text(width * 0.82, hudY, 'Level ' + ctx.engine.getLevel(), fontStyle(type.small, color.textPrimary))
+    // 4. Level & Fish Labels (Top-Right)
+    this.levelLabel = this.add.text(width - 44, hudY - 2, 'Level ' + ctx.engine.getLevel(), fontStyle(type.small, color.textPrimary))
       .setOrigin(0.5, 0.7).setDepth(z.hud);
     this.levelLabel.setData('testid', 'level-label');
 
-    this.fishLabel = this.add.text(width * 0.82, hudY + 22, `🐟 ${ctx.engine.fish}`, fontStyle(type.small, color.warning))
+    this.fishLabel = this.add.text(width - 44, hudY + 20, `🐟 ${ctx.engine.fish}`, fontStyle(type.small, color.warning))
       .setOrigin(0.5, 0.7).setDepth(z.hud);
 
-    // Fever Bar Graphics
+    // Fever Bar Graphics & Label
     this.feverBarG = this.add.graphics().setDepth(z.hud);
-    this.feverStatusLabel = this.add.text(width / 2, hudY + 22, 'FEVER', fontStyle({ size: '14px', weight: '800', lh: 1 }, color.textOnAccent))
+    this.feverStatusLabel = this.add.text(width / 2, hudY + 24, 'FEVER', fontStyle({ size: '13px', weight: '800', lh: 1 }, color.textOnAccent))
       .setOrigin(0.5).setDepth(z.hud + 1).setAlpha(0.85);
 
     // Speed Lines Graphics
@@ -215,14 +257,16 @@ export class GameplayScene extends Phaser.Scene {
     let swipedInGesture = false;
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      if (!this.running) return;
+      if (!this.running || this.isPaused) return;
+      // Tránh chạm nút trên top HUD kích hoạt nhảy làn mèo
+      if (p.y < hudY + 30 && (p.x < 110 || p.x > width - 90)) return;
       pointerDownX = p.x;
       pointerDownY = p.y;
       swipedInGesture = false;
     });
 
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
-      if (!this.running || !p.isDown || swipedInGesture) return;
+      if (!this.running || this.isPaused || !p.isDown || swipedInGesture) return;
       const dx = p.x - pointerDownX;
       const dy = p.y - pointerDownY;
 
@@ -238,7 +282,8 @@ export class GameplayScene extends Phaser.Scene {
     });
 
     this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
-      if (!this.running) return;
+      if (!this.running || this.isPaused) return;
+      if (p.y < hudY + 30 && (p.x < 110 || p.x > width - 90)) return;
 
       // Nếu người chơi chỉ Tap/Click nhanh mà không vuốt
       if (!swipedInGesture) {
@@ -258,7 +303,12 @@ export class GameplayScene extends Phaser.Scene {
     });
 
     this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
-      if (!this.running) return;
+      if (e.code === 'Escape' || e.code === 'KeyP') {
+        e.preventDefault();
+        this.togglePause();
+        return;
+      }
+      if (!this.running || this.isPaused) return;
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
         e.preventDefault();
         this.moveLane(-1);
@@ -268,7 +318,10 @@ export class GameplayScene extends Phaser.Scene {
       }
     });
 
-    sdk.onAudioEnabledChange((enabled: boolean) => { this.muted = !enabled; });
+    sdk.onAudioEnabledChange((enabled: boolean) => {
+      this.muted = !enabled;
+      if (this.audioBtnText) this.audioBtnText.setText(enabled ? '🔊' : '🔇');
+    });
 
     this.cameras.main.fadeIn(dur.scene, 0, 0, 0);
     this.cameras.main.once('camerafadeincomplete', () => {
@@ -292,14 +345,92 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private startBgm() {
+    if (this.sound.mute || this.muted) return;
     const bgm = this.sound.get('bgm_main');
     if (!bgm || !bgm.isPlaying) {
       this.sound.play('bgm_main', { loop: true, volume: 0.3 });
     }
   }
 
+  private togglePause() {
+    if (this.isPaused) {
+      this.pauseModal?.destroy();
+      this.closePauseModal();
+    } else {
+      this.openPauseModal();
+    }
+  }
+
+  private openPauseModal() {
+    if (this.isPaused || !this.running) return;
+    this.isPaused = true;
+    this.running = false;
+
+    // Tạm dừng BGM nếu đang phát
+    const bgm = this.sound.get('bgm_main');
+    if (bgm && bgm.isPlaying) {
+      bgm.pause();
+    }
+
+    this.pauseModal = new PauseModal(this, {
+      onResume: () => this.closePauseModal(),
+      onRestart: () => {
+        this.pauseModal = undefined;
+        this.sound.stopByKey('bgm_main');
+        this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
+        this.time.delayedCall(dur.scene, () => {
+          this.scene.restart({ resume: false });
+        });
+      },
+      onHome: async () => {
+        this.pauseModal = undefined;
+        this.sound.stopByKey('bgm_main');
+        const end = ctx.engine.endGame();
+        sdk.sendScore(end.score);
+        await ctx.saveBest();
+        this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
+        this.time.delayedCall(dur.scene, () => {
+          this.scene.start('StartScene');
+        });
+      },
+      onToggleAudio: (muted: boolean) => {
+        this.muted = muted;
+        if (this.audioBtnText) this.audioBtnText.setText(muted ? '🔇' : '🔊');
+      },
+    });
+  }
+
+  private closePauseModal() {
+    this.pauseModal = undefined;
+    this.isPaused = false;
+    this.running = true;
+
+    // Tiếp tục BGM nếu không bị tắt tiếng
+    if (!this.sound.mute && !this.muted) {
+      const bgm = this.sound.get('bgm_main');
+      if (bgm && bgm.isPaused) {
+        bgm.resume();
+      } else {
+        this.startBgm();
+      }
+    }
+  }
+
+  private toggleAudio() {
+    const nowMuted = !this.sound.mute;
+    this.sound.mute = nowMuted;
+    this.muted = nowMuted;
+    if (this.audioBtnText) this.audioBtnText.setText(nowMuted ? '🔇' : '🔊');
+    this.playSfx('sfx_click', 0.35);
+    if (nowMuted) {
+      this.sound.stopByKey('bgm_main');
+    } else {
+      this.startBgm();
+    }
+  }
+
   private playSfx(key: string, volume = 0.35, rate = 1.0) {
-    if (this.muted) return;
+    if (this.sound.mute || this.muted) return;
     if (this.cache.audio.exists(key)) this.sound.play(key, { volume, rate });
   }
 
@@ -470,7 +601,7 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   update(_time: number, deltaMs: number) {
-    if (!this.running) return;
+    if (!this.running || this.isPaused) return;
     const dt = deltaMs / 1000;
     this.elapsed += dt;
 
@@ -1153,16 +1284,16 @@ export class GameplayScene extends Phaser.Scene {
   private drawFeverBar() {
     const { width, height } = this.scale;
     const hudY = Math.max(38, height * 0.05);
-    const barW = Math.min(180, width * 0.36);
-    const barH = 12;
+    const barW = Math.min(140, width * 0.32);
+    const barH = 10;
     const barX = width / 2 - barW / 2;
-    const barY = hudY + 16;
+    const barY = hudY + 18;
 
     const g = this.feverBarG;
     g.clear();
 
     g.fillStyle(0x000000, 0.35);
-    g.fillRoundedRect(barX, barY, barW, barH, 6);
+    g.fillRoundedRect(barX, barY, barW, barH, 5);
 
     const isFever = ctx.engine.isFeverActive();
     let ratio = ctx.engine.fever / 100;
@@ -1174,11 +1305,11 @@ export class GameplayScene extends Phaser.Scene {
     if (fillW > 0) {
       const barColor = isFever ? 0xFF3838 : 0xFFA502;
       g.fillStyle(barColor, 0.95);
-      g.fillRoundedRect(barX, barY, fillW, barH, 6);
+      g.fillRoundedRect(barX, barY, fillW, barH, 5);
     }
 
     g.lineStyle(1.5, toColor(color.textOnAccent), 0.6);
-    g.strokeRoundedRect(barX, barY, barW, barH, 6);
+    g.strokeRoundedRect(barX, barY, barW, barH, 5);
 
     if (isFever) {
       this.feverStatusLabel.setText('🔥 FEVER x2 🔥').setColor(color.warning);
@@ -1229,10 +1360,12 @@ export class GameplayScene extends Phaser.Scene {
       this.cat.y = catY;
     }
     const hudY = Math.max(38, g.height * 0.05);
-    if (this.scoreLabel) this.scoreLabel.setPosition(g.width * 0.18, hudY);
-    if (this.levelLabel) this.levelLabel.setPosition(g.width * 0.82, hudY);
-    if (this.fishLabel) this.fishLabel.setPosition(g.width * 0.82, hudY + 22);
-    if (this.feverStatusLabel) this.feverStatusLabel.setPosition(g.width / 2, hudY + 22);
+    if (this.pauseBtnContainer) this.pauseBtnContainer.setPosition(28, hudY);
+    if (this.audioBtnContainer) this.audioBtnContainer.setPosition(68, hudY);
+    if (this.scoreLabel) this.scoreLabel.setPosition(g.width / 2, hudY - 4);
+    if (this.levelLabel) this.levelLabel.setPosition(g.width - 44, hudY - 2);
+    if (this.fishLabel) this.fishLabel.setPosition(g.width - 44, hudY + 20);
+    if (this.feverStatusLabel) this.feverStatusLabel.setPosition(g.width / 2, hudY + 24);
     if (this.levelPopup) this.levelPopup.setPosition(g.width / 2, g.height * 0.36);
     this.drawLevelBg(ctx.engine.getLevel());
   }
