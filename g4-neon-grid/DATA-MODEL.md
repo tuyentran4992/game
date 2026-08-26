@@ -1,43 +1,23 @@
 # M4: DATA-MODEL — "Neon Grid" (Block Puzzle)
 
-> **Tool không database (game client-side).** File này mô tả cấu trúc dữ liệu LOGIC: grid state, shape format, scoring, save schema.
+> Tool không database (game client-side). Mô tả cấu trúc dữ liệu LOGIC: grid, shapes, scoring, daily challenge, achievements, skins, power-ups, save schema.
 
 ---
 
-## 1. CẤU TRÚC DỮ LIỆU
+## 1. CẤU TRÚC DỮ LIỆU CORE
 
 ### 1.1 Grid State
 ```
 Grid = CellState[][]
-CellState = number | null
-  - null: ô trống
-  - number (0-6): index màu block (xem DESIGN-SPEC §1.3)
-
+CellState = number | null  // null = trống, 0-6 = index màu
 Grid: 8×8 (GRID_SIZE = 8)
-  grid[row][col] — row 0=trên cùng, col 0=trái nhất
 ```
 
 ### 1.2 Shape (Block)
 ```
-Shape = {
-  cells: number[][]   // 2D matrix: 1=filled, 0=empty
-  color: number       // 0-6 (index vào blockColors palette)
-}
-
-13 shape definitions:
-  mono:       [[1]]                    // 1×1
-  domino_h:   [[1,1]]                  // 1×2
-  domino_v:   [[1],[1]]                // 2×1
-  l_bent:     [[1,0],[1,1]]            // L-shape
-  l_reverse:  [[0,1],[1,1]]            // L-reverse
-  triple_h:   [[1,1,1]]                // 1×3
-  triple_v:   [[1],[1],[1]]            // 3×1
-  o:          [[1,1],[1,1]]            // 2×2
-  t:          [[1,1,1],[0,1,0]]        // T-shape
-  l:          [[1,1,1],[1,0,0]]        // L 4-cell
-  j:          [[1,1,1],[0,0,1]]        // J 4-cell
-  i_h:        [[1,1,1,1]]              // 1×4
-  i_v:        [[1],[1],[1],[1]]        // 4×1
+Shape = { cells: number[][], color: number }
+// cells: 1=filled, 0=empty. color: 0-6 (palette index)
+// 13 shape definitions (xem SPEC.md §6)
 ```
 
 ### 1.3 Position
@@ -48,106 +28,184 @@ Position = { row: number, col: number }
 ### 1.4 Game State (runtime)
 ```
 GameState = {
-  grid: Grid                    // 8×8 grid hiện tại
-  score: number                 // điểm hiện tại
-  isGameOver: boolean           // true khi kẹt
-  currentPieces: Shape[]        // 3 block dự trữ
-  linesCleared: number          // tổng số line đã clear
-  combo: number                 // combo streak (reset khi không clear)
+  grid: Grid
+  score: number
+  isGameOver: boolean
+  currentPieces: Shape[]
+  linesCleared: number
+  combo: number
+  movesLeft: number          // daily mode: lines target
+  isDailyMode: boolean
+  powerUps: {                // remaining free uses
+    undo: number             // default 3/game
+    shuffle: number          // default 0 (rewarded only)
+    bomb: number             // default 0 (rewarded only)
+    extraSlot: number        // default 0 (rewarded only)
+  }
 }
 ```
 
 ---
 
 ## 2. SCORING
-
-### 2.1 Công thức
 ```
 points = linesCleared × 100 × (1 + combo × 0.5)
-
-linesCleared = rowsCleared + colsCleared (trong 1 lần đặt)
-combo: số lần clear liên tiếp (không clear → reset về 0)
-
-All-clear bonus (grid rỗng hoàn toàn sau khi clear):
-  points ×= 2
-```
-
-### 2.2 Level
-```
+All-clear bonus: points ×= 2
 level = floor(score / 500) + 1
 ```
 
-### 2.3 ScoreEvent
+---
+
+## 3. META PROGRESSION
+
+### 3.1 Daily Challenge
 ```
-ScoreEvent = {
-  linesCleared: number    // tổng line clear
-  rowsCleared: number     // số hàng clear
-  colsCleared: number     // số cột clear
-  combo: number           // combo hiện tại
-  pointsEarned: number    // điểm được thưởng
+DailyChallenge = {
+  seed: number              // dateToSeed(YYYYMMDD)
+  goalType: 'lines' | 'score'
+  goalValue: number         // 10 + dayOfWeek (lines)
+  completed: boolean
+  rewardSkinId: number      // skin to unlock on complete
+  attemptsUsed: number      // 1 free + rewarded
+}
+```
+
+**Seed algorithm:** `hashInt(YYYYMMDD)` → deterministic piece sequence cho daily mode.
+
+### 3.2 Achievement
+```
+Achievement = {
+  id: string                // ACH-01 ... ACH-15
+  name: string
+  description: string
+  condition: {
+    type: 'score' | 'combo' | 'lines' | 'allClear' | 'shapes' | 'daily' | 'powerup'
+    value: number
+  }
+  rewardSkinId: number | null
+  unlocked: boolean
+}
+```
+
+### 3.3 Skin
+```
+Skin = {
+  id: number                // 0-6
+  name: string
+  unlocked: boolean
+  unlockCondition: string   // display text
+  palette: {
+    gridColor: number       // HEX
+    blockColors: number[]   // 7 colors
+    accentColor: number
+  }
+}
+```
+
+### 3.4 Power-up (runtime)
+```
+PowerUp = {
+  type: 'undo' | 'shuffle' | 'bomb' | 'extraSlot'
+  freeUses: number          // per game
+  remainingFree: number     // current game
+  rewardedAd: boolean       // true = use rewarded ad when free exhausted
 }
 ```
 
 ---
 
-## 3. SAVE SCHEMA
+## 4. SAVE SCHEMA
 
-### 3.1 localStorage / Playgama bridge
+### 4.1 Full Save Data
 ```json
 {
+  "version": 1,
   "score": 4200,
-  "version": 1
+  "achievements": {
+    "ACH-01": true,
+    "ACH-02": true,
+    "ACH-03": false,
+    ...
+  },
+  "skins": {
+    "unlocked": [0, 1],
+    "activeSkin": 1
+  },
+  "daily": {
+    "lastDate": "2026-08-26",
+    "completed": false,
+    "attemptsUsed": 0
+  },
+  "stats": {
+    "totalScore": 15000,
+    "totalLines": 320,
+    "totalGames": 45,
+    "shapesUsed": [12, 8, 15, 5, 3, 7, 10, 2, 4, 6, 9, 11, 1],
+    "powerUpsUsed": {
+      "undo": 12,
+      "shuffle": 3,
+      "bomb": 5,
+      "extraSlot": 1
+    }
+  }
 }
 ```
 
-- Chỉ lưu best score (không lưu board state).
-- Key: `game_save` (localStorage) / bridge.storage (Playgama).
-- Version: dùng cho future migration (hiện tại = 1).
-
-### 3.2 Load strategy
+### 4.2 Load Strategy
 1. Try Playgama bridge.storage.get() → fallback localStorage.
-2. Nếu không có save → return `{ score: 0 }`.
+2. Nếu không có save → default state (skin 0 unlocked, no achievements).
+3. Version check: nếu version cũ → migrate (hiện tại chỉ v1).
 
 ---
 
-## 4. FLOW: ĐẶT BLOCK
+## 5. FLOW: META PROGRESSION
 
+### 5.1 Daily Challenge Flow
 ```
-1. User tap piece card → selectedPieceIndex = index
-2. User tap grid position → screenToGrid(screenX, screenY) → Position
-3. canPlace(grid, shape, position) → boolean
-4. Nếu hợp lệ:
-   a. grid = placeShape(grid, shape, position)  // mutate copy
-   b. result = clearLines(grid)                  // check hàng/cột đầy
-   c. Nếu result có cleared:
-      - combo++
-      - score += scorePlacement(clearedRows, clearedCols, combo, isEmpty)
-      - grid = result.grid
-      - Animation: particle burst + score popup
-   d. Nếu không cleared: combo = 0
-   e. Remove piece khỏi currentPieces
-   f. Nếu currentPieces rỗng → pickPieces() sinh 3 mới
-   g. canPlaceAny(grid, currentPieces) → false → game over
+1. Start screen → tap "DAILY"
+2. Gameplay khởi tạo với daily seed
+3. HUD hiện daily progress: "Clear N lines [████░░]"
+4. Mỗi lần clear → update progress
+5. Đạt goal → popup "DAILY COMPLETE! Reward: Skin X"
+6. Tap CLAIM → unlock skin, save daily.completed = true
+7. Game over → save daily.attemptsUsed++
+8. Attempts hết → rewarded ad để thêm attempt
+```
+
+### 5.2 Achievement Check Flow
+```
+1. Game over → check all achievements
+2. For each uncompleted achievement → check condition
+3. Nếu đạt → unlock, popup "🏆 NEW! Achievement Name"
+4. Nếu có reward skin → unlock skin
+5. Save achievements state
+```
+
+### 5.3 Skin Apply Flow
+```
+1. Skin select → tap skin → preview
+2. Tap APPLY → save activeSkin
+3. Gameplay → render grid + blocks với palette của skin
 ```
 
 ---
 
-## 5. DESIGN DECISIONS
+## 6. DESIGN DECISIONS
 
 | Decision | Rationale |
 |----------|-----------|
-| Grid 8×8 | Block Blast standard, vừa cho mobile |
-| 13 shapes, 7 colors | Đủ đa dạng, không quá nhiều |
-| Không lưu board state | Game ngắn, restart nhanh, chỉ cần best score |
-| Logic = pure TS | Test không cần DOM/Phaser, dễ đổi engine sau |
-| 3 pieces per turn | Block Blast standard, giữ nhịp game |
-| Combo reset khi không clear | Khuyến khích xếp chiến lược, không spam |
+| Daily seed deterministic | Công bằng cho mọi người chơi, cùng thử thách |
+| 15 achievements | Đủ để giữ chân 2-3 tuần, không quá nhiều |
+| 7 skin | Mỗi skin 1 phong cách riêng, đủ đa dạng |
+| Power-up rewarded ad | Monetize không intrusive |
+| Undo free 3 lần/game | Không phạt người chơi mới, vẫn khuyến khích xếp chiến lược |
+| Stats tracking | Dữ liệu cho future leaderboard / social features |
 
 ---
 
-## 6. PERFORMANCE
+## 7. PERFORMANCE
 
-- Grid operations: O(8×8) = 64 cells, negligible.
-- Shape generation: O(1), 13 shapes pre-defined.
-- Save/load: async, < 10ms.
-- Không cần worker/optimization cho game casual.
+- Grid operations: O(64) per frame — negligible.
+- Achievement check: 15 conditions, O(1) each — sau game over, không ảnh hưởng gameplay.
+- Skin palette: 7 pre-defined, O(1) lookup.
+- Save: async, < 10ms, only on game over + achievement unlock.

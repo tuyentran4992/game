@@ -41,6 +41,9 @@
 | 5 | Red | `#ff2244` | `#ff2244` |
 | 6 | Blue | `#4488ff` | `#4488ff` |
 
+### 1.4 Skin palettes (override)
+Mỗi skin override gridColor + blockColors. Chi tiết tại `src/ui/skins.ts`.
+
 ---
 
 ## 2. LAYOUT GRID
@@ -50,6 +53,8 @@
 - **Grid position:** căn giữa ngang, Y=160 (cách top 160px).
 - **Safe area:** margin 16px mỗi bên.
 - **Piece cards:** 3 card, mỗi card 96×80px, gap 10px, căn giữa dưới grid.
+- **Power-up buttons:** 3 nút dưới piece cards, 80×56px mỗi nút, gap 12px.
+- **Daily progress bar:** dưới power-up, 280×24px, chỉ hiện khi daily mode.
 
 ---
 
@@ -158,6 +163,140 @@
 
 **data-testid:** `game-over-modal`, `retry-btn`, `menu-btn`, `final-score`
 
+### 4.4 Start Screen (v2 — có meta buttons)
+```
+720×1280
+┌──────────────────────────────────────┐
+│                                      │
+│            NEON GRID                 │  ← y=380, 56px, stroke theo skin
+│          Block Puzzle                │  ← y=450, 24px
+│                                      │
+│    ┌──┐ ┌──┐ ┌──┐ ┌──┐ ┌──┐ ┌──┐ ┌──┐│  ← 7 block màu
+│    └──┘ └──┘ └──┘ └──┘ └──┘ └──┘ └──┘│
+│                                      │
+│          ┌──────────────┐            │
+│          │  ▶  PLAY     │            │  ← y=660, primary, pulse
+│          └──────────────┘            │
+│          ┌──────────────┐            │
+│          │  📅 DAILY    │            │  ← y=740, secondary, badge "NEW"
+│          └──────────────┘            │
+│          ┌──────────────┐            │
+│          │  🎨 SKINS    │            │  ← y=820, ghost
+│          └──────────────┘            │
+│                                      │
+│      BEST: 4200    🏆 5/15           │  ← y=900
+│                                      │
+│         v1.0 · @game/core            │  ← y=1240
+└──────────────────────────────────────┘
+```
+
+**data-testid:** `start-title`, `play-btn`, `daily-btn`, `skins-btn`, `best-score`, `achievement-count`
+
+### 4.5 Gameplay Screen (v2 — có power-ups + daily bar)
+```
+720×1280
+┌──────────────────────────────────────┐
+│  NEON GRID           SCORE: 4200    │  ← HUD
+│                                      │
+│    ┌──────────────────────────┐      │
+│    │  Grid 8×8              │      │  ← y=160
+│    └──────────────────────────┘      │
+│                                      │
+│   ┌──────┐  ┌──────┐  ┌──────┐     │  ← y=730, piece cards
+│   │  ██  │  │ ████ │  │  ██  │     │
+│   └──────┘  └──────┘  └──────┘     │
+│                                      │
+│  [↺Undo]  [🔀Shuffle]  [💣Bomb]    │  ← y=830, power-up 80×56
+│                                      │
+│  Daily: 5/15 lines  ████░░░░░░       │  ← y=900, progress bar
+│                                      │
+└──────────────────────────────────────┘
+```
+
+**data-testid:** `score-label`, `grid`, `piece-0/1/2`, `undo-btn`, `shuffle-btn`, `bomb-btn`, `daily-progress`
+
+### 4.6 Skin Select Screen
+```
+720×1280
+┌──────────────────────────────────────┐
+│             SKINS                    │  ← y=60, 32px
+│                                      │
+│  ┌────┐  ┌────┐  ┌────┐            │
+│  │🌟  │  │🔒  │  │🔒  │            │  ← y=140, skin 0-6
+│  │Cyan│  │Mag │  │Gold│            │  3 cột, mỗi 120×140px
+│  └────┘  └────┘  └────┘            │  ● active, 🔒 locked
+│  ┌────┐  ┌────┐  ┌────┐            │
+│  │🔒  │  │🔒  │  │🔒  │            │
+│  │Ocean│  │Arcade│  │Mid  │            │
+│  └────┘  └────┘  └────┘            │
+│  ┌────┐                             │
+│  │🔒  │                             │
+│  │Rainb│                             │
+│  └────┘                             │
+│                                      │
+│  Current: Neon Cyan                  │  ← y=680, 18px
+│  Unlock: "Clear 100 lines"          │  ← y=710, 16px, #8888bb
+│                                      │
+│          ┌──────────────┐            │
+│          │  ← BACK      │            │  ← y=780, ghost
+│          └──────────────┘            │
+└──────────────────────────────────────┘
+```
+
+**data-testid:** `skins-title`, `skin-0`...`skin-6`, `skin-back-btn`, `skin-current-label`, `skin-unlock-condition`
+
+### 4.7 Achievement Popup
+```
+720×1280 (overlay)
+┌──────────────────────────────────────┐
+│  (overlay đen 70%)                   │
+│                                      │
+│        ┌──────────────────┐          │  ← Panel 320×280
+│        │    🏆 NEW!        │          │
+│        │  Combo King       │          │  ← 28px bold
+│        │                  │          │
+│        │  Clear 3 lines   │          │  ← 18px
+│        │  in a row        │          │
+│        │                  │          │
+│        │  Reward:          │          │
+│        │  🌟 Magenta       │          │
+│        │  Dream skin!      │          │
+│        │                  │          │
+│        │  ┌────────────┐  │          │
+│        │  │   OK!      │  │          │  ← primary 200×56
+│        │  └────────────┘  │          │
+│        └──────────────────┘          │
+└──────────────────────────────────────┘
+```
+
+**data-testid:** `achievement-popup`, `achievement-title`, `achievement-reward`, `achievement-ok-btn`
+
+### 4.8 Daily Complete Popup
+```
+720×1280 (overlay)
+┌──────────────────────────────────────┐
+│  (overlay đen 70%)                   │
+│                                      │
+│        ┌──────────────────┐          │  ← Panel 320×280
+│        │  📅 DAILY         │          │
+│        │  COMPLETE!        │          │  ← 28px bold
+│        │                  │          │
+│        │  Lines: 15/15    │          │  ← 18px
+│        │  Score: 3200     │          │
+│        │                  │          │
+│        │  Reward:          │          │
+│        │  🌟 Ocean Deep   │          │
+│        │  skin unlocked!  │          │
+│        │                  │          │
+│        │  ┌────────────┐  │          │
+│        │  │  CLAIM!    │  │          │  ← primary 200×56
+│        │  └────────────┘  │          │
+│        └──────────────────┘          │
+└──────────────────────────────────────┘
+```
+
+**data-testid:** `daily-complete-popup`, `daily-reward`, `daily-claim-btn`
+
 ---
 
 ## 5. ANIMATION & TRANSITION
@@ -184,6 +323,10 @@
 | Block selected | Card highlight border cyan + ghost preview trên grid |
 | Invalid placement | Block không đặt được → chỉ không vẽ ghost |
 | Row/column clear | Flash trắng + particle burst + score popup |
+| Power-up used | Button flash, counter giảm |
+| Power-up exhausted | Rewarded ad prompt (nếu còn) |
+| Achievement unlock | Popup "🏆 NEW!" + reward |
+| Daily complete | Popup "📅 DAILY COMPLETE!" + reward |
 | Game over | Modal + interstitial ad |
 | Loading | Phaser auto loading (nếu có asset) |
 
@@ -191,10 +334,14 @@
 
 ## 7. UX CHECKLIST (manual review gate)
 
-- [ ] Màn Start: title đọc rõ? PLAY button nổi bật? decorative block đẹp?
-- [ ] Gameplay: grid cân? 3 piece card dễ thấy? ghost preview rõ?
+- [ ] Màn Start: title đọc rõ? 3 nút (PLAY/DAILY/SKINS) rõ ràng? badge "NEW"?
+- [ ] Gameplay: grid cân? piece card dễ thấy? ghost preview rõ?
+- [ ] Power-up buttons: dễ thấy, dễ hiểu chức năng?
+- [ ] Daily progress bar: rõ mục tiêu, tracking đúng?
 - [ ] Clear animation: có cảm giác "đã" không? particle có đẹp?
 - [ ] Game Over modal: rõ ràng, nút đủ lớn?
+- [ ] Achievement popup: excitement? reward rõ?
+- [ ] Skin Select: preview đẹp? unlock condition rõ?
 - [ ] Màu sắc: neon glow đủ nổi trên nền tối? contrast đủ?
 - [ ] Touch: vùng chạm ≥44px? không bị chạm nhầm?
 - [ ] Responsive: 9:16 đẹp, desktop pillarbox OK?

@@ -1,6 +1,7 @@
 # M4: TEST-CASES (Unit Tests) — "Neon Grid" (Block Puzzle)
 
 > **Dành cho dev.** Chạy `pnpm test` trong `g4-neon-grid/` — vitest với pure TS logic (không cần DOM/Phaser).
+> **Cập nhật:** 2026-08-26 — thêm meta progression tests.
 
 ---
 
@@ -77,9 +78,61 @@
 
 ---
 
-## 4. COVERAGE MATRICES
+## 4. META PROGRESSION TESTS
 
-### 4.1 Business Rule × TC
+### 4.1 Daily Challenge
+
+| TC ID | Mô tả | Input | Expected |
+|-------|-------|-------|----------|
+| DAILY-01 | Daily seed deterministic | dateToSeed('2026-08-26') | Same result twice |
+| DAILY-02 | Daily seed khác ngày | dateToSeed('2026-08-26') ≠ dateToSeed('2026-08-27') | Different seeds |
+| DAILY-03 | Daily goal tính đúng | goal = 10 + dayOfWeek | Mon=11, Tue=12, ... |
+| DAILY-04 | Daily hoàn thành | linesCleared ≥ goal | completed=true |
+| DAILY-05 | Daily chưa hoàn thành | linesCleared < goal | completed=false |
+| DAILY-06 | Attempts tracking | 1 free, rewarded=extra | used ≤ 1 + rewarded |
+
+### 4.2 Achievement
+
+| TC ID | Mô tả | Input | Expected |
+|-------|-------|-------|----------|
+| ACH-01 | Score milestone | score=100 | ACH-01 unlocked |
+| ACH-02 | Score milestone | score=1000 | ACH-02 unlocked |
+| ACH-03 | Score milestone | score=10000 | ACH-03 unlocked |
+| ACH-04 | Score milestone | score=50000 | ACH-04 unlocked |
+| ACH-05 | Combo achievement | combo=3 | ACH-06 unlocked |
+| ACH-06 | All-clear achievement | allClear=true | ACH-07 unlocked |
+| ACH-07 | 13 shapes used | shapesUsed count=13 | ACH-08 unlocked |
+| ACH-08 | Lines milestone | totalLines=100 | ACH-09 unlocked |
+| ACH-09 | Daily complete | daily completed | ACH-11 unlocked |
+| ACH-10 | 7 daily challenges | dailyCount=7 | ACH-12 unlocked |
+| ACH-11 | Achievement không unlock lại | đã unlock → check lại | vẫn unlock, không double |
+| ACH-12 | Achievement pre-condition | condition chưa đủ | locked = true |
+
+### 4.3 Skin
+
+| TC ID | Mô tả | Input | Expected |
+|-------|-------|-------|----------|
+| SKIN-01 | Skin 0 mặc định unlocked | skinId=0 | unlocked=true |
+| SKIN-02 | Skin khác locked ban đầu | skinId=1 | unlocked=false |
+| SKIN-03 | Unlock skin qua achievement | ACH-02 → unlock | skin 1 unlocked |
+| SKIN-04 | Active skin thay đổi | setActive(1) | activeSkin=1 |
+| SKIN-05 | Active skin palette apply | getPalette(1) | returns palette for skin 1 |
+
+### 4.4 Power-up
+
+| TC ID | Mô tả | Input | Expected |
+|-------|-------|-------|----------|
+| POW-01 | Undo free 3 lần/game | useUndo() | remainingFree giảm |
+| POW-02 | Undo hết free → rewarded | remainingFree=0 | showRewarded=true |
+| POW-03 | Shuffle sinh 3 piece mới | useShuffle() | currentPieces thay đổi |
+| POW-04 | Bomb xoá 1 block | useBomb(2,3) | grid[2][3]=null |
+| POW-05 | ExtraSlot +1 piece | useExtraSlot() | currentPieces.length=4 |
+
+---
+
+## 5. COVERAGE MATRICES
+
+### 5.1 Business Rule × TC
 
 | BR | TC |
 |----|----|
@@ -88,10 +141,17 @@
 | NG-03 | CLEAR-01 → CLEAR-07 |
 | NG-04 | GAMEOVER-01 → GAMEOVER-04 |
 | NG-05 | SCORE-01 → SCORE-06 |
-| NG-08 | (E2E test) |
-| NG-09 | (E2E test) |
+| NG-06 | POW-01, POW-02 |
+| NG-07 | POW-03 |
+| NG-08 | POW-04 |
+| NG-09 | POW-05 |
+| NG-11 | (E2E test) |
+| NG-12 | DAILY-01 → DAILY-06 |
+| NG-13 | ACH-01 → ACH-12 |
+| NG-14 | SKIN-01 → SKIN-05 |
+| NG-15 | (E2E test) |
 
-### 4.2 Edge Cases
+### 5.2 Edge Cases
 
 | TC ID | Mô tả | Expected |
 |-------|-------|----------|
@@ -99,3 +159,6 @@
 | EDGE-02 | Grid 1 cell + clear | 1 hàng 1 cột cùng clear |
 | EDGE-03 | Shape tất cả 0 (empty) | cells toàn 0 = không đặt được gì |
 | EDGE-04 | pickPieces với seed cố định | deterministic output |
+| EDGE-05 | All 15 achievements unlock | không crash, save đúng |
+| EDGE-06 | Daily challenge ngày đầu | seed tính đúng, goal đúng |
+| EDGE-07 | Skin 0 không thể lock | locked luôn false |
