@@ -9,6 +9,7 @@
     "build:standalone": "tsc --noEmit && vite build --mode standalone",
     "build:playgama": "tsc --noEmit && vite build --mode playgama",
     "build:ytgame": "tsc --noEmit && vite build --mode ytgame",
+    "build:reddit": "tsc --noEmit && vite build --mode reddit",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "preview": "vite preview"

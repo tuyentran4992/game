@@ -8,6 +8,7 @@ import path from 'path';
 //   standalone — Local dev / standalone web (default)
 //   playgama   — Playgama distribution (includes Playgama Bridge CDN)
 //   ytgame     — YouTube Playables / Mediacube (platform provides SDK)
+//   reddit     — Reddit Devvit (SDK auto-detected via @game/sdk)
 //
 // The game code (@game/sdk) auto-detects the platform at runtime.
 // Each platform only differs in index.html (CDN scripts / SDK init).
@@ -16,11 +17,13 @@ import path from 'path';
 //   pnpm run build              → build ALL platforms
 //   pnpm run build:playgama     → build only Playgama platform
 //   pnpm run build:standalone   → build only standalone
+//   pnpm run build:reddit       → build only Reddit Devvit
 
 const PLATFORM_HTML: Record<string, string> = {
   standalone: 'index.html',
   playgama: 'playgama.html',
   ytgame: 'ytgame.html',
+  reddit: 'reddit.html',
 };
 
 export default defineConfig(({ mode }) => {
