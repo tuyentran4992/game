@@ -1,12 +1,15 @@
 {
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
-  "name": "Juicy Merge",
+  "name": "juicymerge",
+  "dev": {
+    "subreddit": "JuicyMerge"
+  },
   "post": {
     "dir": "dist/client",
     "entrypoints": {
       "default": {
         "inline": true,
-        "entry": "splash.html"
+        "entry": "game.html"
       },
       "game": {
         "entry": "game.html"

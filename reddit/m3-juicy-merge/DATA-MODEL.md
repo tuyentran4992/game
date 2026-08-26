@@ -7,6 +7,7 @@
 ## 1. REDIS SCHEMA
 
 ### Score
+
 ```
 Key:    score:{userId}
 Value:  string (number)
@@ -14,6 +15,7 @@ TTL:    none (persistent)
 ```
 
 ### Leaderboard
+
 ```
 Key:    leaderboard
 Type:   Redis Sorted Set
@@ -26,6 +28,7 @@ Score:  highScore
 ## 2. API CONTRACT
 
 ### POST /api/score
+
 Save user's score (only if higher than existing).
 
 ```json
@@ -34,6 +37,7 @@ Response: { "saved": true }
 ```
 
 ### GET /api/score/:userId
+
 Get user's high score.
 
 ```json
@@ -41,6 +45,7 @@ Response: { "score": 4200 }
 ```
 
 ### GET /api/leaderboard
+
 Get top 10 scores.
 
 ```json
@@ -69,9 +74,9 @@ GameState = {
 
 ## 4. DESIGN DECISIONS
 
-| Decision | Rationale |
-|----------|-----------|
-| Redis thay localStorage | localStorage clears on app update |
-| Devvit Payments thay ads | Reddit không có ad SDK cho Devvit |
-| Leaderboard Sorted Set | Redis native, O(log N) |
-| Giữ nguyên Phaser 3 | Template dùng Phaser 4 nhưng M3 code Phaser 3 |
+| Decision                 | Rationale                                     |
+| ------------------------ | --------------------------------------------- |
+| Redis thay localStorage  | localStorage clears on app update             |
+| Devvit Payments thay ads | Reddit không có ad SDK cho Devvit             |
+| Leaderboard Sorted Set   | Redis native, O(log N)                        |
+| Giữ nguyên Phaser 3      | Template dùng Phaser 4 nhưng M3 code Phaser 3 |

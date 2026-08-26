@@ -2,40 +2,45 @@
  * Juicy Merge — Reddit Devvit
  *
  * Entry point for the Phaser game inside Reddit's WebView.
- * M3 game logic ported from /data/youtube-playables/M3-Juicy-Merge/
+ * Full 15-tier Kawaii physics merge game with Redis storage.
  */
 
-import Phaser from 'phaser';
-import { Boot } from './scenes/Boot';
-import { Preloader } from './scenes/Preloader';
-import { MainMenu } from './scenes/MainMenu';
-import { Game as MainGame } from './scenes/Game';
-import { GameOver } from './scenes/GameOver';
+import Phaser, { Scale, AUTO } from "phaser";
+import { BootScene } from "./scenes/Boot";
+import { StartScene } from "./scenes/Start";
+import { GameplayScene } from "./scenes/Gameplay";
+import { GameOverScene } from "./scenes/GameOver";
+import { AlbumScene } from "./scenes/Album";
+import { applyMute } from "./ui";
+import { ctx } from "./context";
 
 const config: Phaser.Types.Core.GameConfig = {
-  type: Phaser.AUTO,
-  parent: 'game-container',
-  backgroundColor: '#FFF8E7',
+  type: AUTO,
+  parent: "game-container",
+  backgroundColor: "#FFF8E7",
   scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
+    mode: Scale.FIT,
+    autoCenter: Scale.CENTER_BOTH,
     width: 720,
     height: 1280,
   },
   physics: {
-    default: 'matter',
+    default: "matter",
     matter: {
-      gravity: { y: 1.5 },
+      enableSleeping: true,
       debug: false,
     },
   },
-  scene: [Boot, Preloader, MainMenu, MainGame, GameOver],
+  scene: [BootScene, StartScene, GameplayScene, GameOverScene, AlbumScene],
+  render: { antialias: true, roundPixels: true },
 };
 
 const StartGame = (parent: string) => {
-  return new Phaser.Game({ ...config, parent });
+  const game = new Phaser.Game({ ...config, parent });
+  applyMute(game, ctx.isAudioEnabled());
+  return game;
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-  StartGame('game-container');
+document.addEventListener("DOMContentLoaded", () => {
+  StartGame("game-container");
 });

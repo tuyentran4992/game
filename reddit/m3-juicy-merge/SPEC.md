@@ -11,13 +11,16 @@
 ## 1. TỔNG QUAN
 
 ### Mục tiêu
+
 Port game M3 "Juicy Merge" (physics-merge, Suika-style) lên Reddit Devvit platform. Game chạy trong Reddit's WebView, xuất hiện dưới dạng interactive post trong feed. Tận dụng Reddit Developer Funds ($167k/game) + Reddit Gold (IAP) để kiếm tiền.
 
 ### Đối tượng
+
 - Người chơi: 500M+ Reddit users, 13+
 - Vận hành: Hermes (PM/QA) + Claude GLM-5.2 (Dev) + anh Tuyền (duyệt + account)
 
 ### IN SCOPE
+
 - Port toàn bộ gameplay M3 (physics-merge, 15 bậc trái cây, Matter.js)
 - Devvit splash screen (inline view trong feed)
 - Devvit expanded view (game chính)
@@ -27,6 +30,7 @@ Port game M3 "Juicy Merge" (physics-merge, Suika-style) lên Reddit Devvit platf
 - Subreddit riêng `r/JuicyMerge`
 
 ### OUT OF SCOPE
+
 - Không port Playgama SDK (thay bằng Devvit SDK)
 - Không port Mediacube SDK
 - Không multiplayer (Reddit chưa hỗ trợ realtime mạnh)
@@ -43,6 +47,7 @@ Port game M3 "Juicy Merge" (physics-merge, Suika-style) lên Reddit Devvit platf
 - **Storage:** Redis (thay localStorage — localStorage clear khi app update)
 - **Monetize:** Reddit Gold (IAP) + Developer Funds (engagement-based)
 - **Devvit CLI:**
+
 ```bash
 npm run dev      # playtest trên Reddit
 npm run deploy   # upload app
@@ -70,6 +75,7 @@ Reddit moderator:
 ## 4. NỘI DUNG & BỐ CỤC
 
 ### Splash Screen (inline view trong feed)
+
 ```
 ┌──────────────────────────────┐
 │           🍉                 │  ← emoji 64px
@@ -87,6 +93,7 @@ Reddit moderator:
 **data-testid:** `splash-title`, `splash-play-btn`
 
 ### Game Screen (expanded view)
+
 ```
 ┌──────────────────────────────┐
 │  ← Back        🍉  SCORE: 0 │  ← HUD
@@ -126,29 +133,29 @@ Reddit moderator:
 
 ## 6. BUSINESS RULES
 
-| ID | Rule |
-|----|------|
+| ID     | Rule                                                                             |
+| ------ | -------------------------------------------------------------------------------- |
 | RDM-01 | Gameplay giống hệt M3: thả trái → merge 2 cùng loại → bậc lớn hơn, chain 15 bậc. |
-| RDM-02 | Dùng Redis thay localStorage. Key: `score:{userId}`. |
-| RDM-03 | Leaderboard: top 10 scores qua Redis. |
-| RDM-04 | Reddit Gold IAP: extra life, hint (optional — feature sau). |
-| RDM-05 | Developer Funds: engagement-based, auto-qualify khi game có users. |
-| RDM-06 | CẤM gọi mạng ngoài từ client (CSP chặn). Backend fetch OK. |
-| RDM-07 | Responsive: mobile-first (Reddit app), desktop OK. |
-| RDM-08 | Target 13+, Safe for Work. |
+| RDM-02 | Dùng Redis thay localStorage. Key: `score:{userId}`.                             |
+| RDM-03 | Leaderboard: top 10 scores qua Redis.                                            |
+| RDM-04 | Reddit Gold IAP: extra life, hint (optional — feature sau).                      |
+| RDM-05 | Developer Funds: engagement-based, auto-qualify khi game có users.               |
+| RDM-06 | CẤM gọi mạng ngoài từ client (CSP chặn). Backend fetch OK.                       |
+| RDM-07 | Responsive: mobile-first (Reddit app), desktop OK.                               |
+| RDM-08 | Target 13+, Safe for Work.                                                       |
 
 ---
 
 ## 7. STATE HANDLING
 
-| State | Cách phát hiện | Xử lý |
-|-------|----------------|-------|
-| Loading | App install → splash | Hiển thị splash screen |
-| Playing | User tap Play | Expanded view → Phaser game |
-| Game Over | Trái quá danger line | Modal score + Redis save |
-| Score saved | POST /api/score | Redis set |
-| Leaderboard | GET /api/leaderboard | Redis keys + sort |
-| App update | New version deploy | localStorage mất → Redis vẫn còn |
+| State       | Cách phát hiện       | Xử lý                            |
+| ----------- | -------------------- | -------------------------------- |
+| Loading     | App install → splash | Hiển thị splash screen           |
+| Playing     | User tap Play        | Expanded view → Phaser game      |
+| Game Over   | Trái quá danger line | Modal score + Redis save         |
+| Score saved | POST /api/score      | Redis set                        |
+| Leaderboard | GET /api/leaderboard | Redis keys + sort                |
+| App update  | New version deploy   | localStorage mất → Redis vẫn còn |
 
 ---
 

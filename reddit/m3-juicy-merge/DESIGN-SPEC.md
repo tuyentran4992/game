@@ -8,6 +8,7 @@
 ## 1. DESIGN TOKENS
 
 ### Splash Screen (inline view)
+
 - **Nền:** `#FFF8E7` (kem sáng)
 - **Title:** 28px bold, `#4A2C2A` (nâu socola)
 - **Subtitle:** 16px, `#888`
@@ -15,6 +16,7 @@
 - **Footer:** 12px, `#ccc`
 
 ### Game Screen (expanded view)
+
 - Giữ nguyên token từ M3 DESIGN-SPEC (pastel, kawaii palette)
 - **HUD:** Back button (trái) + Score (phải), font 20px
 
@@ -23,6 +25,7 @@
 ## 2. SCREEN-BY-SCREEN
 
 ### Splash Screen (inline)
+
 ```
 ┌──────────────────────────────┐
 │                              │
@@ -41,6 +44,7 @@
 **data-testid:** `splash-title`, `splash-play-btn`
 
 ### Game Screen (expanded)
+
 ```
 ┌──────────────────────────────┐
 │  ← Back      🍉   SCORE: 0  │  ← HUD
@@ -64,12 +68,12 @@
 
 ## 3. ANIMATION & TRANSITION
 
-| Hiệu ứng | Duration | Ghi chú |
-|----------|----------|---------|
+| Hiệu ứng      | Duration   | Ghi chú            |
+| ------------- | ---------- | ------------------ |
 | Splash → Game | 200ms fade | Phaser camera fade |
-| Drop fruit | 300ms | Physics fall |
-| Merge | 200ms | Pop + score |
-| Game over | 500ms | Modal + blur |
+| Drop fruit    | 300ms      | Physics fall       |
+| Merge         | 200ms      | Pop + score        |
+| Game over     | 500ms      | Modal + blur       |
 
 ---
 
