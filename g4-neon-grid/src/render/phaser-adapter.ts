@@ -1,18 +1,11 @@
-/**
- * Neon Grid — Phaser Render Adapter
- *
- * Thin layer: converts game logic state → Phaser objects.
- * All game logic lives in src/logic/ (pure TS, no Phaser).
- */
-
 import Phaser from 'phaser';
 import { GRID_SIZE, type Grid, type Shape, type Position } from '../logic/board';
-import { theme, getBlockColor } from '../ui/theme';
+import { theme, getBlockColor, getActiveSkinPalette } from '../ui/theme';
 
-const CELL = 64;        // px per cell
-const PAD = 4;          // px gap between cells
+const CELL = 66;        // px per cell
+const PAD = 5;          // px gap between cells
 const GRID_PX = CELL * GRID_SIZE + PAD * (GRID_SIZE - 1);
-const BORDER_R = 6;     // cell corner radius
+const BORDER_R = 8;     // cell corner radius
 
 export class GridRenderer {
   private scene: Phaser.Scene;
@@ -27,32 +20,95 @@ export class GridRenderer {
     this.graphics = scene.add.graphics();
   }
 
-  /** Draw the full grid background */
+  /** Static helper to draw a single 3D glossy neon block */
+  static drawSingleBlock(
+    g: Phaser.GameObjects.Graphics,
+    x: number,
+    y: number,
+    size: number,
+    colorIndex: number,
+    alpha: number = 1.0,
+    radius: number = BORDER_R
+  ): void {
+    const color = getBlockColor(colorIndex);
+
+    // 1. Soft Outer Glow
+    g.fillStyle(color.glow, 0.35 * alpha);
+    g.fillRoundedRect(x - 4, y - 4, size + 8, size + 8, radius + 3);
+
+    // 2. Base Darker Block Fill (Depth & 3D bevel shadow)
+    g.fillStyle(color.dark, 0.95 * alpha);
+    g.fillRoundedRect(x, y, size, size, radius);
+
+    // 3. Main Block Gradient/Color Body
+    g.fillStyle(color.fill, 0.95 * alpha);
+    g.fillRoundedRect(x + 1.5, y + 1.5, size - 3, size - 4, radius - 1);
+
+    // 4. Glossy Specular Bevel (Top half glass shine)
+    g.fillStyle(color.light, 0.5 * alpha);
+    g.fillRoundedRect(x + 3, y + 2.5, size - 6, (size / 2) - 2, {
+      tl: Math.max(2, radius - 2),
+      tr: Math.max(2, radius - 2),
+      bl: 0,
+      br: 0,
+    });
+
+    // 5. White Top Edge Reflection (Crisp cyber specular)
+    g.fillStyle(0xffffff, 0.65 * alpha);
+    g.fillRoundedRect(x + 5, y + 3, size - 10, 3, 2);
+
+    // 6. Crisp Neon Border
+    g.lineStyle(1.8, color.light, 0.9 * alpha);
+    g.strokeRoundedRect(x + 0.5, y + 0.5, size - 1, size - 1, radius);
+
+    // 7. Center Neon Core Accent Dot
+    g.fillStyle(0xffffff, 0.45 * alpha);
+    g.fillCircle(x + size / 2, y + size / 2, 2.5);
+  }
+
+  /** Draw full grid background and slot placeholders with high-tech neon styling */
   drawBackground(): void {
     const g = this.graphics;
     const w = GRID_PX;
     const h = GRID_PX;
+    const palette = getActiveSkinPalette();
 
-    // Grid background
-    g.fillStyle(theme.gridBg, 1);
-    g.fillRoundedRect(this.x, this.y, w, h, 8);
+    // Outer Backplate Shadow
+    g.fillStyle(0x04040c, 0.8);
+    g.fillRoundedRect(this.x - 12, this.y - 12, w + 24, h + 24, 18);
 
-    // Grid lines (subtle)
-    for (let i = 0; i <= GRID_SIZE; i++) {
-      const pos = this.x + i * (CELL + PAD);
-      g.lineStyle(1, theme.gridLine, 0.3);
-      // Vertical
-      g.lineBetween(pos, this.y, pos, this.y + h);
-      // Horizontal
-      g.lineBetween(this.x, this.y + i * (CELL + PAD), this.x + w, this.y + i * (CELL + PAD));
+    // Grid Container Panel
+    g.fillStyle(palette.gridBg, 0.95);
+    g.fillRoundedRect(this.x - 6, this.y - 6, w + 12, h + 12, 14);
+
+    // Outer Glowing Border
+    g.lineStyle(2, palette.gridColor, 0.9);
+    g.strokeRoundedRect(this.x - 6, this.y - 6, w + 12, h + 12, 14);
+    g.lineStyle(1.5, palette.gridColor, 0.35);
+    g.strokeRoundedRect(this.x - 8, this.y - 8, w + 16, h + 16, 16);
+
+    // Empty Cell Slots
+    for (let r = 0; r < GRID_SIZE; r++) {
+      for (let c = 0; c < GRID_SIZE; c++) {
+        const cx = this.x + c * (CELL + PAD);
+        const cy = this.y + r * (CELL + PAD);
+
+        // Cell slot well
+        g.fillStyle(theme.gridCellEmpty, 0.65);
+        g.fillRoundedRect(cx, cy, CELL, CELL, BORDER_R);
+
+        // Subtle slot border
+        g.lineStyle(1, theme.gridLine, 0.6);
+        g.strokeRoundedRect(cx, cy, CELL, CELL, BORDER_R);
+
+        // Tech Corner Accents / Dot
+        g.fillStyle(palette.gridColor, 0.15);
+        g.fillCircle(cx + CELL / 2, cy + CELL / 2, 2.5);
+      }
     }
-
-    // Border glow
-    g.lineStyle(2, theme.gridLineGlow, 0.15);
-    g.strokeRoundedRect(this.x, this.y, w, h, 8);
   }
 
-  /** Draw the grid state */
+  /** Draw the active placed grid blocks */
   drawGrid(grid: Grid): void {
     const g = this.graphics;
     for (let r = 0; r < GRID_SIZE; r++) {
@@ -62,25 +118,13 @@ export class GridRenderer {
 
         const cx = this.x + c * (CELL + PAD);
         const cy = this.y + r * (CELL + PAD);
-        const color = getBlockColor(val);
-
-        // Glow
-        g.fillStyle(color.glow, 0.2);
-        g.fillRoundedRect(cx - 2, cy - 2, CELL + 4, CELL + 4, BORDER_R + 2);
-
-        // Block fill
-        g.fillStyle(color.fill, 0.9);
-        g.fillRoundedRect(cx, cy, CELL, CELL, BORDER_R);
-
-        // Inner highlight (top edge)
-        g.fillStyle(0xffffff, 0.15);
-        g.fillRoundedRect(cx + 3, cy + 2, CELL - 6, CELL / 2, { tl: BORDER_R - 2, tr: BORDER_R - 2, bl: 0, br: 0 });
+        GridRenderer.drawSingleBlock(g, cx, cy, CELL, val, 1.0, BORDER_R);
       }
     }
   }
 
-  /** Draw a ghost (preview) of where a shape would be placed */
-  drawGhost(shape: Shape, pos: Position, grid: Grid): void {
+  /** Draw snap ghost preview with neon pulse */
+  drawGhost(shape: Shape, pos: Position, grid: Grid, isValid: boolean = true, pulseAlpha: number = 1.0): void {
     const g = this.graphics;
     const color = getBlockColor(shape.color);
 
@@ -95,28 +139,57 @@ export class GridRenderer {
         const cx = this.x + gridCol * (CELL + PAD);
         const cy = this.y + gridRow * (CELL + PAD);
 
-        g.fillStyle(color.glow, 0.15);
-        g.fillRoundedRect(cx, cy, CELL, CELL, BORDER_R);
-        g.lineStyle(2, color.glow, 0.4);
-        g.strokeRoundedRect(cx, cy, CELL, CELL, BORDER_R);
+        if (isValid) {
+          // Valid ghost placement: bright glowing outline + soft fill
+          g.fillStyle(color.glow, 0.32 * pulseAlpha);
+          g.fillRoundedRect(cx, cy, CELL, CELL, BORDER_R);
+
+          g.lineStyle(2.5, color.light, 0.95 * pulseAlpha);
+          g.strokeRoundedRect(cx, cy, CELL, CELL, BORDER_R);
+
+          // Center crosshair / diamond preview
+          g.fillStyle(0xffffff, 0.6 * pulseAlpha);
+          g.fillCircle(cx + CELL / 2, cy + CELL / 2, 4);
+        } else {
+          // Invalid ghost preview: red tint
+          g.fillStyle(0xff2244, 0.25 * pulseAlpha);
+          g.fillRoundedRect(cx, cy, CELL, CELL, BORDER_R);
+          g.lineStyle(2, 0xff2244, 0.7 * pulseAlpha);
+          g.strokeRoundedRect(cx, cy, CELL, CELL, BORDER_R);
+        }
       }
     }
   }
 
-  /** Draw highlight animation for cleared cells */
+  /** Draw high-energy laser beam clear animation */
   drawClearHighlight(rows: number[], cols: number[], progress: number): void {
     const g = this.graphics;
-    const alpha = 1 - progress;
+    const alpha = Math.sin((1 - progress) * Math.PI); // Smooth in-out bell curve
 
+    // Draw Laser Sweeps for Rows
     for (const r of rows) {
       const cy = this.y + r * (CELL + PAD);
-      g.fillStyle(0x00f5ff, alpha * 0.5);
-      g.fillRoundedRect(this.x, cy, GRID_PX, CELL, 4);
+      
+      // Wide soft glow beam
+      g.fillStyle(0x00f5ff, alpha * 0.4);
+      g.fillRoundedRect(this.x - 10, cy - 2, GRID_PX + 20, CELL + 4, 6);
+
+      // Intense core beam
+      g.fillStyle(0xffffff, alpha * 0.9);
+      g.fillRoundedRect(this.x - 4, cy + (CELL / 2) - 6, GRID_PX + 8, 12, 4);
     }
+
+    // Draw Laser Sweeps for Columns
     for (const c of cols) {
       const cx = this.x + c * (CELL + PAD);
-      g.fillStyle(0x00f5ff, alpha * 0.5);
-      g.fillRoundedRect(cx, this.y, CELL, GRID_PX, 4);
+
+      // Wide soft glow beam
+      g.fillStyle(0xff00ff, alpha * 0.4);
+      g.fillRoundedRect(cx - 2, this.y - 10, CELL + 4, GRID_PX + 20, 6);
+
+      // Intense core beam
+      g.fillStyle(0xffffff, alpha * 0.9);
+      g.fillRoundedRect(cx + (CELL / 2) - 6, this.y - 4, 12, GRID_PX + 8, 4);
     }
   }
 
@@ -128,7 +201,7 @@ export class GridRenderer {
     return { row, col };
   }
 
-  /** Get grid pixel position for a cell */
+  /** Get exact center pixel position for a grid cell */
   gridToPixel(row: number, col: number): { x: number; y: number } {
     return {
       x: this.x + col * (CELL + PAD) + CELL / 2,
@@ -145,4 +218,4 @@ export class GridRenderer {
   }
 }
 
-export { CELL, GRID_PX };
+export { CELL, PAD, GRID_PX, BORDER_R };

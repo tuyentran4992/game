@@ -8,6 +8,7 @@ import Phaser from 'phaser';
 import { sdk } from '@game/sdk';
 import { StartScene } from './scenes/Start';
 import { GameplayScene } from './scenes/Gameplay';
+import { SkinsScene } from './scenes/Skins';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.WEBGL,
@@ -19,14 +20,31 @@ const config: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [StartScene, GameplayScene],
+  render: {
+    antialias: true,
+    antialiasGL: true,
+    roundPixels: false,
+    powerPreference: 'high-performance',
+  },
+  scene: [StartScene, GameplayScene, SkinsScene],
 };
 
-// Boot
-const game = new Phaser.Game(config);
+// Ensure Google Fonts are loaded before booting Phaser
+async function startApp(): Promise<void> {
+  if (document.fonts) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      // ignore font loading error and proceed
+    }
+  }
 
-// Initialize SDK on game ready
-game.events.on('ready', () => {
-  sdk.initialize();
-  sdk.gameReady();
-});
+  const game = new Phaser.Game(config);
+
+  game.events.on('ready', () => {
+    sdk.initialize();
+    sdk.gameReady();
+  });
+}
+
+startApp();

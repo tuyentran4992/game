@@ -9,6 +9,7 @@ export interface ButtonStyle {
   width?: number;
   height?: number;
   fontSize?: number;
+  textColor?: string;
   /** Icon character/emoji prepended to label */
   icon?: string;
   /** If true, shows a pulsing glow animation */
@@ -78,13 +79,14 @@ export class Button {
 
     // Label
     const fullLabel = style.icon ? `${style.icon}  ${style.label}` : style.label;
+    const defaultTextColor = style.textColor ?? (this.variant === 'ghost' ? '#00f5ff' : '#ffffff');
     this.labelText = scene.add.text(0, 0, fullLabel, {
       fontFamily: fonts.heading.family,
       fontSize: `${style.fontSize ?? fontSizes.button}px`,
       fontStyle: `bold`,
-      color: '#ffffff',
-      stroke: '#00000055',
-      strokeThickness: 2,
+      color: defaultTextColor,
+      stroke: '#060614',
+      strokeThickness: 3,
       align: 'center',
     });
     this.labelText.setOrigin(0.5);

@@ -57,10 +57,10 @@ export const gradients = {
     bottomRight: 0xcc0088,
   },
   btnGhost: {
-    topLeft: 0xffffff,
-    topRight: 0xffffff,
-    bottomLeft: 0xccccdd,
-    bottomRight: 0xccccdd,
+    topLeft: 0x1c1c42,
+    topRight: 0x1c1c42,
+    bottomLeft: 0x10102e,
+    bottomRight: 0x10102e,
   },
   panel: {
     topLeft: 0x1a1a3e,
