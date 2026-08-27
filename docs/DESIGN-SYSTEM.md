@@ -164,11 +164,40 @@ Tên token chính thức dùng **dấu chấm** (namespace): `color.primary`, `t
 
 ---
 
-## 4. ILLUSTRATION / ART STYLE (guideline cho AI asset)
-- **Phong cách:** 2D flat + toon, viền đậm, màu tươi sáng, nhân vật đáng yêu. Khán giả 13+.
-- **Nhân vật chính:** ảnh tĩnh (sprite) + animation tween/physics trong engine (KHÔNG sprite-sheet nhiều frame — AI image-to-image không tạo khung mới tin cậy).
-- **Nền:** gradient + vài lớp parallax nhẹ (tạo chiều sâu rẻ tiền).
-- **Màu art** theo palette §1.1; art game override `color.bg.*` theo theme; **chữ/nút/HUD bắt buộc dùng token §1**.
+## 4. ILLUSTRATION / ART STYLE — PREMIUM CASUAL (nâng chuẩn 27/08, benchmark Playgama Trending 195 game)
+> Trước đây: "2D flat + toon" — mức đó chỉ đạt sàn "game nghiệp dư". Đối thủ trending (Good Sort Master, Numicolor, Piece of Cake, Arrows Out!) thắng ở **art studio-quality + thumbnail đọc được trong 0.5s**. Từ 27/08 mọi game phải đạt chuẩn DƯỚI ĐÂY, kể cả prototype fun gate (rule 3).
+
+### 4.1 Render style — "candy volumetric" (không còn flat thuần)
+- **KHÔNG** flat đơn sắc. Mọi object chính (nhân vật, khối, trái cây, nút) phải có: gradient 2-3 tông cùng hue (sáng trên-trái → tối dưới-phải) + **1 gloss highlight** (vệt sáng trắng α0.5-0.8, bo tròn, góc ~45°) + **viền dưới tối hơn thân 15-20%** (hiệu ứng dày/nổi) + **bóng đổ mềm** (`shadow.char`) tiếp đất.
+- **Viền:** outline đậm 3-5px màu TỐI HƠN nền object (không dùng đen thuần #000 — dùng hue gốc × 0.35 brightness).
+- **Nền:** gradient 2 lớp + vignette rất nhẹ (α≤0.12) để đẩy chủ đề ra giữa; sprite gameplay phải "tách" khỏi nền (test: chụp màn hình, nghiêng mắt 1 cái — object nào không nhảy ra trước, đạt sai).
+- Palette: bão hòa cao (S≥60%) nhưng **tối đa 3 hue chiếm sóng** + 1 accent; màu neon lòe loẹt bằng nhau hết = xấu.
+
+### 4.2 Thumbnail-first (điều kiện nộp nền tảng)
+- Thiết kế **KEY ART TRƯỚC, mechanic sau nếu xung đột**: một hình chủ đề duy nhất, to, giữa khung, chiếm ≥55% chiều cao thumbnail; không chữ trong ảnh (platform tự đè).
+- Test chuẩn: thu nhỏ ảnh còn **240px rộng** (bằng thumbnail Playgama ratio) → còn nhận ra game nói về gì không? Không đạt = vẽ lại.
+- Mỗi game chốt 1 **icon motif** (quả cam peel, nắm giấy crumple...) dùng chung cho thumbnail + confetti + logo intro.
+
+### 4.3 JUICE bắt buộc (khác biệt "đã tay" vs "nhạt")
+- Squash & stretch mọi va chạm/tap (scale 1.1-1.25, `dur.pop`).
+- Particle ĐÚNG MÀU CHỦ THỂ (màu vỏ cam = cam 2 tông — KHÔNG trắng/xám mặc định).
+- Screen micro-shake (≤4px) cho moment thưởng; không shake cho spam điểm.
+- Anticipation → action → recoil: mọi input chính có ≥1 frame anticipation.
+- Number/label bay lên + fade khi ghi điểm (floating text).
+
+### 4.4 Quy trình asset với stack hiện tại (WAN 2.7 + Phaser, giữ bundle <5MB)
+- Still image AI gen theo prompt template: `[subject], casual mobile game asset, candy 3D look, soft gradient shading, glossy highlight, thick cartoon outline darker than fill, flat solid background for easy cropping, centered, no text` → cắt nền → nén WebP ≤100KB/asset.
+- Animation vẫn bằng tween/physics engine (không sprite-sheet) — nhưng object được tween phải có sẵn gloss + outline trong ảnh để không vỡ style.
+- HUD/nút: giữ component §3 nhưng **áp 4.1** (gradient + viền dưới + gloss) — nút flat trắng-đen là "auto-nghiệp-dư".
+
+### 4.5 Art QA gate (trước khi build/nộp, soi như khách khó tính)
+1. Screenshot 240px — nhận ra chủ đề trong 0.5s? ✅/❌
+2. Nghiêng mắt — chủ đề tách khỏi nền? ✅/❌
+3. Đếm hue chiếm sóng ≤3? ✅/❌
+4. Mọi object tương tác có đủ bộ: gradient + gloss + viền + bóng? ✅/❌
+5. Particle/floating text đúng màu chủ thể? ✅/❌
+→ ❌ bất kỳ câu nào = chưa được đóng gói/nộp platform, quay lại 4.4.
+
 
 ---
 

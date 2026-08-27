@@ -116,6 +116,7 @@ dist/
 - `M5-Peel/` và `M6-Crumple-King/`: mỗi folder có `README.md` (fun gate) + `specs/1-<slug>/` (SPEC.md + PROMPT.md — prompt code theo spec, paste vào Claude Code, code vào `<folder>/game/`).
 - Quy trình: anh code local → **fun gate** → con nào VUI mới viết SPEC đủ 5 file (`specs/1-<slug>/`) + chuẩn bị `games/<slug>`.
 - Test nền cũ vẫn tốt: vitest 109 · tsc 0 · build OK.
+- **27/08 — NÂNG CHUẨN ART (anh Tuyền chốt):** DESIGN-SYSTEM §4 viết lại thành PREMIUM CASUAL (benchmark 195 game Playgama Trending: candy volumetric, thumbnail-first, juice bắt buộc, art QA gate 5 câu). Áp dụng riêng M5: `M5-Peel/specs/1-peel/ART-STANDARD.md`. Có hiệu lực cả prototype fun gate.
 
 ### M4 — "Neon Grid" (`g4-neon-grid/`) — block puzzle ✅ CODE + BUILD
 - **Kiến trúc monorepo đầu tiên:** `@game/core` + `@game/sdk`.
