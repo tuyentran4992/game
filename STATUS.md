@@ -113,7 +113,7 @@ dist/
 ## M5 "Peel!" + M6 "Crumple King" — Prototype Fun Gate 🚧 (27/08)
 
 - Vượt vòng lọc catalog: động từ cốt lõi **TUỐT** (M5) / **BÓP-ĐỂ-NÉM** (M6) chưa game nào trên Playgama làm cơ chế chính (merge/1010/sort/untangle/erase/rewind đều bão hòa — bằng chứng trong README từng con).
-- `M5-Peel/` và `M6-Crumple-King/`: mỗi folder có `README.md` (spec 1 trang + tiêu chí fun gate) + `CODE-PROMPT.md` (paste vào Claude Code, code vào `<folder>/game/`).
+- `M5-Peel/` và `M6-Crumple-King/`: mỗi folder có `README.md` (fun gate) + `specs/1-<slug>/` (SPEC.md + PROMPT.md — prompt code theo spec, paste vào Claude Code, code vào `<folder>/game/`).
 - Quy trình: anh code local → **fun gate** → con nào VUI mới viết SPEC đủ 5 file (`specs/1-<slug>/`) + chuẩn bị `games/<slug>`.
 - Test nền cũ vẫn tốt: vitest 109 · tsc 0 · build OK.
 

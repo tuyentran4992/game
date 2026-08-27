@@ -22,4 +22,4 @@ Phaser 4.2.1 + Vite + TS, canvas 9:16, nền tối. Quả programmatic, ribbon =
 Anh chơi 60 giây: ít nhất **1 lần "ồ"** vì dải peel liền mạch dài + **muốn chơi lại ngay**. Fail → concept vào kho, không polish.
 
 ## Prompt code
-`CODE-PROMPT.md` — paste vào Claude Code local (thư mục game: `M5-Peel/game/`).
+`specs/1-peel/PROMPT.md` — paste vào Claude Code local, code vào `M5-Peel/game/`.

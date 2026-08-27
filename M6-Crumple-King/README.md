@@ -22,4 +22,4 @@ Phaser 4.2.1 + matter-js + Vite + TS. Giấy = mesh point-bodies + constraints, 
 Cú ném **đầu tiên trúng sọt phải "đã"**. Nếu cảm giác chỉ như "ném giấy thường" → fail, vào kho.
 
 ## Prompt code
-`CODE-PROMPT.md` — paste vào Claude Code local (thư mục game: `M6-Crumple-King/game/`).
+`specs/1-crumple-king/PROMPT.md` — paste vào Claude Code local, code vào `M6-Crumple-King/game/`.
