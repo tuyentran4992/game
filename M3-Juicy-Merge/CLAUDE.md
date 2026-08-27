@@ -1,5 +1,6 @@
 # M3 "Potion Panic" (v2) — CLAUDE.md (hướng dẫn agent code)
 
+> ⛔ **TRẠNG THÁI 27/08: v2 ĐÃ HỦY — chơi chán (fun gate fail), không code bản này.** File giữ cho lịch sử. Nếu làm hướng khác, tạo `specs/3-<tentru>/` + CLAUDE.md mới.
 > **BẢN NÀY THAY CLAUDE.md v1.** v1 (trái cây Suika-style) bị Playgama reject vì clone — xem `specs/README.md`.
 
 ## Project

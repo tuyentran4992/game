@@ -1,6 +1,9 @@
 # YouTube Playables Games — AGENTS.md
 
 > Hướng dẫn cho AI agents (Hermes, Claude Code, ...) làm việc với project này.
+> **KIẾN TRÚC NGUỒN SỰ THẬT: `docs/ARCHITECTURE.md`** — đọc trước khi làm game mới.
+> **Nộp game mọi kênh: đọc + ghi `docs/SUBMISSIONS.md`** (pre-submit checklist bắt buộc).
+> **Gate số 0: prototype phải CHƠI VUI (anh Tuyền duyệt) trước khi đầu tư art/packaging/submission.**
 
 ## Kiến trúc
 
