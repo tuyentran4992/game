@@ -73,7 +73,7 @@ vite build --mode <platform>   # standalone | playgama | reddit | ytgame
 
 ## 5. Quy trình mỗi game (factory pipeline)
 
-1. **Concept** → chơi được ngay bằng placeholder (spike ≤ 1 ngày) → **fun gate: anh Tuyền chơi thử, OK mới đi tiếp**.
+1. **Concept** → chơi được ngay bằng placeholder (spike ≤ 1 ngày) vào thẳng `<GameFolder>/game/` (vd `M5-Peel/game/`) → **fun gate: anh Tuyền chơi thử, OK mới đi tiếp**. Spec viết trong `<GameFolder>/specs/1-<slug>/` (đánh số phiên bản như M3). KHÔNG tạo `prototypes/` tách rời, KHÔNG hardcode đường dẫn absolute của máy cá nhân vào prompt/docs — repo tự detect cwd.
 2. SPEC 5 file (spec-authoring) + anti-clone check theo TỪNG nền tảng định nộp.
 3. Code theo bước, mỗi bước verify độc lập (typecheck/vitest/build/browser).
 4. Art: mặc định programmatic (`@game/core` tokens) → WAN sprite chỉ khi duyệt.

@@ -2,7 +2,7 @@
 
 ```
 TẠO PROTOTYPE FUN-GATE "CRUMPLE KING" — chơi được trong hôm nay, art placeholder.
-Repo gốc: /data/youtube-playables. Tạo thư mục MỚI M6-Crumple-King/game/ (Vite + TS + pnpm).
+Repo: repo `youtube-playables` trên máy anh (tự detect cwd — không hardcode đường dẫn).  Tạo thư mục MỚI M6-Crumple-King/game/ (Vite + TS + pnpm).
 KHÔNG sửa file nào khác, KHÔNG commit/push.
 
 Bối cảnh: prototype bóp giấy & ném — đọc M6-Crumple-King/README.md.

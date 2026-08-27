@@ -2,7 +2,7 @@
 
 ```
 TẠO PROTOTYPE FUN-GATE "PEEL!" — chơi được trong hôm nay, art placeholder TUYỆT ĐỐI.
-Repo gốc: /data/youtube-playables. Tạo thư mục MỚI M5-Peel/game/ (Vite + TS + pnpm).
+Repo: repo `youtube-playables` trên máy anh (tự detect cwd — không hardcode đường dẫn).  Tạo thư mục MỚI M5-Peel/game/ (Vite + TS + pnpm).
 KHÔNG sửa file nào khác của repo. KHÔNG commit/push.
 
 Bối cảnh: prototype ASMR gọt vỏ — đọc M5-Peel/README.md để hiểu mechanic.
