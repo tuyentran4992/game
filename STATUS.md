@@ -104,13 +104,12 @@ dist/
 - Test: vitest **32** · tsc 0 · build OK.
 - CHƯA đóng gói nộp.
 
-### M3 — "Juicy Merge" (`M3-Juicy-Merge/`) — physics-merge ✅ HOÀN CHỈNH
-- Suika-style: thả trái → merge bậc 11-12.
-- **Multi-platform SDK:** Reddit Devvit + Playgama + ytgame + Local.
-- **Đã submit Playgama** (2026-08-24, account kotaro001).
-- **Reddit Devvit port:** game/src/devvit + server + Redis.
-- **Leaderboard:** Playgama + Devvit API.
-- Test: vitest 109 · tsc 0 · build OK.
+### M3 — "Juicy Merge" (`M3-Juicy-Merge/`) — physics-merge ✅ CODE + Adventure Saga (anh push 27/08)
+- Suika-style: thả trái → merge bậc 11-12. **Multi-platform SDK** Reddit/Playgama/ytgame/Local.
+- ❌ **PLAYGAMA REJECT 27/08**: "too closely replicates already published titles" (catalog có ≥4 Suika-clone + trùng tên "Juicy Merge"). Policy #3: cấm copy 1 phần.
+- **Hướng B đã chốt:** v2 **"Potion Panic"** — specs tại `M3-Juicy-Merge/specs/2-potion-panic/` (5 file). Khác biệt 4 trục: hàng đợi 3 nguyên tố chọn-được (Fire/Water/Earth ×4 bậc), hệ Heat+BREW nổ dây chuyền + Stir, Orders + campaign 30 màn goal nguyên tố, nồi cong + theme neon apothecary.
+- **Trạng thái:** chờ anh duyệt SPEC → giao agent code → QA (browser+vision) → Anti-Reject Checklist §9 → nộp lại (qua support chat trước).
+- Reddit Devvit port done, chưa deploy. Test cũ: vitest 109 · tsc 0 · build OK.
 
 ### M4 — "Neon Grid" (`g4-neon-grid/`) — block puzzle ✅ CODE + BUILD
 - **Kiến trúc monorepo đầu tiên:** `@game/core` + `@game/sdk`.
