@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { color, type, sp, radius, z, dur, fontStyle, paletteForLevel, toColor } from '../tokens';
 import { ctx } from '../context';
-import { sdk } from '../sdk-instance';
+import { sdk } from '@game/sdk';
 import { MECHANICS, BeeType } from '../logic/mechanics';
 import { PauseModal } from '../ui/PauseModal';
 

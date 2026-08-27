@@ -2,6 +2,8 @@
 // Mọi màu/type/nhịp trong scene BẮT BUỘC dùng token, KHÔNG hardcode HEX tùy tiện.
 // Art-theme (color.primary/bg/grass/lane) + multi-palette theo level: xem DESIGN-SPEC §1.1.
 
+import type Phaser from 'phaser';
+
 export const color = {
   // art-theme mặc định level 1 (override per-level qua palettes)
   bg: { top: '#7EC8FF', bottom: '#B8E6A8' },
@@ -97,7 +99,8 @@ export function fontStyle(token: { size: string; weight: string; lh: number }, c
 }
 
 // Helper: convert hex string (#RRGGBB) → number cho Graphics.fillStyle/lineStyle
-// (Phaser types khai báo number, runtime chấp nhận string nhưng TS báo lỗi)
 export function toColor(hex: string): number {
-  return Phaser.Display.Color.HexStringToColor(hex).color;
+  if (hex.startsWith('#')) return parseInt(hex.slice(1), 16);
+  if (hex.startsWith('0x')) return parseInt(hex, 16);
+  return parseInt(hex, 16) || 0;
 }

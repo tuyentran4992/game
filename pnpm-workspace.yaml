@@ -1,6 +1,8 @@
 packages:
   - 'packages/*'
   - 'g4-*'
+  - 'M1-*'
+  - 'M1-*/game'
   - 'M3-*'
   - 'M3-*/game'
 allowBuilds:

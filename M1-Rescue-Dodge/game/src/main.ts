@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Scale, AUTO } from 'phaser';
-import { sdk } from './sdk-instance';
+import { sdk } from '@game/sdk';
 import { StartScene } from './scenes/Start';
 import { TutorialScene } from './scenes/Tutorial';
 import { GameplayScene } from './scenes/Gameplay';

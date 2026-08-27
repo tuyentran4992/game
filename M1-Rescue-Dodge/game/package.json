@@ -5,11 +5,16 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && node -e \"require('fs').copyFileSync('playgama-bridge-config.json', 'dist/playgama-bridge-config.json')\"",
+    "build:web": "vite build && node -e \"require('fs').copyFileSync('playgama-bridge-config.json', 'dist/playgama-bridge-config.json')\"",
+    "build:playgama": "vite build && node -e \"require('fs').copyFileSync('playgama-bridge-config.json', 'dist/playgama-bridge-config.json')\"",
+    "build:standalone": "vite build",
     "typecheck": "tsc --noEmit",
+    "test:types": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@game/sdk": "workspace:*",
     "phaser": "^4.2.1"
   },
   "devDependencies": {

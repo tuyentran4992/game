@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { color, type, radius, shadow, z, dur, fontStyle, toColor } from '../tokens';
 import { drawButton } from '../ui';
 import { ctx } from '../context';
-import { sdk } from '../sdk-instance';
+import { sdk } from '@game/sdk';
 
 export class GameOverScene extends Phaser.Scene {
   private root!: Phaser.GameObjects.Container;

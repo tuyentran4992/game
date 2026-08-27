@@ -1,7 +1,7 @@
 // Game context dùng chung giữa các scene — giữ GameEngine + best score tải từ SDK.
 import { GameEngine, Quest } from './logic/GameEngine';
 import { MECHANICS } from './logic/mechanics';
-import { sdk } from './sdk-instance';
+import { sdk } from '@game/sdk';
 
 class GameContext {
   engine: GameEngine;

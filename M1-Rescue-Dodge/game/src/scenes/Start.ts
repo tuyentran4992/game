@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { color, type, z, dur, fontStyle } from '../tokens';
 import { drawButton } from '../ui';
 import { ctx } from '../context';
-import { sdk } from '../sdk-instance';
+import { sdk } from '@game/sdk';
 import { ShopModal } from '../ui/ShopModal';
 import { QuestsModal } from '../ui/QuestsModal';
 

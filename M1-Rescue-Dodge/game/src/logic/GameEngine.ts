@@ -3,101 +3,36 @@
 // level = floor(score/10)+1 + đổi palette (vòng lại 3), best record, difficulty curve.
 // Testable độc lập (xem __tests__/GameEngine.test.ts).
 
-import { MechanicsConfig, BeeType } from './mechanics';
+import type {
+  MechanicsConfig,
+  BeeType,
+  DodgeResult,
+  FishResult,
+  NearMissResult,
+  SwarmSurviveResult,
+  TickResult,
+  DifficultyResult,
+  EndGameResult,
+  CatSkin,
+  Quest,
+  GameEngineOptions,
+} from './types';
+import { CAT_SKINS, INITIAL_QUESTS } from '../config';
 
-export interface DodgeResult {
-  scoreDelta: number;
-  comboBonus: number;
-  comboTriggered: boolean;
-  feverTriggered: boolean;
-  levelUp: boolean;
-  newLevel: number;
-  paletteIndex: number;
-}
-
-export interface FishResult {
-  scoreDelta: number;
-  fishCount: number;
-  totalFish: number;
-  feverTriggered: boolean;
-  levelUp: boolean;
-  newLevel: number;
-  paletteIndex: number;
-}
-
-export interface NearMissResult {
-  scoreDelta: number;
-  feverTriggered: boolean;
-}
-
-export interface SwarmSurviveResult {
-  scoreDelta: number;
-  feverTriggered: boolean;
-  levelUp: boolean;
-  newLevel: number;
-  paletteIndex: number;
-}
-
-export interface TickResult {
-  scoreDelta: number;
-  levelUp?: boolean;
-  newLevel?: number;
-}
-
-export interface DifficultyResult {
-  speed: number;
-  spawnCount: number;
-}
-
-export interface EndGameResult {
-  score: number;
-  bestScore: number;
-  level: number;
-  fish: number;
-  totalFish: number;
-  isNewRecord: boolean;
-}
-
-export interface CatSkin {
-  id: string;
-  name: string;
-  price: number;
-  textureKey: string;
-  desc: string;
-}
-
-export const CAT_SKINS: CatSkin[] = [
-  { id: 'ginger', name: 'Ginger Tabby', price: 0, textureKey: 'cat_idle', desc: 'Playful and agile, reflexes like lightning!' },
-  { id: 'tuxedo', name: 'Tuxedo Gentleman', price: 450, textureKey: 'cat_tuxedo', desc: 'Dapper black suit with a stylish red bowtie!' },
-  { id: 'royal', name: 'Royal King Cat 👑', price: 1100, textureKey: 'cat_royal', desc: 'Golden crown and majestic royal velvet cape!' },
-  { id: 'astro', name: 'Astro Space Cat 🚀', price: 1800, textureKey: 'cat_astro', desc: 'Futuristic spacesuit with high-tech glowing visor!' },
-];
-
-export interface Quest {
-  id: string;
-  title: string;
-  desc: string;
-  target: number;
-  rewardFish: number;
-  progress: number;
-  claimed: boolean;
-}
-
-export const INITIAL_QUESTS: Quest[] = [
-  { id: 'dodge_30', title: 'Dodge 30 Bees', desc: 'Successfully dodge 30 incoming bees', target: 30, rewardFish: 15, progress: 0, claimed: false },
-  { id: 'collect_8_fish', title: 'Goldfish Hunter', desc: 'Collect 8 golden fish across runs', target: 8, rewardFish: 20, progress: 0, claimed: false },
-  { id: 'survive_swarm', title: 'Survive Swarm ⚠️', desc: 'Survive 1 dangerous bee swarm raid', target: 1, rewardFish: 25, progress: 0, claimed: false },
-  { id: 'score_100', title: 'Dodge Master', desc: 'Reach a record score of 100 points', target: 100, rewardFish: 40, progress: 0, claimed: false },
-];
-
-export interface GameEngineOptions {
-  bestScore?: number;
-  totalFish?: number;
-  totalGamesPlayed?: number;
-  unlockedSkins?: string[];
-  selectedSkin?: string;
-  quests?: Quest[];
-}
+export {
+  type DodgeResult,
+  type FishResult,
+  type NearMissResult,
+  type SwarmSurviveResult,
+  type TickResult,
+  type DifficultyResult,
+  type EndGameResult,
+  type CatSkin,
+  type Quest,
+  type GameEngineOptions,
+  CAT_SKINS,
+  INITIAL_QUESTS,
+};
 
 export class GameEngine {
   private cfg: MechanicsConfig;
