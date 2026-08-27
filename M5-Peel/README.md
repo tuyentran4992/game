@@ -1,7 +1,7 @@
 # M5 — "Peel!" · ASMR gọt vỏ · Prototype Fun-Gate Spec
 
 > **Ngày:** 27/08/2026 · **Trạng thái:** 🚧 prototype → fun gate (chưa phải game chính thức)
-> Spec chi tiết: `specs/1-peel/SPEC.md`. Fun gate pass → viết nốt DESIGN-SPEC/DATA-MODEL/TEST-CASES/E2E vào cùng folder.
+> Spec stage 1: `specs/1-peel/SPEC.md` + prompt `specs/1-peel/PROMPT.md`. Cuốn chiếu: anh verify PASS → em mở `specs/2-peel/` (spec đầy đủ), cải tiến → `specs/3-...`.
 
 ## Động từ cốt lõi: TUỐT
 Một nhát dao liền mạch từ cuống xuống đáy — không đặt/xếp/ghép. Kiểm catalog Playgama 27/08: tìm "peel" **không game nào** lấy gọt vỏ làm cơ chế chính (genre chỉ thắng trên mobile app, chưa ai port lên web). Empty niche thật.

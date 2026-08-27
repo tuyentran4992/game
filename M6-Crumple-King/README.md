@@ -1,7 +1,7 @@
 # M6 — "Crumple King" · Bóp giấy & ném · Prototype Fun-Gate Spec
 
 > **Ngày:** 27/08/2026 · **Trạng thái:** 🚧 prototype → fun gate (chưa phải game chính thức)
-> Spec chi tiết: `specs/1-crumple-king/SPEC.md`. Fun gate pass → viết nốt DESIGN-SPEC/DATA-MODEL/TEST-CASES/E2E vào cùng folder.
+> Spec stage 1: `specs/1-crumple-king/SPEC.md` + prompt `specs/1-crumple-king/PROMPT.md`. Cuốn chiếu: anh verify PASS → em mở `specs/2-crumple-king/` (spec đầy đủ), cải tiến → `specs/3-...`.
 
 ## Động từ cốt lõi: BÓP rồi NÉM
 Hai cảm giác nối liền nhau trên cùng một vật thể: vuốt chụm tờ giấy cho đến khi thành viên, rồi kéo-ném vào sọt. Catalog Playgama 27/08: game *ném* đầy, game *squeeze* có, nhưng **không game nào biến dạng vật thể rồi mới ném nó** — cặp mechanic chưa ai ghép.

@@ -73,8 +73,9 @@ vite build --mode <platform>   # standalone | playgama | reddit | ytgame
 
 ## 5. Quy trình mỗi game (factory pipeline)
 
-1. **Concept** → chơi được ngay bằng placeholder (spike ≤ 1 ngày) vào thẳng `<GameFolder>/game/` (vd `M5-Peel/game/`) → **fun gate: anh Tuyền chơi thử, OK mới đi tiếp**. Spec + prompt nằm trong `<GameFolder>/specs/1-<slug>/` (SPEC.md + PROMPT.md — prompt code đi kèm đúng version spec của nó). KHÔNG tạo `prototypes/` hay file prompt rời ở folder game, KHÔNG hardcode đường dẫn absolute của máy cá nhân vào prompt/docs — repo tự detect cwd.
-2. SPEC 5 file (spec-authoring) + anti-clone check theo TỪNG nền tảng định nộp.
+1. **Concept** → prototype placeholder vào thẳng `<GameFolder>/game/` (vd `M5-Peel/game/`). Spec + prompt trong `<GameFolder>/specs/1-<slug>/` = **chỉ FUN GATE** (prompt code đi kèm đúng version spec). KHÔNG tạo `prototypes/` hay file prompt rời, KHÔNG hardcode đường dẫn absolute máy cá nhân — repo tự detect cwd.
+1b. **CUỐN CHIẾU THEO STAGE (rule của anh Tuyền):** mỗi `specs/<n>-<slug>/` = đúng 1 giai đoạn, verify xong mới mở stage sau. `1-<slug>` = fun gate ONLY (cấm lẫn scope phase 2 vào spec/prompt). Anh PASS → viết `2-<slug>` = spec đầy đủ 5 file (DESIGN-SPEC/DATA-MODEL/TEST-CASES/E2E) build bản chính thức. Cải tiến/nộp lại → `3-<slug>`… Stage cũ đóng băng, không sửa về trước.
+2. Stage 2: SPEC 5 file đầy đủ (spec-authoring) + anti-clone check theo TỪNG nền tảng định nộp.
 3. Code theo bước, mỗi bước verify độc lập (typecheck/vitest/build/browser).
 4. Art: mặc định programmatic (`@game/core` tokens) → WAN sprite chỉ khi duyệt.
 5. QA browser + vision thật (§E2E-TESTS) — "chạy được" ≠ "đẹp" ≠ "vui".
