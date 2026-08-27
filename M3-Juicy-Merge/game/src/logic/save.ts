@@ -1,35 +1,43 @@
-// M3 Juicy Merge — Best-score save/load (M3-08).
-// Persists the best score through an injectable SaveAdapter so the engine stays
-// pure (it never imports the SDK — the adapter is injected at the context edge).
-//
-// Payload shape (DATA-MODEL §1.3): { best_score, schema_version }.
-// On load failure → default 0, never crash.
+// M3 Juicy Merge — Best-score & Stage Progress save/load (M3-08).
+// Persists the best score, stage progression, action powerups, and daily challenge
+// through an injectable SaveAdapter so the engine stays pure.
 
 import { getUnlockedMilestoneTiers } from "./daily-challenge";
+import {
+  type ActionPowerupInventory,
+  type ActionPowerupType,
+  createDefaultActionInventory,
+  canUseActionPowerup,
+  consumeActionPowerup,
+  grantActionPowerup,
+} from "./action-powerups";
 
-/** Edge-side persistence + score reporting. The SDK is one implementation; tests
- *  inject a mock. Keeping this an interface means the logic module has no SDK import. */
+/** Edge-side persistence + score reporting. */
 export interface SaveAdapter {
   loadData(): Promise<unknown | null>;
   saveData(data: unknown): Promise<boolean>;
   sendScore(score: number): void;
 }
 
-/** Persisted save payload (M3-08 + Phase 3 + Option A). Bumping schema_version enables migration later. */
+/** Persisted save payload. */
 export interface SavePayload {
   best_score: number;
   unlocked_tiers?: number[];
   daily_completed_date?: string;
   daily_best_score?: number;
   daily_streak_count?: number;
+  unlocked_stage?: number;
+  stage_stars?: Record<number, number>;
+  stage_highscores?: Record<number, number>;
+  powerups?: ActionPowerupInventory;
   schema_version: number;
 }
 
 /** Current save schema version. */
-export const SAVE_SCHEMA_VERSION = 1;
+export const SAVE_SCHEMA_VERSION = 2;
 
 /**
- * Best-score & Retention Progress store backed by an injectable {@link SaveAdapter}.
+ * Best-score & Progression store backed by an injectable {@link SaveAdapter}.
  */
 export class ScoreStore {
   bestScore = 0;
@@ -37,6 +45,10 @@ export class ScoreStore {
   dailyCompletedDate?: string | null | undefined;
   dailyBestScore?: number | undefined;
   dailyStreakCount = 0;
+  unlockedStage = 1;
+  stageStars: Record<number, number> = {};
+  stageHighscores: Record<number, number> = {};
+  powerups: ActionPowerupInventory = createDefaultActionInventory();
   private loaded = false;
 
   constructor(private readonly adapter: SaveAdapter) {}
@@ -65,6 +77,30 @@ export class ScoreStore {
           ? data.daily_streak_count
           : 0;
 
+      this.unlockedStage =
+        data && typeof data.unlocked_stage === "number"
+          ? Math.max(1, data.unlocked_stage)
+          : 1;
+
+      this.stageStars =
+        data && typeof data.stage_stars === "object" && data.stage_stars !== null
+          ? { ...data.stage_stars }
+          : {};
+
+      this.stageHighscores =
+        data && typeof data.stage_highscores === "object" && data.stage_highscores !== null
+          ? { ...data.stage_highscores }
+          : {};
+
+      this.powerups =
+        data && typeof data.powerups === "object" && data.powerups !== null
+          ? {
+              hammer: typeof data.powerups.hammer === "number" ? data.powerups.hammer : 3,
+              bomb: typeof data.powerups.bomb === "number" ? data.powerups.bomb : 2,
+              rainbow: typeof data.powerups.rainbow === "number" ? data.powerups.rainbow : 2,
+            }
+          : createDefaultActionInventory();
+
       // Đồng bộ các quả Thần Thoại nếu streak đã đạt mốc
       if (this.dailyStreakCount > 0) {
         const milestoneTiers = getUnlockedMilestoneTiers(this.dailyStreakCount);
@@ -74,18 +110,21 @@ export class ScoreStore {
         }
       }
     } catch (e) {
-      // Corrupt storage / adapter error → start fresh, never crash (M3-08).
       console.warn("loadData failed, starting fresh", e);
       this.bestScore = 0;
       this.unlockedTiers = undefined;
       this.dailyCompletedDate = null;
       this.dailyBestScore = 0;
       this.dailyStreakCount = 0;
+      this.unlockedStage = 1;
+      this.stageStars = {};
+      this.stageHighscores = {};
+      this.powerups = createDefaultActionInventory();
     }
     this.loaded = true;
   }
 
-  /** Mark store as needing a reload (e.g. before a fresh load after a retry). */
+  /** Mark store as needing a reload. */
   reset(): void {
     this.bestScore = 0;
     this.loaded = false;
@@ -98,12 +137,64 @@ export class ScoreStore {
     return this.unlockedTiers;
   }
 
+  getUnlockedStage(): number {
+    return this.unlockedStage;
+  }
+
+  getStageStars(stageId: number): number {
+    return this.stageStars[stageId] || 0;
+  }
+
+  getStageHighscore(stageId: number): number {
+    return this.stageHighscores[stageId] || 0;
+  }
+
+  async recordStageResult(stageId: number, stars: number, score: number): Promise<void> {
+    const existingStars = this.stageStars[stageId] || 0;
+    if (stars > existingStars) {
+      this.stageStars[stageId] = stars;
+    }
+
+    const existingScore = this.stageHighscores[stageId] || 0;
+    if (score > existingScore) {
+      this.stageHighscores[stageId] = score;
+    }
+
+    if (stars > 0 && stageId >= this.unlockedStage && stageId < 30) {
+      this.unlockedStage = stageId + 1;
+    }
+
+    await this.saveProgress();
+  }
+
+  canUsePowerup(type: ActionPowerupType): boolean {
+    return canUseActionPowerup(this.powerups, type);
+  }
+
+  async consumePowerup(type: ActionPowerupType): Promise<boolean> {
+    const success = consumeActionPowerup(this.powerups, type);
+    if (success) {
+      await this.saveProgress();
+    }
+    return success;
+  }
+
+  async grantPowerup(type: ActionPowerupType, count = 1): Promise<number> {
+    const newCount = grantActionPowerup(this.powerups, type, count);
+    await this.saveProgress();
+    return newCount;
+  }
+
   /**
-   * Persist entire game progress (best score, album unlocked tiers, daily challenge).
+   * Persist entire game progress.
    */
   async saveProgress(): Promise<boolean> {
     const payload: SavePayload = {
       best_score: this.bestScore,
+      unlocked_stage: this.unlockedStage,
+      stage_stars: this.stageStars,
+      stage_highscores: this.stageHighscores,
+      powerups: this.powerups,
       schema_version: SAVE_SCHEMA_VERSION,
     };
     if (this.unlockedTiers && this.unlockedTiers.size > 0) {
@@ -115,10 +206,7 @@ export class ScoreStore {
     if (typeof this.dailyBestScore === "number" && this.dailyBestScore > 0) {
       payload.daily_best_score = this.dailyBestScore;
     }
-    if (
-      typeof this.dailyStreakCount === "number" &&
-      this.dailyStreakCount > 0
-    ) {
+    if (typeof this.dailyStreakCount === "number" && this.dailyStreakCount > 0) {
       payload.daily_streak_count = this.dailyStreakCount;
     }
     try {
@@ -133,33 +221,7 @@ export class ScoreStore {
   async onGameOver(score: number): Promise<number> {
     if (score > this.bestScore) {
       this.bestScore = score;
-      const payload: SavePayload = {
-        best_score: this.bestScore,
-        schema_version: SAVE_SCHEMA_VERSION,
-      };
-      if (this.unlockedTiers && this.unlockedTiers.size > 0) {
-        payload.unlocked_tiers = Array.from(this.unlockedTiers);
-      }
-      if (this.dailyCompletedDate) {
-        payload.daily_completed_date = this.dailyCompletedDate;
-      }
-      if (typeof this.dailyBestScore === "number" && this.dailyBestScore > 0) {
-        payload.daily_best_score = this.dailyBestScore;
-      }
-      if (
-        typeof this.dailyStreakCount === "number" &&
-        this.dailyStreakCount > 0
-      ) {
-        payload.daily_streak_count = this.dailyStreakCount;
-      }
-      try {
-        const saved = await this.adapter.saveData(payload);
-        if (!saved) {
-          console.warn("saveData returned false, keeping bestScore in session");
-        }
-      } catch (e) {
-        console.warn("saveData failed, keeping session best", e);
-      }
+      await this.saveProgress();
       try {
         this.adapter.sendScore(this.bestScore);
       } catch (e) {

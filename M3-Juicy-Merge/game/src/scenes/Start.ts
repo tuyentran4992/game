@@ -11,6 +11,7 @@ import { fruitDiameter } from "../gameplay/fruit-sprite";
 import { ctx } from "../context";
 import { getAlbumProgress } from "../logic/album";
 import { DAILY_MILESTONES } from "../logic/daily-challenge";
+import { calculateTotalStars } from "../logic/stages";
 
 export class StartScene extends Phaser.Scene {
   private chainImages: Phaser.GameObjects.Image[] = [];
@@ -108,19 +109,41 @@ export class StartScene extends Phaser.Scene {
     }
 
     // --- 4. Main Menu Buttons ------------------------------------------------
-    // A. Classic Mode Button (Pink Candy)
+    // A. Adventure Saga Button (Vibrant Emerald Primary CTA)
+    const totalStars = ctx.score ? calculateTotalStars(ctx.score.stageStars) : 0;
+    const { container: adventureBtn } = drawButton(
+      this,
+      width / 2,
+      height * 0.54,
+      `Adventure Saga (⭐ ${totalStars}/90)`,
+      {
+        testid: "adventure-btn",
+        variant: "emerald",
+        icon: "🗺️",
+        width: btnW,
+        height: 70,
+        fontSize: 24,
+      },
+    );
+    adventureBtn.on("pointerdown", () => {
+      this.startBgm();
+      this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
+      this.time.delayedCall(dur.scene, () => this.scene.start("StageSelectScene"));
+    });
+
+    // B. Classic Endless Button (Pink Candy)
     const { container: playBtn } = drawButton(
       this,
       width / 2,
-      height * 0.57,
-      "Classic Mode",
+      height * 0.63,
+      "Classic Endless",
       {
         testid: "start-btn",
         variant: "primary",
         icon: "▶",
         width: btnW,
-        height: 76,
-        fontSize: 27,
+        height: 66,
+        fontSize: 23,
       },
     );
     playBtn.on("pointerdown", () => {
@@ -129,53 +152,52 @@ export class StartScene extends Phaser.Scene {
       this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
       this.time.delayedCall(dur.scene, () => this.scene.start("GameplayScene"));
     });
-    this.menuButtons.push(playBtn);
 
-    // B. Daily Challenge Button (Golden Amber)
+    // C. Daily Challenge Button (Golden Amber)
     const isCompletedToday = ctx.isDailyCompletedToday();
     const dailyLabel = isCompletedToday
       ? `Daily Challenge (Completed ✓)`
-      : `Daily Challenge: Day ${diff.dayLevel}/12 🔥`;
+      : `Daily: Day ${diff.dayLevel}/12 🔥`;
     const { container: dailyBtn } = drawButton(
       this,
       width / 2,
-      height * 0.67,
+      height * 0.72,
       dailyLabel,
       {
         testid: "daily-btn",
         variant: "amber",
         icon: "📅",
         width: btnW,
-        height: 74,
-        fontSize: 23,
+        height: 66,
+        fontSize: 22,
       },
     );
     dailyBtn.on("pointerdown", () => {
       this.showDailyChallengeModal();
     });
 
-    // C. Fruit Album Button (Emerald Mint)
+    // D. Fruit Album Button (Cyan/Sky)
     const unlocked = ctx.score.getUnlockedTiers();
     const albumProgress = getAlbumProgress(unlocked);
     const { container: albumBtn } = drawButton(
       this,
       width / 2,
-      height * 0.77,
+      height * 0.81,
       `Fruit Album (${albumProgress.unlockedCount}/${albumProgress.totalCount})`,
       {
         testid: "album-btn",
-        variant: "emerald",
+        variant: "purple",
         icon: "📖",
         width: btnW,
-        height: 72,
-        fontSize: 24,
+        height: 64,
+        fontSize: 21,
       },
     );
     albumBtn.on("pointerdown", () => {
       this.scene.pause();
       this.scene.launch("AlbumScene", { returnScene: "StartScene" });
     });
-    this.menuButtons.push(dailyBtn, albumBtn);
+    this.menuButtons.push(adventureBtn, playBtn, dailyBtn, albumBtn);
 
     // --- 5. Ambient Mascot Decor ---------------------------------------------
     this.drawCornerDecor(width, height);
@@ -189,7 +211,7 @@ export class StartScene extends Phaser.Scene {
         this.logoContainer.setPosition(g.width / 2, g.height * 0.22);
       this.drawFruitChain(g.width / 2, g.height * 0.38);
       const menux = g.width / 2;
-      const ry = [0.57, 0.67, 0.77];
+      const ry = [0.54, 0.63, 0.72, 0.81];
       this.menuButtons.forEach((btn, i) => {
         if (ry[i] !== undefined && btn)
           btn.setPosition(menux, g.height * ry[i]!);

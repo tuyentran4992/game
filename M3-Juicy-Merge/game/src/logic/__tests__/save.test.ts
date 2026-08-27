@@ -56,13 +56,42 @@ describe('GC-14: best-score save/load (M3-08)', () => {
     expect(store.bestScore).toBe(50);
     // saveData called exactly once with the right payload
     expect(adapter.saveData).toHaveBeenCalledTimes(1);
-    expect(adapter.saveData).toHaveBeenCalledWith({
-      best_score: 50,
-      schema_version: SAVE_SCHEMA_VERSION,
-    });
+    expect(adapter.saveData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        best_score: 50,
+        schema_version: SAVE_SCHEMA_VERSION,
+      })
+    );
     // sendScore called exactly once with the new best
     expect(adapter.sendScore).toHaveBeenCalledTimes(1);
     expect(adapter.sendScore).toHaveBeenCalledWith(50);
+  });
+
+  it('records stage result, unlocks next stage and updates stars/highscore', async () => {
+    const adapter = makeAdapter(null);
+    const store = new ScoreStore(adapter);
+    await store.load();
+
+    expect(store.getUnlockedStage()).toBe(1);
+    await store.recordStageResult(1, 3, 500);
+
+    expect(store.getStageStars(1)).toBe(3);
+    expect(store.getStageHighscore(1)).toBe(500);
+    expect(store.getUnlockedStage()).toBe(2);
+    expect(adapter.saveData).toHaveBeenCalled();
+  });
+
+  it('manages action powerup consumption and granting with save', async () => {
+    const adapter = makeAdapter(null);
+    const store = new ScoreStore(adapter);
+    await store.load();
+
+    expect(store.canUsePowerup('hammer')).toBe(true);
+    await store.consumePowerup('hammer');
+    expect(store.powerups.hammer).toBe(2);
+
+    await store.grantPowerup('bomb', 2);
+    expect(store.powerups.bomb).toBe(4);
   });
 
   it('score not beating best → no save, no sendScore (no spurious writes)', async () => {

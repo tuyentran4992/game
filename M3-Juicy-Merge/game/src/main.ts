@@ -9,6 +9,7 @@ import { StartScene } from './scenes/Start';
 import { GameplayScene } from './scenes/Gameplay';
 import { GameOverScene } from './scenes/GameOver';
 import { AlbumScene } from './scenes/Album';
+import { StageSelectScene } from './scenes/StageSelect';
 
 // Boot scene — preload every asset key declared in `games/juicy-merge.yaml`
 // §assets (baseURL `./raw/`). Raw files are generated in Phase C (steps 13-14);
@@ -69,7 +70,7 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  scene: [BootScene, StartScene, GameplayScene, GameOverScene, AlbumScene],
+  scene: [BootScene, StartScene, StageSelectScene, GameplayScene, GameOverScene, AlbumScene],
   render: { antialias: true, roundPixels: true },
 };
 
@@ -82,28 +83,56 @@ const game = new Phaser.Game(config);
 // (ui.drawMuteButton) so the player and the host never fight over audio.
 applyMute(game, sdk.isAudioEnabled());
 
-// Playables SDK pause/resume (M3-10, UI-12). On host pause: freeze the Matter
-// world (fruits stop mid-fall) AND mute audio immediately. On resume: restore
-// audio (honoring the player's mute choice) and resume physics — but only when
-// the game is in active play; if game-over already paused Gameplay (the GameOver
-// overlay sits on top), do NOT resume physics or the frozen pile would unfreeze
-// under the panel. isGameOver() is the guard for exactly that.
+// Playables SDK pause/resume (M3-10, UI-12) + Browser Native Tab Visibility
 sdk.onPause(() => {
   const gp = game.scene.getScene('GameplayScene') as GameplayScene | undefined;
-  if (gp && gp.scene.isActive()) {
+  if (gp && gp.matter && gp.matter.world) {
     gp.matter.world.pause();
-    gp.scene.pause();
   }
   game.sound.mute = true;
 });
+
 sdk.onResume(() => {
   applyMute(game, sdk.isAudioEnabled());
   const gp = game.scene.getScene('GameplayScene') as GameplayScene | undefined;
-  if (gp && !gp.isGameOver()) {
+  if (gp && gp.matter && gp.matter.world && !gp.isGameOver()) {
     gp.matter.world.resume();
-    gp.scene.resume();
+    if (gp.scene && gp.scene.isPaused()) {
+      gp.scene.resume();
+    }
   }
 });
+
 sdk.onAudioEnabledChange((enabled: boolean) => { applyMute(game, enabled); });
+
+// Native browser tab visibility change & window focus hooks
+document.addEventListener('visibilitychange', () => {
+  const gp = game.scene.getScene('GameplayScene') as GameplayScene | undefined;
+  if (document.hidden) {
+    game.sound.mute = true;
+    if (gp && gp.matter && gp.matter.world) {
+      gp.matter.world.pause();
+    }
+  } else {
+    applyMute(game, sdk.isAudioEnabled());
+    if (gp && gp.matter && gp.matter.world && !gp.isGameOver()) {
+      gp.matter.world.resume();
+      if (gp.scene && gp.scene.isPaused()) {
+        gp.scene.resume();
+      }
+    }
+  }
+});
+
+window.addEventListener('focus', () => {
+  applyMute(game, sdk.isAudioEnabled());
+  const gp = game.scene.getScene('GameplayScene') as GameplayScene | undefined;
+  if (gp && gp.matter && gp.matter.world && !gp.isGameOver()) {
+    gp.matter.world.resume();
+    if (gp.scene && gp.scene.isPaused()) {
+      gp.scene.resume();
+    }
+  }
+});
 
 sdk.gameReady();

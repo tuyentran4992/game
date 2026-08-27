@@ -21,6 +21,28 @@ import {
 } from "../gameplay/juice-effects";
 import { computeShakeImpulse } from "../logic/powerups";
 import { PauseModal } from "../ui/PauseModal";
+import {
+  getStageConfig,
+  evaluateStageProgress,
+  type StageConfig,
+} from "../logic/stages";
+import {
+  type ObstacleState,
+  createObstacle,
+  evaluateObstacleDamageOnMerge,
+  damageObstacle,
+} from "../logic/obstacles";
+import {
+  createObstacleVisual,
+  updateObstacleDamageVisual,
+  playObstacleDestructionEffect,
+  type ObstacleGameObject,
+} from "../gameplay/obstacle-sprite";
+import {
+  playHammerSmashVfx,
+  playBombExplosionVfx,
+} from "../gameplay/action-effects";
+import { evaluateBombBlast } from "../logic/action-powerups";
 
 interface DroppedFruit {
   id: number;
@@ -84,6 +106,30 @@ export class GameplayScene extends Phaser.Scene {
   private isPromptingRefill = false;
   private hasClaimedDailyExtraDrops = false;
   private isPaused = false;
+  private sceneStartTime = 0;
+
+  // --- Stage Mode & Action Powerups State ---
+  private gameMode: "classic" | "stage" | "daily" = "classic";
+  private stageId = 1;
+  private stageConfig?: StageConfig | undefined;
+  private stageDropsRemaining = 0;
+  private stageDropsUsed = 0;
+  private stageCreatedTiers = new Map<number, number>();
+  private stageObstacleStates: ObstacleState[] = [];
+  private stageObstacleObjects = new Map<number, ObstacleGameObject>();
+  private stageBannerText?: Phaser.GameObjects.Text | undefined;
+  private stageVictoryCelebrated = false;
+  private isHammerMode = false;
+  private isBombActiveNext = false;
+  private isRainbowActiveNext = false;
+  private actionBarContainer?: Phaser.GameObjects.Container | undefined;
+  private hammerCountText?: Phaser.GameObjects.Text | undefined;
+  private bombCountText?: Phaser.GameObjects.Text | undefined;
+  private rainbowCountText?: Phaser.GameObjects.Text | undefined;
+  private hammerButtonBg?: Phaser.GameObjects.Graphics | undefined;
+  private bombButtonBg?: Phaser.GameObjects.Graphics | undefined;
+  private rainbowButtonBg?: Phaser.GameObjects.Graphics | undefined;
+  private hammerInstructionText?: Phaser.GameObjects.Text | undefined;
 
   /** Deferred merge queue processed outside the Matter solver loop. */
   private pendingMerges: MergePlan[] = [];
@@ -93,10 +139,41 @@ export class GameplayScene extends Phaser.Scene {
     super({ key: "GameplayScene" });
   }
 
+  init(data?: { mode?: "classic" | "stage" | "daily"; stageId?: number }): void {
+    this.gameMode = data?.mode || (ctx.isDailyMode ? "daily" : "classic");
+    this.stageId = data?.stageId || 1;
+    this.stageDropsUsed = 0;
+    this.stageCreatedTiers.clear();
+    this.stageObstacleStates = [];
+    this.stageObstacleObjects.clear();
+    this.stageVictoryCelebrated = false;
+    this.isHammerMode = false;
+    this.isBombActiveNext = false;
+    this.isRainbowActiveNext = false;
+
+    // Reset references to previous UI objects across scene restarts
+    this.hammerCountText = undefined;
+    this.bombCountText = undefined;
+    this.rainbowCountText = undefined;
+    this.hammerButtonBg = undefined;
+    this.bombButtonBg = undefined;
+    this.rainbowButtonBg = undefined;
+    this.actionBarContainer = undefined;
+    this.stageBannerText = undefined;
+
+    if (this.gameMode === "stage") {
+      this.stageConfig = getStageConfig(this.stageId);
+      this.stageDropsRemaining = this.stageConfig?.maxDrops ?? 25;
+    }
+  }
+
   create(): void {
     const { width, height } = this.scale;
     this.layout = computeBucketLayout(width, height);
     drawBackground(this);
+
+    // Reset game engine state immediately so HUD and stats start cleanly at 0
+    ctx.engine.startNewGame();
 
     this.fruits = [];
     this.fruitsById.clear();
@@ -108,11 +185,18 @@ export class GameplayScene extends Phaser.Scene {
     this.wasNearDanger = false;
     this.dangerStartTime = null;
     this.cosmicVictoryCelebrated = false;
+    this.sceneStartTime = this.time.now;
+    this.lastUiClickTime = this.time.now;
 
     this.setupPhysics();
     this.drawBucket();
     this.drawDangerLine();
     this.createAimLine();
+
+    this.createActionBar();
+    if (this.gameMode === "stage") {
+      this.createStageObstacles();
+    }
     this.createHud();
 
     this.dangerCountdownText = this.add
@@ -132,7 +216,6 @@ export class GameplayScene extends Phaser.Scene {
 
     drawMuteButton(this);
 
-    ctx.engine.startNewGame();
     this.ghostTier = ctx.engine.nextFruit();
     this.ghostX = Phaser.Math.Clamp(
       width / 2,
@@ -141,8 +224,23 @@ export class GameplayScene extends Phaser.Scene {
     );
     this.refreshGhost();
     this.updateNextFruitHud();
-
+    this.updateHud();
     this.bindInput();
+
+    this.events.on("resume", () => {
+      if (!this.gameOverTriggered) {
+        this.isPaused = false;
+        this.matter.world.resume();
+        this.lastMotionMs = this.time.now;
+        this.lastUiClickTime = this.time.now;
+        this.refreshAimLine();
+      }
+    });
+
+    this.events.on("pause", () => {
+      this.aimLine.clear();
+      this.matter.world.pause();
+    });
   }
 
   // --- Physics world --------------------------------------------------------
@@ -520,7 +618,18 @@ export class GameplayScene extends Phaser.Scene {
     this.playSfx("sfx_gameover");
     ctx.engine.setGameOver(true, true);
     this.scene.pause();
-    this.scene.launch("GameOverScene");
+
+    if (this.gameMode === "stage") {
+      this.scene.launch("GameOverScene", {
+        isStageMode: true,
+        stageId: this.stageId,
+        isStageVictory: false,
+        stars: 0,
+        score: ctx.engine.state.score,
+      });
+    } else {
+      this.scene.launch("GameOverScene");
+    }
   }
 
   // --- Reset/Continue Hook ---------------------------------------------------
@@ -872,7 +981,228 @@ export class GameplayScene extends Phaser.Scene {
         .setDepth(z.hud + 1);
     }
 
+    // 6. Stage Mode Sub-Header Banner (if active)
+    if (this.gameMode === "stage" && this.stageConfig) {
+      const bannerW = Math.min(560, width - 36);
+      const bannerH = 48;
+      const bannerY = 96;
+      const bannerBg = this.add.graphics().setDepth(z.hud);
+      bannerBg.fillStyle(0x000000, 0.16);
+      bannerBg.fillRoundedRect(width / 2 - bannerW / 2, bannerY + 4, bannerW, bannerH, 24);
+      bannerBg.fillStyle(0xffffff, 0.98);
+      bannerBg.fillRoundedRect(width / 2 - bannerW / 2, bannerY, bannerW, bannerH, 24);
+      bannerBg.lineStyle(2.5, 0x10b981, 1);
+      bannerBg.strokeRoundedRect(width / 2 - bannerW / 2, bannerY, bannerW, bannerH, 24);
+
+      this.stageBannerText = this.add
+        .text(
+          width / 2,
+          bannerY + bannerH / 2,
+          `🗺️ Stage ${this.stageId}: ${this.stageConfig.name} • 🪂 ${this.stageDropsRemaining} left`,
+          {
+            fontFamily: "sans-serif",
+            fontSize: "14px",
+            fontStyle: "bold",
+            color: "#065F46",
+          }
+        )
+        .setOrigin(0.5)
+        .setDepth(z.hud + 1);
+    }
+
     this.updateHud();
+  }
+
+  private createStageObstacles(): void {
+    if (!this.stageConfig || !this.stageConfig.obstacles) return;
+
+    const L = this.layout;
+    const bucketW = L.bucketX1 - L.bucketX0;
+    const bucketH = L.bucketBottomY - L.bucketTopY;
+
+    for (const obsConfig of this.stageConfig.obstacles) {
+      const state = createObstacle(obsConfig);
+      this.stageObstacleStates.push(state);
+
+      const worldX = L.bucketX0 + state.xRatio * bucketW;
+      const worldY = L.bucketTopY + state.yRatio * bucketH;
+
+      const obsObj = createObstacleVisual(this, state, worldX, worldY);
+      this.stageObstacleObjects.set(state.id, obsObj);
+    }
+  }
+
+  private createActionBar(): void {
+    const { width, height } = this.scale;
+    const barY = Math.min(height - 42, this.layout.bucketBottomY + 70);
+
+    this.actionBarContainer = this.add.container(width / 2, barY).setDepth(z.hud);
+
+    const btnW = 90;
+    const btnH = 50;
+    const spacing = 105;
+
+    // 1. Hammer Button (Cyan)
+    const hammerCont = this.add.container(-spacing, 0);
+    this.hammerButtonBg = this.add.graphics();
+    this.renderActionButtonBg(this.hammerButtonBg, btnW, btnH, 0x00bcd4, this.isHammerMode);
+    const hammerIcon = this.add.text(-14, 0, "🔨", { fontSize: "20px" }).setOrigin(0.5);
+    this.hammerCountText = this.add
+      .text(16, 0, `x${ctx.score.powerups.hammer}`, {
+        fontFamily: "sans-serif",
+        fontSize: "14px",
+        fontStyle: "bold",
+        color: "#FFFFFF",
+      })
+      .setOrigin(0.5);
+    hammerCont.add([this.hammerButtonBg, hammerIcon, this.hammerCountText]);
+    hammerCont.setSize(btnW, btnH);
+    hammerCont.setInteractive({ useHandCursor: true });
+    hammerCont.on("pointerdown", () => this.onUseHammer());
+
+    // 2. Bomb Button (Orange)
+    const bombCont = this.add.container(0, 0);
+    this.bombButtonBg = this.add.graphics();
+    this.renderActionButtonBg(this.bombButtonBg, btnW, btnH, 0xff5722, this.isBombActiveNext);
+    const bombIcon = this.add.text(-14, 0, "💣", { fontSize: "20px" }).setOrigin(0.5);
+    this.bombCountText = this.add
+      .text(16, 0, `x${ctx.score.powerups.bomb}`, {
+        fontFamily: "sans-serif",
+        fontSize: "14px",
+        fontStyle: "bold",
+        color: "#FFFFFF",
+      })
+      .setOrigin(0.5);
+    bombCont.add([this.bombButtonBg, bombIcon, this.bombCountText]);
+    bombCont.setSize(btnW, btnH);
+    bombCont.setInteractive({ useHandCursor: true });
+    bombCont.on("pointerdown", () => this.onUseBomb());
+
+    // 3. Rainbow Button (Purple)
+    const rainbowCont = this.add.container(spacing, 0);
+    this.rainbowButtonBg = this.add.graphics();
+    this.renderActionButtonBg(this.rainbowButtonBg, btnW, btnH, 0x8b5cf6, this.isRainbowActiveNext);
+    const rainbowIcon = this.add.text(-14, 0, "🌈", { fontSize: "20px" }).setOrigin(0.5);
+    this.rainbowCountText = this.add
+      .text(16, 0, `x${ctx.score.powerups.rainbow}`, {
+        fontFamily: "sans-serif",
+        fontSize: "14px",
+        fontStyle: "bold",
+        color: "#FFFFFF",
+      })
+      .setOrigin(0.5);
+    rainbowCont.add([this.rainbowButtonBg, rainbowIcon, this.rainbowCountText]);
+    rainbowCont.setSize(btnW, btnH);
+    rainbowCont.setInteractive({ useHandCursor: true });
+    rainbowCont.on("pointerdown", () => this.onUseRainbow());
+
+    this.actionBarContainer.add([hammerCont, bombCont, rainbowCont]);
+
+    // Instruction banner if hammer mode is active
+    this.hammerInstructionText = this.add
+      .text(width / 2, barY - 38, "🔨 TAP ANY FRUIT OR OBSTACLE TO SMASH!", {
+        fontFamily: "sans-serif",
+        fontSize: "13px",
+        fontStyle: "bold",
+        color: "#00BCD4",
+      })
+      .setOrigin(0.5)
+      .setStroke("#FFFFFF", 3)
+      .setDepth(z.hud + 2)
+      .setAlpha(0);
+  }
+
+  private renderActionButtonBg(
+    g: Phaser.GameObjects.Graphics,
+    w: number,
+    h: number,
+    colorHex: number,
+    isActive: boolean
+  ): void {
+    g.clear();
+    const halfW = w / 2;
+    const halfH = h / 2;
+
+    g.fillStyle(0x000000, 0.2);
+    g.fillRoundedRect(-halfW, -halfH + 3, w, h, 14);
+
+    g.fillStyle(colorHex, 1);
+    g.fillRoundedRect(-halfW, -halfH, w, h, 14);
+
+    g.fillStyle(0xffffff, 0.22);
+    g.fillRoundedRect(-halfW + 3, -halfH + 3, w - 6, halfH - 2, 8);
+
+    g.lineStyle(isActive ? 3 : 1.5, isActive ? 0xffeb3b : 0xffffff, 0.9);
+    g.strokeRoundedRect(-halfW, -halfH, w, h, 14);
+  }
+
+  private updateActionBar(): void {
+    if (this.hammerCountText && this.hammerCountText.scene && this.hammerCountText.active) {
+      this.hammerCountText.setText(`x${ctx.score.powerups.hammer}`);
+    }
+    if (this.bombCountText && this.bombCountText.scene && this.bombCountText.active) {
+      this.bombCountText.setText(`x${ctx.score.powerups.bomb}`);
+    }
+    if (this.rainbowCountText && this.rainbowCountText.scene && this.rainbowCountText.active) {
+      this.rainbowCountText.setText(`x${ctx.score.powerups.rainbow}`);
+    }
+    if (this.hammerButtonBg && this.hammerButtonBg.scene && this.hammerButtonBg.active) {
+      this.renderActionButtonBg(this.hammerButtonBg, 90, 50, 0x00bcd4, this.isHammerMode);
+    }
+    if (this.bombButtonBg && this.bombButtonBg.scene && this.bombButtonBg.active) {
+      this.renderActionButtonBg(this.bombButtonBg, 90, 50, 0xff5722, this.isBombActiveNext);
+    }
+    if (this.rainbowButtonBg && this.rainbowButtonBg.scene && this.rainbowButtonBg.active) {
+      this.renderActionButtonBg(this.rainbowButtonBg, 90, 50, 0x8b5cf6, this.isRainbowActiveNext);
+    }
+  }
+
+  private onUseHammer(): void {
+    this.lastUiClickTime = this.time.now;
+    if (this.gameOverTriggered) return;
+    if (!ctx.score.canUsePowerup("hammer")) {
+      this.promptRefillPowerups();
+      return;
+    }
+    this.isHammerMode = !this.isHammerMode;
+    this.isBombActiveNext = false;
+    this.isRainbowActiveNext = false;
+    this.updateActionBar();
+    this.refreshGhost();
+
+    if (this.hammerInstructionText) {
+      this.hammerInstructionText.setAlpha(this.isHammerMode ? 1 : 0);
+    }
+  }
+
+  private onUseBomb(): void {
+    this.lastUiClickTime = this.time.now;
+    if (this.gameOverTriggered) return;
+    if (!ctx.score.canUsePowerup("bomb")) {
+      this.promptRefillPowerups();
+      return;
+    }
+    this.isBombActiveNext = !this.isBombActiveNext;
+    this.isHammerMode = false;
+    this.isRainbowActiveNext = false;
+    if (this.hammerInstructionText) this.hammerInstructionText.setAlpha(0);
+    this.updateActionBar();
+    this.refreshGhost();
+  }
+
+  private onUseRainbow(): void {
+    this.lastUiClickTime = this.time.now;
+    if (this.gameOverTriggered) return;
+    if (!ctx.score.canUsePowerup("rainbow")) {
+      this.promptRefillPowerups();
+      return;
+    }
+    this.isRainbowActiveNext = !this.isRainbowActiveNext;
+    this.isHammerMode = false;
+    this.isBombActiveNext = false;
+    if (this.hammerInstructionText) this.hammerInstructionText.setAlpha(0);
+    this.updateActionBar();
+    this.refreshGhost();
   }
 
   private updateHud(): void {
@@ -908,6 +1238,20 @@ export class GameplayScene extends Phaser.Scene {
         this.dailyBannerText.setColor("#B45309");
       }
     }
+    if (this.stageBannerText && this.gameMode === "stage" && this.stageConfig) {
+      const activeObs = this.stageObstacleStates.filter((o) => !o.isDestroyed).length;
+      const res = evaluateStageProgress(
+        this.stageConfig,
+        this.stageDropsUsed,
+        ctx.engine.state.score,
+        this.getCombinedStageTiers(),
+        activeObs
+      );
+      this.stageBannerText.setText(
+        `🗺️ Stg ${this.stageId} • 🪂 ${this.stageDropsRemaining} left • ${res.progressSummary}`
+      );
+    }
+    this.updateActionBar();
     this.updateNextFruitHud();
   }
 
@@ -1750,13 +2094,24 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private refreshGhost(): void {
-    const key = resolveFruitTexture(this, this.ghostTier);
-    const d = fruitDiameter(this.ghostTier);
-    this.ghost.setTexture(key);
-    this.ghost.setDisplaySize(d, d);
+    if (this.isBombActiveNext) {
+      this.ghost.setTexture("fruit_01_cherry");
+      this.ghost.setDisplaySize(56, 56);
+      this.ghost.setTint(0x212121);
+    } else if (this.isRainbowActiveNext) {
+      this.ghost.setTexture("fruit_07_apple");
+      this.ghost.setDisplaySize(60, 60);
+      this.ghost.setTint(0xffd54f);
+    } else {
+      const key = resolveFruitTexture(this, this.ghostTier);
+      const d = fruitDiameter(this.ghostTier);
+      this.ghost.setTexture(key);
+      this.ghost.setDisplaySize(d, d);
+      this.ghost.clearTint();
+    }
     this.ghostX = this.clampGhostX(this.ghostX);
     this.ghost.setPosition(this.ghostX, this.layout.spawnY);
-    this.ghost.setAlpha(0.88);
+    this.ghost.setAlpha(this.isHammerMode ? 0.25 : 0.88);
     this.refreshAimLine();
   }
 
@@ -1789,23 +2144,109 @@ export class GameplayScene extends Phaser.Scene {
     this.input.on("pointerup", (p: Phaser.Input.Pointer) => {
       if (this.isPaused || this.gameOverTriggered || p.worldY < HUD_SAFE_Y)
         return;
+      if (this.time.now - this.sceneStartTime < 400) return;
       if (this.time.now - this.lastUiClickTime < 450) return;
-      this.tryDrop();
+      this.tryDrop(p.worldX, p.worldY);
     });
   }
 
-  private tryDrop(): void {
+  private tryDrop(pointerX?: number, pointerY?: number): void {
     const now = this.time.now;
     if (!ctx.engine.canDrop(now)) return;
-    const tier = this.ghostTier;
+
+    // 1. Handle Hammer Targeting Mode
+    if (this.isHammerMode) {
+      const clickX = pointerX ?? this.ghostX;
+      const clickY = pointerY ?? this.layout.spawnY;
+
+      // Find closest fruit to actual pointer tap position
+      let closestFruit: DroppedFruit | null = null;
+      let minFruitDist = 180;
+      for (const f of this.fruits) {
+        const d = Phaser.Math.Distance.Between(clickX, clickY, f.obj.x, f.obj.y);
+        const touchR = fruitRadius(f.tier) + 40;
+        if (d < touchR && d < minFruitDist) {
+          minFruitDist = d;
+          closestFruit = f;
+        }
+      }
+
+      // Find closest obstacle to actual pointer tap position
+      let closestObs: ObstacleGameObject | null = null;
+      let minObsDist = 180;
+      for (const obs of this.stageObstacleObjects.values()) {
+        const d = Phaser.Math.Distance.Between(clickX, clickY, obs.container.x, obs.container.y);
+        const touchR = Math.max(obs.state.width, obs.state.height) / 2 + 40;
+        if (d < touchR && d < minObsDist) {
+          minObsDist = d;
+          closestObs = obs;
+        }
+      }
+
+      if (closestFruit) {
+        const target = closestFruit;
+        playHammerSmashVfx(this, target.obj.x, target.obj.y, () => {
+          this.removeFruit(target);
+        });
+        void ctx.score.consumePowerup("hammer");
+        this.isHammerMode = false;
+        if (this.hammerInstructionText) this.hammerInstructionText.setAlpha(0);
+        this.refreshGhost();
+        this.updateHud();
+        this.playSfx("sfx_merge_big", 0.6);
+        return;
+      } else if (closestObs) {
+        const targetObs = closestObs;
+        playHammerSmashVfx(this, targetObs.container.x, targetObs.container.y, () => {
+          const { wasDestroyed } = damageObstacle(targetObs.state, 2);
+          updateObstacleDamageVisual(targetObs);
+          if (wasDestroyed) {
+            playObstacleDestructionEffect(this, targetObs);
+            this.stageObstacleObjects.delete(targetObs.state.id);
+          }
+        });
+        void ctx.score.consumePowerup("hammer");
+        this.isHammerMode = false;
+        if (this.hammerInstructionText) this.hammerInstructionText.setAlpha(0);
+        this.refreshGhost();
+        this.updateHud();
+        this.checkStageProgress();
+        this.playSfx("sfx_merge_big", 0.6);
+        return;
+      } else {
+        // Tapped in empty space during hammer mode: do NOT drop a fruit
+        return;
+      }
+    }
+
+    // 2. Handle Special Bomb or Rainbow Drop
+    let tier = this.ghostTier;
+    if (this.isBombActiveNext) {
+      tier = -1; // Bomb
+      void ctx.score.consumePowerup("bomb");
+      this.isBombActiveNext = false;
+      this.updateActionBar();
+    } else if (this.isRainbowActiveNext) {
+      tier = -2; // Rainbow
+      void ctx.score.consumePowerup("rainbow");
+      this.isRainbowActiveNext = false;
+      this.updateActionBar();
+    }
+
     ctx.engine.recordDrop(now);
     this.lastMotionMs = now;
     this.spawnFruit(tier, this.ghostX, this.layout.spawnY);
     this.playSfx("sfx_drop");
 
+    if (this.gameMode === "stage" && this.stageConfig) {
+      this.stageDropsUsed++;
+      this.stageDropsRemaining = Math.max(0, this.stageConfig.maxDrops - this.stageDropsUsed);
+    }
+
     this.ghostTier = ctx.engine.nextFruit();
     this.refreshGhost();
     this.updateHud();
+    this.checkStageProgress();
 
     if (ctx.isDailyMode && ctx.engine.state.dailyDropsRemaining <= 0) {
       this.time.delayedCall(2000, () => {
@@ -1825,9 +2266,26 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private spawnFruit(tier: number, x: number, y: number): DroppedFruit {
-    const key = resolveFruitTexture(this, tier);
-    const r = fruitRadius(tier);
-    const d = fruitDiameter(tier);
+    let key = "";
+    let r = 24;
+    let d = 48;
+
+    if (tier === -1) {
+      // Bomb
+      key = "fruit_01_cherry";
+      r = 30;
+      d = 60;
+    } else if (tier === -2) {
+      // Rainbow
+      key = "fruit_07_apple";
+      r = 32;
+      d = 64;
+    } else {
+      key = resolveFruitTexture(this, tier);
+      r = fruitRadius(tier);
+      d = fruitDiameter(tier);
+    }
+
     const fruit = this.matter.add.image(x, y, key);
     fruit.setDisplaySize(d, d);
     fruit.setCircle(r, {
@@ -1836,6 +2294,13 @@ export class GameplayScene extends Phaser.Scene {
     });
     fruit.setOrigin(0.5, 0.5);
     fruit.setDepth(z.actor);
+
+    if (tier === -1) {
+      fruit.setTint(0x212121);
+    } else if (tier === -2) {
+      fruit.setTint(0xffd54f);
+    }
+
     const id = this.nextFruitId++;
     fruit.setData("id", id);
     fruit.setData("tier", tier);
@@ -1872,6 +2337,43 @@ export class GameplayScene extends Phaser.Scene {
       const b = fruitOf(pair.bodyB);
       if (!a || !b) continue;
       if (a.id === b.id) continue;
+
+      // 1. Bomb detonation on contact
+      if (a.tier === -1 || b.tier === -1) {
+        const bombId = a.tier === -1 ? a.id : b.id;
+        const bombFruit = this.fruitsById.get(bombId);
+        if (bombFruit && !this.mergingFruitIds.has(bombId)) {
+          this.mergingFruitIds.add(bombId);
+          this.detonateBomb(bombFruit.obj.x, bombFruit.obj.y, bombId);
+        }
+        continue;
+      }
+
+      // 2. Rainbow wildcard merge on contact
+      if (a.tier === -2 || b.tier === -2) {
+        const otherFruit = a.tier === -2 ? b : a;
+
+        if (
+          otherFruit.tier >= 0 &&
+          otherFruit.tier < CONFIG.maxTier &&
+          !this.mergingFruitIds.has(a.id) &&
+          !this.mergingFruitIds.has(b.id)
+        ) {
+          this.mergingFruitIds.add(a.id);
+          this.mergingFruitIds.add(b.id);
+          const newTier = Math.min(CONFIG.maxTier, otherFruit.tier + 1);
+          const scoreGain = CONFIG.scorePerTier[newTier] || 50;
+          this.pendingMerges.push({
+            aId: a.id,
+            bId: b.id,
+            newTier,
+            scoreGain,
+          });
+        }
+        continue;
+      }
+
+      // 3. Regular same-tier merge
       if (a.tier !== b.tier) continue;
       if (this.mergingFruitIds.has(a.id) || this.mergingFruitIds.has(b.id))
         continue;
@@ -1889,6 +2391,50 @@ export class GameplayScene extends Phaser.Scene {
         scoreGain: result.scoreGain,
       });
     }
+  }
+
+  private detonateBomb(x: number, y: number, bombFruitId?: number): void {
+    const blastRadius = 160;
+    playBombExplosionVfx(this, x, y, blastRadius, () => {
+      if (bombFruitId) {
+        const bombFruit = this.fruitsById.get(bombFruitId);
+        if (bombFruit) this.removeFruit(bombFruit);
+      }
+
+      const fruitPositions = this.fruits.map((f) => ({ id: f.id, x: f.obj.x, y: f.obj.y }));
+      const obsPositions = Array.from(this.stageObstacleObjects.values()).map((o) => ({
+        id: o.state.id,
+        x: o.container.x,
+        y: o.container.y,
+      }));
+
+      const blast = evaluateBombBlast({ x, y }, blastRadius, fruitPositions, obsPositions);
+
+      for (const fId of blast.affectedFruitIds) {
+        if (fId === bombFruitId) continue;
+        const f = this.fruitsById.get(fId);
+        if (f) {
+          playJuiceSplash(this, f.obj.x, f.obj.y, f.tier);
+          this.removeFruit(f);
+        }
+      }
+
+      for (const obsId of blast.affectedObstacleIds) {
+        const obsObj = this.stageObstacleObjects.get(obsId);
+        if (obsObj) {
+          const { wasDestroyed } = damageObstacle(obsObj.state, 2);
+          updateObstacleDamageVisual(obsObj);
+          if (wasDestroyed) {
+            playObstacleDestructionEffect(this, obsObj);
+            this.stageObstacleObjects.delete(obsId);
+          }
+        }
+      }
+
+      this.lastMotionMs = this.time.now;
+      this.updateHud();
+      this.checkStageProgress();
+    });
   }
 
   private processPendingMerges(): void {
@@ -1910,10 +2456,53 @@ export class GameplayScene extends Phaser.Scene {
       const merged = this.spawnFruit(plan.newTier, midX, midY);
       merged.obj.setVelocity(0, -1.5);
 
+      // Record stage tier creation
+      this.stageCreatedTiers.set(
+        plan.newTier,
+        (this.stageCreatedTiers.get(plan.newTier) || 0) + 1
+      );
+
       // Visual juice: shockwave + colored radial juice droplets
       playJuiceSplash(this, midX, midY, plan.newTier);
       this.floatScorePopup(plan.scoreGain, midX, midY - 12);
       this.flashCombo();
+
+      // Check obstacle damage from merge shockwave
+      if (this.stageObstacleStates.length > 0) {
+        const worldPositions = new Map<number, { x: number; y: number }>();
+        for (const [id, obsObj] of this.stageObstacleObjects.entries()) {
+          worldPositions.set(id, { x: obsObj.container.x, y: obsObj.container.y });
+        }
+
+        const obsDamage = evaluateObstacleDamageOnMerge(
+          { x: midX, y: midY },
+          this.stageObstacleStates,
+          worldPositions,
+          130
+        );
+
+        for (const damagedObs of obsDamage.damaged) {
+          const obsObj = this.stageObstacleObjects.get(damagedObs.id);
+          if (obsObj) {
+            updateObstacleDamageVisual(obsObj);
+          }
+        }
+
+        for (const destroyedObs of obsDamage.destroyed) {
+          const obsObj = this.stageObstacleObjects.get(destroyedObs.id);
+          if (obsObj) {
+            playObstacleDestructionEffect(this, obsObj);
+            if (typeof destroyedObs.containedFruitTier === "number") {
+              this.spawnFruit(
+                destroyedObs.containedFruitTier,
+                obsObj.container.x,
+                obsObj.container.y
+              );
+            }
+            this.stageObstacleObjects.delete(destroyedObs.id);
+          }
+        }
+      }
 
       if (plan.newTier >= CONFIG.maxTier - 1) {
         bigMerge = true;
@@ -1979,9 +2568,73 @@ export class GameplayScene extends Phaser.Scene {
       }
 
       this.updateHud();
+      this.checkStageProgress();
+
       const combo = ctx.engine.state.comboCount;
       const detune = computeComboDetune(combo);
       this.playSfx(bigMerge ? "sfx_merge_big" : "sfx_merge", 0.5, detune);
+    }
+  }
+
+  private getCombinedStageTiers(): Map<number, number> {
+    const map = new Map<number, number>(this.stageCreatedTiers);
+    for (const f of this.fruits) {
+      if (f.tier >= 0) {
+        map.set(f.tier, (map.get(f.tier) || 0) + 1);
+      }
+    }
+    return map;
+  }
+
+  private checkStageProgress(): void {
+    if (
+      this.gameMode !== "stage" ||
+      !this.stageConfig ||
+      this.stageVictoryCelebrated ||
+      this.gameOverTriggered
+    ) {
+      return;
+    }
+
+    const activeObs = this.stageObstacleStates.filter((o) => !o.isDestroyed).length;
+    const res = evaluateStageProgress(
+      this.stageConfig,
+      this.stageDropsUsed,
+      ctx.engine.state.score,
+      this.getCombinedStageTiers(),
+      activeObs
+    );
+
+    if (res.isCompleted) {
+      this.stageVictoryCelebrated = true;
+      playFireworksCelebration(this, 8, z.overlay + 30);
+      void ctx.score.recordStageResult(this.stageId, res.stars, ctx.engine.state.score);
+      if (this.stageConfig.rewardPowerup) {
+        void ctx.score.grantPowerup(
+          this.stageConfig.rewardPowerup,
+          this.stageConfig.rewardCount || 1
+        );
+      }
+      this.time.delayedCall(1200, () => {
+        if (!this.gameOverTriggered) {
+          ctx.engine.setGameOver(true, false);
+          this.matter.world.pause();
+          this.scene.pause();
+          this.scene.launch("GameOverScene", {
+            isStageMode: true,
+            stageId: this.stageId,
+            isStageVictory: true,
+            stars: res.stars,
+            score: ctx.engine.state.score,
+          });
+        }
+      });
+    } else if (res.isFailed) {
+      this.time.delayedCall(1500, () => {
+        if (!this.stageVictoryCelebrated && !this.gameOverTriggered) {
+          this.triggerGameOver();
+        }
+      });
     }
   }
 

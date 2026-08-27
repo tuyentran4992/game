@@ -188,3 +188,53 @@ Kết quả validate ràng buộc Playables → JSON (giống M2), pass/fail the
 | Rewarded tiếp tục ≤1 lần | Nguồn revenue + giữ chân #1 (đúng pattern M1); interstitial không chen lần 1 (M3-05/07) |
 | Cooldown thả 250ms | Chống spam thả nhanh làm vật lý unstable + timestamp (M3-01) |
 | Jackpot Watermelon = 100 | Trái lớn nhất khó tạo (cần merge nhiều) → điểm cao thưởng mother (M3 §4.4) |
+
+---
+
+## 9. STAGE PROGRESS & OBSTACLE SCHEMAS
+
+### 9.1 Stage Definition Schema (`StageConfig`)
+```ts
+export interface StageGoal {
+  type: "target_fruit" | "target_score" | "clear_obstacles";
+  targetTier?: number; // Ví dụ 11 là Watermelon
+  targetCount?: number; // Số lượng cần đạt
+  targetScore?: number; // Điểm số cần đạt
+}
+
+export interface ObstacleInitialConfig {
+  id: number;
+  type: "ice" | "crate" | "bubble";
+  x: number; // Tọa độ tương đối hoặc px
+  y: number;
+  width?: number;
+  height?: number;
+  containedFruitTier?: number; // Đối với bubble
+  hp?: number; // Mặc định 1
+}
+
+export interface StageConfig {
+  id: number;
+  name: string;
+  maxDrops: number; // Giới hạn lượt thả
+  goals: StageGoal[];
+  obstacles?: ObstacleInitialConfig[];
+  starScores: [number, number, number]; // Điểm tối thiểu cho 1, 2, 3 sao
+  rewardPowerup?: "hammer" | "bomb" | "rainbow";
+}
+```
+
+### 9.2 Extended SaveData Schema
+```ts
+export interface ExtendedSaveData {
+  best_score: number;
+  unlockedStage: number; // Mặc định 1
+  stageStars: Record<number, number>; // { [stageId]: stars (1..3) }
+  stageHighscores: Record<number, number>;
+  powerups: {
+    hammer: number;
+    bomb: number;
+    rainbow: number;
+  };
+}
+```

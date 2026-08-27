@@ -181,4 +181,38 @@ Mở game (pre-roll ad) → Start (nút Chơi, art trái cây kawaii)
 - Vitest logic thuần PASS: reset, merge luật (M3-02), game-over check (M3-03), RNG chain deterministic (M3-04), score bảng §4.4.
 - QA browser+vision: art kawaii đẹp, ghost vị trí thả đúng, merge pop, vạch danger rõ, rewarded "Tiếp tục" hiện đúng, bundle < 5MB.
 - Pipeline validate PASS đủ ràng buộc Playables + package zip chạy được (unzip → serve → browser).
-- Đóng gói `build/juicy-merge.zip` + metadata/thumbnail/preview thật (PIL + ffmpeg) sẵn sàng nộp Mediacube.
+- Đóng gói `build/juicy-merge.zip` + metadata/thumbnail/preview thật (PIL + ffmpeg) sẵn sàng nộp Mediacube / Playgama.
+
+---
+
+## 9. STAGE MODE, OBSTACLES & ACTION POWER-UPS (PLAYGAMA DIFFERENTIATION)
+
+### 9.1 Chế độ Màn chơi (Adventure / Stage Mode - 30 Màn)
+- **Hệ thống cấp độ:** 30 màn chơi thiết kế sẵn (Handcrafted levels).
+- **Mục tiêu màn chơi (Objectives):**
+  1. `target_fruit`: Tạo ra ít nhất N trái thuộc bậc chỉ định (vd: 1 Watermelon, 2 Pineapples).
+  2. `target_score`: Đạt mốc điểm yêu cầu trong màn chơi.
+  3. `clear_obstacles`: Phá hủy toàn bộ các khối Băng hoặc Hộp gỗ trong thùng.
+- **Giới hạn lượt thả (Move Limits):** Mỗi màn có số lượt thả tối đa (15–35 lượt). Hết lượt mà chưa hoàn thành mục tiêu → Thất bại (Stage Failed).
+- **Đánh giá Sao (1-3 Stars):**
+  - ⭐ 1 Sao: Đạt mục tiêu màn chơi.
+  - ⭐⭐ 2 Sao: Đạt mục tiêu và còn dư ≥ 20% số lượt thả hoặc vượt mốc điểm 2 sao.
+  - ⭐⭐⭐ 3 Sao: Đạt mục tiêu xuất sắc, còn dư ≥ 40% số lượt thả hoặc vượt mốc điểm 3 sao.
+- **Lưu tiến trình:** Lưu `unlockedStage`, số sao và điểm cao nhất của từng màn vào `saveData`.
+
+### 9.2 Chướng ngại vật tương tác (Obstacles)
+- 🧊 **Khối Băng (Ice Block):**
+  - Khối tĩnh trong thùng chứa.
+  - Khi có bất kỳ vụ merge trái cây nào xảy ra trong bán kính lân cận (≤ 120px), khối băng nứt vỡ và tan biến, giải phóng không gian.
+- 🪵 **Hộp Gỗ (Wooden Crate):**
+  - Khối vật lý có trọng lượng, chiếm diện tích trong thùng.
+  - Có thể bị phá hủy bởi Bom hoặc Búa đập.
+- 🫧 **Trái Bong Bóng (Bubble Fruit):**
+  - Trái cây lơ lửng bên trong bong bóng khí.
+  - Khi merge cạnh bong bóng hoặc dùng Búa, bong bóng vỡ và trái cây rơi xuống đáy thùng.
+
+### 9.3 Bộ Action Power-ups (Công cụ can thiệp chủ động)
+- 🔨 **Búa (Hammer):** Người chơi bấm chọn Búa, sau đó chạm vào 1 trái cây hoặc 1 chướng ngại vật để phá hủy ngay lập tức.
+- 💣 **Bom (Bomb):** Thả một quả bom nổ quét sạch toàn bộ trái cây và chướng ngại vật trong bán kính 160px.
+- 🌈 **Trái Cầu Vồng (Rainbow Wildcard):** Quả cầu vồng rơi xuống, khi chạm vào bất kỳ quả nào sẽ lập tức merge với quả đó và nâng cấp lên bậc tiếp theo.
+- **Tích lũy & Nhận thêm:** Người chơi nhận thêm Action Power-ups khi hoàn thành màn chơi đạt 3 sao hoặc qua phần thưởng Daily Challenge / Rewarded Ads.

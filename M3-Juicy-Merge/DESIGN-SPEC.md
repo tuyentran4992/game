@@ -181,3 +181,29 @@
 - Logic merge, luật đổ, RNG chuỗi, score (bảng §6), BR — xem **SPEC.md** §4, §6.
 - Cấu trúc dữ liệu (config yaml, asset manifest, build report, save payload) — xem **DATA-MODEL.md**.
 - Test case chi tiết — xem **TEST-CASES.md** + **E2E-TESTS.md**.
+
+---
+
+## 10. STAGE MODE UI & ACTION BAR DESIGN
+
+### 10.1 Stage Select Map Scene (`StageSelectScene`)
+- **Layout:** Grid 3x5 hoặc Danh sách cuộn saga với 30 level nodes.
+- **Node Cấp độ:** Nút tròn nổi bật với số thứ tự Level (1..30), hiển thị 0-3 Sao màu vàng cam phát sáng. Màn chưa mở có icon ổ khóa xám.
+- **Top Header:** Nút Quay lại (Back), Tổng số sao đã tích lũy (⭐ X/90), Nút Daily Challenge.
+
+### 10.2 In-Game Stage Goal HUD
+- **Vị trí:** Thanh thông tin phía trên đỉnh thùng.
+- **Thành phần:**
+  - 🎯 **Mục tiêu:** Icon trái cây cần đạt hoặc số lượng Băng/Gỗ cần phá (vd: `🎯 x1` hoặc `🧊 0/4`).
+  - 🪂 **Số lượt thả còn lại (Moves Left):** Huy hiệu bo tròn thể hiện số lượt còn lại (đổi màu vàng khi ≤ 5 lượt, đỏ khi ≤ 2 lượt).
+
+### 10.3 Action Power-ups Bar (Dưới đáy thùng)
+- **3 Nút Tác vụ:**
+  - 🔨 **Hammer:** Icon Búa màu xanh cyan, hiển thị số lượng badge `xN`. Bấm vào sẽ chuyển con trỏ sang chế độ đập target.
+  - 💣 **Bomb:** Icon Quả bom đen nổ lửa, số lượng `xN`. Bấm vào sẽ nạp quả bom làm lượt thả tiếp theo.
+  - 🌈 **Rainbow:** Icon Trái cầu vồng đa sắc, số lượng `xN`. Bấm vào sẽ nạp quả cầu vồng làm lượt thả tiếp theo.
+
+### 10.4 Obstacle Visuals & VFX
+- 🧊 **Ice Block:** Khối hình vuông màu xanh băng trong suốt (#81D4FA) có viền phản quang, khi nứt có vệt nứt trắng và hiệu ứng băng vỡ lấp lánh.
+- 🪵 **Wooden Crate:** Hộp gỗ phong cách hoạt hình (#8D6E63) với thanh chéo chữ X, khi vỡ tạo ra các mảnh gỗ văng tung tóe.
+- 💣 **Bomb Blast VFX:** Vòng tròn sóng xung kích nổ sáng (#FFD54F), rung chấn camera nhẹ 100ms.

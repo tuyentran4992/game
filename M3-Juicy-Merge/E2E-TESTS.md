@@ -99,12 +99,16 @@
 | E2E-24 | Responsive các tỉ lệ | 1) Đổi viewport 9:16, 1:1, 16:9, 32:9. 2) Chụp. | Scale.FIT letterbox/pillarbox; HUD không đè, không méo; bucket centered. | `E2E-24_responsive_{ar}.png` |
 | E2E-25 | Jackpot Watermelon được hiển thị | 1) Merge tới watermelon. 2) Chụp. | Trái to nhất + glow; pop + score jackpot đúng. | `E2E-25_watermelon.png` |
 | E2E-26 | Không lỗi console | 1) Mở console trong mọi màn. 2) Ghi lỗi. | Không uncaught exception / 404 asset / no-audio-URLs. | `E2E-26_console.png` |
+| E2E-27 | Chọn màn chơi (Stage Select) | 1) Từ Menu bấm Adventure. 2) Màn hình chọn màn hiện 30 levels. | Hiển thị đúng số sao, màn khóa/mở, bấm vào màn 1 để chơi. | `E2E-27_stageselect.png` |
+| E2E-28 | Gameplay Stage Goal & Obstacles | 1) Vào màn có Băng/Gỗ. 2) Merge trái cạnh chướng ngại vật. | Băng tan vỡ, Goal HUD đếm đúng tiến độ hoàn thành. | `E2E-28_stage_goal.png` |
+| E2E-29 | Sử dụng Búa/Bom Power-up | 1) Bấm nút Búa/Bom trên action bar. 2) Kích hoạt lên sân. | Phá hủy vật thể mục tiêu, trừ số lượng power-up chính xác. | `E2E-29_powerup.png` |
+| E2E-30 | Hoàn thành màn (Stage Victory) | 1) Đạt mục tiêu trước khi hết lượt. 2) Màn thắng hiện ra. | Bảng sao 1-3 ⭐, nút Next Stage mở khóa màn kế tiếp. | `E2E-30_stage_victory.png` |
 
 ---
 
 ## 4. KẾT LUẬN
 
-- Tất cả E2E-01..26 PASS + không exception + layout khớp DESIGN-SPEC mới coi game sẵn sàng đóng gói.
+- Tất cả E2E-01..30 PASS + không exception + layout khớp DESIGN-SPEC mới coi game sẵn sàng đóng gói.
 - Sau đó chạy `python -m pipeline package --game-dir games/juicy-merge` → unzip zip → serve → browser:
   bản nộp phải chạy được từ zip (không chỉ dev build).
-- M3 nhập trạng thái "sẵn sàng nộp Mediacube" trong `STATUS.md`.
+- M3 nhập trạng thái "sẵn sàng nộp Mediacube / Playgama" trong `STATUS.md`.

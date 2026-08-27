@@ -153,3 +153,19 @@ ID dạng `UI-<n>`. Mở `game/` bằng dev server (`npm run dev`), thao tác b�
 | cooldown | GC-11 |
 | continue | GC-12/13 |
 | save | GC-14 |
+| stages | GC-15/16 |
+| obstacles | GC-17/18 |
+| action-powerups | GC-19/20 |
+
+---
+
+## E. STAGE & OBSTACLE TEST CASES
+
+| ID | Module | Mô tả | Kỳ vọng |
+|---|---|---|---|
+| GC-15 | stages | Khởi tạo cấu hình 30 màn chơi | Đầy đủ 30 màn, không trùng ID, maxDrops > 0, goals hợp lệ |
+| GC-16 | stages | Đánh giá sao & hoàn thành màn | Đạt mục tiêu trong maxDrops → Hoàn thành; tính đúng 1..3 sao |
+| GC-17 | obstacles | Va chạm và nứt vỡ khối băng khi merge lân cận | Khoảng cách merge ≤ radius → băng giảm HP / vỡ tan |
+| GC-18 | obstacles | Phá hủy hộp gỗ và bong bóng | Merge/búa phá vỡ vật cản, giải phóng trái cây bị nhốt |
+| GC-19 | action-powerups | Sử dụng Búa (Hammer) | Xóa chính xác 1 vật thể mục tiêu, trừ 1 búa trong kho |
+| GC-20 | action-powerups | Sử dụng Bom & Cầu vồng | Bom nổ bán kính quét sạch; Cầu vồng merge với quả bất kỳ |
