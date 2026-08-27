@@ -6,7 +6,7 @@
 > KHÔNG làm gì ngoài scope file này — mọi thứ "game thật" (menu, save, SDK, progression, art, nộp nền tảng) thuộc stage 2, chưa viết.
 
 ## 1. Mechanic cần chứng minh (toàn bộ stage 1)
-1. Quả giữa màn (3 kiểu luân phiên: cam / dưa hấu / xoài — color block + text tên, không art).
+1. Quả giữa màn (3 kiểu luân phiên: cam / dưa hấu / xoài — DUYỆT 27/08: dùng ẢNH THẬT góc nghiêng, không color-block).
 2. Que highlight 3 rãnh đều quanh quả; chỉa vào rãnh → vỏ bong thành **dải ribbon liền** cuộn theo chuyển động tay.
 3. Đứt tiêu chuẩn: rời rãnh >150ms hoặc đảo chiều → ribbon dừng, flash đỏ, streak = 0.
 4. ≥90% chu vi liền = **PERFECT PEEL** (+combo, pop chữ, rung 2px, vụn vỏ). 60–89% = GOOD.

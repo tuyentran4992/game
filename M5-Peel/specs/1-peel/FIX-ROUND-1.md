@@ -20,7 +20,7 @@ SỬA PROTOTYPE M5-Peel (game ở `M5-Peel/game/`, code theo `M5-Peel/specs/1-pe
 1. Vẽ 3 RÃNH trên bề mặt quả (đường dashed sáng chia đều quanh quả, luôn hiển thị); rãnh đang được tuốt → glow + vỏ hé vài px.
 2. CON DAO theo ngón (tam giác bạc + cán tối, xoay theo hướng vuốt). Bỏ chấm trắng cô đơn hiện tại.
 3. Vỏ phải bong NGAY khi vuốt dọc rãnh (không chờ đủ vòng): ribbon 2 mặt (ngoài đậm/trong nhạt), curl spring, vụn bay; vuốt tới đâu vỏ hiện tới đó.
-4. PLACEHOLDER HOÁ: bỏ texture 3D photoreal → ellipse 2 tông màu phẳng + highlight nhỏ.
+4. ~~PLACEHOLDER HOÁ~~ — OWNER OVERRIDE 27/08: giữ ảnh thật (duyệt), nhưng phải là góc NGHIÊNG không lộ múi, xem FIX-ROUND-2.md.
 5. Chữ tên quả: cỡ 40%, opacity 50%, sát mép dưới quả (nó là label, không phải UI chính).
 6. STREAK chỉ +1 khi hoàn thành quả PERFECT — QUẢ N và STREAK nhất quán (quả 1 không thể streak 2). Logic thuần trong src/logic + vitest case này.
 7. HINT lần đầu: mũi tên cong "vuốt theo rãnh" mờ trên quả, ẩn sau quả 1.
