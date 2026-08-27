@@ -110,11 +110,11 @@ dist/
 - **Hướng B "Potion Panic" (v2): ⛔ HỦY 27/08** — specs `specs/2-potion-panic/` đóng băng. Lý do: đúng anti-clone checklist nhưng **chơi chán** (fun gate fail). Không nộp, không polish tiếp.
 - **Reddit Devvit: ĐÃ NỘP v1 27/08 (anh Tuyền)** — chờ review. Playgama: từ bỏ game này.
 
-## M5 — Prototype fun gate: "Peel!" + "Crumple King" 🚧 (27/08)
+## M5 "Peel!" + M6 "Crumple King" — Prototype Fun Gate 🚧 (27/08)
 
-- Vượt vòng lọc catalog: 2 động từ cốt lõi (TUỐT / BÓP-ĐỂ-NÉM) chưa game nào trên Playgama làm cơ chế chính (merge/1010/sort/untangle/erase/rewind đều bão hòa — bằng chứng `prototypes/m5/README.md`).
-- Spec gọn + prompt code cho anh chạy Claude Code local: `prototypes/m5/README.md` + `CODE-PROMPTS.md`.
-- Quy trình: anh code placeholder → **fun gate** → con nào VUI mới lập `games/<slug>` + SPEC đủ 5 file.
+- Vượt vòng lọc catalog: động từ cốt lõi **TUỐT** (M5) / **BÓP-ĐỂ-NÉM** (M6) chưa game nào trên Playgama làm cơ chế chính (merge/1010/sort/untangle/erase/rewind đều bão hòa — bằng chứng trong README từng con).
+- `M5-Peel/` và `M6-Crumple-King/`: mỗi folder có `README.md` (spec 1 trang + tiêu chí fun gate) + `CODE-PROMPT.md` (paste vào Claude Code, code vào `<folder>/game/`).
+- Quy trình: anh code local → **fun gate** → con nào VUI mới viết SPEC đủ 5 file (`specs/1-<slug>/`) + chuẩn bị `games/<slug>`.
 - Test nền cũ vẫn tốt: vitest 109 · tsc 0 · build OK.
 
 ### M4 — "Neon Grid" (`g4-neon-grid/`) — block puzzle ✅ CODE + BUILD
