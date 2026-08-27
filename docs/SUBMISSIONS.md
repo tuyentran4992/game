@@ -34,7 +34,9 @@
 | ~08/2026 | M1 Cứu Mèo | Mediacube | Gói nộp chuẩn bị xong | ⏳ pending indie approval | |
 | — | M2 Neon Sort | (chưa nộp) | code xong | ⏳ chưa đóng gói | |
 | — | M4 Neon Grid | (chưa nộp) | code + build OK | ⏳ thiếu QA browser + packaging | |
-| 2026-08-27 | M3 v2 Potion Panic | Playgama | **KHÔNG nộp** | ⛔ hủy — anh Tuyền chơi thử thấy CHÁN | đúng checklist anti-clone nhưng fun gate fail → dừng sớm, không tốn vòng polish/submission |
+| 2026-08-27 | M3 Juicy Merge | Reddit Devvit | **NỘP (anh Tuyền)** | ⏳ chờ review | Reddit = kênh khả thi duy nhất còn lại của M3 |
+| — | M3 v2 Potion Panic | Playgama | **KHÔNG nộp** | ⛔ hủy — anh Tuyền chơi thử thấy CHÁN | đúng checklist anti-clone nhưng fun gate fail → dừng sớm, không tốn vòng polish/submission |
+| 2026-08-27 | M4 Neon Grid | Playgama | **KHUYẾN CÁO KHÔNG nộp nguyên trạng** | 🔴 reject risk cao | So catalog 27/08: block puzzle BÃO HÒA hơn cả Suika — `Neon Block Blast` (trùng cả theme+lối chơi), `Block Blaster` (Playgama tự mô tả "classic 1010! clone"), `Block Puzzle 1010: Jewel Lines`, `Sudoku Block Puzzle`, `Block Puzzle Legend`, category "Block Games" = 610 games. Core verb "đặt miếng ghép, clear hàng" y hệt Neon Grid. |
 
 ## Bài học gốc (từ reject M3)
 

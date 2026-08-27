@@ -108,9 +108,14 @@ dist/
 - Suika-style: thả trái → merge bậc 11-12. **Multi-platform SDK** Reddit/Playgama/ytgame/Local.
 - ❌ **PLAYGAMA REJECT 27/08**: "too closely replicates already published titles" (catalog có ≥4 Suika-clone + trùng tên "Juicy Merge"). Policy #3: cấm copy 1 phần.
 - **Hướng B "Potion Panic" (v2): ⛔ HỦY 27/08** — specs `specs/2-potion-panic/` đóng băng. Lý do: đúng anti-clone checklist nhưng **chơi chán** (fun gate fail). Không nộp, không polish tiếp.
-- **Bài học → cập nhật `docs/ARCHITECTURE.md` §1.5 + `docs/SUBMISSIONS.md`**: fun gate (prototype placeholder, anh Tuyền chơi thử) đặt TRƯỚC mọi đầu tư.
-- **Kênh Reddit Devvit vẫn còn sống:** port done, README theo yêu cầu review team (0b7a8b1), chưa deploy. Quyết định tiếp theo của anh: nộp v1 cho Reddit hay pivot concept mới.
-- Reddit Devvit port done, chưa deploy. Test cũ: vitest 109 · tsc 0 · build OK.
+- **Reddit Devvit: ĐÃ NỘP v1 27/08 (anh Tuyền)** — chờ review. Playgama: từ bỏ game này.
+
+## M5 — Prototype fun gate: "Peel!" + "Crumple King" 🚧 (27/08)
+
+- Vượt vòng lọc catalog: 2 động từ cốt lõi (TUỐT / BÓP-ĐỂ-NÉM) chưa game nào trên Playgama làm cơ chế chính (merge/1010/sort/untangle/erase/rewind đều bão hòa — bằng chứng `prototypes/m5/README.md`).
+- Spec gọn + prompt code cho anh chạy Claude Code local: `prototypes/m5/README.md` + `CODE-PROMPTS.md`.
+- Quy trình: anh code placeholder → **fun gate** → con nào VUI mới lập `games/<slug>` + SPEC đủ 5 file.
+- Test nền cũ vẫn tốt: vitest 109 · tsc 0 · build OK.
 
 ### M4 — "Neon Grid" (`g4-neon-grid/`) — block puzzle ✅ CODE + BUILD
 - **Kiến trúc monorepo đầu tiên:** `@game/core` + `@game/sdk`.
