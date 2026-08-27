@@ -114,7 +114,7 @@ export function playJuiceSplash(
 }
 
 /**
- * Spawn celebratory star bursts for high-tier merges.
+ * Spawn celebratory star bursts for high-tier merges (optimized particle count).
  */
 export function playStarBurst(
   scene: Phaser.Scene,
@@ -122,23 +122,23 @@ export function playStarBurst(
   y: number,
   depth = 120,
 ): void {
-  const starCount = 16;
+  const starCount = 8;
 
   for (let i = 0; i < starCount; i++) {
     const angle = (Math.PI * 2 * i) / starCount + (Math.random() - 0.5) * 0.3;
-    const dist = randBetween(80, 180);
+    const dist = randBetween(60, 140);
     const targetX = x + Math.cos(angle) * dist;
-    const targetY = y + Math.sin(angle) * dist + randBetween(10, 40);
+    const targetY = y + Math.sin(angle) * dist + randBetween(10, 30);
     const col = FIREWORK_PALETTE[i % FIREWORK_PALETTE.length] ?? 0xffd700;
 
     const star = scene.add.graphics().setDepth(depth);
     star.fillStyle(col, 1);
     // Draw 4-point star diamond
     star.beginPath();
-    star.moveTo(0, -10);
-    star.lineTo(5, 0);
-    star.lineTo(0, 10);
-    star.lineTo(-5, 0);
+    star.moveTo(0, -8);
+    star.lineTo(4, 0);
+    star.lineTo(0, 8);
+    star.lineTo(-4, 0);
     star.closePath();
     star.fillPath();
     star.setPosition(x, y);
@@ -147,11 +147,11 @@ export function playStarBurst(
       targets: star,
       x: targetX,
       y: targetY,
-      rotation: Math.PI * 3,
+      rotation: Math.PI * 2,
       scaleX: 0.2,
       scaleY: 0.2,
       alpha: 0,
-      duration: randBetween(500, 800),
+      duration: randBetween(450, 650),
       ease: "Cubic.easeOut",
       onComplete: () => star.destroy(),
     });
@@ -159,7 +159,7 @@ export function playStarBurst(
 }
 
 /**
- * Spawns an individual multi-layered firework explosion with glowing sparks and confetti.
+ * Spawns an individual multi-layered firework explosion with glowing sparks and confetti (optimized).
  */
 export function spawnFireworkBurst(
   scene: Phaser.Scene,
@@ -174,36 +174,34 @@ export function spawnFireworkBurst(
 
   // 1. Shockwave glow ring
   const ring = scene.add.graphics().setDepth(depth);
-  ring.lineStyle(4, themeColor, 1);
-  ring.strokeCircle(x, y, 10);
-  ring.fillStyle(0xffffff, 0.8);
-  ring.fillCircle(x, y, 6);
+  ring.lineStyle(3, themeColor, 0.9);
+  ring.strokeCircle(x, y, 8);
+  ring.fillStyle(0xffffff, 0.7);
+  ring.fillCircle(x, y, 5);
 
   scene.tweens.add({
     targets: ring,
-    scaleX: 5.5,
-    scaleY: 5.5,
+    scaleX: 4,
+    scaleY: 4,
     alpha: 0,
-    duration: 350,
+    duration: 300,
     ease: "Quad.easeOut",
     onComplete: () => ring.destroy(),
   });
 
-  // 2. Radial Spark Particles (32 sparks)
-  const sparkCount = 32;
+  // 2. Radial Spark Particles (12 sparks - optimized)
+  const sparkCount = 12;
   for (let i = 0; i < sparkCount; i++) {
-    const angle = (Math.PI * 2 * i) / sparkCount + (Math.random() - 0.5) * 0.25;
-    const speed = randBetween(60, 190);
+    const angle = (Math.PI * 2 * i) / sparkCount + (Math.random() - 0.5) * 0.2;
+    const speed = randBetween(50, 150);
     const targetX = x + Math.cos(angle) * speed;
-    const targetY = y + Math.sin(angle) * speed + randBetween(30, 80); // gravity fall
+    const targetY = y + Math.sin(angle) * speed + randBetween(20, 50); // gravity fall
     const col = i % 2 === 0 ? themeColor : secondaryColor;
-    const sparkSize = randBetween(3, 7);
+    const sparkSize = randBetween(3, 5);
 
     const spark = scene.add.graphics().setDepth(depth + 1);
     spark.fillStyle(col, 1);
     spark.fillCircle(0, 0, sparkSize);
-    spark.fillStyle(0xffffff, 0.8);
-    spark.fillCircle(-1, -1, Math.max(1, sparkSize * 0.4));
     spark.setPosition(x, y);
 
     scene.tweens.add({
@@ -213,35 +211,35 @@ export function spawnFireworkBurst(
       scaleX: 0.1,
       scaleY: 0.1,
       alpha: 0,
-      duration: randBetween(600, 1000),
+      duration: randBetween(500, 800),
       ease: "Cubic.easeOut",
       onComplete: () => spark.destroy(),
     });
   }
 
-  // 3. Floating / Tumbling Confetti Slips (12 pieces)
-  const confettiCount = 12;
+  // 3. Floating / Tumbling Confetti Slips (6 pieces - optimized)
+  const confettiCount = 6;
   for (let i = 0; i < confettiCount; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const dist = randBetween(40, 120);
-    const targetX = x + Math.cos(angle) * dist + (Math.random() - 0.5) * 60;
-    const targetY = y + Math.sin(angle) * dist + randBetween(80, 180); // fluttering down
+    const dist = randBetween(30, 90);
+    const targetX = x + Math.cos(angle) * dist + (Math.random() - 0.5) * 40;
+    const targetY = y + Math.sin(angle) * dist + randBetween(50, 120); // fluttering down
     const cCol = FIREWORK_PALETTE[i % FIREWORK_PALETTE.length] ?? 0xffd700;
 
     const confetti = scene.add.graphics().setDepth(depth + 2);
     confetti.fillStyle(cCol, 1);
-    confetti.fillRoundedRect(-5, -3, 10, 6, 2);
+    confetti.fillRoundedRect(-4, -2, 8, 5, 2);
     confetti.setPosition(x, y);
 
     scene.tweens.add({
       targets: confetti,
       x: targetX,
       y: targetY,
-      rotation: Math.PI * 4 * (Math.random() > 0.5 ? 1 : -1),
+      rotation: Math.PI * 2 * (Math.random() > 0.5 ? 1 : -1),
       scaleX: 0.4,
       scaleY: 0.4,
       alpha: { from: 1, to: 0 },
-      duration: randBetween(900, 1400),
+      duration: randBetween(700, 1100),
       ease: "Sine.easeOut",
       onComplete: () => confetti.destroy(),
     });
@@ -253,35 +251,30 @@ export function spawnFireworkBurst(
  */
 export function playFireworksCelebration(
   scene: Phaser.Scene,
-  burstCount = 7,
+  burstCount = 3,
   depth = 150,
 ): void {
   const { width, height } = scene.scale;
 
   for (let i = 0; i < burstCount; i++) {
-    const delay = i * randBetween(180, 260);
+    const delay = i * randBetween(200, 280);
     scene.time.delayedCall(delay, () => {
       const bx = randBetween(
-        Math.round(width * 0.15),
-        Math.round(width * 0.85),
+        Math.round(width * 0.2),
+        Math.round(width * 0.8),
       );
       const by = randBetween(
-        Math.round(height * 0.15),
-        Math.round(height * 0.55),
+        Math.round(height * 0.2),
+        Math.round(height * 0.5),
       );
       spawnFireworkBurst(scene, bx, by, depth);
-
-      // Light camera pop on first and last burst
-      if (i === 0 || i === burstCount - 1) {
-        scene.cameras.main.shake(120, 0.005);
-      }
     });
   }
 }
 
 /**
  * Trigger jackpot climax for high tier (Melon / Watermelon / Cosmic):
- * Screen shake + flash + massive fireworks show!
+ * Gentle screen pop + crisp fireworks.
  */
 export function playJackpotClimax(
   scene: Phaser.Scene,
@@ -289,8 +282,8 @@ export function playJackpotClimax(
   y: number,
   depth = 150,
 ): void {
-  scene.cameras.main.shake(180, 0.009);
-  scene.cameras.main.flash(120, 255, 255, 255, false);
+  scene.cameras.main.shake(100, 0.003);
+  scene.cameras.main.flash(80, 255, 255, 255, false);
   spawnFireworkBurst(scene, x, y, depth);
   playStarBurst(scene, x, y, depth);
 }

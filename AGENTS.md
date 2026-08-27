@@ -36,7 +36,7 @@ Output: `dist/` với `index.html`, `playgama.html`, `ytgame.html` + shared asse
 **Priority detection:** Reddit Devvit → Playgama Bridge → ytgame → Mock (local)
 
 ```ts
-import { sdk } from '@game/sdk';
+import { sdk } from "@game/sdk";
 await sdk.initialize();
 sdk.saveData({ score: 100 });
 const lb = await sdk.getLeaderboardEntries();
@@ -44,13 +44,13 @@ const lb = await sdk.getLeaderboardEntries();
 
 ## Game convention
 
-| Layer | Mô tả |
-|-------|-------|
-| `src/logic/` | Pure TS, 0 Phaser dependency. Testable via vitest. |
-| `src/scenes/` | Phaser scenes, mỏng (orchestrate). |
-| `src/render/` | Phaser adapter (vẽ Graphics, grid, blocks). |
-| `src/ui/` | GameTheme interface (per-game theme). |
-| `src/audio/` | Web Audio API synth (không file MP3). |
+| Layer         | Mô tả                                              |
+| ------------- | -------------------------------------------------- |
+| `src/logic/`  | Pure TS, 0 Phaser dependency. Testable via vitest. |
+| `src/scenes/` | Phaser scenes, mỏng (orchestrate).                 |
+| `src/render/` | Phaser adapter (vẽ Graphics, grid, blocks).        |
+| `src/ui/`     | GameTheme interface (per-game theme).              |
+| `src/audio/`  | Web Audio API synth (không file MP3).              |
 
 ## Stack
 
@@ -63,8 +63,8 @@ const lb = await sdk.getLeaderboardEntries();
 ## Quy tắc
 
 1. Code TIẾNG ANH, SPEC tiếng Việt (cho anh Tuyền đọc).
-2. SPEC trước, code sau (5 file: SPEC/DESIGN-SPEC/DATA-MODEL/TEST-CASES/E2E).
-3. Logic game = pure TS, tách khỏi Phaser (render adapter pattern).
+2. Đọc SPEC trước, code sau (5 file: SPEC/DESIGN-SPEC/DATA-MODEL/TEST-CASES/E2E).
+3. Logic game = pure TS, tách khỏi Phaser (render adapter pattern), UI/UX chuẩn studio game chuyên nghiệp.
 4. Mỗi game có `GameTheme` riêng (ko dùng shared tokens).
 5. Meta progression: Daily Challenge + 15 Achievements + 7 Skins + Power-ups.
 6. Mobile-first: portrait 720×1280 (9:16), touch input, Scale.FIT.

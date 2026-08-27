@@ -1350,7 +1350,7 @@ export class GameplayScene extends Phaser.Scene {
 
     // Golden sparks & fireworks
     playJackpotClimax(this, width / 2, cy, z.overlay + 30);
-    playFireworksCelebration(this, 5, z.overlay + 30);
+    playFireworksCelebration(this, 2, z.overlay + 30);
     this.playSfx("sfx_merge_big", 0.8, 200);
 
     const banner = this.add
@@ -1390,7 +1390,7 @@ export class GameplayScene extends Phaser.Scene {
     const cy = this.layout.dangerY - 50;
 
     playJackpotClimax(this, width / 2, cy, z.overlay + 30);
-    playFireworksCelebration(this, 4, z.overlay + 30);
+    playFireworksCelebration(this, 2, z.overlay + 30);
     this.playSfx("sfx_merge_big", 0.9, 300);
 
     const banner = this.add
@@ -1447,7 +1447,7 @@ export class GameplayScene extends Phaser.Scene {
     const diff = ctx.getCurrentDailyDifficulty();
 
     playJackpotClimax(this, width / 2, cy, z.overlay + 30);
-    playFireworksCelebration(this, 6, z.overlay + 30);
+    playFireworksCelebration(this, 3, z.overlay + 30);
     this.playSfx("sfx_merge_big", 0.9, 200);
 
     const bannerText = rewardName
@@ -1493,9 +1493,7 @@ export class GameplayScene extends Phaser.Scene {
 
     // 1. Fireworks Show: Multiple grand bursts across screen above the modal!
     playJackpotClimax(this, cx, cy - 80, z.overlay + 60);
-    playJackpotClimax(this, cx - 140, cy + 40, z.overlay + 60);
-    playJackpotClimax(this, cx + 140, cy + 40, z.overlay + 60);
-    playFireworksCelebration(this, 12, z.overlay + 60);
+    playFireworksCelebration(this, 4, z.overlay + 60);
     this.playSfx("sfx_merge_big", 1.0, 100);
 
     // 2. Modal Container
