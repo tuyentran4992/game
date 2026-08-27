@@ -60,3 +60,5 @@ export function computeBucketLayout(
     wallThickness: 24,
   };
 }
+
+export const computeLayout = computeBucketLayout;

@@ -287,3 +287,74 @@ export function playJackpotClimax(
   spawnFireworkBurst(scene, x, y, depth);
   playStarBurst(scene, x, y, depth);
 }
+
+/**
+ * Visual and particle effects for hammer smash on fruit or obstacle.
+ */
+export function playHammerSmashVfx(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  onHit?: () => void,
+): void {
+  scene.cameras.main.shake(150, 0.006);
+  const hammer = scene.add
+    .text(x + 20, y - 60, "🔨", { fontSize: "42px" })
+    .setOrigin(0.5)
+    .setDepth(z.overlay + 10)
+    .setRotation(-0.5);
+
+  scene.tweens.add({
+    targets: hammer,
+    rotation: 0.3,
+    x: x,
+    y: y - 10,
+    duration: 180,
+    ease: "Back.easeIn",
+    onComplete: () => {
+      spawnFireworkBurst(scene, x, y, z.overlay + 12);
+      if (onHit) onHit();
+      scene.tweens.add({
+        targets: hammer,
+        alpha: 0,
+        scale: 0.5,
+        duration: 120,
+        onComplete: () => hammer.destroy(),
+      });
+    },
+  });
+}
+
+/**
+ * Visual and particle explosion effect for bomb blast.
+ */
+export function playBombExplosionVfx(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  radius: number,
+  onDetonate?: () => void,
+): void {
+  scene.cameras.main.shake(300, 0.01);
+  scene.cameras.main.flash(120, 255, 200, 100, false);
+
+  // Expanding fiery shockwave
+  const blast = scene.add.graphics().setDepth(z.overlay + 15);
+  blast.fillStyle(0xff5722, 0.6);
+  blast.fillCircle(x, y, 10);
+  blast.lineStyle(6, 0xffeb3b, 1);
+  blast.strokeCircle(x, y, 10);
+
+  scene.tweens.add({
+    targets: blast,
+    scaleX: radius / 10,
+    scaleY: radius / 10,
+    alpha: 0,
+    duration: 350,
+    ease: "Cubic.easeOut",
+    onComplete: () => blast.destroy(),
+  });
+
+  spawnFireworkBurst(scene, x, y, z.overlay + 16);
+  if (onDetonate) onDetonate();
+}

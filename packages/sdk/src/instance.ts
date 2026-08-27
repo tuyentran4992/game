@@ -10,7 +10,7 @@ export class MockBackend implements SDKBackend {
   private pauseCallbacks: (() => void)[] = [];
   private resumeCallbacks: (() => void)[] = [];
   private audioCallbacks: ((enabled: boolean) => void)[] = [];
-  private _data: Record<string, unknown> = {};
+  private _data: unknown = null;
 
   async initialize(): Promise<void> {
     console.log('[SDK Mock] Initialized');
@@ -20,9 +20,17 @@ export class MockBackend implements SDKBackend {
     console.log('[SDK Mock] Interstitial shown (mock)');
   }
 
-  async showRewarded(): Promise<boolean> {
+  async requestInterstitialAd(): Promise<void> {
+    return this.showInterstitial();
+  }
+
+  async showRewarded(_placement?: string): Promise<boolean> {
     console.log('[SDK Mock] Rewarded ad — auto-granting reward');
     return true;
+  }
+
+  async requestRewardedAd(placement?: string): Promise<boolean> {
+    return this.showRewarded(placement);
   }
 
   isRewardedAvailable(): boolean {
@@ -33,21 +41,44 @@ export class MockBackend implements SDKBackend {
     return this._audioEnabled;
   }
 
-  async saveData(data: Record<string, unknown>): Promise<void> {
-    this._data = { ...this._data, ...data };
-    try {
-      localStorage.setItem('game_save', JSON.stringify(this._data));
-    } catch { /* ignore */ }
+  onPause(cb: () => void): void {
+    this.pauseCallbacks.push(cb);
   }
 
-  async loadData(): Promise<Record<string, unknown>> {
+  onResume(cb: () => void): void {
+    this.resumeCallbacks.push(cb);
+  }
+
+  onAudioChange(cb: (enabled: boolean) => void): void {
+    this.audioCallbacks.push(cb);
+  }
+
+  onAudioEnabledChange(cb: (enabled: boolean) => void): void {
+    this.onAudioChange(cb);
+  }
+
+  async saveData(data: unknown): Promise<boolean> {
+    this._data = data;
     try {
-      const raw = localStorage.getItem('game_save');
-      if (raw) {
-        this._data = JSON.parse(raw);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('game_save', JSON.stringify(data));
       }
     } catch { /* ignore */ }
-    return { ...this._data };
+    return true;
+  }
+
+  async loadData(): Promise<unknown | null> {
+    if (this._data != null) return this._data;
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const raw = localStorage.getItem('game_save');
+        if (raw) {
+          this._data = JSON.parse(raw);
+          return this._data;
+        }
+      }
+    } catch { /* ignore */ }
+    return null;
   }
 
   async sendScore(_score: number): Promise<void> {
@@ -61,8 +92,8 @@ export class MockBackend implements SDKBackend {
 
   async getLeaderboardEntries(
     _leaderboardName?: string,
-    _quantityTop?: number,
-    userScore?: number
+    _quantityTop = 10,
+    userScore = 0
   ): Promise<LeaderboardData> {
     const mockPlayers = [
       { name: '🍉 WatermelonKing', score: 3850 },
@@ -76,17 +107,17 @@ export class MockBackend implements SDKBackend {
       { name: '🍐 GreenPear', score: 650 },
       { name: '🍒 SweetCherry', score: 420 },
     ];
-    const allList = [...mockPlayers, { name: '⭐ You (Me)', score: userScore ?? 0, isUser: true }];
+    const allList = [...mockPlayers, { name: '⭐ You (Me)', score: userScore, isUser: true }];
     allList.sort((a, b) => b.score - a.score);
-    const userIndex = allList.findIndex(p => (p as any).isUser);
+    const userIndex = allList.findIndex(p => (p as { isUser?: boolean }).isUser);
     return {
       entries: allList.slice(0, 10).map((p, idx) => ({
         name: p.name,
         score: p.score,
         rank: idx + 1,
-        isUser: Boolean((p as any).isUser),
+        isUser: Boolean((p as { isUser?: boolean }).isUser),
       })),
-      userEntry: { name: '⭐ You (Me)', score: userScore ?? 0, rank: Math.max(userIndex + 1, 1), isUser: true },
+      userEntry: { name: '⭐ You (Me)', score: userScore, rank: Math.max(userIndex + 1, 1), isUser: true },
     };
   }
 
@@ -95,19 +126,11 @@ export class MockBackend implements SDKBackend {
     return false;
   }
 
+  async showLeaderboard(leaderboardName?: string): Promise<boolean> {
+    return this.showNativeLeaderboard(leaderboardName);
+  }
+
   gameReady(): void {
     console.log('[SDK Mock] Game ready');
-  }
-
-  onPause(cb: () => void): void {
-    this.pauseCallbacks.push(cb);
-  }
-
-  onResume(cb: () => void): void {
-    this.resumeCallbacks.push(cb);
-  }
-
-  onAudioChange(cb: (enabled: boolean) => void): void {
-    this.audioCallbacks.push(cb);
   }
 }

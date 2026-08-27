@@ -1,5 +1,5 @@
 // Context chia sẻ — chứa engine logic thuần (tách testable) + SDK + best-score store.
-import { sdk } from './sdk-instance';
+import { sdk } from '@game/sdk';
 import { MergeEngine } from './logic/merge-engine';
 import { ScoreStore, type SaveAdapter } from './logic/save';
 import { CONFIG } from './logic/config';

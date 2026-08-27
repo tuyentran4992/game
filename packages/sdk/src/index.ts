@@ -15,7 +15,7 @@
  * ```
  */
 
-import type { LeaderboardData, PlatformType } from './types';
+import type { LeaderboardData } from './types';
 
 export interface SDKBackend {
   /** Initialize the SDK. Must be called before any other methods. */
@@ -23,17 +23,17 @@ export interface SDKBackend {
   /** Show interstitial ad */
   showInterstitial(): Promise<void>;
   /** Show rewarded ad. Returns true if reward was granted. */
-  showRewarded(): Promise<boolean>;
+  showRewarded(placement?: string): Promise<boolean>;
   /** Check if rewarded ads are available on this platform */
   isRewardedAvailable(): boolean;
   /** Check if audio is enabled */
   isAudioEnabled(): boolean;
   /** Save persistent data */
-  saveData(data: Record<string, unknown>): Promise<void>;
+  saveData(data: unknown): Promise<boolean>;
   /** Load persistent data */
-  loadData(): Promise<Record<string, unknown>>;
+  loadData(): Promise<unknown | null>;
   /** Send score to leaderboard (fire-and-forget) */
-  sendScore(score: number): Promise<void>;
+  sendScore(score: number, leaderboardName?: string): Promise<void> | void;
   /** Set score on leaderboard with return value */
   setScore(score: number, leaderboardName?: string): Promise<boolean>;
   /** Get leaderboard entries */
@@ -50,10 +50,10 @@ export interface SDKBackend {
   onAudioChange(cb: (enabled: boolean) => void): void;
 }
 
-export { PlaygamaBackend } from './bridge-backend';
+export { PlaygamaBackend, getBridge, type PlaygamaBridgeLike } from './bridge-backend';
 export { DevvitBackend } from './devvit-backend';
 export { YtgameBackend } from './ytgame-backend';
 export { MockBackend } from './instance';
-export { sdk } from './handler';
+export { sdk, SDKHandler, SdkHandler } from './handler';
 export type { PlatformType } from './types';
 export type { LeaderboardEntry, LeaderboardData } from './types';

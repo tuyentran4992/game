@@ -7,17 +7,17 @@ from pathlib import Path
 if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
-from pipeline.config import load_config, validate_config, find_config_for_game_dir
-from pipeline.scaffold import scaffold as scaffold_cmd
-from pipeline.assets import generate_assets, build_manifest
-from pipeline.validate import run_validation
-from pipeline.package import package as package_cmd
+from .config import load_config, validate_config, find_config_for_game_dir
+from .scaffold import scaffold as scaffold_cmd
+from .assets import generate_assets, build_manifest
+from .validate import run_validation
+from .package import package as package_cmd
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="pipeline",
-        description="M1 Rescue/Dodge — Pipeline CLI (YouTube Playables)",
+        description="Game Factory Pipeline CLI",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -32,17 +32,16 @@ def main(argv: list[str] | None = None) -> int:
 
     # validate
     p_va = sub.add_parser("validate", help="Check chuẩn Playables")
-    p_va.add_argument("--game-dir", required=True, help="Game directory (e.g. games/cuu-meo)")
+    p_va.add_argument("--game-dir", required=True, help="Game directory (e.g. M3-Juicy-Merge or games/cuu-meo)")
 
     # package
     p_pk = sub.add_parser("package", help="Tạo zip + metadata folder")
-    p_pk.add_argument("--game-dir", required=True, help="Game directory (e.g. games/cuu-meo)")
+    p_pk.add_argument("--game-dir", required=True, help="Game directory (e.g. M3-Juicy-Merge or games/cuu-meo)")
 
     args = parser.parse_args(argv)
 
     if args.command == "scaffold":
         config_path = Path(args.config)
-        # game dir is sibling of games/ dir
         project_root = config_path.parent.parent
         game_dir = project_root / "game"
         return scaffold_cmd(config_path, game_dir)
@@ -55,16 +54,13 @@ def main(argv: list[str] | None = None) -> int:
 
     elif args.command == "validate":
         game_dir = Path(args.game_dir)
-        project_root = game_dir.parent.parent
-        report = run_validation(game_dir, project_root)
+        report = run_validation(game_dir)
         print(json.dumps(report, indent=2, ensure_ascii=False))
         return 0 if report["overall"] == "PASS" else 1
 
     elif args.command == "package":
         game_dir = Path(args.game_dir)
-        project_root = game_dir.parent.parent
-        build_dir = project_root / "build"
-        return package_cmd(game_dir, project_root, build_dir)
+        return package_cmd(game_dir)
 
     return 1
 

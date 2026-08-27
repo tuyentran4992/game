@@ -5,8 +5,12 @@ from pathlib import Path
 import pytest
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-REAL_CONFIG = REPO_ROOT / "games" / "cuu-meo.yaml"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+REAL_CONFIG = (
+    (REPO_ROOT / "M1-Rescue-Dodge" / "games" / "cuu-meo.yaml")
+    if (REPO_ROOT / "M1-Rescue-Dodge" / "games" / "cuu-meo.yaml").exists()
+    else (REPO_ROOT / "games" / "cuu-meo.yaml")
+)
 
 
 @pytest.fixture()

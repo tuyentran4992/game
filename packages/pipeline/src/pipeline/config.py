@@ -137,13 +137,30 @@ def validate_config(cfg: dict[str, Any]) -> list[str]:
 def find_config_for_game_dir(game_dir: Path) -> Path:
     """Find the config YAML for a game-dir path.
 
-    games/cuu-meo  ->  games/cuu-meo.yaml
+    Handles:
+    - games/cuu-meo -> games/cuu-meo.yaml
+    - M3-Juicy-Merge -> M3-Juicy-Merge/games/juicy-merge.yaml
+    - g4-neon-grid -> g4-neon-grid/games/neon-grid.yaml
     """
     game_dir = Path(game_dir)
+    
+    # 1. Direct path with .yaml suffix
     config_path = Path(str(game_dir) + ".yaml")
-    if not config_path.exists():
-        raise FileNotFoundError(f"Config for game-dir {game_dir} not found at {config_path}")
-    return config_path
+    if config_path.exists():
+        return config_path
+
+    # 2. Inside game_dir/games/*.yaml
+    if (game_dir / "games").is_dir():
+        yamls = list((game_dir / "games").glob("*.yaml"))
+        if yamls:
+            return yamls[0]
+
+    # 3. Inside game_dir/games.yaml or game_dir/config.yaml
+    for candidate in [game_dir / "games.yaml", game_dir / "config.yaml", game_dir / f"{game_dir.name}.yaml"]:
+        if candidate.exists():
+            return candidate
+
+    raise FileNotFoundError(f"Config for game-dir {game_dir} not found")
 
 
 def _is_semver(v: Any) -> bool:

@@ -11,8 +11,8 @@
  * Each backend implements the full SDKBackend interface.
  */
 
-import type { SDKBackend, PlatformType } from './index';
-import { PlaygamaBackend } from './bridge-backend';
+import type { SDKBackend, PlatformType, LeaderboardData } from './index';
+import { PlaygamaBackend, getBridge } from './bridge-backend';
 import { DevvitBackend } from './devvit-backend';
 import { YtgameBackend } from './ytgame-backend';
 import { MockBackend } from './instance';
@@ -23,8 +23,9 @@ function detectPlatform(): { backend: SDKBackend; platform: PlatformType } {
     return { backend: devvit, platform: 'reddit' };
   }
 
-  if (typeof window !== 'undefined' && (window.bridge || window.playgamaBridge)) {
-    return { backend: new PlaygamaBackend(), platform: 'playgama' };
+  const bridge = getBridge();
+  if (bridge) {
+    return { backend: new PlaygamaBackend(bridge), platform: 'playgama' };
   }
 
   if (typeof window !== 'undefined' && window.ytgame) {
@@ -34,7 +35,7 @@ function detectPlatform(): { backend: SDKBackend; platform: PlatformType } {
   return { backend: new MockBackend(), platform: 'local' };
 }
 
-class SDKHandler {
+export class SDKHandler {
   private backend: SDKBackend;
   readonly platform: PlatformType;
   private _initialized = false;
@@ -60,13 +61,21 @@ class SDKHandler {
     }
   }
 
-  async showRewarded(): Promise<boolean> {
+  async requestInterstitialAd(): Promise<void> {
+    return this.showInterstitial();
+  }
+
+  async showRewarded(placement?: string): Promise<boolean> {
     try {
-      return await this.backend.showRewarded();
+      return await this.backend.showRewarded(placement);
     } catch (e) {
       console.warn('[SDK] Rewarded error:', e);
       return true;
     }
+  }
+
+  async requestRewardedAd(placement?: string): Promise<boolean> {
+    return this.showRewarded(placement);
   }
 
   isRewardedAvailable(): boolean {
@@ -77,26 +86,27 @@ class SDKHandler {
     return this.backend.isAudioEnabled();
   }
 
-  async saveData(data: Record<string, unknown>): Promise<void> {
+  async saveData(data: unknown): Promise<boolean> {
     try {
-      await this.backend.saveData(data);
+      return await this.backend.saveData(data);
     } catch (e) {
       console.warn('[SDK] Save error:', e);
+      return false;
     }
   }
 
-  async loadData(): Promise<Record<string, unknown>> {
+  async loadData(): Promise<unknown | null> {
     try {
       return await this.backend.loadData();
     } catch (e) {
       console.warn('[SDK] Load error:', e);
-      return {};
+      return null;
     }
   }
 
-  async sendScore(score: number): Promise<void> {
+  sendScore(score: number, leaderboardName?: string): void {
     try {
-      await this.backend.sendScore(score);
+      void this.backend.sendScore(score, leaderboardName);
     } catch (e) {
       console.warn('[SDK] SendScore error:', e);
     }
@@ -111,7 +121,7 @@ class SDKHandler {
     }
   }
 
-  async getLeaderboardEntries(leaderboardName?: string, quantityTop?: number, userScore?: number) {
+  async getLeaderboardEntries(leaderboardName?: string, quantityTop?: number, userScore?: number): Promise<LeaderboardData> {
     try {
       return await this.backend.getLeaderboardEntries(leaderboardName, quantityTop, userScore);
     } catch (e) {
@@ -129,6 +139,10 @@ class SDKHandler {
     }
   }
 
+  async showLeaderboard(leaderboardName?: string): Promise<boolean> {
+    return this.showNativeLeaderboard(leaderboardName);
+  }
+
   gameReady(): void {
     this.backend.gameReady();
   }
@@ -144,6 +158,11 @@ class SDKHandler {
   onAudioChange(cb: (enabled: boolean) => void): void {
     this.backend.onAudioChange(cb);
   }
+
+  onAudioEnabledChange(cb: (enabled: boolean) => void): void {
+    this.onAudioChange(cb);
+  }
 }
 
 export const sdk = new SDKHandler();
+export { SDKHandler as SdkHandler };

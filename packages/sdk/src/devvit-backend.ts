@@ -4,9 +4,10 @@
  * Connects client to Hono backend for Redis persistence and Sorted Set Leaderboards.
  * Detects Devvit environment via window.devvit, __devvit, or hostname.
  */
-import type { LeaderboardData, LeaderboardEntry } from './types';
+import type { SDKBackend } from './index';
+import type { LeaderboardData } from './types';
 
-export class DevvitBackend {
+export class DevvitBackend implements SDKBackend {
   readonly isAvailable: boolean;
 
   constructor() {
@@ -26,9 +27,17 @@ export class DevvitBackend {
     // Reddit Devvit: no interstitial ads
   }
 
-  async showRewarded(): Promise<boolean> {
+  async requestInterstitialAd(): Promise<void> {
+    return this.showInterstitial();
+  }
+
+  async showRewarded(_rewardId?: string): Promise<boolean> {
     // Reddit Devvit: free continue without ads
     return true;
+  }
+
+  async requestRewardedAd(rewardId?: string): Promise<boolean> {
+    return this.showRewarded(rewardId);
   }
 
   isRewardedAvailable(): boolean {
@@ -51,48 +60,62 @@ export class DevvitBackend {
     // Devvit audio handled by platform
   }
 
+  onAudioEnabledChange(cb: (enabled: boolean) => void): void {
+    this.onAudioChange(cb);
+  }
+
   gameReady(): void {
     // Devvit doesn't need gameReady signal
   }
 
-  async loadData(): Promise<Record<string, unknown>> {
+  async loadData(): Promise<Record<string, unknown> | null> {
     try {
       const res = await fetch('/api/score');
-      if (!res.ok) return {};
+      if (!res.ok) {
+        return this._readLocalStorage();
+      }
       const data = await res.json() as Record<string, unknown>;
       const payload = data.payload as Record<string, unknown> | undefined;
-      if (payload) {
-        // Try localStorage fallback for save data beyond score
-        try {
-          const local = JSON.parse(localStorage.getItem('game_save') || '{}');
-          return { ...local, ...payload, bestScore: (data.score as number) ?? local.bestScore ?? 0 };
-        } catch { return payload; }
+      if (payload != null) {
+        return payload;
       }
-      return {};
+      if (data.score != null) {
+        return { bestScore: data.score };
+      }
+      return this._readLocalStorage();
     } catch (e) {
       console.warn('[Devvit] Failed to load data:', e);
-      try {
-        return JSON.parse(localStorage.getItem('game_save') || '{}');
-      } catch { return {}; }
+      return this._readLocalStorage();
     }
   }
 
-  async saveData(data: Record<string, unknown>): Promise<void> {
+  async saveData(data: unknown): Promise<boolean> {
+    const payload = (data ?? {}) as Record<string, unknown>;
     // Also save to localStorage as fallback
     try {
-      const existing = JSON.parse(localStorage.getItem('game_save') || '{}');
-      localStorage.setItem('game_save', JSON.stringify({ ...existing, ...data }));
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('game_save', JSON.stringify(payload));
+      }
     } catch { /* ignore */ }
 
     try {
-      const score = typeof data.bestScore === 'number' ? data.bestScore : 0;
-      await fetch('/api/score', {
+      const score = typeof payload.best_score === 'number'
+        ? payload.best_score
+        : typeof payload.bestScore === 'number'
+        ? payload.bestScore
+        : typeof payload.score === 'number'
+        ? payload.score
+        : 0;
+
+      const res = await fetch('/api/score', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ score, payload: data }),
+        body: JSON.stringify({ score, payload }),
       });
+      return res.ok;
     } catch (e) {
       console.warn('[Devvit] Failed to save data:', e);
+      return false;
     }
   }
 
@@ -121,12 +144,13 @@ export class DevvitBackend {
     try {
       const res = await fetch(`/api/leaderboard?limit=${quantityTop}`);
       if (res.ok) {
-        const list = (await res.json()) as LeaderboardEntry[];
+        const list = (await res.json()) as Array<Record<string, unknown>>;
         return {
-          entries: list.map((item) => ({
-            name: item.name,
-            score: item.score,
-            rank: item.rank,
+          entries: list.map((item, idx) => ({
+            id: (item.userId as string | number) ?? (item.id as string | number) ?? idx + 1,
+            name: String(item.username || item.name || `Player #${idx + 1}`),
+            score: Number(item.score ?? 0),
+            rank: Number(item.rank ?? idx + 1),
             isUser: false,
           })),
           userEntry: { name: '⭐ You', score: userScore, rank: 1, isUser: true },
@@ -147,5 +171,19 @@ export class DevvitBackend {
 
   async showNativeLeaderboard(_leaderboardName?: string): Promise<boolean> {
     return false; // Devvit uses custom leaderboard UI
+  }
+
+  async showLeaderboard(_leaderboardName?: string): Promise<boolean> {
+    return false;
+  }
+
+  private _readLocalStorage(): Record<string, unknown> | null {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const raw = localStorage.getItem('game_save');
+        return raw ? JSON.parse(raw) : null;
+      }
+    } catch { /* ignore */ }
+    return null;
   }
 }

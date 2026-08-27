@@ -86,56 +86,75 @@ export class YtgameBackend implements SDKBackend {
     this.audioCallbacks.push(cb);
   }
 
+  onAudioEnabledChange(cb: (enabled: boolean) => void): void {
+    this.onAudioChange(cb);
+  }
+
   async showInterstitial(): Promise<void> {
     if (!this.ytgame) return;
     try {
-      await this.ytgame.ads.requestInterstitialAd();
+      await this.ytgame.ads?.requestInterstitialAd?.();
     } catch (e) {
       console.warn('[Ytgame] Interstitial error:', e);
     }
   }
 
-  async showRewarded(): Promise<boolean> {
+  async requestInterstitialAd(): Promise<void> {
+    return this.showInterstitial();
+  }
+
+  async showRewarded(placement = 'rewarded'): Promise<boolean> {
     if (!this.ytgame) return true; // mock fallback
     try {
-      return await this.ytgame.ads.requestRewardedAd('continue');
+      return (await this.ytgame.ads?.requestRewardedAd?.(placement)) ?? true;
     } catch (e) {
       console.warn('[Ytgame] Rewarded error:', e);
-      return true;
+      return false;
     }
+  }
+
+  async requestRewardedAd(placement = 'rewarded'): Promise<boolean> {
+    return this.showRewarded(placement);
   }
 
   isRewardedAvailable(): boolean {
     return !!this.ytgame;
   }
 
-  async saveData(data: Record<string, unknown>): Promise<void> {
+  async saveData(data: unknown): Promise<boolean> {
+    const jsonStr = JSON.stringify(data);
     // Always save to localStorage as cache
     try {
-      const existing = JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}');
-      localStorage.setItem(LOCAL_KEY, JSON.stringify({ ...existing, ...data }));
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(LOCAL_KEY, jsonStr);
+      }
     } catch { /* ignore */ }
 
     // Sync to ytgame if available
     if (this.ytgame && typeof this.ytgame.saveData === 'function') {
       try {
-        await this.ytgame.saveData(JSON.stringify(data));
+        await this.ytgame.saveData(jsonStr);
+        return true;
       } catch (e) {
         console.warn('[Ytgame] saveData failed, using local cache', e);
+        return false;
       }
     }
+    return true;
   }
 
-  async loadData(): Promise<Record<string, unknown>> {
+  async loadData(): Promise<unknown | null> {
     // Try ytgame first
     if (this.ytgame && typeof this.ytgame.loadData === 'function') {
       try {
         const raw = await this.ytgame.loadData();
         if (raw) {
-          const parsed = JSON.parse(raw) as Record<string, unknown>;
+          const parsed = JSON.parse(raw);
           // Cache to localStorage
           try {
-            localStorage.setItem(LOCAL_KEY, raw);
+            if (typeof window !== 'undefined' && window.localStorage) {
+              localStorage.setItem(LOCAL_KEY, raw);
+            }
           } catch { /* ignore */ }
           return parsed;
         }
@@ -146,10 +165,12 @@ export class YtgameBackend implements SDKBackend {
 
     // Fallback to localStorage
     try {
-      const raw = localStorage.getItem(LOCAL_KEY);
-      if (raw) return JSON.parse(raw) as Record<string, unknown>;
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const raw = localStorage.getItem(LOCAL_KEY);
+        if (raw) return JSON.parse(raw);
+      }
     } catch { /* ignore */ }
-    return {};
+    return null;
   }
 
   async sendScore(score: number): Promise<void> {
@@ -164,16 +185,19 @@ export class YtgameBackend implements SDKBackend {
   async getLeaderboardEntries(
     _leaderboardName?: string,
     _quantityTop?: number,
-    userScore?: number
+    userScore = 0
   ): Promise<LeaderboardData> {
-    // ytgame doesn't support leaderboard queries
     return {
       entries: [],
-      userEntry: { name: '⭐ You', score: userScore ?? 0, rank: 1, isUser: true },
+      userEntry: { name: '⭐ You', score: userScore, rank: 1, isUser: true },
     };
   }
 
   async showNativeLeaderboard(_leaderboardName?: string): Promise<boolean> {
+    return false;
+  }
+
+  async showLeaderboard(_leaderboardName?: string): Promise<boolean> {
     return false;
   }
 }

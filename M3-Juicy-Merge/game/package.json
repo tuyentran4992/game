@@ -7,21 +7,23 @@
     "dev": "vite --mode web",
     "dev:web": "vite --mode web",
     "dev:reddit": "devvit playtest r/JuicyMerge",
-    "build": "npm run build:reddit",
+    "build": "pnpm run build:reddit",
     "build:web": "vite build --mode web && node -e \"require('fs').copyFileSync('playgama-bridge-config.json', 'dist/playgama-bridge-config.json')\"",
     "build:reddit": "vite build --mode reddit",
-    "package:playgama": "npm run build:web && python tools/package-playgama.py",
-    "deploy:reddit": "npm run test:types && devvit upload --bump patch",
-    "launch:reddit": "npm run test:types && devvit publish --bump patch",
+    "package:playgama": "pnpm run build:web && python tools/package-playgama.py",
+    "deploy:reddit": "pnpm run test:types && devvit upload --bump patch",
+    "launch:reddit": "pnpm run test:types && devvit publish --bump patch",
     "lint": "eslint src",
     "prettier": "prettier --write .",
     "test:types": "tsc --build",
+    "typecheck": "tsc --build",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
     "@devvit/start": "^0.14.0",
     "@devvit/web": "^0.14.0",
+    "@game/sdk": "workspace:*",
     "@hono/node-server": "^2.1.0",
     "devvit": "^0.14.0",
     "hono": "^4.13.0",
@@ -38,5 +40,11 @@
     "typescript-eslint": "^8.68.0",
     "vite": "^8.0.0",
     "vitest": "^1.6.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "protobufjs"
+    ]
   }
 }

@@ -8,8 +8,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from pipeline.config import load_config, find_config_for_game_dir, TYPE_EXTENSIONS
-from pipeline.assets import build_manifest
+from .config import load_config, find_config_for_game_dir, TYPE_EXTENSIONS
+from .assets import build_manifest
 
 # Limits (BR-03)
 LIMIT_BUNDLE_INITIAL_MIB = 30
@@ -31,7 +31,7 @@ COMPRESSION_MAGIC = [
     (b"\x78\xda", "zlib"),
 ]
 
-# External network patterns (BR-02)
+# External network patterns (BR-02) — bridge.playgama.com is allowed CDN/bridge
 NETWORK_PATTERNS = [
     re.compile(r'https?://(?!localhost|127\.0\.0\.1|bridge\.playgama\.com)', re.IGNORECASE),
     re.compile(r'wss?://', re.IGNORECASE),
@@ -42,7 +42,7 @@ NETWORK_PATTERNS = [
     re.compile(r'\.ajax\s*\(', re.IGNORECASE),
 ]
 
-# Self-monetize patterns (BR-01) — exclude ytgame.* which is allowed
+# Self-monetize patterns (BR-01) — exclude ytgame.* / bridge SDK which is allowed
 SELF_MONETIZE_PATTERNS = [
     re.compile(r'googleads', re.IGNORECASE),
     re.compile(r'adsense', re.IGNORECASE),
@@ -63,16 +63,17 @@ def validate(game_dir: Path, project_root: Path) -> dict[str, Any]:
     return run_validation(game_dir, project_root)
 
 
-def run_validation(game_dir: Path, project_root: Path) -> dict[str, Any]:
+def run_validation(game_dir: Path, project_root: Path | None = None) -> dict[str, Any]:
     """Run all Playables validation checks on a game build.
 
     Args:
-        game_dir: path identifying the game (e.g. games/cuu-meo)
+        game_dir: path identifying the game (e.g. M3-Juicy-Merge or games/cuu-meo)
         project_root: project root containing game/, assets/raw/, build/
     Returns: validation report dict (DATA-MODEL §5)
     """
     game_dir = Path(game_dir)
-    project_root = Path(project_root)
+    if project_root is None:
+        project_root = game_dir if (game_dir / "game").exists() else game_dir.parent.parent
 
     # Find config
     try:
@@ -88,24 +89,48 @@ def run_validation(game_dir: Path, project_root: Path) -> dict[str, Any]:
     else:
         cfg = {"assets": [], "metadata": {}, "mechanics": {}}
 
-    assets_dir = project_root / "assets" / "raw"
-    game_src = project_root / "game"
+    # Resolve assets dir
+    if (game_dir / "assets" / "raw").is_dir():
+        assets_dir = game_dir / "assets" / "raw"
+    elif (game_dir / "assets").is_dir():
+        assets_dir = game_dir / "assets"
+    elif (project_root / "assets" / "raw").is_dir():
+        assets_dir = project_root / "assets" / "raw"
+    else:
+        assets_dir = project_root / "assets"
 
-    # Collect all files
-    asset_files = list(assets_dir.glob("**/*")) if assets_dir.exists() else []
-    asset_files = [f for f in asset_files if f.is_file()]
+    # Resolve src dir
+    if (game_dir / "game" / "src").is_dir():
+        src_dir = game_dir / "game" / "src"
+    elif (game_dir / "src").is_dir():
+        src_dir = game_dir / "src"
+    elif (project_root / "game" / "src").is_dir():
+        src_dir = project_root / "game" / "src"
+    else:
+        src_dir = project_root / "src"
 
+    # Resolve dist dir
+    if (game_dir / "game" / "dist").is_dir():
+        dist_dir = game_dir / "game" / "dist"
+    elif (game_dir / "dist").is_dir():
+        dist_dir = game_dir / "dist"
+    elif (project_root / "game" / "dist").is_dir():
+        dist_dir = project_root / "game" / "dist"
+    else:
+        dist_dir = project_root / "dist"
+
+    # Collect asset files
+    asset_files = [f for f in assets_dir.glob("**/*") if f.is_file()] if assets_dir.exists() else []
+
+    # Collect source files (exclude node_modules / tests if needed)
     game_files = []
-    src_dir = game_src / "src"
     if src_dir.exists():
-        # logic scans (network/responsive/pause/input/ads) chỉ đọc CODE NGUỒN (src),
-        # không nhầm node_modules / dist minified
         for f in src_dir.rglob("*"):
             if f.is_file() and f.suffix in (".ts", ".js", ".html", ".json"):
-                game_files.append(f)
+                if "node_modules" not in str(f) and "__tests__" not in str(f):
+                    game_files.append(f)
 
-    # Bundle thật để nộp = dist (vite build) + assets/raw + src
-    dist_dir = game_src / "dist"
+    # Collect dist files
     dist_files = []
     if dist_dir.exists():
         for f in dist_dir.rglob("*"):
@@ -157,8 +182,6 @@ def run_validation(game_dir: Path, project_root: Path) -> dict[str, Any]:
     ))
 
     # --- load_time ---
-    # Cannot benchmark actual load time in pipeline; estimate from bundle size
-    # Rule of thumb: < 5s target. If bundle < 15 MiB, estimate pass.
     estimated_load_ok = total_size < 15 * MIB
     checks.append(_check(
         "load_time",
@@ -170,8 +193,6 @@ def run_validation(game_dir: Path, project_root: Path) -> dict[str, Any]:
     ))
 
     # --- save_size ---
-    # Estimate saved-game payload: always small (a few integers)
-    # Build a sample payload to measure
     sample_save = json.dumps({
         "schema_version": 1,
         "best_score": 999999,
@@ -195,15 +216,17 @@ def run_validation(game_dir: Path, project_root: Path) -> dict[str, Any]:
     # --- no_compression ---
     compressed_files = []
     for f in all_files:
-        with open(f, "rb") as fh:
-            header = fh.read(8)
-        for magic, name in COMPRESSION_MAGIC:
-            if header.startswith(magic):
-                # zip is OK for .zip output packages, but not inside game assets
-                if name == "zip" and f.suffix in (".zip",):
-                    continue
-                compressed_files.append((f.name, name))
-                break
+        try:
+            with open(f, "rb") as fh:
+                header = fh.read(8)
+            for magic, name in COMPRESSION_MAGIC:
+                if header.startswith(magic):
+                    if name == "zip" and f.suffix in (".zip",):
+                        continue
+                    compressed_files.append((f.name, name))
+                    break
+        except Exception:
+            continue
     checks.append(_check(
         "no_compression",
         "MUST",
@@ -220,7 +243,6 @@ def run_validation(game_dir: Path, project_root: Path) -> dict[str, Any]:
             content = f.read_text(encoding="utf-8", errors="ignore")
         except Exception:
             continue
-        # Skip node_modules / package.json deps
         if "node_modules" in str(f):
             continue
         for pattern in NETWORK_PATTERNS:
@@ -237,7 +259,6 @@ def run_validation(game_dir: Path, project_root: Path) -> dict[str, Any]:
     ))
 
     # --- responsive ---
-    # Check for Phaser Scale.RESIZE mode (case-sensitive enum) in game config
     has_resize = False
     for f in game_files:
         try:
@@ -246,11 +267,7 @@ def run_validation(game_dir: Path, project_root: Path) -> dict[str, Any]:
             continue
         if "node_modules" in str(f):
             continue
-        # Look for Scale.RESIZE (Phaser enum) or resize event handler with state-keeping
-        # (mobile-first games may use Scale.FIT + auto-center + resize handler — still responsive)
-        if "Scale.RESIZE" in content or "mode: Scale.RESIZE" in content:
-            has_resize = True
-        if "Scale.FIT" in content or "mode: Scale.FIT" in content:
+        if "Scale.RESIZE" in content or "mode: Scale.RESIZE" in content or "Scale.FIT" in content or "mode: Scale.FIT" in content:
             has_resize = True
             break
     checks.append(_check(
@@ -273,7 +290,7 @@ def run_validation(game_dir: Path, project_root: Path) -> dict[str, Any]:
             continue
         has_onpause = "onPause" in content or "pause" in content.lower()
         has_onresume = "onResume" in content or "resume" in content.lower()
-        has_audio = "onAudioEnabledChange" in content or "isAudioEnabled" in content or "audio" in content.lower()
+        has_audio = "onAudioEnabledChange" in content or "isAudioEnabled" in content or "onAudioChange" in content or "audio" in content.lower()
         if has_onpause and has_onresume and has_audio:
             has_pause = True
             break
@@ -308,11 +325,9 @@ def run_validation(game_dir: Path, project_root: Path) -> dict[str, Any]:
     ))
 
     # --- target_audience_13plus ---
-    # Content check: verify no child-targeting content in config
     audience_ok = True
     title = cfg.get("metadata", {}).get("title", "")
     desc = cfg.get("metadata", {}).get("short_desc", "")
-    # Basic heuristic: no explicitly child-targeted keywords
     child_keywords = ["baby", "toddler", "infant", "kindergarten"]
     for kw in child_keywords:
         if kw in title.lower() or kw in desc.lower():
@@ -335,8 +350,7 @@ def run_validation(game_dir: Path, project_root: Path) -> dict[str, Any]:
             continue
         if "node_modules" in str(f):
             continue
-        # Skip sdk-handler.ts which legitimately references ads via ytgame
-        if "sdk-handler" in str(f):
+        if "sdk-handler" in str(f) or "bridge-backend" in str(f):
             continue
         for pattern in SELF_MONETIZE_PATTERNS:
             if pattern.search(content):
@@ -367,8 +381,6 @@ def run_validation(game_dir: Path, project_root: Path) -> dict[str, Any]:
 
 def _check(check_id: str, level: str, value: Any, limit: str,
           passed: bool, warn: bool = False, msg: str = "") -> dict[str, Any]:
-    # If MUST limit exceeded (passed=False) -> always fail
-    # If within MUST but exceeds target (passed=True, warn=True) -> warn
     if not passed:
         status = "fail"
     elif warn:

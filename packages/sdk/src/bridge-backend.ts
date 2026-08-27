@@ -17,30 +17,30 @@ import type { LeaderboardData, LeaderboardEntry } from './types';
 
 // Playgama bridge event names
 const EVENT = {
-  PAUSE_STATE_CHANGED: 'PAUSE_STATE_CHANGED',
-  AUDIO_STATE_CHANGED: 'AUDIO_STATE_CHANGED',
-  INTERSTITIAL_STATE_CHANGED: 'INTERSTITIAL_STATE_CHANGED',
-  REWARDED_STATE_CHANGED: 'REWARDED_STATE_CHANGED',
+  PAUSE_STATE_CHANGED: 'pause_state_changed',
+  AUDIO_STATE_CHANGED: 'audio_state_changed',
+  INTERSTITIAL_STATE_CHANGED: 'interstitial_state_changed',
+  REWARDED_STATE_CHANGED: 'rewarded_state_changed',
 };
 
 // Bridge v2 interface
-interface PlaygamaBridgeLike {
+export interface PlaygamaBridgeLike {
   initialize(): Promise<void>;
-  EVENT_NAME: Record<string, string>;
+  EVENT_NAME?: Record<string, string>;
   platform: {
-    language: string;
-    isAudioEnabled: boolean;
-    isPaused: boolean;
+    language?: string;
+    isAudioEnabled?: boolean;
+    isPaused?: boolean;
     sendMessage(name: string, params?: Record<string, unknown>): void;
   };
   storage: {
-    get(keys: string[]): Promise<(unknown | null)[]>;
+    get(keys: string[]): Promise<(unknown | null)[] | Record<string, unknown>>;
     set(keys: string[], values: unknown[]): Promise<void>;
     delete(keys: string[]): Promise<void>;
   };
   advertisement: {
-    isInterstitialSupported: boolean;
-    isRewardedSupported: boolean;
+    isInterstitialSupported?: boolean;
+    isRewardedSupported?: boolean;
     showInterstitial(placement?: string): void;
     showRewarded(placement?: string): void;
     on(event: string, cb: (state: unknown) => void): void;
@@ -66,18 +66,18 @@ declare global {
   }
 }
 
-function getBridge(): PlaygamaBridgeLike | null {
+export function getBridge(): PlaygamaBridgeLike | null {
   if (typeof window === 'undefined') return null;
   return window.bridge ?? window.playgamaBridge ?? null;
 }
 
-const LOCAL_KEY = 'save';
-const DEFAULT_LEADERBOARD_NAME = 'best_score';
+export const LOCAL_KEY = 'save';
+export const DEFAULT_LEADERBOARD_NAME = 'best_score';
 
 export class PlaygamaBackend implements SDKBackend {
   private bridge: PlaygamaBridgeLike | null = null;
   private ready = false;
-  private initPromise: Promise<void> | null = null;
+  private initPromise: Promise<void>;
   private audioOn = true;
 
   // Buffer for calls made before init
@@ -86,32 +86,34 @@ export class PlaygamaBackend implements SDKBackend {
   private pendingAudio: Array<(enabled: boolean) => void> = [];
   private pendingRewardedResolve: ((value: boolean) => void) | null = null;
 
-  async initialize(): Promise<void> {
-    if (this.ready) return;
-    if (this.initPromise) return this.initPromise;
-
-    this.bridge = getBridge();
-    if (!this.bridge) {
-      console.warn('[Playgama] Bridge not found, running in mock mode');
-      this.ready = true;
-      return;
-    }
-
+  constructor(bridge?: PlaygamaBridgeLike | null) {
+    this.bridge = bridge !== undefined ? bridge : getBridge();
     this.initPromise = this._doInit();
+  }
+
+  async initialize(): Promise<void> {
+    return this.initPromise;
+  }
+
+  readyPromise(): Promise<void> {
     return this.initPromise;
   }
 
   private async _doInit(): Promise<void> {
-    const b = this.bridge!;
+    if (!this.bridge) {
+      this.ready = true;
+      return;
+    }
+
     try {
-      await Promise.resolve(b.initialize());
+      await Promise.resolve(this.bridge.initialize());
     } catch (e) {
-      console.warn('[Playgama] Bridge init error:', e);
+      console.warn('[Playgama] Bridge init error (mock/unsupported?):', e);
     }
 
     // Read audio state after init
     try {
-      this.audioOn = b.platform.isAudioEnabled !== false;
+      this.audioOn = this.bridge.platform.isAudioEnabled !== false;
     } catch { /* keep default */ }
 
     this.ready = true;
@@ -126,21 +128,23 @@ export class PlaygamaBackend implements SDKBackend {
 
     // Wire rewarded event
     try {
-      const evtName = b.EVENT_NAME?.REWARDED_STATE_CHANGED ?? 'rewarded_state_changed';
-      b.advertisement.on(evtName, (state: unknown) => {
+      const evtName = this.bridge.EVENT_NAME?.REWARDED_STATE_CHANGED ?? EVENT.REWARDED_STATE_CHANGED;
+      this.bridge.advertisement.on(evtName, (state: unknown) => {
         if (state === 'rewarded' && this.pendingRewardedResolve) {
           this.pendingRewardedResolve(true);
+          this.pendingRewardedResolve = null;
+        } else if ((state === 'closed' || state === 'failed') && this.pendingRewardedResolve) {
+          this.pendingRewardedResolve(false);
           this.pendingRewardedResolve = null;
         }
       });
     } catch { /* no-op */ }
-
-    console.log('[Playgama] Bridge initialized');
   }
 
   private _subscribePause(cb: () => void, wantTrue: boolean): void {
     try {
-      this.bridge!.advertisement.on(EVENT.PAUSE_STATE_CHANGED, (v: unknown) => {
+      const evtName = this.bridge?.EVENT_NAME?.PAUSE_STATE_CHANGED ?? EVENT.PAUSE_STATE_CHANGED;
+      this.bridge?.advertisement.on(evtName, (v: unknown) => {
         if (v === wantTrue) cb();
       });
     } catch { /* no-op */ }
@@ -148,8 +152,8 @@ export class PlaygamaBackend implements SDKBackend {
 
   private _subscribeAudio(cb: (enabled: boolean) => void): void {
     try {
-      const evtName = this.bridge!.EVENT_NAME?.AUDIO_STATE_CHANGED ?? 'audio_state_changed';
-      this.bridge!.advertisement.on(evtName, (v: unknown) => {
+      const evtName = this.bridge?.EVENT_NAME?.AUDIO_STATE_CHANGED ?? EVENT.AUDIO_STATE_CHANGED;
+      this.bridge?.advertisement.on(evtName, (v: unknown) => {
         this.audioOn = v !== false;
         cb(this.audioOn);
       });
@@ -158,7 +162,6 @@ export class PlaygamaBackend implements SDKBackend {
 
   gameReady(): void {
     if (!this.ready || !this.bridge) {
-      // Defer until init
       if (this.initPromise) {
         this.initPromise.then(() => this._fireGameReady()).catch(() => {});
       }
@@ -190,71 +193,90 @@ export class PlaygamaBackend implements SDKBackend {
     this._subscribeAudio(cb);
   }
 
+  onAudioEnabledChange(cb: (enabled: boolean) => void): void {
+    this.onAudioChange(cb);
+  }
+
   async showInterstitial(): Promise<void> {
     if (!this.ready || !this.bridge) return;
-    if (!this.bridge.advertisement.isInterstitialSupported) return;
+    if (this.bridge.advertisement?.isInterstitialSupported === false) return;
     return new Promise<void>((resolve) => {
       let settled = false;
       const done = () => { if (!settled) { settled = true; resolve(); } };
+      const sub = (state: unknown) => { if (state === 'closed' || state === 'failed') done(); };
       try {
-        const evtName = this.bridge!.EVENT_NAME?.INTERSTITIAL_STATE_CHANGED ?? 'interstitial_state_changed';
-        this.bridge!.advertisement.on(evtName, (state: unknown) => {
-          if (state === 'closed' || state === 'failed') done();
-        });
+        const evtName = this.bridge!.EVENT_NAME?.INTERSTITIAL_STATE_CHANGED ?? EVENT.INTERSTITIAL_STATE_CHANGED;
+        this.bridge!.advertisement.on(evtName, sub);
         this.bridge!.advertisement.showInterstitial();
       } catch { done(); }
       setTimeout(done, 15000);
     });
   }
 
-  async showRewarded(): Promise<boolean> {
+  async requestInterstitialAd(): Promise<void> {
+    return this.showInterstitial();
+  }
+
+  async showRewarded(placement?: string): Promise<boolean> {
     if (!this.ready || !this.bridge) return true;
-    if (!this.bridge.advertisement.isRewardedSupported) return true;
+    if (this.bridge.advertisement?.isRewardedSupported === false) return true;
     return new Promise<boolean>((resolve) => {
       let settled = false;
       const settle = (val: boolean) => { if (!settled) { settled = true; resolve(val); } };
+      const sub = (state: unknown) => {
+        if (state === 'rewarded') settle(true);
+        else if (state === 'closed' || state === 'failed') settle(false);
+      };
       try {
-        this.pendingRewardedResolve = settle;
-        this.bridge!.advertisement.showRewarded();
+        const evtName = this.bridge!.EVENT_NAME?.REWARDED_STATE_CHANGED ?? EVENT.REWARDED_STATE_CHANGED;
+        this.bridge!.advertisement.on(evtName, sub);
+        this.bridge!.advertisement.showRewarded(placement);
       } catch { settle(true); }
       setTimeout(() => settle(true), 30000);
     });
   }
 
-  isRewardedAvailable(): boolean {
-    if (!this.ready || !this.bridge) return false;
-    return this.bridge.advertisement.isRewardedSupported;
+  async requestRewardedAd(placement?: string): Promise<boolean> {
+    return this.showRewarded(placement);
   }
 
-  async saveData(data: Record<string, unknown>): Promise<void> {
+  isRewardedAvailable(): boolean {
+    if (!this.ready || !this.bridge) return false;
+    return this.bridge.advertisement?.isRewardedSupported !== false;
+  }
+
+  async saveData(data: unknown): Promise<boolean> {
     if (!this.ready || !this.bridge) {
-      // Fallback to localStorage
       try {
-        const existing = JSON.parse(localStorage.getItem('game_save') || '{}');
-        localStorage.setItem('game_save', JSON.stringify({ ...existing, ...data }));
-      } catch { /* ignore */ }
-      return;
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem('game_save', JSON.stringify(data));
+        }
+        return true;
+      } catch { return false; }
     }
     try {
       const jsonStr = JSON.stringify(data);
       await this.bridge.storage.set([LOCAL_KEY], [jsonStr]);
+      return true;
     } catch (e) {
       console.warn('[Playgama] saveData failed, fallback localStorage', e);
       try {
-        const existing = JSON.parse(localStorage.getItem('game_save') || '{}');
-        localStorage.setItem('game_save', JSON.stringify({ ...existing, ...data }));
-      } catch { /* ignore */ }
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem('game_save', JSON.stringify(data));
+        }
+        return true;
+      } catch { return false; }
     }
   }
 
-  async loadData(): Promise<Record<string, unknown>> {
+  async loadData(): Promise<unknown | null> {
     if (!this.ready) {
-      // Not ready yet — try localStorage
       try {
-        return JSON.parse(localStorage.getItem('game_save') || '{}');
-      } catch { return {}; }
+        const raw = localStorage.getItem('game_save');
+        return raw ? JSON.parse(raw) : null;
+      } catch { return null; }
     }
-    // Try bridge first
+
     if (this.bridge) {
       try {
         const res = await this.bridge.storage.get([LOCAL_KEY]);
@@ -265,28 +287,29 @@ export class PlaygamaBackend implements SDKBackend {
           raw = (res as Record<string, unknown>)[LOCAL_KEY] ?? (res as Record<string, unknown>)['0'] ?? res;
         }
         if (raw != null) {
-          if (typeof raw === 'object') return raw as Record<string, unknown>;
+          if (typeof raw === 'object') return raw;
           if (typeof raw === 'string') {
-            try { return JSON.parse(raw) as Record<string, unknown>; } catch { /* fall through */ }
+            try { return JSON.parse(raw); } catch { /* fall through */ }
           }
         }
       } catch (e) {
         console.warn('[Playgama] loadData failed, fallback localStorage', e);
       }
     }
-    // Fallback to localStorage
+
     try {
-      return JSON.parse(localStorage.getItem('game_save') || '{}');
-    } catch { return {}; }
+      const raw = localStorage.getItem('game_save');
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
   }
 
-  async sendScore(score: number): Promise<void> {
-    await this.setScore(score, DEFAULT_LEADERBOARD_NAME);
+  async sendScore(score: number, leaderboardName = DEFAULT_LEADERBOARD_NAME): Promise<void> {
+    void this.setScore(score, leaderboardName);
   }
 
   async setScore(score: number, leaderboardName = DEFAULT_LEADERBOARD_NAME): Promise<boolean> {
     if (!this.ready || !this.bridge) return false;
-    if (this.bridge.leaderboard?.isSupported && this.bridge.leaderboard.setScore) {
+    if (this.bridge.leaderboard?.isSupported && typeof this.bridge.leaderboard.setScore === 'function') {
       try {
         await this.bridge.leaderboard.setScore({ score, leaderboardName });
         return true;
@@ -302,7 +325,7 @@ export class PlaygamaBackend implements SDKBackend {
     quantityTop = 10,
     userScore = 0
   ): Promise<LeaderboardData> {
-    if (this.ready && this.bridge?.leaderboard?.isSupported && this.bridge.leaderboard.getEntries) {
+    if (this.ready && this.bridge?.leaderboard?.isSupported && typeof this.bridge.leaderboard.getEntries === 'function') {
       try {
         const raw = await this.bridge.leaderboard.getEntries({
           leaderboardName,
@@ -322,7 +345,7 @@ export class PlaygamaBackend implements SDKBackend {
 
   async showNativeLeaderboard(leaderboardName = DEFAULT_LEADERBOARD_NAME): Promise<boolean> {
     if (!this.ready || !this.bridge) return false;
-    if (this.bridge.leaderboard?.isNativePopupSupported && this.bridge.leaderboard.showNativePopup) {
+    if (this.bridge.leaderboard?.isNativePopupSupported && typeof this.bridge.leaderboard.showNativePopup === 'function') {
       try {
         await this.bridge.leaderboard.showNativePopup({ leaderboardName });
         return true;
@@ -331,6 +354,10 @@ export class PlaygamaBackend implements SDKBackend {
       }
     }
     return false;
+  }
+
+  async showLeaderboard(leaderboardName = DEFAULT_LEADERBOARD_NAME): Promise<boolean> {
+    return this.showNativeLeaderboard(leaderboardName);
   }
 
   private _normalizeLeaderboard(raw: unknown, userScore: number): LeaderboardData {
@@ -345,13 +372,17 @@ export class PlaygamaBackend implements SDKBackend {
     const entries: LeaderboardEntry[] = list.map((rawItem, idx) => {
       const item = rawItem as Record<string, unknown>;
       const player = item.player as Record<string, unknown> | undefined;
-      return {
+      const entry: LeaderboardEntry = {
         id: (item.id as string | number) ?? idx + 1,
         name: String(item.name || player?.name || item.title || `Player #${idx + 1}`),
         score: Number(item.score || item.scoreFormatted || 0),
         rank: Number(item.rank || idx + 1),
         isUser: Boolean(item.isUser || item.isCurrentPlayer),
       };
+      if (typeof item.avatar === 'string') {
+        entry.avatar = item.avatar;
+      }
+      return entry;
     });
 
     const rawUser = (raw as Record<string, unknown>).userEntry as Record<string, unknown> | undefined;
@@ -387,13 +418,13 @@ export class PlaygamaBackend implements SDKBackend {
     ];
     const allList = [...mockPlayers, { name: '⭐ You (Me)', score: userScore, isUser: true }];
     allList.sort((a, b) => b.score - a.score);
-    const userIndex = allList.findIndex(p => (p as any).isUser);
+    const userIndex = allList.findIndex(p => (p as { isUser?: boolean }).isUser);
     return {
       entries: allList.slice(0, 10).map((p, idx) => ({
         name: p.name,
         score: p.score,
         rank: idx + 1,
-        isUser: Boolean((p as any).isUser),
+        isUser: Boolean((p as { isUser?: boolean }).isUser),
       })),
       userEntry: { name: '⭐ You (Me)', score: userScore, rank: Math.max(userIndex + 1, 1), isUser: true },
     };

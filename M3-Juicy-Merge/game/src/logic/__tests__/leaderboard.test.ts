@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { PlaygamaBackend, type PlaygamaBridgeLike } from '../../sdk-bridge-backend';
-import { SdkHandler } from '../../sdk-handler';
+import { PlaygamaBackend, type PlaygamaBridgeLike, SdkHandler } from '@game/sdk';
 
 describe('Playgama Leaderboard Integration', () => {
   let mockBridge: PlaygamaBridgeLike;

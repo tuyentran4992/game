@@ -2,16 +2,23 @@
   "name": "m3-juicy-merge-root",
   "private": true,
   "scripts": {
-    "dev": "npm --prefix game run dev:web",
-    "dev:web": "npm --prefix game run dev:web",
-    "dev:reddit": "npm --prefix game run dev:reddit",
-    "build": "npm --prefix game run build:reddit",
-    "build:web": "npm --prefix game run build:web",
-    "build:reddit": "npm --prefix game run build:reddit",
-    "package:playgama": "npm --prefix game run package:playgama",
-    "launch:reddit": "npm --prefix game run launch:reddit",
-    "test": "npm --prefix game run test",
-    "test:types": "npm --prefix game run test:types",
-    "lint": "npm --prefix game run lint"
+    "dev": "pnpm --prefix game run dev:web",
+    "dev:web": "pnpm --prefix game run dev:web",
+    "dev:reddit": "pnpm --prefix game run dev:reddit",
+    "build": "pnpm --prefix game run build:reddit",
+    "build:web": "pnpm --prefix game run build:web",
+    "build:reddit": "pnpm --prefix game run build:reddit",
+    "package:playgama": "pnpm --prefix game run package:playgama",
+    "launch:reddit": "pnpm --prefix game run launch:reddit",
+    "test": "pnpm --prefix game run test",
+    "test:types": "pnpm --prefix game run test:types",
+    "typecheck": "pnpm --prefix game run typecheck",
+    "lint": "pnpm --prefix game run lint"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "protobufjs"
+    ]
   }
 }

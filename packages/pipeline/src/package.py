@@ -10,14 +10,16 @@ from zipfile import ZIP_DEFLATED, ZipFile
 from .config import load_config, find_config_for_game_dir
 
 
-def package(game_dir: Path, project_root: Path, build_dir: Path) -> int:
+def package(game_dir: Path, project_root: Path | None = None, build_dir: Path | None = None) -> int:
     """Create build/<game-name>.zip + build/metadata/ from game + assets.
 
     Returns 0 on success.
     """
     game_dir = Path(game_dir)
-    project_root = Path(project_root)
-    build_dir = Path(build_dir)
+    if project_root is None:
+        project_root = game_dir if (game_dir / "game").exists() else game_dir.parent.parent
+    if build_dir is None:
+        build_dir = project_root / "build"
 
     # Find config
     try:
@@ -37,32 +39,50 @@ def package(game_dir: Path, project_root: Path, build_dir: Path) -> int:
     # Remove old outputs
     if zip_path.exists():
         zip_path.unlink()
-    if metadata_dir.exists():
-        shutil.rmtree(metadata_dir)
-    metadata_dir.mkdir(parents=True)
+    metadata_dir.mkdir(parents=True, exist_ok=True)
 
-    # --- Create zip ---
-    game_src = project_root / "game"
-    assets_dir = project_root / "assets" / "raw"
+    # Copy real metadata if available in project_root/metadata or game_dir/metadata
+    src_metadata_dir = (
+        (game_dir / "metadata")
+        if (game_dir / "metadata").is_dir()
+        else (project_root / "metadata")
+    )
+    if src_metadata_dir.exists() and src_metadata_dir.resolve() != metadata_dir.resolve():
+        for f in src_metadata_dir.glob("*"):
+            if f.is_file():
+                shutil.copy2(f, metadata_dir / f.name)
 
-    # --- Create zip (dùng game/dist — vite bundle đã build, entry trỏ đúng assets) ---
-    dist_dir = game_src / "dist"
+    # Locate dist directory
+    if (game_dir / "game" / "dist").is_dir():
+        dist_dir = game_dir / "game" / "dist"
+    elif (game_dir / "dist").is_dir():
+        dist_dir = game_dir / "dist"
+    elif (project_root / "game" / "dist").is_dir():
+        dist_dir = project_root / "game" / "dist"
+    else:
+        dist_dir = project_root / "dist"
+
     if not (dist_dir / "index.html").exists():
-        print("ERROR: chưa build game — cần `npm run build` trong game/ trước. Huỷ package.")
+        print(f"ERROR: chưa build game — cần `pnpm run build` trong {dist_dir.parent} trước. Huỷ package.")
         return 1
 
     with ZipFile(zip_path, "w", ZIP_DEFLATED) as zf:
-        # Entry index.html từ dist (trỏ ./assets/index-*.js + ./raw/ đúng)
-        zf.write(dist_dir / "index.html", "index.html")
-        # JS bundle
-        for f in sorted((dist_dir / "assets").glob("*")):
+        # Root files in dist (index.html, playgama-bridge-config.json, etc.)
+        for f in sorted(dist_dir.glob("*")):
             if f.is_file():
-                zf.write(f, f"assets/{f.name}")
+                zf.write(f, f.name)
+        # JS bundle
+        assets_subdir = dist_dir / "assets"
+        if assets_subdir.exists():
+            for f in sorted(assets_subdir.glob("*")):
+                if f.is_file():
+                    zf.write(f, f"assets/{f.name}")
         # Asset raw (preload baseURL './raw/')
         raw_dir = dist_dir / "raw"
-        for f in (sorted(raw_dir.glob("*")) if raw_dir.exists() else []):
-            if f.is_file():
-                zf.write(f, f"raw/{f.name}")
+        if raw_dir.exists():
+            for f in sorted(raw_dir.glob("*")):
+                if f.is_file():
+                    zf.write(f, f"raw/{f.name}")
 
     # --- Create metadata ---
     _write_metadata(cfg, metadata_dir, project_root)
@@ -112,6 +132,7 @@ def _write_metadata(cfg: dict, metadata_dir: Path, project_root: Path) -> None:
         "thumbnails": {
             "1:1": "thumbnail_1x1.png",
             "5:7": "thumbnail_5x7.png",
+            "9:16": "thumbnail_9x16.png",
             "16:9": "thumbnail_16x9.png",
         },
         "preview_video": {
@@ -122,19 +143,25 @@ def _write_metadata(cfg: dict, metadata_dir: Path, project_root: Path) -> None:
         json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8"
     )
 
-    # Generate placeholder thumbnails (BR-07: 1:1, 5:7, 16:9)
-    # Small placeholders — real thumbnails from gameplay screenshots in production
-    _create_placeholder_png(metadata_dir / "thumbnail_1x1.png", 16, 16, cfg)
-    _create_placeholder_png(metadata_dir / "thumbnail_5x7.png", 14, 20, cfg)
-    _create_placeholder_png(metadata_dir / "thumbnail_16x9.png", 32, 18, cfg)
+    # Generate placeholder thumbnails if not present
+    for thumb_name, (w, h) in [
+        ("thumbnail_1x1.png", (800, 800)),
+        ("thumbnail_5x7.png", (14, 20)),
+        ("thumbnail_9x16.png", (1080, 1920)),
+        ("thumbnail_16x9.png", (1920, 1080)),
+    ]:
+        thumb_path = metadata_dir / thumb_name
+        if not thumb_path.exists() or thumb_path.stat().st_size < 100:
+            _create_placeholder_png(thumb_path, w, h, cfg)
 
-    # Generate placeholder preview video (BR-07: 16:9)
-    _create_placeholder_mp4(metadata_dir / "preview_16x9.mp4")
+    # Generate placeholder preview video (BR-07: 16:9) if not present
+    preview_path = metadata_dir / "preview_16x9.mp4"
+    if not preview_path.exists() or preview_path.stat().st_size < 100:
+        _create_placeholder_mp4(preview_path)
 
 
 def _create_placeholder_png(path: Path, width: int, height: int, cfg: dict) -> None:
     """Create a minimal valid PNG thumbnail."""
-    # Use palette colors from config for a themed thumbnail
     palettes = cfg.get("mechanics", {}).get("progression", {}).get("palettes", [])
     bg_color = (253, 241, 220)  # default warm
     if palettes:
@@ -154,7 +181,6 @@ def _create_placeholder_png(path: Path, width: int, height: int, cfg: dict) -> N
 
     png = b"\x89PNG\r\n\x1a\n"
     png += _chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0))
-    # Compress raw data (this is not "compression in game bundle" — it's PNG encoding)
     png += _chunk(b"IDAT", zlib.compress(raw, 9))
     png += _chunk(b"IEND", b"")
 
@@ -163,11 +189,8 @@ def _create_placeholder_png(path: Path, width: int, height: int, cfg: dict) -> N
 
 def _create_placeholder_mp4(path: Path) -> None:
     """Create a minimal placeholder MP4 file for preview video."""
-    # Minimal MP4 box structure: ftyp + free
-    # ftyp box
     ftyp_data = b"isom" + struct.pack(">I", 0x200) + b"isomiso2mp41"
     ftyp_box = struct.pack(">I", 8 + len(ftyp_data)) + b"ftyp" + ftyp_data
-    # free box (padding)
     free_data = b"\x00" * 256
     free_box = struct.pack(">I", 8 + len(free_data)) + b"free" + free_data
 

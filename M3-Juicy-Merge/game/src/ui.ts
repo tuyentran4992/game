@@ -113,31 +113,27 @@ export function drawButton(
   // 5. Shimmer Light Ribbon Sweep Animation (Top casual game polish)
   if (variant !== "ghost" && opts.enableShimmer !== false) {
     const shimmer = scene.add.graphics();
-    shimmer.fillStyle(0xffffff, 0.35);
+    shimmer.fillStyle(0xffffff, 0.4);
     shimmer.beginPath();
-    shimmer.moveTo(-20, -h / 2);
-    shimmer.lineTo(10, -h / 2);
-    shimmer.lineTo(-5, h / 2 - bevel);
-    shimmer.lineTo(-35, h / 2 - bevel);
+    shimmer.moveTo(-15, -h / 2 + 4);
+    shimmer.lineTo(10, -h / 2 + 4);
+    shimmer.lineTo(-5, h / 2 - bevel - 4);
+    shimmer.lineTo(-30, h / 2 - bevel - 4);
     shimmer.closePath();
     shimmer.fillPath();
+    shimmer.setAlpha(0);
+    shimmer.setX(-w / 2 + 20);
 
-    const maskG = scene.make.graphics();
-    maskG.fillStyle(0xffffff, 1);
-    maskG.fillRoundedRect(x - w / 2, y - h / 2, w, h - bevel, rad);
-    const mask = maskG.createGeometryMask();
-    shimmer.setMask(mask);
     container.add(shimmer);
 
-    container.on("destroy", () => {
-      maskG.destroy();
-      mask.destroy();
-    });
-
-    shimmer.setX(-w / 2 - 40);
     scene.tweens.add({
       targets: shimmer,
-      x: w / 2 + 50,
+      x: { from: -w / 2 + 20, to: w / 2 - 20 },
+      alpha: {
+        getStart: () => 0,
+        getEnd: () => 0,
+        ease: (t: number) => Math.sin(t * Math.PI) * 0.35,
+      },
       duration: 850,
       repeat: -1,
       repeatDelay: 3200,

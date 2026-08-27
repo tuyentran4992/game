@@ -1,6 +1,6 @@
 // M3 Juicy Merge — main / boot
 import Phaser, { Scale, AUTO } from 'phaser';
-import { sdk } from './sdk-instance';
+import { sdk } from '@game/sdk';
 import { ctx } from './context';
 import { dur } from './tokens';
 import { applyMute } from './ui';

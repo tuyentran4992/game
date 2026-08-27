@@ -1,5 +1,11 @@
 packages:
   - 'packages/*'
   - 'g4-*'
+  - 'M3-*'
+  - 'M3-*/game'
 allowBuilds:
   esbuild: true
+  protobufjs: true
+onlyBuiltDependencies:
+  - esbuild
+  - protobufjs
