@@ -38,10 +38,17 @@ export class QuestsModal {
     const panelG = this.scene.add.graphics();
     panelG.fillStyle(toColor(color.shadow), 0.4);
     panelG.fillRoundedRect(cx - pw / 2, cy - ph / 2 + 10, pw, ph, radius.lg);
-    panelG.fillStyle(0xFFFFFF, 1);
+    // Volumetric Surface Fill
+    panelG.fillStyle(0xF8FAFC, 1);
     panelG.fillRoundedRect(cx - pw / 2, cy - ph / 2, pw, ph, radius.lg);
+    panelG.fillStyle(0xFFFFFF, 0.94);
+    panelG.fillRoundedRect(cx - pw / 2 + 3, cy - ph / 2 + 3, pw - 6, ph * 0.52, radius.lg - 2);
+    // Primary Border
     panelG.lineStyle(4, toColor(color.primary), 1);
     panelG.strokeRoundedRect(cx - pw / 2, cy - ph / 2, pw, ph, radius.lg);
+    // Inner Highlight
+    panelG.lineStyle(1.5, 0xFFFFFF, 0.70);
+    panelG.strokeRoundedRect(cx - pw / 2 + 2, cy - ph / 2 + 2, pw - 4, ph - 4, radius.lg - 2);
     this.root.add(panelG);
 
     // 3. Header: Title & Close Button

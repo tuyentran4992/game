@@ -145,7 +145,9 @@ export class PlaygamaBackend implements SDKBackend {
     try {
       const evtName = this.bridge?.EVENT_NAME?.PAUSE_STATE_CHANGED ?? EVENT.PAUSE_STATE_CHANGED;
       this.bridge?.advertisement.on(evtName, (v: unknown) => {
-        if (v === wantTrue) cb();
+        if (v === wantTrue) {
+          try { cb(); } catch { /* listener error protection */ }
+        }
       });
     } catch { /* no-op */ }
   }
@@ -155,7 +157,7 @@ export class PlaygamaBackend implements SDKBackend {
       const evtName = this.bridge?.EVENT_NAME?.AUDIO_STATE_CHANGED ?? EVENT.AUDIO_STATE_CHANGED;
       this.bridge?.advertisement.on(evtName, (v: unknown) => {
         this.audioOn = v !== false;
-        cb(this.audioOn);
+        try { cb(this.audioOn); } catch { /* listener error protection */ }
       });
     } catch { /* no-op */ }
   }
@@ -246,50 +248,67 @@ export class PlaygamaBackend implements SDKBackend {
   }
 
   async saveData(data: unknown): Promise<boolean> {
-    if (!this.ready || !this.bridge) {
-      try {
-        if (typeof window !== 'undefined' && window.localStorage) {
-          localStorage.setItem('game_save', JSON.stringify(data));
-        }
-        return true;
-      } catch { return false; }
-    }
+    await this.initPromise;
+
+    const jsonStr = typeof data === 'string' ? data : JSON.stringify(data);
+
+    // Save to localStorage as immediate local cache
     try {
-      const jsonStr = JSON.stringify(data);
-      await this.bridge.storage.set([LOCAL_KEY], [jsonStr]);
-      return true;
-    } catch (e) {
-      console.warn('[Playgama] saveData failed, fallback localStorage', e);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('game_save', jsonStr);
+      }
+    } catch { /* ignore */ }
+
+    if (this.bridge && this.bridge.storage && typeof this.bridge.storage.set === 'function') {
       try {
-        if (typeof window !== 'undefined' && window.localStorage) {
-          localStorage.setItem('game_save', JSON.stringify(data));
-        }
+        await this.bridge.storage.set([LOCAL_KEY], [jsonStr]);
         return true;
-      } catch { return false; }
+      } catch (e) {
+        try {
+          await (this.bridge.storage.set as any)(LOCAL_KEY, jsonStr);
+          return true;
+        } catch (e2) {
+          console.warn('[Playgama] bridge.storage.set failed', e, e2);
+        }
+      }
     }
+
+    return true;
   }
 
   async loadData(): Promise<unknown | null> {
-    if (!this.ready) {
-      try {
-        const raw = localStorage.getItem('game_save');
-        return raw ? JSON.parse(raw) : null;
-      } catch { return null; }
-    }
+    await this.initPromise;
 
-    if (this.bridge) {
+    if (this.bridge && this.bridge.storage && typeof this.bridge.storage.get === 'function') {
       try {
-        const res = await this.bridge.storage.get([LOCAL_KEY]);
+        let res: unknown = null;
+        try {
+          res = await this.bridge.storage.get([LOCAL_KEY]);
+        } catch {
+          res = await (this.bridge.storage.get as any)(LOCAL_KEY);
+        }
+
         let raw: unknown = null;
         if (Array.isArray(res)) {
           raw = res[0];
         } else if (res && typeof res === 'object') {
           raw = (res as Record<string, unknown>)[LOCAL_KEY] ?? (res as Record<string, unknown>)['0'] ?? res;
+        } else if (res != null) {
+          raw = res;
         }
+
         if (raw != null) {
-          if (typeof raw === 'object') return raw;
+          let parsed: unknown = raw;
           if (typeof raw === 'string') {
-            try { return JSON.parse(raw); } catch { /* fall through */ }
+            try { parsed = JSON.parse(raw); } catch { parsed = raw; }
+          }
+          if (parsed != null) {
+            try {
+              if (typeof window !== 'undefined' && window.localStorage) {
+                localStorage.setItem('game_save', typeof raw === 'string' ? raw : JSON.stringify(raw));
+              }
+            } catch { /* ignore */ }
+            return parsed;
           }
         }
       } catch (e) {

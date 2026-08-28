@@ -69,22 +69,21 @@ export const z = {
 
 // Multi-palette theo level (BR-14) — DESIGN-SPEC §1.1 bảng level
 export interface LevelPalette {
-  bgTop: string; bgBottom: string; grass: string; lane: string;
+  bgTop: string; bgBottom: string; grass: string; grassDark: string; lane: string; confetti: number[];
 }
 
 export const LEVEL_PALETTES: LevelPalette[] = [
   // Level 1 — ban ngày
-  { bgTop: '#7EC8FF', bgBottom: '#B8E6A8', grass: '#5ED07A', lane: '#FFFFFF' },
+  { bgTop: '#7EC8FF', bgBottom: '#B8E6A8', grass: '#5ED07A', grassDark: '#3CA756', lane: '#FFFFFF', confetti: [0xFFA502, 0xFFD700, 0x2ECC71, 0xFFFFFF, 0x48DBFB] },
   // Level 2 — hoàng hôn
-  { bgTop: '#FFB578', bgBottom: '#FF8E7A', grass: '#C97B5D', lane: '#FFE4C2' },
+  { bgTop: '#FFB578', bgBottom: '#FF8E7A', grass: '#C97B5D', grassDark: '#A0583E', lane: '#FFE4C2', confetti: [0xFF6B6B, 0xFFA502, 0xFEEA87, 0xFF9FF3, 0xFFFFFF] },
   // Level 3 — đêm tím
-  { bgTop: '#2B3A67', bgBottom: '#4A3B8C', grass: '#3D6B8E', lane: '#A9C6FF' },
+  { bgTop: '#2B3A67', bgBottom: '#4A3B8C', grass: '#3D6B8E', grassDark: '#234661', lane: '#A9C6FF', confetti: [0x54A0FF, 0x5F27CD, 0x48DBFB, 0xFECA57, 0xFFFFFF] },
 ];
 
 export function paletteForLevel(level: number): LevelPalette {
-  if (level < 10) return LEVEL_PALETTES[0]; // Ban ngày (Level 1..9)
-  if (level < 20) return LEVEL_PALETTES[1]; // Hoàng hôn (Level 10..19)
-  return LEVEL_PALETTES[2];                 // Đêm (Level 20+)
+  const idx = Math.floor(Math.max(0, level - 1) / 10) % LEVEL_PALETTES.length;
+  return LEVEL_PALETTES[idx];
 }
 
 // Helper: fontStyle từ token

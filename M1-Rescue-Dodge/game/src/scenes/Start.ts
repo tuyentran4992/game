@@ -23,6 +23,7 @@ export class StartScene extends Phaser.Scene {
   private playContainer!: Phaser.GameObjects.Container;
   private skinsContainer!: Phaser.GameObjects.Container;
   private questsContainer!: Phaser.GameObjects.Container;
+  private catShadow!: Phaser.GameObjects.Graphics;
 
   constructor() { super({ key: 'StartScene' }); }
 
@@ -47,11 +48,11 @@ export class StartScene extends Phaser.Scene {
     this.fishText = this.add.text(width - 72, 38, `🐟 ${ctx.engine.totalFish}`, fontStyle({ size: '14px', weight: '800', lh: 1 }, '#E67E22'))
       .setOrigin(0.5).setDepth(z.hud + 1);
 
-    // 3. English Game Title Group ("CAT RESCUE - BEE DODGE")
+    // 3. English Game Title Group ("BUZZ BLITZ - CAT VS BEES")
     this.titleGroup = this.add.container(width / 2, 80).setDepth(z.hud);
-    this.titleShadow = this.add.text(2, 3, 'CAT RESCUE', fontStyle({ size: '36px', weight: '900', lh: 1 }, 'rgba(0,0,0,0.35)')).setOrigin(0.5);
-    this.titleText = this.add.text(0, 0, 'CAT RESCUE', fontStyle({ size: '36px', weight: '900', lh: 1 }, '#FFFFFF')).setOrigin(0.5);
-    this.subTitleText = this.add.text(0, 32, 'BEE DODGE', fontStyle({ size: '13px', weight: '800', lh: 1 }, '#FFD166')).setOrigin(0.5);
+    this.titleShadow = this.add.text(2, 3, 'BUZZ BLITZ', fontStyle({ size: '36px', weight: '900', lh: 1 }, 'rgba(0,0,0,0.35)')).setOrigin(0.5);
+    this.titleText = this.add.text(0, 0, 'BUZZ BLITZ', fontStyle({ size: '36px', weight: '900', lh: 1 }, '#FFFFFF')).setOrigin(0.5);
+    this.subTitleText = this.add.text(0, 32, 'CAT VS BEES', fontStyle({ size: '13px', weight: '800', lh: 1 }, '#FFD166')).setOrigin(0.5);
     this.titleGroup.add([this.titleShadow, this.titleText, this.subTitleText]);
 
     // 4. Cat Mascot (Container wrapped to protect size from tween resets)
@@ -124,15 +125,18 @@ export class StartScene extends Phaser.Scene {
     this.overlay.fillRect(0, height * 0.40, width, height * 0.60);
 
     // Top Bar
+    const pfWidth = isPortrait ? width : Math.min(width, Math.min(460, Math.round(height * 0.58)));
+    const pfLeft = (width - pfWidth) / 2;
+    const pfRight = pfLeft + pfWidth;
     const topY = Math.max(34, isPortrait ? height * 0.05 : 30);
-    this.audioBtn.setPosition(34, topY);
+    this.audioBtn.setPosition(pfLeft + 34, topY);
 
     this.fishPillG.clear();
     this.fishPillG.fillStyle(0xFFFFFF, 0.90);
-    this.fishPillG.fillRoundedRect(width - 125, topY - 15, 110, 30, 15);
+    this.fishPillG.fillRoundedRect(pfRight - 125, topY - 15, 110, 30, 15);
     this.fishPillG.lineStyle(2, 0xFFA502, 1);
-    this.fishPillG.strokeRoundedRect(width - 125, topY - 15, 110, 30, 15);
-    this.fishText.setPosition(width - 70, topY);
+    this.fishPillG.strokeRoundedRect(pfRight - 125, topY - 15, 110, 30, 15);
+    this.fishText.setPosition(pfRight - 70, topY);
 
     // Title Positioning
     const titleY = isPortrait ? Math.max(68, height * 0.14) : Math.max(48, height * 0.12);
@@ -168,6 +172,22 @@ export class StartScene extends Phaser.Scene {
 
     this.currentCatSize = catH;
     this.catImage.setDisplaySize(catW, catH);
+
+    // Mascot Ground Contact Shadow (Feathered radial shadow, max alpha 0.24)
+    if (!this.catShadow) {
+      this.catShadow = this.add.graphics().setDepth(z.actor - 1);
+    }
+    this.catShadow.clear();
+    const shadowSteps = 6;
+    const shadowW = catW * 0.76;
+    const shadowH = 16;
+    const shadowY = catY + catH * 0.44;
+    for (let i = 0; i < shadowSteps; i++) {
+      const ratio = 1 - (i / shadowSteps) * 0.7;
+      this.catShadow.fillStyle(0x2B1408, 0.24 / shadowSteps);
+      this.catShadow.fillEllipse(width / 2, shadowY, shadowW * ratio, shadowH * ratio);
+    }
+
     this.catContainer.setPosition(width / 2, catY);
   }
 

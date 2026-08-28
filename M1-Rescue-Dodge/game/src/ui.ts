@@ -13,20 +13,62 @@ export function drawButton(
   const textType = opts.textType ?? (opts.variant === 'ghost' ? type.body : type.display);
   const r = Math.min(height / 2, radius.lg);
   const g = scene.add.graphics();
-  const fill = variant === 'primary' ? color.primary : color.surface;
   const txtColor = variant === 'primary' ? color.textOnAccent : color.textPrimary;
-  // SHADOW vẽ TRƯỚC (đằng sau nút) để không đè lên fill
-  g.fillStyle(toColor(color.shadow), shadow.btn.alpha);
-  g.fillRoundedRect(-width / 2, -height / 2 + shadow.btn.dy, width, height, r);
-  // FILL chính
-  g.fillStyle(toColor(fill), 1);
-  g.fillRoundedRect(-width / 2, -height / 2, width, height, r);
-  if (variant === 'ghost') {
-    g.lineStyle(3, toColor(color.primary), 1);
-    g.strokeRoundedRect(-width / 2, -height / 2, width, height, r);
-  }
+
+  const drawState = (state: 'default' | 'hover' | 'active') => {
+    g.clear();
+    const bevelH = 6;
+    const pressOffset = state === 'active' ? 2 : 0;
+
+    // 1. Drop Shadow
+    g.fillStyle(toColor(color.shadow), state === 'active' ? 0.18 : shadow.btn.alpha);
+    g.fillRoundedRect(-width / 2, -height / 2 + shadow.btn.dy + pressOffset, width, height, r);
+
+    if (variant === 'primary') {
+      // 2. 3D Bottom Base (primaryDark 6px)
+      g.fillStyle(toColor(color.primaryDark), 1);
+      g.fillRoundedRect(-width / 2, -height / 2 + pressOffset, width, height, r);
+
+      // 3. Top Button Body with vibrant candy gradient
+      const topH = height - bevelH + (state === 'active' ? 2 : 0);
+      const topColor = state === 'hover' ? 0xFFB03A : 0xFF9F1C;
+      g.fillStyle(topColor, 1);
+      g.fillRoundedRect(-width / 2, -height / 2 + pressOffset, width, topH, r);
+
+      // 4. Gloss Specular Highlight (top 1/3 pill)
+      if (state !== 'active') {
+        const glossW = width - 20;
+        const glossH = Math.max(10, Math.floor(topH * 0.36));
+        g.fillStyle(0xFFFFFF, state === 'hover' ? 0.40 : 0.28);
+        g.fillRoundedRect(-glossW / 2, -height / 2 + 3, glossW, glossH, Math.min(glossH / 2, r));
+      }
+    } else {
+      // Ghost Button
+      g.fillStyle(toColor(color.surface), 1);
+      g.fillRoundedRect(-width / 2, -height / 2 + pressOffset, width, height, r);
+
+      // Primary border
+      g.lineStyle(3, toColor(color.primary), 1);
+      g.strokeRoundedRect(-width / 2, -height / 2 + pressOffset, width, height, r);
+
+      // Subtle top gloss
+      if (state !== 'active') {
+        const glossW = width - 16;
+        const glossH = Math.max(8, Math.floor(height * 0.32));
+        g.fillStyle(0xFFFFFF, 0.55);
+        g.fillRoundedRect(-glossW / 2, -height / 2 + 3, glossW, glossH, Math.min(glossH / 2, r));
+      }
+    }
+  };
+
+  drawState('default');
   g.setDepth(z.panel);
+
   const t = scene.add.text(0, 0, text, fontStyle(textType, txtColor)).setOrigin(0.5).setDepth(z.panel + 1);
+  if (variant === 'primary') {
+    t.setShadow(0, 1.5, 'rgba(0,0,0,0.35)', 2, false, true);
+  }
+
   const container = scene.add.container(x, y, [g, t]).setSize(width, height).setDepth(z.panel);
   if (opts.testid) {
     g.setData('testid', opts.testid);
@@ -34,29 +76,57 @@ export function drawButton(
     container.setData('testid', opts.testid);
   }
   container.setInteractive({ useHandCursor: true });
-  // F9 (ĐỢT 8): sfx_click khi bấm nút (volume ~0.35, tôn trọng mute toàn cục).
+
   const playClick = () => {
     if (scene.cache.audio.exists('sfx_click')) scene.sound.play('sfx_click', { volume: 0.35 });
   };
-  // hover/active states (DESIGN-SPEC 5.9/5.10)
-  container.on('pointerover', () => scene.tweens.add({ targets: container, scale: 1.03, duration: dur.tn, ease: 'quad.out' }));
-  container.on('pointerout', () => scene.tweens.add({ targets: container, scale: 1, duration: dur.tn, ease: 'quad.out' }));
-  container.on('pointerdown', () => { playClick(); scene.tweens.add({ targets: container, scale: 0.96, duration: dur.fast, ease: 'quad.in' }); });
-  container.on('pointerup', () => scene.tweens.add({ targets: container, scale: 1.03, duration: dur.tn, ease: 'quad.out' }));
+
+  // Hover and active states
+  container.on('pointerover', () => {
+    drawState('hover');
+    scene.tweens.add({ targets: container, scale: 1.03, duration: dur.tn, ease: 'quad.out' });
+  });
+  container.on('pointerout', () => {
+    drawState('default');
+    t.setY(0);
+    scene.tweens.add({ targets: container, scale: 1, duration: dur.tn, ease: 'quad.out' });
+  });
+  container.on('pointerdown', () => {
+    playClick();
+    drawState('active');
+    t.setY(2);
+    scene.tweens.add({ targets: container, scale: 0.96, duration: dur.fast, ease: 'quad.in' });
+  });
+  container.on('pointerup', () => {
+    drawState('hover');
+    t.setY(0);
+    scene.tweens.add({ targets: container, scale: 1.03, duration: dur.tn, ease: 'quad.out' });
+  });
+
   return { container, textObj: t };
 }
 
 export function drawPanel(scene: Phaser.Scene, x: number, y: number, width: number, height: number): Phaser.GameObjects.Graphics {
   const g = scene.add.graphics();
-  // shadow vẽ trước (đằng sau panel) — không đè lên fill
+  // 1. Shadow underneath
   g.fillStyle(toColor(color.shadow), shadow.panel.alpha);
   g.fillRoundedRect(x - width / 2, y - height / 2 + shadow.panel.dy, width, height, radius.lg);
-  // fill panel (token color.surface trắng)
-  g.fillStyle(toColor(color.surface), 1);
+  
+  // 2. Volumetric panel surface (subtle gradient white -> surfaceDim)
+  g.fillStyle(0xF8FAFC, 1);
   g.fillRoundedRect(x - width / 2, y - height / 2, width, height, radius.lg);
-  // border (token color.primary)
+
+  g.fillStyle(0xFFFFFF, 0.94);
+  g.fillRoundedRect(x - width / 2 + 3, y - height / 2 + 3, width - 6, height * 0.55, radius.lg - 2);
+
+  // 3. Primary Color Border (Candy 3D)
   g.lineStyle(4, toColor(color.primary), 1);
   g.strokeRoundedRect(x - width / 2, y - height / 2, width, height, radius.lg);
+
+  // 4. Subtle inner highlight line
+  g.lineStyle(1.5, 0xFFFFFF, 0.70);
+  g.strokeRoundedRect(x - width / 2 + 2, y - height / 2 + 2, width - 4, height - 4, radius.lg - 2);
+
   g.setDepth(z.panel);
   return g;
 }

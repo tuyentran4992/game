@@ -88,6 +88,7 @@ export class SDKHandler {
 
   async saveData(data: unknown): Promise<boolean> {
     try {
+      await this.initialize();
       return await this.backend.saveData(data);
     } catch (e) {
       console.warn('[SDK] Save error:', e);
@@ -97,6 +98,7 @@ export class SDKHandler {
 
   async loadData(): Promise<unknown | null> {
     try {
+      await this.initialize();
       return await this.backend.loadData();
     } catch (e) {
       console.warn('[SDK] Load error:', e);

@@ -38,6 +38,7 @@ export class GameplayScene extends Phaser.Scene {
   private levelLabel!: Phaser.GameObjects.Text;
   private fishLabel!: Phaser.GameObjects.Text;
   private feverBarG!: Phaser.GameObjects.Graphics;
+  private feverFlameG!: Phaser.GameObjects.Graphics;
   private feverStatusLabel!: Phaser.GameObjects.Text;
 
   private levelPopup!: Phaser.GameObjects.Text;
@@ -48,21 +49,42 @@ export class GameplayScene extends Phaser.Scene {
   private swarmWarningPopup!: Phaser.GameObjects.Container;
   private swarmSurvivePopup!: Phaser.GameObjects.Text;
 
+  private catShadow!: Phaser.GameObjects.Graphics;
   private cat!: Phaser.GameObjects.Image;
   private shieldBubble!: Phaser.GameObjects.Graphics;
   private magnetIndicator!: Phaser.GameObjects.Text;
   private feverAura!: Phaser.GameObjects.Graphics;
   private bgG!: Phaser.GameObjects.Graphics;
   private speedLinesG!: Phaser.GameObjects.Graphics;
+  private natureParticlesG!: Phaser.GameObjects.Graphics;
+  private roadsidePropsG!: Phaser.GameObjects.Graphics;
 
   private bgImage?: Phaser.GameObjects.Image;
   private lanes: number[] = [];
   private currentLane = 1;
   private moveSeq = 0;
+  private isMovingLane = false;
+  private runningPuffTimer = 0;
 
   private bees: Bee[] = [];
   private items: Item[] = [];
-  private pendingSpeedyLanes: Set<number> = new Set();
+  private natureParticles: Array<{
+    xRatio: number;
+    y: number;
+    speedMult: number;
+    swayOffset: number;
+    swaySpeed: number;
+    size: number;
+    color: number;
+    alpha: number;
+  }> = [];
+  private roadsideProps: Array<{
+    side: -1 | 1;
+    t: number;
+    speedMult: number;
+    lateralOffsetRatio: number;
+    propType: 'daisy' | 'grass' | 'flower_purple' | 'pebble';
+  }> = [];
   private fatBeeActive = false;
 
   private elapsed = 0;
@@ -72,6 +94,7 @@ export class GameplayScene extends Phaser.Scene {
   private lastSwarmTime = 0;
   private swarmActive = false;
   private swarmBeesRemaining = 0;
+  private beeTrailTimer = 0;
 
   private running = false;
   private muted = false;
@@ -82,29 +105,86 @@ export class GameplayScene extends Phaser.Scene {
     return height * 0.78;
   }
 
-  private getLaneSpan(width: number, height: number): number {
+  private drawCatShadow(x: number, y: number, w: number, h: number, scaleX = 1, scaleY = 1) {
+    if (!this.catShadow || !this.catShadow.active) return;
+    this.catShadow.clear();
+    // Radial-gradient ellipse: width ~1.4x cat body, height ~0.35x, peak alpha 0.22, feathered edges (no hard rim)
+    const shadowW = (w * 1.40) * scaleX;
+    const shadowH = (h * 0.35) * scaleY;
+    const shadowY = y + h * 0.44;
+    const steps = 10;
+    const alphaStep = 0.22 / steps;
+    for (let i = steps; i >= 1; i--) {
+      const ratio = i / steps;
+      this.catShadow.fillStyle(0x1B1008, alphaStep);
+      this.catShadow.fillEllipse(x, shadowY, shadowW * ratio, shadowH * ratio);
+    }
+  }
+
+  private getPlayfieldTop(_height: number): number {
+    return 0;
+  }
+
+  private getHudBottom(): number {
+    const hudY = Math.max(38, this.scale.height * 0.05);
+    const feverBottom = hudY + 24 + 28; // fever pill bottom
+    const fishBottom = hudY + 20 + 12;
+    const scoreBottom = hudY - 4 + 18;
+    const btnBottom = hudY + 17;
+    return Math.max(feverBottom, fishBottom, scoreBottom, btnBottom);
+  }
+
+  private getHudSafeAreaBottom(): number {
+    return this.getHudBottom() + 16;
+  }
+
+  private getPlayfieldBounds(width: number, height: number): { left: number; right: number; width: number; center: number } {
     const isPortrait = height >= width;
-    return isPortrait
-      ? Math.min(145, Math.max(90, width * 0.30))
-      : Math.min(160, Math.max(100, height * 0.28));
+    const pfWidth = isPortrait ? width : Math.min(width, Math.min(460, Math.round(height * 0.58)));
+    const left = (width - pfWidth) / 2;
+    const right = left + pfWidth;
+    return { left, right, width: pfWidth, center: width / 2 };
+  }
+
+  private getRoadWidthForBg(bgKey: string): number {
+    switch (bgKey) {
+      case 'bg_sunset': return 220;
+      case 'bg_night': return 278;
+      case 'bg_day':
+      default: return 329;
+    }
+  }
+
+  private getStraightRoadMetrics(width: number, _height: number, bgKey = 'bg_day') {
+    // Mobile-first wide and spacious road (72% of width = 518px on 720px, each lane = 173px)
+    const roadW = width * 0.72;
+    const halfW = roadW / 2;
+    const leftEdge = width / 2 - halfW;
+    const laneWidth = roadW / 3;
+    const imgRoadW = this.getRoadWidthForBg(bgKey);
+    const bgScale = roadW / imgRoadW;
+    return { roadW, halfW, leftEdge, laneWidth, bgScale };
   }
 
   private computeLanes(width: number, height: number): number[] {
-    const laneSpan = this.getLaneSpan(width, height);
-    const centerX = width / 2;
-    return [centerX - laneSpan, centerX, centerX + laneSpan];
+    const { leftEdge, laneWidth } = this.getStraightRoadMetrics(width, height);
+    return [
+      leftEdge + 0.5 * laneWidth,
+      leftEdge + 1.5 * laneWidth,
+      leftEdge + 2.5 * laneWidth,
+    ];
   }
 
   private getCatSize(width: number, height: number): { w: number; h: number } {
-    const laneSpan = this.getLaneSpan(width, height);
-    const h = Math.round(laneSpan * 0.56);
-    const w = h;
-    return { w, h };
+    const { laneWidth } = this.getStraightRoadMetrics(width, height);
+    const size = Math.round(Math.min(120, laneWidth * 0.70));
+    return { w: size, h: size };
   }
 
   private getBeeSize(width: number, height: number): number {
-    const laneSpan = this.getLaneSpan(width, height);
-    return Math.round(laneSpan * 0.46);
+    const { laneWidth } = this.getStraightRoadMetrics(width, height);
+    const size = Math.round(Math.min(84, laneWidth * 0.50));
+    return size;
   }
 
   private isResumeMode = false;
@@ -115,13 +195,15 @@ export class GameplayScene extends Phaser.Scene {
     this.bgG = undefined as any;
     this.bees = [];
     this.items = [];
-    this.pendingSpeedyLanes.clear();
+    this.natureParticles = [];
+    this.roadsideProps = [];
     this.fatBeeActive = false;
+    this.isMovingLane = false;
+    this.runningPuffTimer = 0;
   }
 
   async create(data?: { resume?: boolean }) {
     const { width, height } = this.scale;
-    this.pendingSpeedyLanes.clear();
     this.fatBeeActive = false;
     const isResume = data?.resume === true || this.isResumeMode === true;
     this.isResumeMode = false;
@@ -149,15 +231,16 @@ export class GameplayScene extends Phaser.Scene {
     this.isPaused = false;
     this.muted = !sdk.isAudioEnabled();
 
-    this.lanes = this.computeLanes(width, height);
     this.drawLevelBg(ctx.engine.getLevel());
+    this.lanes = this.computeLanes(width, height);
 
+    const pf = this.getPlayfieldBounds(width, height);
     // HUD Safe-Zone
     const hudY = Math.max(38, height * 0.05);
     const btnSize = 34;
 
-    // 1. Pause Button (Top-Left 1)
-    this.pauseBtnContainer = this.add.container(28, hudY).setDepth(z.hud);
+    // 1. Pause Button (Top-Left inside playfield column)
+    this.pauseBtnContainer = this.add.container(pf.left + 26, hudY).setDepth(z.hud);
     const pauseBg = this.add.graphics();
     pauseBg.fillStyle(0x0F172A, 0.45);
     pauseBg.fillCircle(0, 0, btnSize / 2);
@@ -171,9 +254,9 @@ export class GameplayScene extends Phaser.Scene {
       this.openPauseModal();
     });
 
-    // 2. Audio Button (Top-Left 2)
+    // 2. Audio Button (Top-Left 2 inside playfield column)
     const isAudioOn = !this.sound.mute && sdk.isAudioEnabled();
-    this.audioBtnContainer = this.add.container(68, hudY).setDepth(z.hud);
+    this.audioBtnContainer = this.add.container(pf.left + 66, hudY).setDepth(z.hud);
     const audioBg = this.add.graphics();
     audioBg.fillStyle(0x0F172A, 0.45);
     audioBg.fillCircle(0, 0, btnSize / 2);
@@ -186,26 +269,61 @@ export class GameplayScene extends Phaser.Scene {
       this.toggleAudio();
     });
 
-    // 3. Score Label (Center Top)
-    this.scoreLabel = this.add.text(width / 2, hudY - 4, String(ctx.engine.score), fontStyle(type.score, color.textOnAccent))
-      .setOrigin(0.5, 0.5).setDepth(z.hud);
+    // 3. Score Label (Center Top - Arcade Casual Stroke)
+    this.scoreLabel = this.add.text(pf.center, hudY - 4, String(ctx.engine.score), fontStyle(type.score, '#FFFFFF'))
+      .setOrigin(0.5, 0.5).setDepth(z.hud)
+      .setStroke('#1E0E02', 6)
+      .setShadow(0, 3, 'rgba(0,0,0,0.45)', 4, false, true);
     this.scoreLabel.setData('testid', 'score-label');
 
-    // 4. Level & Fish Labels (Top-Right)
-    this.levelLabel = this.add.text(width - 44, hudY - 2, 'Level ' + ctx.engine.getLevel(), fontStyle(type.small, color.textPrimary))
-      .setOrigin(0.5, 0.7).setDepth(z.hud);
+    // 4. Level & Fish Labels (Top-Right inside playfield column - Single clear unit with tight spacing)
+    this.levelLabel = this.add.text(pf.right - 44, hudY - 2, 'Level ' + ctx.engine.getLevel(), fontStyle(type.small, '#FFFFFF'))
+      .setOrigin(0.5, 0.7).setDepth(z.hud)
+      .setStroke('#1E0E02', 4);
     this.levelLabel.setData('testid', 'level-label');
 
-    this.fishLabel = this.add.text(width - 44, hudY + 20, `🐟 ${ctx.engine.fish}`, fontStyle(type.small, color.warning))
-      .setOrigin(0.5, 0.7).setDepth(z.hud);
+    this.fishLabel = this.add.text(pf.right - 44, hudY + 20, `🐟 ×${ctx.engine.fish}`, fontStyle(type.small, '#FFD700'))
+      .setOrigin(0.5, 0.7).setDepth(z.hud)
+      .setStroke('#1E0E02', 4);
 
-    // Fever Bar Graphics & Label
+    // Fever Bar Graphics & Label (Pill 28px height, Graphics vector flame icon)
     this.feverBarG = this.add.graphics().setDepth(z.hud);
-    this.feverStatusLabel = this.add.text(width / 2, hudY + 24, 'FEVER', fontStyle({ size: '13px', weight: '800', lh: 1 }, color.textOnAccent))
-      .setOrigin(0.5).setDepth(z.hud + 1).setAlpha(0.85);
+    this.feverFlameG = this.add.graphics().setDepth(z.hud + 1);
+    this.feverStatusLabel = this.add.text(pf.center + 8, hudY + 38, 'FEVER 0%', fontStyle({ size: '13px', weight: '900', lh: 1 }, '#FFFFFF'))
+      .setOrigin(0.5).setDepth(z.hud + 1)
+      .setStroke('#1E0E02', 3.5)
+      .setAlpha(0.95);
 
-    // Speed Lines Graphics
+    // Speed Lines, Nature Flow & Roadside Props Graphics
     this.speedLinesG = this.add.graphics().setDepth(z.bg + 1);
+    this.natureParticlesG = this.add.graphics().setDepth(z.bg + 2);
+    this.roadsidePropsG = this.add.graphics().setDepth(z.bg + 2);
+
+    this.natureParticles = [];
+    for (let i = 0; i < 16; i++) {
+      this.natureParticles.push({
+        xRatio: Math.random(),
+        y: Phaser.Math.Between(0, height),
+        speedMult: 0.65 + Math.random() * 0.70,
+        swayOffset: Math.random() * Math.PI * 2,
+        swaySpeed: 1.8 + Math.random() * 2.2,
+        size: Phaser.Math.Between(3, 6),
+        color: Math.random() < 0.4 ? 0xFFFFFF : (Math.random() < 0.7 ? 0x88D49E : 0xFFD166),
+        alpha: 0.25 + Math.random() * 0.35,
+      });
+    }
+
+    this.roadsideProps = [];
+    const propTypes: Array<'daisy' | 'grass' | 'flower_purple' | 'pebble'> = ['daisy', 'grass', 'flower_purple', 'pebble'];
+    for (let i = 0; i < 14; i++) {
+      this.roadsideProps.push({
+        side: (i % 2 === 0 ? -1 : 1),
+        t: (i / 14) + Math.random() * 0.05,
+        speedMult: 0.85 + Math.random() * 0.30,
+        lateralOffsetRatio: Math.random(),
+        propType: propTypes[i % propTypes.length],
+      });
+    }
 
     // Popups
     this.levelPopup = this.add.text(width / 2, height * 0.36, '', fontStyle(type.h1, color.textOnAccent))
@@ -241,6 +359,10 @@ export class GameplayScene extends Phaser.Scene {
     const catSize = this.getCatSize(width, height);
 
     this.feverAura = this.add.graphics().setDepth(z.actor - 1).setAlpha(0);
+
+    // Cat Ground Contact Shadow (Bóng đổ đất ấm neo chân mèo xuống sàn)
+    this.catShadow = this.add.graphics().setDepth(z.actor - 1);
+    this.drawCatShadow(this.lanes[this.currentLane], catY, catSize.w, catSize.h);
 
     this.cat = this.add.image(this.lanes[this.currentLane], catY, ctx.engine.getSelectedSkinTexture())
       .setDisplaySize(catSize.w, catSize.h).setDepth(z.actor);
@@ -320,7 +442,11 @@ export class GameplayScene extends Phaser.Scene {
 
     sdk.onAudioEnabledChange((enabled: boolean) => {
       this.muted = !enabled;
-      if (this.audioBtnText) this.audioBtnText.setText(enabled ? '🔊' : '🔇');
+      if (this.audioBtnText && this.audioBtnText.active && this.audioBtnText.scene) {
+        try {
+          this.audioBtnText.setText(enabled ? '🔊' : '🔇');
+        } catch { /* scene shutdown */ }
+      }
     });
 
     this.cameras.main.fadeIn(dur.scene, 0, 0, 0);
@@ -339,6 +465,9 @@ export class GameplayScene extends Phaser.Scene {
       this.scale.off('resize', resizeListener);
       if (this.bgImage && this.bgImage.active) this.bgImage.destroy();
       if (this.bgG && this.bgG.active) this.bgG.destroy();
+      if (this.speedLinesG && this.speedLinesG.active) this.speedLinesG.destroy();
+      if (this.natureParticlesG && this.natureParticlesG.active) this.natureParticlesG.destroy();
+      if (this.roadsidePropsG && this.roadsidePropsG.active) this.roadsidePropsG.destroy();
       this.bgImage = undefined;
       this.bgG = undefined as any;
     });
@@ -435,18 +564,22 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private spawnDust(x: number, y: number) {
-    for (let i = 0; i < 4; i++) {
-      const d = this.add.circle(x + Phaser.Math.Between(-12, 12), y + Phaser.Math.Between(12, 22), Phaser.Math.Between(4, 7), 0xFFFFFF, 0.45).setDepth(z.actor - 1);
-      this.tweens.add({
-        targets: d,
-        x: d.x + Phaser.Math.Between(-16, 16),
-        y: d.y + Phaser.Math.Between(8, 20),
-        alpha: 0,
-        scale: 0.2,
-        duration: 320,
-        ease: 'cubic.out',
-        onComplete: () => d.destroy(),
-      });
+    for (let foot = -1; foot <= 1; foot += 2) {
+      const fx = x + foot * 16;
+      const fy = y + 16;
+      for (let i = 0; i < 3; i++) {
+        const d = this.add.circle(fx + Phaser.Math.Between(-5, 5), fy + Phaser.Math.Between(-4, 6), Phaser.Math.Between(4, 7), 0xFFFFFF, 0.55).setDepth(z.actor - 1);
+        this.tweens.add({
+          targets: d,
+          x: fx + foot * Phaser.Math.Between(6, 18),
+          y: fy + Phaser.Math.Between(4, 14),
+          alpha: 0,
+          scale: 0.2,
+          duration: 320,
+          ease: 'cubic.out',
+          onComplete: () => d.destroy(),
+        });
+      }
     }
   }
 
@@ -487,19 +620,20 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private spawnBeeExplosion(x: number, y: number) {
-    const colors = [0xFF9F1C, 0xFF3838, 0xFFD700, 0xFFFFFF];
-    for (let i = 0; i < 10; i++) {
+    // Honey-gold + white particles per ART-PASS §4.3
+    const colors = [0xFFA502, 0xFFD700, 0xFFEAA7, 0xFFFFFF];
+    for (let i = 0; i < 14; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const dist = Phaser.Math.Between(35, 75);
+      const dist = Phaser.Math.Between(30, 70);
       const col = colors[i % colors.length];
-      const p = this.add.circle(x, y, Phaser.Math.Between(4, 7), col, 1).setDepth(z.actor + 1);
+      const p = this.add.circle(x, y, Phaser.Math.Between(4, 8), col, 0.95).setDepth(z.actor + 1);
       this.tweens.add({
         targets: p,
         x: x + Math.cos(angle) * dist,
         y: y + Math.sin(angle) * dist,
         alpha: 0,
         scale: 0.2,
-        duration: 450,
+        duration: 420,
         ease: 'cubic.out',
         onComplete: () => p.destroy(),
       });
@@ -508,14 +642,34 @@ export class GameplayScene extends Phaser.Scene {
 
   private drawLevelBg(level: number) {
     const { width, height } = this.scale;
-    const bgKey = level < 10 ? 'bg_day' : (level < 20 ? 'bg_sunset' : 'bg_night');
+    const bgKeys = ['bg_day', 'bg_sunset', 'bg_night'];
+    const bgIndex = Math.floor(Math.max(0, level - 1) / 10) % bgKeys.length;
+    const bgKey = bgKeys[bgIndex];
+    const pal = paletteForLevel(level);
+
+    const { bgScale, leftEdge, laneWidth } = this.getStraightRoadMetrics(width, height, bgKey);
 
     if (!this.bgImage || !this.bgImage.active) {
       this.bgImage = this.add.image(width / 2, height / 2, bgKey).setDepth(z.bg);
     } else {
-      this.bgImage.setTexture(bgKey);
+      if (this.bgImage.texture.key !== bgKey) {
+        // Crossfade mềm mại khi chuyển giao giữa các buổi trong ngày (Day -> Sunset -> Night)
+        this.tweens.add({
+          targets: this.bgImage,
+          alpha: 0.35,
+          duration: 250,
+          yoyo: true,
+          onYoyo: () => {
+            if (this.bgImage && this.bgImage.active) {
+              this.bgImage.setTexture(bgKey);
+              this.bgImage.setScale(bgScale);
+            }
+          },
+        });
+      } else {
+        this.bgImage.setTexture(bgKey);
+      }
     }
-    const bgScale = Math.max(width / this.bgImage.width, height / this.bgImage.height);
     this.bgImage.setPosition(width / 2, height / 2).setScale(bgScale);
 
     if (this.bgG && this.bgG.active) {
@@ -524,27 +678,37 @@ export class GameplayScene extends Phaser.Scene {
     const g = this.add.graphics();
     this.bgG = g;
 
-    const laneSpan = (this.lanes[1] - this.lanes[0]);
-    const div1X = (this.lanes[0] + this.lanes[1]) / 2;
-    const div2X = (this.lanes[1] + this.lanes[2]) / 2;
-    const leftEdge = this.lanes[0] - laneSpan / 2;
-    const rightEdge = this.lanes[2] + laneSpan / 2;
+    // 1. Playfield 4 Straight Vertical Road Lines (Line 0 to Line 3)
+    const pf = this.getPlayfieldBounds(width, height);
 
-    // Road asphalt backing
-    g.fillStyle(0x0F172A, 0.40);
-    g.fillRect(leftEdge, 0, rightEdge - leftEdge, height);
-
-    // Dashed center lane lines
-    g.lineStyle(4, 0xFFFFFF, 0.60);
-    for (let y = 0; y < height; y += 32) {
-      g.strokeLineShape(new Phaser.Geom.Line(div1X, y, div1X, y + 18));
-      g.strokeLineShape(new Phaser.Geom.Line(div2X, y, div2X, y + 18));
+    for (let i = 0; i <= 3; i++) {
+      const isDivider = (i === 1 || i === 2);
+      const alpha = isDivider ? 0.08 : 0.14;
+      const lineThickness = isDivider ? 1.8 : 2.4;
+      const lineX = leftEdge + i * laneWidth;
+      g.lineStyle(lineThickness, 0x0F172A, alpha);
+      g.strokeLineShape(new Phaser.Geom.Line(lineX, 0, lineX, height));
     }
 
-    // Outer lane boundaries
-    g.lineStyle(3, 0xFFFFFF, 0.80);
-    g.strokeLineShape(new Phaser.Geom.Line(leftEdge, 0, leftEdge, height));
-    g.strokeLineShape(new Phaser.Geom.Line(rightEdge, 0, rightEdge, height));
+    // Outer playfield boundaries / vignettes
+    if (width > pf.width + 10) {
+      // Side vignettes on outer desktop margins
+      g.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0.22, 0.0, 0.22, 0.0);
+      g.fillRect(0, 0, pf.left, height);
+      g.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0.0, 0.22, 0.0, 0.22);
+      g.fillRect(pf.right, 0, width - pf.right, height);
+    } else {
+      // Soft mobile side vignette
+      const vigW = Math.min(36, width * 0.08);
+      g.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0.12, 0.0, 0.12, 0.0);
+      g.fillRect(0, 0, vigW, height);
+      g.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0.0, 0.12, 0.0, 0.12);
+      g.fillRect(width - vigW, 0, vigW, height);
+    }
+
+    // 3. Smooth top-edge gradient fade from rgba(0,0,0,0.35) at y=0 to transparent at y=120px (No hard seam)
+    g.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0.35, 0.35, 0.0, 0.0);
+    g.fillRect(0, 0, width, 120);
 
     g.setDepth(z.bg + 1);
   }
@@ -561,7 +725,7 @@ export class GameplayScene extends Phaser.Scene {
     const baseScaleX = catSize.w / this.cat.width;
     const baseScaleY = catSize.h / this.cat.height;
 
-    // Hiệu ứng bụi khói khi nhảy chuyển làn
+    // Hiệu ứng 2 vệt bụi khói dưới chân khi nhảy chuyển làn (chống trượt băng)
     this.spawnDust(this.cat.x, this.cat.y);
 
     // Check Near-Miss (Né sát sạt): Có con ong nào ở làn cũ đang sát mèo không?
@@ -577,8 +741,30 @@ export class GameplayScene extends Phaser.Scene {
       if (nm.feverTriggered) this.onFeverStart();
     }
 
-    // Tween chuyển làn ngang + nghiêng người nhẹ + squash & stretch
-    const targetAngle = (target - prev) * 12;
+    // Tween bóng đổ tiếp đất cùng nhịp nhảy (slightly delayed for depth feel)
+    const prevX = this.lanes[prev];
+    const targetX = this.lanes[target];
+    this.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: dur.tn,
+      delay: 35,
+      ease: 'cubic.out',
+      onUpdate: (tw) => {
+        const p = tw.getValue() ?? 0;
+        const curX = prevX + (targetX - prevX) * p;
+        const sq = 1 - Math.sin(p * Math.PI) * 0.22;
+        this.drawCatShadow(curX, this.cat.y, catSize.w, catSize.h, sq, sq);
+      },
+      onComplete: () => {
+        this.drawCatShadow(targetX, this.cat.y, catSize.w, catSize.h, 1, 1);
+      },
+    });
+
+    this.isMovingLane = true;
+
+    // Tween chuyển làn ngang + nghiêng người 8-10 độ + squash & stretch
+    const targetAngle = (target - prev) * 10;
     this.tweens.add({
       targets: this.cat,
       x: this.lanes[target],
@@ -595,6 +781,9 @@ export class GameplayScene extends Phaser.Scene {
           angle: 0,
           duration: 80,
           ease: 'quad.out',
+          onComplete: () => {
+            this.isMovingLane = false;
+          },
         });
       },
     });
@@ -655,7 +844,7 @@ export class GameplayScene extends Phaser.Scene {
     const catY = this.cat.y;
     const catX = this.cat.x;
     const catSize = this.getCatSize(this.scale.width, this.scale.height);
-    const laneSpan = this.getLaneSpan(this.scale.width, this.scale.height);
+    const laneSpan = this.scale.width / 3;
     const isFever = ctx.engine.isFeverActive();
     const isMagnet = ctx.engine.isMagnetActive() || isFever;
 
@@ -663,6 +852,9 @@ export class GameplayScene extends Phaser.Scene {
     this.updateCatEffects(catX, catY, catSize);
 
     // Di chuyển vật phẩm & Hút nam châm
+    const playfieldTop = this.getPlayfieldTop(this.scale.height);
+    const groundH = this.scale.height - playfieldTop;
+
     for (const it of this.items) {
       if (it.collected) continue;
 
@@ -673,6 +865,7 @@ export class GameplayScene extends Phaser.Scene {
         it.container.y += Math.max(diff.speed * 0.8, dy * 6.5) * dt;
       } else {
         it.container.y += diff.speed * 0.85 * dt;
+        it.container.x = this.lanes[it.lane];
       }
 
       // Ăn vật phẩm (Collision)
@@ -691,6 +884,16 @@ export class GameplayScene extends Phaser.Scene {
       if (!b.container || !b.container.active) continue;
       b.container.y += diff.speed * b.speedMult * dt;
       const isFat = b.type === 'fat';
+
+      if (!b.swerved) {
+        if (isFat) {
+          const l1X = this.lanes[b.lane];
+          const l2X = this.lanes[b.secondaryLane ?? b.lane];
+          b.container.x = (l1X + l2X) / 2;
+        } else {
+          b.container.x = this.lanes[b.lane];
+        }
+      }
 
       // Xử lý cơ chế rẽ làn của Ong Zigzag (chỉ rẽ vào làn an toàn, không kẹp dính)
       if (b.type === 'zigzag' && !b.swerved && b.container.y > this.scale.height * 0.38) {
@@ -716,7 +919,7 @@ export class GameplayScene extends Phaser.Scene {
           this.tweens.add({
             targets: b.container,
             x: this.lanes[targetLane],
-            duration: 260,
+            duration: 240,
             ease: 'sine.inout',
           });
         }
@@ -725,20 +928,38 @@ export class GameplayScene extends Phaser.Scene {
       // Né thành công
       if (!b.dodged && b.container.y > catY + catSize.h * 0.4) {
         b.dodged = true;
-        const isCatInBeeLane = isFat
-          ? (b.lane === this.currentLane || b.secondaryLane === this.currentLane)
-          : (b.lane === this.currentLane);
+        let isCatInBeeLane = false;
+        if (isFat) {
+          const safeLane = (b.lane === 0 && b.secondaryLane === 1) ? 2 : 0;
+          isCatInBeeLane = (this.currentLane !== safeLane);
+        } else {
+          isCatInBeeLane = (b.lane === this.currentLane);
+        }
         if (!isCatInBeeLane) {
           this.onDodge(b);
         }
         this.handleSwarmBeeDone(b);
       }
 
-      // Va chạm ong — Sửa chính xác cho Ong Béo (chắn cả 2 làn) và Ong Thường
-      const hitY = Math.abs(b.container.y - catY) < (catSize.h * 0.58);
-      const hitX = isFat
-        ? (Math.abs(b.container.x - catX) < laneSpan * 0.90 || b.lane === this.currentLane || b.secondaryLane === this.currentLane)
-        : (b.lane === this.currentLane && Math.abs(b.container.x - catX) < (catSize.w * 0.50));
+      // Va chạm ong — Chuẩn xác cho Ong Béo (chắn 2 làn) và Ong Thường
+      const hitY = Math.abs(b.container.y - catY) < (catSize.h * 0.52);
+      let hitX = false;
+      if (isFat) {
+        // Ong Béo chiếm 2 làn (lane1 và lane2). Làn còn lại là safeLane.
+        const safeLane = (b.lane === 0 && b.secondaryLane === 1) ? 2 : 0;
+        const { leftEdge, laneWidth } = this.getStraightRoadMetrics(this.scale.width, this.scale.height);
+        if (safeLane === 2) {
+          // Làn an toàn là làn Phải (2). Vùng nguy hiểm là làn Trái (0) và Giữa (1)
+          const rightBoundary = leftEdge + 2 * laneWidth;
+          hitX = catX < (rightBoundary - catSize.w * 0.18);
+        } else {
+          // Làn an toàn là làn Trái (0). Vùng nguy hiểm là làn Giữa (1) và Phải (2)
+          const leftBoundary = leftEdge + laneWidth;
+          hitX = catX > (leftBoundary + catSize.w * 0.18);
+        }
+      } else {
+        hitX = (b.lane === this.currentLane || Math.abs(b.container.x - catX) < (catSize.w * 0.45)) && Math.abs(b.container.x - catX) < (catSize.w * 0.45);
+      }
 
       if (hitY && hitX) {
         if (isFever) {
@@ -775,33 +996,227 @@ export class GameplayScene extends Phaser.Scene {
       this.fatBeeActive = false;
     }
 
+    // Faint motion trail for bees when speed level >= 2 (or diff.speed >= 140)
+    if (currentLevel >= 2 || diff.speed >= 140) {
+      this.beeTrailTimer += dt;
+      if (this.beeTrailTimer >= 0.09) {
+        this.beeTrailTimer = 0;
+        for (const b of this.bees) {
+          if (b.container && b.container.active && b.container.y > 0 && b.container.y < this.scale.height) {
+            const trailG = this.add.circle(b.container.x, b.container.y - 10, 14, 0xFFA502, 0.22).setDepth(z.actor - 1);
+            this.tweens.add({
+              targets: trailG,
+              alpha: 0,
+              scale: 0.3,
+              duration: 180,
+              ease: 'quad.out',
+              onComplete: () => trailG.destroy(),
+            });
+          }
+        }
+      }
+    }
+
+    // 1. Subtle Sky Drift
+    if (this.bgImage && this.bgImage.active) {
+      this.bgImage.x = (this.scale.width / 2) + Math.sin(this.elapsed * 0.12) * 6;
+    }
+
+    // 2. Draw ground flow, moving track dashes & nature particles
+    this.drawGroundFlow(diff.speed, dt, isFever);
+    this.drawRoadsideProps(diff.speed, dt);
+
+    // 3. Cat running trot / bobbing & footstep puffs
+    if (this.running && !this.isPaused && !this.isMovingLane && this.cat && this.cat.active) {
+      const runFreq = Math.min(22, 14 + (diff.speed - 120) * 0.04);
+      const runBob = Math.sin(this.elapsed * runFreq) * 2.8;
+      const baseCatY = this.getCatY(this.scale.height);
+      this.cat.y = baseCatY + runBob;
+
+      const baseScaleX = catSize.w / this.cat.width;
+      const baseScaleY = catSize.h / this.cat.height;
+      const squash = Math.sin(this.elapsed * runFreq) * 0.035;
+      this.cat.setScale(baseScaleX * (1 + squash), baseScaleY * (1 - squash));
+
+      // Draw shadow synced with running bob
+      const shadowSq = 1 - Math.abs(squash) * 0.8;
+      this.drawCatShadow(this.cat.x, baseCatY, catSize.w, catSize.h, shadowSq, shadowSq);
+
+      // Running footstep dust puff every ~0.26s
+      this.runningPuffTimer += dt;
+      if (this.runningPuffTimer >= 0.26) {
+        this.runningPuffTimer = 0;
+        this.spawnRunningPuff(this.cat.x, baseCatY + catSize.h * 0.38);
+      }
+    }
+
     this.drawFeverBar();
-    this.drawSpeedLines(diff.speed, isFever);
 
     if (ctx.engine.checkRecord()) this.showRecordPopup();
   }
 
-  private drawSpeedLines(speed: number, isFever: boolean) {
+  private spawnRunningPuff(x: number, y: number) {
+    const footX = x + (Math.random() < 0.5 ? -14 : 14);
+    const puff = this.add.circle(footX + Phaser.Math.Between(-3, 3), y, Phaser.Math.Between(4, 7), 0xFFFFFF, 0.35).setDepth(z.actor - 1);
+    this.tweens.add({
+      targets: puff,
+      y: y + Phaser.Math.Between(8, 16),
+      alpha: 0,
+      scale: 0.3,
+      duration: 250,
+      ease: 'quad.out',
+      onComplete: () => puff.destroy(),
+    });
+  }
+
+  private drawGroundFlow(speed: number, dt: number, isFever: boolean) {
     const g = this.speedLinesG;
     g.clear();
 
-    if (!isFever && speed < 180) return;
+    const { width, height } = this.scale;
+    const { leftEdge, laneWidth, roadW } = this.getStraightRoadMetrics(width, height);
+
+    // 1. Moving dashed lane separators (downward straight vertical rolling motion)
+    const dashLength = 36;
+    const gapLength = 24;
+    const totalCycle = dashLength + gapLength;
+    const flowOffset = (this.elapsed * speed * 0.85) % totalCycle;
+
+    g.lineStyle(2, 0x0F172A, 0.18);
+    for (const divIdx of [1, 2]) {
+      const lineX = leftEdge + divIdx * laneWidth;
+      let curY = flowOffset - totalCycle;
+      while (curY < height) {
+        const segStartY = Math.max(0, curY);
+        const segEndY = Math.min(height, curY + dashLength);
+        if (segEndY > segStartY) {
+          g.strokeLineShape(new Phaser.Geom.Line(lineX, segStartY, lineX, segEndY));
+        }
+        curY += totalCycle;
+      }
+    }
+
+    // 2. Straight vertical ground breeze / grass streaks
+    const streakCount = isFever ? 12 : 8;
+    const streakCol = isFever ? 0xFFA502 : 0xFFFFFF;
+    for (let i = 0; i < streakCount; i++) {
+      const cycleT = ((this.elapsed * (speed * 0.0016) + (i / streakCount)) % 1);
+      const sy = cycleT * height;
+      const laneIndex = (i % 3);
+      const laneCenterX = leftEdge + (laneIndex + 0.5) * laneWidth;
+      const laneOffset = Math.sin(i * 3.7 + this.elapsed * 0.5) * (laneWidth * 0.3);
+      const sx = laneCenterX + laneOffset;
+
+      const len = 28;
+      const endY = Math.min(height, sy + len);
+
+      const alpha = Math.sin(cycleT * Math.PI) * (isFever ? 0.38 : 0.16);
+      const thickness = 1.6;
+
+      g.lineStyle(thickness, streakCol, alpha);
+      g.strokeLineShape(new Phaser.Geom.Line(sx, sy, sx, endY));
+    }
+
+    // 3. Update & render floating dandelion / leaf nature particles
+    const pG = this.natureParticlesG;
+    if (pG && pG.active) {
+      pG.clear();
+      for (const p of this.natureParticles) {
+        p.y += speed * 0.75 * p.speedMult * dt;
+        if (p.y > height + 20) {
+          p.y = Phaser.Math.Between(-20, 0);
+          p.xRatio = Math.random();
+        }
+
+        const sway = Math.sin(this.elapsed * p.swaySpeed + p.swayOffset) * 12;
+        const px = leftEdge + p.xRatio * roadW + sway;
+        const pProgress = Math.max(0, Math.min(1, p.y / height));
+        const pAlpha = Math.sin(pProgress * Math.PI) * p.alpha;
+
+        pG.fillStyle(p.color, pAlpha);
+        pG.fillCircle(px, p.y, p.size);
+      }
+    }
+  }
+
+  private drawRoadsideProps(speed: number, dt: number) {
+    const g = this.roadsidePropsG;
+    if (!g || !g.active) return;
+    g.clear();
 
     const { width, height } = this.scale;
-    const alpha = isFever ? 0.45 : Math.min(0.3, (speed - 180) * 0.002);
-    const lineCol = isFever ? 0xFFA502 : 0xFFFFFF;
+    const { leftEdge, roadW } = this.getStraightRoadMetrics(width, height);
 
-    g.lineStyle(2, lineCol, alpha);
-    const laneSpan = this.getLaneSpan(width, height);
-    const leftEdge = this.lanes[0] - laneSpan / 2;
-    const rightEdge = this.lanes[2] + laneSpan / 2;
+    const propTypes: Array<'daisy' | 'grass' | 'flower_purple' | 'pebble'> = ['daisy', 'grass', 'flower_purple', 'pebble'];
 
-    const lineCount = isFever ? 6 : 4;
-    for (let i = 0; i < lineCount; i++) {
-      const ly = (this.elapsed * 550 + i * (height / lineCount)) % height;
-      const len = Phaser.Math.Between(40, 80);
-      g.strokeLineShape(new Phaser.Geom.Line(leftEdge - 15, ly, leftEdge - 15, ly + len));
-      g.strokeLineShape(new Phaser.Geom.Line(rightEdge + 15, ly, rightEdge + 15, ly + len));
+    for (const p of this.roadsideProps) {
+      // Advance progress t downwards
+      p.t += (speed * 0.00085 * p.speedMult) * dt;
+      if (p.t >= 1.0) {
+        p.t = p.t % 1.0;
+        p.side = Math.random() < 0.5 ? -1 : 1;
+        p.speedMult = 0.85 + Math.random() * 0.30;
+        p.lateralOffsetRatio = Math.random();
+        p.propType = propTypes[Math.floor(Math.random() * propTypes.length)];
+      }
+
+      const py = p.t * height;
+      const edgeX = p.side === -1 ? leftEdge : (leftEdge + roadW);
+      // Lateral outward offset into roadside grass
+      const px = edgeX + p.side * (12 + p.lateralOffsetRatio * 28);
+      const scale = 0.85;
+      const alpha = Math.min(1.0, Math.sin(p.t * Math.PI) * 1.5);
+
+      if (alpha <= 0.01) continue;
+
+      if (p.propType === 'daisy') {
+        // Daisy: Green leaves + 5 white petals + gold center
+        g.fillStyle(0x388E3C, alpha * 0.8);
+        g.fillCircle(px - 3 * scale, py + 2 * scale, 2.5 * scale);
+        g.fillCircle(px + 3 * scale, py + 2 * scale, 2.5 * scale);
+
+        // White petals
+        g.fillStyle(0xFFFFFF, alpha * 0.95);
+        const petalDist = 3.5 * scale;
+        const petalR = 3.2 * scale;
+        for (let a = 0; a < 5; a++) {
+          const ang = (a / 5) * Math.PI * 2;
+          g.fillCircle(px + Math.cos(ang) * petalDist, py + Math.sin(ang) * petalDist, petalR);
+        }
+        // Gold Center
+        g.fillStyle(0xFFD700, alpha);
+        g.fillCircle(px, py, 3.0 * scale);
+      } else if (p.propType === 'flower_purple') {
+        // Purple / Lavender blossom
+        g.fillStyle(0x2E7D32, alpha * 0.8);
+        g.fillCircle(px, py + 3 * scale, 2.8 * scale);
+
+        g.fillStyle(0xBA68C8, alpha * 0.92);
+        const petalDist = 3.2 * scale;
+        const petalR = 3.0 * scale;
+        for (let a = 0; a < 5; a++) {
+          const ang = (a / 5) * Math.PI * 2;
+          g.fillCircle(px + Math.cos(ang) * petalDist, py + Math.sin(ang) * petalDist, petalR);
+        }
+        g.fillStyle(0xFFEB3B, alpha);
+        g.fillCircle(px, py, 2.6 * scale);
+      } else if (p.propType === 'grass') {
+        // 3 Tuft blades of grass
+        g.lineStyle(2.4 * scale, 0x4CAF50, alpha * 0.9);
+        g.strokeLineShape(new Phaser.Geom.Line(px, py, px - 5 * scale, py - 9 * scale));
+        g.strokeLineShape(new Phaser.Geom.Line(px, py, px, py - 11 * scale));
+        g.strokeLineShape(new Phaser.Geom.Line(px, py, px + 5 * scale, py - 9 * scale));
+      } else if (p.propType === 'pebble') {
+        // Pebble with shadow & highlight
+        g.fillStyle(0x1B1008, alpha * 0.25);
+        g.fillEllipse(px, py + 2 * scale, 7 * scale, 3.5 * scale);
+
+        g.fillStyle(0x94A3B8, alpha * 0.85);
+        g.fillCircle(px, py, 4.5 * scale);
+
+        g.fillStyle(0xE2E8F0, alpha * 0.7);
+        g.fillCircle(px - 1.5 * scale, py - 1.5 * scale, 2.0 * scale);
+      }
     }
   }
 
@@ -848,9 +1263,6 @@ export class GameplayScene extends Phaser.Scene {
 
   private getOccupiedLanesAtTop(topYThreshold = 200): Set<number> {
     const occupied = new Set<number>();
-    // Khóa luôn các làn đang có biển cảnh báo ⚠️ chờ rơi
-    this.pendingSpeedyLanes.forEach(l => occupied.add(l));
-
     for (const b of this.bees) {
       if (b.container && b.container.active && b.container.y < topYThreshold) {
         occupied.add(b.lane);
@@ -869,9 +1281,6 @@ export class GameplayScene extends Phaser.Scene {
     const blockedLanes = new Set<number>();
     blockedLanes.add(newLane);
     if (newSecondaryLane !== undefined) blockedLanes.add(newSecondaryLane);
-
-    // Tính luôn các làn đang có biển cảnh báo ⚠️
-    this.pendingSpeedyLanes.forEach(l => blockedLanes.add(l));
 
     // safeTimeDelta 0.38s: đảm bảo luôn có đủ thời gian phản xạ (khoảng cách an toàn)
     const safeTimeDelta = 0.38;
@@ -919,25 +1328,7 @@ export class GameplayScene extends Phaser.Scene {
     const lane = validLanes[Math.floor(Math.random() * validLanes.length)];
 
     if (type === 'speedy') {
-      this.pendingSpeedyLanes.add(lane);
-      const beacon = this.add.text(this.lanes[lane], 30, '⚠️', { fontSize: '20px' }).setOrigin(0.5).setDepth(z.hud);
-      this.tweens.add({
-        targets: beacon,
-        scale: 1.3,
-        alpha: 0.3,
-        duration: 130,
-        yoyo: true,
-        repeat: 1, // Tổng thời gian cảnh báo ~0.5s dứt khoát
-        onComplete: () => {
-          this.pendingSpeedyLanes.delete(lane);
-          beacon.destroy();
-          if (!this.running) return;
-          // Kiểm tra an toàn lần 2 trước khi thả
-          const canSpawnSpeedy = !this.willBlockAllLanes(lane, undefined, 1.18, -beeSize * 0.90, speed);
-          const finalSpeedMult = canSpawnSpeedy ? 1.18 : 1.0;
-          this.createBeeEntity('speedy', lane, beeSize * 0.90, finalSpeedMult, 0xFF4757);
-        },
-      });
+      this.createBeeEntity('speedy', lane, beeSize * 0.90, speedMult, 0xFF4757);
     } else if (type === 'zigzag') {
       this.createBeeEntity('zigzag', lane, beeSize, 1.0, 0xBA68C8, '🌀');
     } else {
@@ -969,6 +1360,7 @@ export class GameplayScene extends Phaser.Scene {
   private createBeeEntity(type: BeeType, lane: number, size: number, speedMult: number, tintColor?: number, iconExtra?: string) {
     const container = this.add.container(this.lanes[lane], -size).setDepth(z.actor);
     const sprite = this.add.image(0, 0, 'bee_wasp').setDisplaySize(size, size);
+    sprite.setFlipX(Math.random() < 0.5); // Random flipX on spawn so 3 on-screen bees never look identical
     if (tintColor) sprite.setTint(tintColor);
     container.add(sprite);
 
@@ -976,6 +1368,33 @@ export class GameplayScene extends Phaser.Scene {
       const tag = this.add.text(size * 0.3, -size * 0.3, iconExtra, { fontSize: '14px' }).setOrigin(0.5);
       container.add(tag);
     }
+
+    // 2 wing flapping poses (varying wing angle oscillation, alpha 0.85)
+    this.tweens.add({
+      targets: sprite,
+      angle: { from: -8, to: 8 },
+      duration: 90,
+      yoyo: true,
+      repeat: -1,
+      ease: 'sine.inout',
+    });
+
+    // 1-beat anticipation scale (0.88 -> 1.08 -> 1.0) before swooping down
+    container.setScale(0.88);
+    this.tweens.add({
+      targets: container,
+      scale: 1.08,
+      duration: 120,
+      ease: 'back.out',
+      onComplete: () => {
+        this.tweens.add({
+          targets: container,
+          scale: 1.0,
+          duration: 80,
+          ease: 'quad.out',
+        });
+      },
+    });
 
     const bee: Bee = { container, sprite, type, lane, speedMult, dodged: false };
     this.bees.push(bee);
@@ -993,6 +1412,7 @@ export class GameplayScene extends Phaser.Scene {
   private createFatBeeEntity(midX: number, lane1: number, lane2: number, size: number) {
     const container = this.add.container(midX, -size).setDepth(z.actor);
     const sprite = this.add.image(0, 0, 'bee_wasp').setDisplaySize(size, size);
+    sprite.setFlipX(Math.random() < 0.5);
     sprite.setTint(0xF1C40F);
     const crown = this.add.text(0, -size * 0.38, '👑', { fontSize: '18px' }).setOrigin(0.5);
     container.add([sprite, crown]);
@@ -1061,6 +1481,7 @@ export class GameplayScene extends Phaser.Scene {
       } else {
         const container = this.add.container(this.lanes[l], -beeSize).setDepth(z.actor);
         const sprite = this.add.image(0, 0, 'bee_wasp').setDisplaySize(beeSize, beeSize);
+        sprite.setFlipX(Math.random() < 0.5);
         sprite.setTint(0xFF4757);
         container.add(sprite);
         const bee: Bee = { container, sprite, type: 'speedy', lane: l, speedMult: 1.15, dodged: false, isSwarm: true };
@@ -1109,13 +1530,52 @@ export class GameplayScene extends Phaser.Scene {
     const bg = this.add.graphics();
 
     if (type === 'fish') {
-      bg.fillStyle(0xFFFFFF, 0.18);
-      bg.fillCircle(0, 0, 24);
-      bg.lineStyle(2.5, 0xFFD700, 0.95);
-      bg.strokeCircle(0, 0, 24);
+      // 1. Soft radial gold glow (alpha ~0.35, feathered multi-layer)
+      const glowSteps = 4;
+      const maxGlowR = 36;
+      for (let gStep = 0; gStep < glowSteps; gStep++) {
+        const rG = maxGlowR * (1 - gStep / glowSteps * 0.55);
+        bg.fillStyle(0xFFB300, 0.35 / glowSteps);
+        bg.fillCircle(0, 0, rG);
+      }
 
-      const sprite = this.add.image(0, 0, 'fish_item').setDisplaySize(48, 48);
-      container.add([bg, sprite]);
+      // 2. Two small rotating sparkles around fish
+      const sparkleCont = this.add.container(0, 0);
+      const s1 = this.add.text(26, -10, '✦', { fontSize: '13px', color: '#FFF3A8' }).setOrigin(0.5);
+      const s2 = this.add.text(-26, 10, '✦', { fontSize: '13px', color: '#FFF3A8' }).setOrigin(0.5);
+      sparkleCont.add([s1, s2]);
+      this.tweens.add({
+        targets: sparkleCont,
+        angle: 360,
+        duration: 2400,
+        repeat: -1,
+        ease: 'linear',
+      });
+
+      // 3. Fish sprite with warm cartoon gold tint & gentle vertical bob
+      const sprite = this.add.image(0, 0, 'fish_item').setDisplaySize(66, 66);
+      sprite.setTint(0xFFF3C4);
+
+      this.tweens.add({
+        targets: sprite,
+        y: -5,
+        duration: 750,
+        yoyo: true,
+        repeat: -1,
+        ease: 'sine.inout',
+      });
+
+      container.add([bg, sparkleCont, sprite]);
+
+      // 4. Slow pulse scale 1.0 -> 1.06
+      this.tweens.add({
+        targets: container,
+        scale: 1.06,
+        duration: 900,
+        yoyo: true,
+        repeat: -1,
+        ease: 'sine.inout',
+      });
     } else {
       let iconStr = '🛡️';
       let haloColor = 0x00E5FF;
@@ -1123,23 +1583,23 @@ export class GameplayScene extends Phaser.Scene {
         iconStr = '🧲';
         haloColor = 0xFF4757;
       }
-      bg.fillStyle(haloColor, 0.20);
-      bg.fillCircle(0, 0, 24);
-      bg.lineStyle(2.5, haloColor, 0.95);
-      bg.strokeCircle(0, 0, 24);
+      bg.fillStyle(haloColor, 0.22);
+      bg.fillCircle(0, 0, 30);
+      bg.lineStyle(3, haloColor, 0.95);
+      bg.strokeCircle(0, 0, 30);
 
-      const txt = this.add.text(0, 0, iconStr, { fontSize: '24px' }).setOrigin(0.5);
+      const txt = this.add.text(0, 0, iconStr, { fontSize: '28px' }).setOrigin(0.5);
       container.add([bg, txt]);
-    }
 
-    this.tweens.add({
-      targets: container,
-      scale: 1.12,
-      duration: 500,
-      yoyo: true,
-      repeat: -1,
-      ease: 'sine.inout',
-    });
+      this.tweens.add({
+        targets: container,
+        scale: 1.12,
+        duration: 500,
+        yoyo: true,
+        repeat: -1,
+        ease: 'sine.inout',
+      });
+    }
 
     this.items.push({ container, type, lane, collected: false });
   }
@@ -1180,30 +1640,76 @@ export class GameplayScene extends Phaser.Scene {
     this.drawFeverBar();
   }
 
-  private onDodge(_bee: Bee) {
+  private onDodge(bee: Bee) {
     const r = ctx.engine.registerDodge();
     this.updateHud();
     this.playSfx('sfx_dodge', 0.4);
     this.playSfx('sfx_score', 0.3);
+
+    // Floating "+1" score text with dark stroke (ART-PASS §4.3)
+    const floatX = this.lanes[bee.lane];
+    const floatY = this.scale.height * 0.70;
+    this.showFloatingText(floatX, floatY, '+1', '#FFD700');
+
     if (r.comboTriggered) this.showComboPopup();
     if (r.feverTriggered) this.onFeverStart();
     if (r.levelUp) this.onLevelUp(r.newLevel);
+  }
+
+  private spawnLevelConfetti(level: number) {
+    const { width, height } = this.scale;
+    const pal = paletteForLevel(level);
+    const colors = pal.confetti;
+    for (let i = 0; i < 28; i++) {
+      const x = Phaser.Math.Between(width * 0.15, width * 0.85);
+      const y = Phaser.Math.Between(height * 0.25, height * 0.50);
+      const col = colors[i % colors.length];
+      const p = (i % 2 === 0)
+        ? this.add.circle(x, y, Phaser.Math.Between(3, 7), col, 0.95)
+        : this.add.rectangle(x, y, Phaser.Math.Between(6, 12), Phaser.Math.Between(4, 8), col, 0.95);
+      p.setDepth(z.tutorial + 2);
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Phaser.Math.Between(40, 110);
+      this.tweens.add({
+        targets: p,
+        x: x + Math.cos(angle) * dist,
+        y: y + Math.sin(angle) * dist + 35,
+        angle: Phaser.Math.Between(-180, 180),
+        alpha: 0,
+        scale: 0.3,
+        duration: 650,
+        ease: 'quad.out',
+        onComplete: () => p.destroy(),
+      });
+    }
   }
 
   private onLevelUp(level: number) {
     this.drawLevelBg(level);
     this.levelLabel.setText('Level ' + level);
     this.tweens.add({ targets: this.levelLabel, scale: 1.3, duration: dur.tn, yoyo: true, ease: 'back.out' });
-    this.levelPopup.setText('Level ' + level);
+    this.levelPopup.setText('LEVEL ' + level + '!');
     this.tweens.add({
-      targets: this.levelPopup, alpha: 1, scale: { from: 0.6, to: 1 }, duration: 200, ease: 'back.out',
-      onComplete: () => this.tweens.add({ targets: this.levelPopup, alpha: 0, duration: 300, delay: 1000, ease: 'cubic.in' }),
+      targets: this.levelPopup, alpha: 1, scale: { from: 0.6, to: 1.15 }, duration: 220, ease: 'back.out',
+      onComplete: () => this.tweens.add({ targets: this.levelPopup, alpha: 0, scale: 1.0, duration: 300, delay: 900, ease: 'cubic.in' }),
     });
+    this.spawnLevelConfetti(level);
     this.playSfx('sfx_levelup', 0.45);
   }
 
   private triggerFatBeeBreather() {
     this.fatBeeActive = true;
+    this.lastSpawn = 0;
+
+    // Dọn dẹp sạch toàn bộ ong thường đang có trên màn hình để làn an toàn đảm bảo 100% không có ong
+    for (const b of this.bees) {
+      if (b.container && b.container.active && b.type !== 'fat') {
+        this.spawnBeeExplosion(b.container.x, b.container.y);
+        b.container.destroy();
+      }
+    }
+    this.bees = this.bees.filter(b => b.container && b.container.active);
+
     this.playSfx('sfx_combo', 0.6, 1.2);
     this.showPowerupPopup('👑 FAT BEE BREAK! 🐟', '#FFD700');
 
@@ -1258,13 +1764,15 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private showFloatingText(x: number, y: number, text: string, txtColor: string) {
-    const t = this.add.text(x, y, text, fontStyle(type.h2, txtColor)).setOrigin(0.5).setDepth(z.hud);
+    const t = this.add.text(x, y, text, fontStyle(type.h2, txtColor))
+      .setOrigin(0.5)
+      .setDepth(z.hud)
+      .setStroke('#3A2E39', 3.5);
     this.tweens.add({
-      targets: t, y: y - 50, alpha: 0, duration: 600, ease: 'quad.out',
+      targets: t, y: y - 50, alpha: 0, scale: 1.1, duration: 550, ease: 'quad.out',
       onComplete: () => t.destroy(),
     });
   }
-
   private showRecordPopup() {
     const { width } = this.scale;
     const bg = this.add.graphics();
@@ -1281,46 +1789,97 @@ export class GameplayScene extends Phaser.Scene {
     this.spawnSparkles(width / 2, this.scale.height * 0.25, 0xFFA502);
   }
 
+  private drawFlameIcon(g: Phaser.GameObjects.Graphics, cx: number, cy: number, isFever: boolean) {
+    g.clear();
+    // Outer flame petal (smooth polygon)
+    const outerColor = isFever ? 0xFF3838 : 0xFF6B35;
+    g.fillStyle(outerColor, 1.0);
+    const outerPoints = [
+      new Phaser.Math.Vector2(cx, cy - 9),
+      new Phaser.Math.Vector2(cx + 3.5, cy - 5.5),
+      new Phaser.Math.Vector2(cx + 6.5, cy - 1),
+      new Phaser.Math.Vector2(cx + 6, cy + 4),
+      new Phaser.Math.Vector2(cx + 3.5, cy + 8),
+      new Phaser.Math.Vector2(cx, cy + 9.5),
+      new Phaser.Math.Vector2(cx - 3.5, cy + 8),
+      new Phaser.Math.Vector2(cx - 6, cy + 4),
+      new Phaser.Math.Vector2(cx - 6.5, cy - 1),
+      new Phaser.Math.Vector2(cx - 3.5, cy - 5.5),
+    ];
+    g.fillPoints(outerPoints, true);
+
+    // Inner flame core (bright gold)
+    const innerColor = 0xFFD700;
+    g.fillStyle(innerColor, 1.0);
+    const innerPoints = [
+      new Phaser.Math.Vector2(cx, cy - 3.5),
+      new Phaser.Math.Vector2(cx + 2.5, cy - 0.5),
+      new Phaser.Math.Vector2(cx + 2.5, cy + 3.5),
+      new Phaser.Math.Vector2(cx, cy + 6),
+      new Phaser.Math.Vector2(cx - 2.5, cy + 3.5),
+      new Phaser.Math.Vector2(cx - 2.5, cy - 0.5),
+    ];
+    g.fillPoints(innerPoints, true);
+  }
+
   private drawFeverBar() {
     const { width, height } = this.scale;
+    const pf = this.getPlayfieldBounds(width, height);
     const hudY = Math.max(38, height * 0.05);
-    const barW = Math.min(140, width * 0.32);
-    const barH = 10;
-    const barX = width / 2 - barW / 2;
-    const barY = hudY + 18;
+    const barW = Math.min(180, Math.max(140, pf.width * 0.38));
+    const barH = 28;
+    const barX = pf.center - barW / 2;
+    const barY = hudY + 24; // >= 10px gap from score text (score at hudY - 4, bottom at hudY + 11)
 
     const g = this.feverBarG;
     g.clear();
-
-    g.fillStyle(0x000000, 0.35);
-    g.fillRoundedRect(barX, barY, barW, barH, 5);
 
     const isFever = ctx.engine.isFeverActive();
     let ratio = ctx.engine.fever / 100;
     if (isFever) {
       ratio = ctx.engine.feverTimeRemaining / MECHANICS.feverDurationSec;
     }
+    ratio = Phaser.Math.Clamp(ratio, 0, 1);
 
-    const fillW = Math.max(0, barW * Math.min(1, ratio));
+    // 1. Pill Track: rgba(255,255,255,0.12), fully rounded (14px)
+    g.fillStyle(0xFFFFFF, 0.12);
+    g.fillRoundedRect(barX, barY, barW, barH, 14);
+    g.lineStyle(1.5, 0xFFFFFF, 0.22);
+    g.strokeRoundedRect(barX, barY, barW, barH, 14);
+
+    // 2. Horizontal gradient fill (#FF9F1C -> #E71D36) when > 0
+    const fillW = Math.max(0, barW * ratio);
     if (fillW > 0) {
-      const barColor = isFever ? 0xFF3838 : 0xFFA502;
-      g.fillStyle(barColor, 0.95);
-      g.fillRoundedRect(barX, barY, fillW, barH, 5);
+      g.fillGradientStyle(0xFF9F1C, 0xE71D36, 0xFF9F1C, 0xE71D36, 1, 1, 1, 1);
+      g.fillRoundedRect(barX, barY, Math.max(28, fillW), barH, 14);
     }
 
-    g.lineStyle(1.5, toColor(color.textOnAccent), 0.6);
-    g.strokeRoundedRect(barX, barY, barW, barH, 5);
+    // 3. Pulsing outer glow when full or fever mode
+    if (isFever || ratio >= 1.0) {
+      const glowAlpha = 0.45 + 0.35 * Math.sin(this.elapsed * 10);
+      g.lineStyle(3.5, 0xFF9F1C, glowAlpha);
+      g.strokeRoundedRect(barX - 2, barY - 2, barW + 4, barH + 4, 16);
+    }
 
+    // 4. Vector Flame Icon drawn with Graphics (NO font glyphs)
+    const flameCX = barX + 16;
+    const flameCY = barY + barH / 2;
+    this.drawFlameIcon(this.feverFlameG, flameCX, flameCY, isFever);
+
+    // 5. Bold >= 12px readable label at small scale
+    const labelX = barX + barW / 2 + 8;
+    const labelY = barY + barH / 2;
+    this.feverStatusLabel.setPosition(labelX, labelY);
     if (isFever) {
-      this.feverStatusLabel.setText('🔥 FEVER x2 🔥').setColor(color.warning);
+      this.feverStatusLabel.setText('FEVER 2X!').setColor('#FFF275');
     } else {
-      this.feverStatusLabel.setText(`FEVER ${Math.round(ctx.engine.fever)}%`).setColor(color.textOnAccent);
+      this.feverStatusLabel.setText(`FEVER ${Math.round(ctx.engine.fever)}%`).setColor('#FFFFFF');
     }
   }
 
   private updateHud() {
     this.scoreLabel.setText(String(ctx.engine.score));
-    this.fishLabel.setText(`🐟 ${ctx.engine.fish}`);
+    this.fishLabel.setText(`🐟 ×${ctx.engine.fish}`);
     this.tweens.add({ targets: this.scoreLabel, scale: 1.35, duration: 150, yoyo: true, ease: 'back.out' });
   }
 
@@ -1331,8 +1890,38 @@ export class GameplayScene extends Phaser.Scene {
     this.playSfx('sfx_hit', 0.45);
     this.sound.stopByKey('bgm_main');
 
-    this.cameras.main.shake(200, 0.02);
-    this.tweens.add({ targets: this.cat, angle: 45, y: this.cat.y + 40, alpha: 0.7, duration: 350, ease: 'cubic.out' });
+    // Camera micro-shake <= 4px (ART-PASS §4.3)
+    this.cameras.main.shake(180, 0.005);
+
+    // Honey-gold & white particle explosion
+    this.spawnBeeExplosion(this.cat.x, this.cat.y);
+
+    // Squash & stretch cat (scaleY 0.85 -> 1.15 -> 1.0, dur.pop)
+    const catSize = this.getCatSize(this.scale.width, this.scale.height);
+    const baseScaleX = catSize.w / this.cat.width;
+    const baseScaleY = catSize.h / this.cat.height;
+
+    this.tweens.add({
+      targets: this.cat,
+      scaleX: baseScaleX * 1.15,
+      scaleY: baseScaleY * 0.85,
+      angle: 12,
+      duration: 100,
+      ease: 'quad.out',
+      onComplete: () => {
+        this.tweens.add({
+          targets: this.cat,
+          scaleX: baseScaleX * 0.92,
+          scaleY: baseScaleY * 1.12,
+          angle: 25,
+          y: this.cat.y + 20,
+          alpha: 0.8,
+          duration: 150,
+          ease: 'quad.in',
+        });
+      },
+    });
+
     const end = ctx.engine.endGame();
     sdk.sendScore(end.score);
     await ctx.saveBest();
@@ -1358,17 +1947,20 @@ export class GameplayScene extends Phaser.Scene {
       this.cat.setDisplaySize(catSize.w, catSize.h);
       this.cat.x = this.lanes[this.currentLane];
       this.cat.y = catY;
+      this.drawCatShadow(this.lanes[this.currentLane], catY, catSize.w, catSize.h);
     }
+    const pf = this.getPlayfieldBounds(g.width, g.height);
     const hudY = Math.max(38, g.height * 0.05);
-    if (this.pauseBtnContainer) this.pauseBtnContainer.setPosition(28, hudY);
-    if (this.audioBtnContainer) this.audioBtnContainer.setPosition(68, hudY);
-    if (this.scoreLabel) this.scoreLabel.setPosition(g.width / 2, hudY - 4);
-    if (this.levelLabel) this.levelLabel.setPosition(g.width - 44, hudY - 2);
-    if (this.fishLabel) this.fishLabel.setPosition(g.width - 44, hudY + 20);
-    if (this.feverStatusLabel) this.feverStatusLabel.setPosition(g.width / 2, hudY + 24);
-    if (this.levelPopup) this.levelPopup.setPosition(g.width / 2, g.height * 0.36);
+    if (this.pauseBtnContainer) this.pauseBtnContainer.setPosition(pf.left + 26, hudY);
+    if (this.audioBtnContainer) this.audioBtnContainer.setPosition(pf.left + 66, hudY);
+    if (this.scoreLabel) this.scoreLabel.setPosition(pf.center, hudY - 4);
+    if (this.levelLabel) this.levelLabel.setPosition(pf.right - 44, hudY - 2);
+    if (this.fishLabel) this.fishLabel.setPosition(pf.right - 44, hudY + 20);
+    this.drawFeverBar();
+    if (this.levelPopup) this.levelPopup.setPosition(pf.center, g.height * 0.36);
     this.drawLevelBg(ctx.engine.getLevel());
   }
 }
+
 
 

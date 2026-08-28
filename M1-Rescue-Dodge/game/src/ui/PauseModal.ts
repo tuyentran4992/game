@@ -50,10 +50,17 @@ export class PauseModal {
     const panelG = this.scene.add.graphics();
     panelG.fillStyle(toColor(color.shadow), shadow.panel.alpha);
     panelG.fillRoundedRect(-pw / 2, -ph / 2 + shadow.panel.dy, pw, ph, radius.lg);
-    panelG.fillStyle(0xFFFFFF, 1);
+    // Volumetric Surface Fill
+    panelG.fillStyle(0xF8FAFC, 1);
     panelG.fillRoundedRect(-pw / 2, -ph / 2, pw, ph, radius.lg);
+    panelG.fillStyle(0xFFFFFF, 0.94);
+    panelG.fillRoundedRect(-pw / 2 + 3, -ph / 2 + 3, pw - 6, ph * 0.52, radius.lg - 2);
+    // Primary Border
     panelG.lineStyle(4, toColor(color.primary), 1);
     panelG.strokeRoundedRect(-pw / 2, -ph / 2, pw, ph, radius.lg);
+    // Inner Highlight
+    panelG.lineStyle(1.5, 0xFFFFFF, 0.70);
+    panelG.strokeRoundedRect(-pw / 2 + 2, -ph / 2 + 2, pw - 4, ph - 4, radius.lg - 2);
     panelContainer.add(panelG);
 
     let curY = -ph / 2 + (isShort ? 24 : 28);

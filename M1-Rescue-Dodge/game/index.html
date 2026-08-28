@@ -3,10 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Cat Rescue - Bee Dodge</title>
+  <title>Buzz Blitz — Cat vs Bees</title>
   <style>
     body { margin: 0; overflow: hidden; background: #000; }
     #game { width: 100vw; height: 100vh; }
+
+    /* Language / platform button margin alignment */
+    [class*="playgama"], [id*="playgama"], [class*="language"], [id*="language"], [class*="globe"], [id*="globe"], [class*="translate"], [id*="translate"], [class*="bridge-lang"], [id*="bridge-lang"] {
+      right: max(16px, calc((100vw - min(100vw, 460px, 58vh)) / 2 + 16px)) !important;
+      top: max(32px, 4.5vh) !important;
+    }
   </style>
   <!-- Playgama Bridge v2 (JS Core) — unified SDK đa nền tảng. Global `bridge`.
        Nộp qua Playgama (YouTube/CrazyGames/GD/Y8/...). Khi không có nền tảng
