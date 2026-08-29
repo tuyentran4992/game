@@ -9,7 +9,7 @@
     "entrypoints": {
       "default": {
         "inline": true,
-        "entry": "index.html"
+        "entry": "preview.html"
       },
       "game": {
         "entry": "index.html"

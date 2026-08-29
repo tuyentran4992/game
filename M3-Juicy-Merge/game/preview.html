@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Juicy Merge: Fruit Pop — Preview</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      touch-action: pan-y;
+      background: radial-gradient(circle at 50% 30%, #FFFDF5 0%, #FFF3D6 60%, #FFE8B8 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      color: #4A2810;
+      position: relative;
+    }
+
+    /* Floating background decorative fruits */
+    .bg-fruit {
+      position: absolute;
+      pointer-events: none;
+      opacity: 0.85;
+      filter: drop-shadow(0 4px 10px rgba(0,0,0,0.08));
+      animation: float 4s ease-in-out infinite alternate;
+    }
+
+    .f-1 { top: 8%; left: 8%; font-size: 32px; animation-duration: 3.5s; }
+    .f-2 { top: 12%; right: 10%; font-size: 38px; animation-duration: 4.2s; animation-delay: 0.5s; }
+    .f-3 { bottom: 15%; left: 10%; font-size: 36px; animation-duration: 3.8s; animation-delay: 1s; }
+    .f-4 { bottom: 12%; right: 12%; font-size: 44px; animation-duration: 4.5s; animation-delay: 0.2s; }
+
+    @keyframes float {
+      0% { transform: translateY(0px) rotate(0deg) scale(1); }
+      100% { transform: translateY(-12px) rotate(8deg) scale(1.05); }
+    }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 420px;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 2px solid rgba(255, 215, 130, 0.7);
+      border-radius: 24px;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      box-shadow: 0 16px 36px rgba(180, 110, 30, 0.12), 0 2px 8px rgba(0,0,0,0.04);
+    }
+
+    .hero-icon {
+      font-size: 56px;
+      line-height: 1;
+      margin-bottom: 8px;
+      filter: drop-shadow(0 8px 16px rgba(255, 90, 95, 0.3));
+      animation: pulse-icon 2.4s ease-in-out infinite;
+    }
+
+    @keyframes pulse-icon {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1) rotate(5deg); }
+    }
+
+    .title {
+      font-size: 26px;
+      font-weight: 800;
+      color: #381E0D;
+      letter-spacing: -0.5px;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      font-weight: 600;
+      color: #B56015;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .features {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .badge {
+      background: #FFF0D6;
+      border: 1px solid #FFE0A6;
+      color: #8C4700;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .play-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #FF6B4A 0%, #FF3D3D 100%);
+      color: #FFFFFF;
+      font-size: 18px;
+      font-weight: 800;
+      padding: 14px 24px;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(255, 61, 61, 0.38), inset 0 2px 0 rgba(255, 255, 255, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      touch-action: manipulation;
+    }
+
+    .play-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(255, 61, 61, 0.45);
+    }
+
+    .play-btn:active {
+      transform: translateY(1px) scale(0.98);
+      box-shadow: 0 4px 12px rgba(255, 61, 61, 0.3);
+    }
+
+    .hint {
+      margin-top: 10px;
+      font-size: 11px;
+      color: #A8866E;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-fruit f-1">🍓</div>
+  <div class="bg-fruit f-2">🍍</div>
+  <div class="bg-fruit f-3">🍇</div>
+  <div class="bg-fruit f-4">🍉</div>
+
+  <div class="card">
+    <div class="hero-icon">🍉</div>
+    <h1 class="title">Juicy Merge</h1>
+    <div class="subtitle">Drop • Merge • Grow</div>
+
+    <div class="features">
+      <span class="badge">🏆 Leaderboard</span>
+      <span class="badge">🎯 Daily Challenge</span>
+      <span class="badge">✨ 15 Fruit Tiers</span>
+    </div>
+
+    <button id="play-btn" class="play-btn" type="button" aria-label="Play Juicy Merge in Fullscreen">
+      <span>▶️</span>
+      <span>Play Game</span>
+    </button>
+    <div class="hint">Opens full screen for the best physics experience</div>
+  </div>
+
+  <script type="module" src="/src/preview.ts"></script>
+</body>
+</html>
