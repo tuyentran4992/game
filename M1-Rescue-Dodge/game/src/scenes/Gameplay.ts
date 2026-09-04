@@ -1481,7 +1481,7 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   /** Spawn render 1 con ong theo quyết định của director (giữ nguyên createBeeEntity cũ). */
-  private spawnBeeEntity(type: BeeType, lane: number, speedMult: number, baseSpeed: number): void {
+  private spawnBeeEntity(type: BeeType, lane: number, speedMult: number): void {
     const beeSize = this.getBeeSize(this.scale.width, this.scale.height);
     if (type === 'speedy') {
       this.createBeeEntity('speedy', lane, beeSize * 0.90, speedMult, 0xFF4757);
@@ -1490,7 +1490,6 @@ export class GameplayScene extends Phaser.Scene {
     } else {
       this.createBeeEntity('normal', lane, beeSize, speedMult);
     }
-    void baseSpeed;
   }
 
   /** Gọi director mỗi frame; scene chỉ VẼ quyết định (T1c — logic cadence/refusal/swarm ở tầng A). */
@@ -1506,7 +1505,7 @@ export class GameplayScene extends Phaser.Scene {
     if (result.swarmTriggered) this.triggerSwarmWave();
 
     for (const decision of result.spawned) {
-      this.spawnBeeEntity(decision.type, decision.lane, decision.speedMult, diff.speed);
+      this.spawnBeeEntity(decision.type, decision.lane, decision.speedMult);
     }
 
     if (result.doubleSpawn) {
