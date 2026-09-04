@@ -4,10 +4,24 @@ import { ctx } from '../context';
 import { sdk } from '@game/sdk';
 import { MECHANICS, BeeType } from '../logic/mechanics';
 import { PauseModal } from '../ui/PauseModal';
+import { FxPool, RingPool, Pool, type DotFx } from '../systems/FxPool';
+
+interface BeeSlot {
+  container: Phaser.GameObjects.Container;
+  sprite: Phaser.GameObjects.Image;
+  tag: Phaser.GameObjects.Text;
+  // PERF-FIX B: tween flap/cánh + lắc lư tạo 1 lần cho slot, pause/restart khi recycle
+  flap: Phaser.Tweens.Tween;
+  sway: Phaser.Tweens.Tween;
+  // anticipation scale 0.88→1.08→1.0 (restart khi acquire — không tạo tween mới mỗi con)
+  bow: Phaser.Tweens.Tween;
+  settle: Phaser.Tweens.Tween;
+}
 
 interface Bee {
   container: Phaser.GameObjects.Container;
   sprite: Phaser.GameObjects.Image;
+  slot?: BeeSlot;
   type: BeeType;
   lane: number;
   secondaryLane?: number;
@@ -27,6 +41,7 @@ const FLOW_TEX = {
   streak: (fever: boolean) => (fever ? 'fx_streak_fever' : 'fx_streak'),
   flame: (fever: boolean) => (fever ? 'fx_flame_fever' : 'fx_flame'),
   prop: (t: string) => `fx_prop_${t}`,
+  ring: 'fx_ring',           // vòng stroke r40 — shockwave pool (PERF-FIX B)
 } as const;
 
 interface Item {
@@ -78,6 +93,13 @@ export class GameplayScene extends Phaser.Scene {
   private shieldWasActive = false;
   private magnetWasActive = false;
   private feverAuraWasActive = false;
+
+  // PERF-FIX B: pool particle + container ong (không sinh-hủy GameObject/tween mỗi burst)
+  private fxDots!: FxPool;      // sparkles + bee-explosion (depth per-burst qua DotFx.depth)
+  private fxDust!: FxPool;      // running puff + lane-switch dust
+  private fxTrail!: FxPool;     // vệt mờ sau ong (depth actor-1)
+  private fxRing!: RingPool;    // shockwave (depth actor+2)
+  private beePool!: Pool<BeeSlot>; // container ong tái sinh
 
   private bgImage?: Phaser.GameObjects.Image;
   private lanes: number[] = [];
@@ -168,6 +190,13 @@ export class GameplayScene extends Phaser.Scene {
     this.bakeTexture(FLOW_TEX.dotWhite, 16, 16, (g) => {
       g.fillStyle(0xFFFFFF, 1);
       g.fillCircle(8, 8, 8);
+    });
+
+    // PERF-FIX B: vòng shockwave bake sẵn r40 nét 3.5px — pool Image tint, scale động
+    // (thay strokeCircle+clear 60 lần/giây của addCounter cũ)
+    this.bakeTexture(FLOW_TEX.ring, 88, 88, (g) => {
+      g.lineStyle(3.5, 0xFFFFFF, 1);
+      g.strokeCircle(44, 44, 40);
     });
 
     // Vạch làn: 1 chu kỳ dash(36)+gap(24) bake đứng, cuộn bằng TileSprite
@@ -523,6 +552,13 @@ export class GameplayScene extends Phaser.Scene {
     this.buildFlowTextures();
     this.buildFlowObjects();
 
+    // PERF-FIX B: khởi tạo pool particle sau khi bake fx_dot_white/fx_ring
+    this.fxDots = new FxPool(this, FLOW_TEX.dotWhite, 96, z.hud);
+    this.fxDust = new FxPool(this, FLOW_TEX.dotWhite, 32, z.actor - 1);
+    this.fxTrail = new FxPool(this, FLOW_TEX.dotWhite, 40, z.actor - 1);
+    this.fxRing = new RingPool(this, FLOW_TEX.ring, 6, z.actor + 2);
+    this.beePool = new Pool<BeeSlot>(() => this.buildBeeSlot());
+
     // Popups
     this.levelPopup = this.add.text(width / 2, height * 0.36, '', fontStyle(type.h1, color.textOnAccent))
       .setOrigin(0.5).setDepth(z.tutorial).setAlpha(0);
@@ -670,6 +706,12 @@ export class GameplayScene extends Phaser.Scene {
       if (this.bgImage && this.bgImage.active) this.bgImage.destroy();
       if (this.bgG && this.bgG.active) this.bgG.destroy();
       this.destroyFlowObjects();
+      // PERF-FIX B: giải phóng pool khi scene shutdown (scene chạy lại → create mới)
+      this.fxDots?.destroy();
+      this.fxDust?.destroy();
+      this.fxTrail?.destroy();
+      this.fxRing?.destroy();
+      this.beePool?.drain((s) => s.container.destroy());
       this.bgImage = undefined;
       this.bgG = undefined as any;
     });
@@ -765,21 +807,21 @@ export class GameplayScene extends Phaser.Scene {
     if (this.cache.audio.exists(key)) this.sound.play(key, { volume, rate });
   }
 
+  // PERF-FIX B: 5 hàm spawn dưới KHÔNG còn add.circle+add.tweens sinh-hủy.
+  // Dot lấy từ pool cố định (FxPool.step nội suy trong update), cùng toán chuyển động/ease
+  // cũ; shockwave dùng Image fx_ring bake sẵn scale r12->r75 (quad.out như addCounter cũ).
   private spawnDust(x: number, y: number) {
     for (let foot = -1; foot <= 1; foot += 2) {
       const fx = x + foot * 16;
       const fy = y + 16;
       for (let i = 0; i < 3; i++) {
-        const d = this.add.circle(fx + Phaser.Math.Between(-5, 5), fy + Phaser.Math.Between(-4, 6), Phaser.Math.Between(4, 7), 0xFFFFFF, 0.55).setDepth(z.actor - 1);
-        this.tweens.add({
-          targets: d,
-          x: fx + foot * Phaser.Math.Between(6, 18),
-          y: fy + Phaser.Math.Between(4, 14),
-          alpha: 0,
-          scale: 0.2,
-          duration: 320,
-          ease: 'cubic.out',
-          onComplete: () => d.destroy(),
+        this.fxDust.spawn({
+          x0: fx + Phaser.Math.Between(-5, 5), y0: fy + Phaser.Math.Between(-4, 6),
+          x1: fx + foot * Phaser.Math.Between(6, 18), y1: fy + Phaser.Math.Between(4, 14),
+          life: 320, age: 0,
+          r0: Phaser.Math.Between(4, 7), r1: 0.8,
+          a0: 0.55, a1: 0,
+          color: 0xFFFFFF, ease: 2,
         });
       }
     }
@@ -789,35 +831,26 @@ export class GameplayScene extends Phaser.Scene {
     for (let i = 0; i < 7; i++) {
       const angle = (i / 7) * Math.PI * 2 + Math.random() * 0.3;
       const dist = Phaser.Math.Between(22, 45);
-      const s = this.add.circle(x, y, Phaser.Math.Between(3, 6), starColor, 0.95).setDepth(z.hud);
-      this.tweens.add({
-        targets: s,
-        x: x + Math.cos(angle) * dist,
-        y: y + Math.sin(angle) * dist,
-        alpha: 0,
-        scale: 0.2,
-        duration: 400,
-        ease: 'quad.out',
-        onComplete: () => s.destroy(),
+      this.fxDots.spawn({
+        x0: x, y0: y,
+        x1: x + Math.cos(angle) * dist, y1: y + Math.sin(angle) * dist,
+        life: 400, age: 0,
+        r0: Phaser.Math.Between(3, 6), r1: 0.6,
+        a0: 0.95, a1: 0,
+        color: starColor, ease: 1, depth: z.hud,
       });
     }
   }
 
   private spawnShockwave(x: number, y: number, shockColor = 0x00F0FF) {
-    const sw = this.add.graphics().setDepth(z.actor + 2);
-    let r = 12;
-    this.tweens.addCounter({
-      from: 12,
-      to: 75,
-      duration: 320,
-      ease: 'quad.out',
-      onUpdate: (tw) => {
-        r = tw.getValue() ?? 12;
-        sw.clear();
-        sw.lineStyle(3.5, shockColor, 1 - (r - 12) / 63);
-        sw.strokeCircle(x, y, r);
-      },
-      onComplete: () => sw.destroy(),
+    // Code cũ: strokeCircle r12→75 (320ms quad.out), alpha 1→0, nét 3.5px.
+    // fx_ring bake nét 3.5px ở r40; scale theo r giữ bề dày nét tương đối như cũ.
+    this.fxRing.spawn({
+      x0: x, y0: y, x1: x, y1: y,
+      life: 320, age: 0,
+      r0: 12, r1: 75,
+      a0: 1, a1: 0,
+      color: shockColor, ease: 1,
     });
   }
 
@@ -827,17 +860,13 @@ export class GameplayScene extends Phaser.Scene {
     for (let i = 0; i < 14; i++) {
       const angle = Math.random() * Math.PI * 2;
       const dist = Phaser.Math.Between(30, 70);
-      const col = colors[i % colors.length];
-      const p = this.add.circle(x, y, Phaser.Math.Between(4, 8), col, 0.95).setDepth(z.actor + 1);
-      this.tweens.add({
-        targets: p,
-        x: x + Math.cos(angle) * dist,
-        y: y + Math.sin(angle) * dist,
-        alpha: 0,
-        scale: 0.2,
-        duration: 420,
-        ease: 'cubic.out',
-        onComplete: () => p.destroy(),
+      this.fxDots.spawn({
+        x0: x, y0: y,
+        x1: x + Math.cos(angle) * dist, y1: y + Math.sin(angle) * dist,
+        life: 420, age: 0,
+        r0: Phaser.Math.Between(4, 8), r1: 0.8,
+        a0: 0.95, a1: 0,
+        color: colors[i % colors.length], ease: 2, depth: z.actor + 1,
       });
     }
   }
@@ -991,10 +1020,22 @@ export class GameplayScene extends Phaser.Scene {
     });
   }
 
+  private stepFx(deltaMs: number) {
+    this.fxDots.step(deltaMs);
+    this.fxDust.step(deltaMs);
+    this.fxTrail.step(deltaMs);
+    this.fxRing.step(deltaMs);
+  }
+
   update(_time: number, deltaMs: number) {
-    if (!this.running || this.isPaused) return;
+    // PERF-FIX B: particle pool bước theo dt game. Pause = đóng băng (như đóng băng
+    // gameplay); hết running (game over) vẫn fade hết burst như tween cũ.
+    if (this.isPaused) return;
+    if (!this.running) { this.stepFx(deltaMs); return; }
     const dt = deltaMs / 1000;
     this.elapsed += dt;
+
+    this.stepFx(deltaMs);
 
     // Cập nhật timers Power-ups & Fever
     const { feverEnded } = ctx.engine.updateTimers(dt);
@@ -1171,7 +1212,7 @@ export class GameplayScene extends Phaser.Scene {
           this.spawnBeeExplosion(b.container.x, b.container.y);
           this.showFloatingText(b.container.x, b.container.y, '+5 💥', color.warning);
           this.handleSwarmBeeDone(b);
-          b.container.destroy();
+          this.retireBee(b);
           this.updateHud();
           continue;
         } else if (ctx.engine.tryUseShield()) {
@@ -1180,7 +1221,7 @@ export class GameplayScene extends Phaser.Scene {
           this.showPowerupPopup('SHIELD SAVED! 🛡️', color.primary);
           this.cameras.main.shake(130, 0.012);
           this.handleSwarmBeeDone(b);
-          b.container.destroy();
+          this.retireBee(b);
           this.updateHud();
           continue;
         } else {
@@ -1190,7 +1231,7 @@ export class GameplayScene extends Phaser.Scene {
 
       if (b.container.y > this.scale.height + 80) {
         this.handleSwarmBeeDone(b);
-        b.container.destroy();
+        this.retireBee(b);
       }
     }
     this.pruneBees();
@@ -1205,14 +1246,14 @@ export class GameplayScene extends Phaser.Scene {
         this.beeTrailTimer = 0;
         for (const b of this.bees) {
           if (b.container && b.container.active && b.container.y > 0 && b.container.y < this.scale.height) {
-            const trailG = this.add.circle(b.container.x, b.container.y - 10, 14, 0xFFA502, 0.22).setDepth(z.actor - 1);
-            this.tweens.add({
-              targets: trailG,
-              alpha: 0,
-              scale: 0.3,
-              duration: 180,
-              ease: 'quad.out',
-              onComplete: () => trailG.destroy(),
+            // PERF-FIX B: dot pool thay add.circle+destroy (alpha 0.22→0, scale→0.3*14px như cũ)
+            this.fxTrail.spawn({
+              x0: b.container.x, y0: b.container.y - 10,
+              x1: b.container.x, y1: b.container.y - 10,
+              life: 180, age: 0,
+              r0: 14, r1: 4.2,
+              a0: 0.22, a1: 0,
+              color: 0xFFA502, ease: 1,
             });
           }
         }
@@ -1259,16 +1300,14 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private spawnRunningPuff(x: number, y: number) {
-    const footX = x + (Math.random() < 0.5 ? -14 : 14);
-    const puff = this.add.circle(footX + Phaser.Math.Between(-3, 3), y, Phaser.Math.Between(4, 7), 0xFFFFFF, 0.35).setDepth(z.actor - 1);
-    this.tweens.add({
-      targets: puff,
-      y: y + Phaser.Math.Between(8, 16),
-      alpha: 0,
-      scale: 0.3,
-      duration: 250,
-      ease: 'quad.out',
-      onComplete: () => puff.destroy(),
+    const footX = x + (Math.random() < 0.5 ? -14 : 14) + Phaser.Math.Between(-3, 3);
+    this.fxDust.spawn({
+      x0: footX, y0: y,
+      x1: footX, y1: y + Phaser.Math.Between(8, 16),
+      life: 250, age: 0,
+      r0: Phaser.Math.Between(4, 7), r1: 1.2,
+      a0: 0.35, a1: 0,
+      color: 0xFFFFFF, ease: 1,
     });
   }
 
@@ -1370,7 +1409,10 @@ export class GameplayScene extends Phaser.Scene {
   private pruneBees() {
     for (let i = this.bees.length - 1; i >= 0; i--) {
       const b = this.bees[i];
-      if (!b.container || !b.container.active) this.bees.splice(i, 1);
+      if (!b.container || !b.container.active) {
+        // PERF-FIX B: retireBee đã pause tween + release slot; prune chỉ xóa reference khỏi mảng
+        this.bees.splice(i, 1);
+      }
     }
   }
 
@@ -1517,56 +1559,70 @@ export class GameplayScene extends Phaser.Scene {
     return true;
   }
 
-  private createBeeEntity(type: BeeType, lane: number, size: number, speedMult: number, tintColor?: number, iconExtra?: string) {
-    const container = this.add.container(this.lanes[lane], -size).setDepth(z.actor);
-    const sprite = this.add.image(0, 0, 'bee_wasp').setDisplaySize(size, size);
+  private createBeeEntity(type: BeeType, lane: number, size: number, speedMult: number, tintColor?: number, iconExtra?: string): Bee {
+    // PERF-FIX B: slot ong tái sinh — container/sprite/tag + tween tạo 1 lần/lần acquire
+    const slot = this.beePool.acquire();
+    const { container, sprite, tag } = slot;
+    container.setPosition(this.lanes[lane], -size).setDepth(z.actor);
+    container.setActive(true).setVisible(true).setScale(1).setAlpha(1);
+    sprite.setDisplaySize(size, size);
     sprite.setFlipX(Math.random() < 0.5); // Random flipX on spawn so 3 on-screen bees never look identical
+    sprite.clearTint();
     if (tintColor) sprite.setTint(tintColor);
-    container.add(sprite);
-
     if (iconExtra) {
-      const tag = this.add.text(size * 0.3, -size * 0.3, iconExtra, { fontSize: '14px' }).setOrigin(0.5);
-      container.add(tag);
+      tag.setPosition(size * 0.3, -size * 0.3).setText(iconExtra);
+      tag.setVisible(true);
+    } else {
+      tag.setVisible(false);
     }
 
-    // 2 wing flapping poses (varying wing angle oscillation, alpha 0.85)
-    this.tweens.add({
-      targets: sprite,
-      angle: { from: -8, to: 8 },
-      duration: 90,
-      yoyo: true,
-      repeat: -1,
-      ease: 'sine.inout',
-    });
+    // 2 wing flapping poses + sway 7px — restart tween persist của slot (không tạo mới)
+    slot.flap.restart();
+    slot.sway.restart();
 
-    // 1-beat anticipation scale (0.88 -> 1.08 -> 1.0) before swooping down
+    // 1-beat anticipation scale (0.88 -> 1.08 -> 1.0) trước khi lao xuống
     container.setScale(0.88);
-    this.tweens.add({
-      targets: container,
-      scale: 1.08,
-      duration: 120,
-      ease: 'back.out',
-      onComplete: () => {
-        this.tweens.add({
-          targets: container,
-          scale: 1.0,
-          duration: 80,
-          ease: 'quad.out',
-        });
-      },
-    });
+    slot.settle.pause();
+    slot.bow.restart();
 
-    const bee: Bee = { container, sprite, type, lane, speedMult, dodged: false };
+    const bee: Bee = { container, sprite, slot, type, lane, speedMult, dodged: false };
     this.bees.push(bee);
+    return bee;
+  }
 
-    this.tweens.add({
-      targets: sprite,
-      x: 7,
-      duration: 600,
-      yoyo: true,
-      repeat: -1,
-      ease: 'sine.inout',
-    });
+  private buildBeeSlot(): BeeSlot {
+    const container = this.add.container(0, 0).setDepth(z.actor);
+    const sprite = this.add.image(0, 0, 'bee_wasp').setDisplaySize(48, 48);
+    container.add(sprite);
+    const tag = this.add.text(0, 0, '', { fontSize: '14px' }).setOrigin(0.5);
+    container.add(tag);
+    container.setVisible(false).setActive(false);
+
+    const mk = (cfg: Phaser.Types.Tweens.TweenBuilderConfig): Phaser.Tweens.Tween =>
+      this.tweens.add({ paused: true, persist: true, ...cfg });
+    const flap = mk({ targets: sprite, angle: { from: -8, to: 8 }, duration: 90, yoyo: true, repeat: -1, ease: 'sine.inout' });
+    const sway = mk({ targets: sprite, x: { from: 0, to: 7 }, duration: 600, yoyo: true, repeat: -1, ease: 'sine.inout' });
+    const settle = mk({ targets: container, scale: 1.0, duration: 80, ease: 'quad.out' });
+    const bow = mk({ targets: container, scale: 1.08, duration: 120, ease: 'back.out', onComplete: () => settle.restart() });
+    return { container, sprite, tag, flap, sway, bow, settle };
+  }
+
+  // PERF-FIX B: deactivate trả về pool thay vì destroy (spec §1.B.3) — ẩn + pause tween.
+  // Slot lạ (ong Béo không dùng pool) → destroy như code cũ.
+  private retireBee(b: Bee) {
+    const c = b.container;
+    if (!c || !c.active) return;
+    c.setVisible(false).setActive(false);
+    if (b.slot) {
+      b.slot.flap.pause();
+      b.slot.sway.pause();
+      b.slot.bow.pause();
+      b.slot.settle.pause();
+      this.beePool.release(b.slot);
+      b.slot = undefined;
+    } else {
+      c.destroy();
+    }
   }
 
   private createFatBeeEntity(midX: number, lane1: number, lane2: number, size: number) {
@@ -1639,12 +1695,22 @@ export class GameplayScene extends Phaser.Scene {
         // Làn an toàn có Cá Vàng dẫn lối
         this.spawnSpecificItem('fish', l, -30);
       } else {
-        const container = this.add.container(this.lanes[l], -beeSize).setDepth(z.actor);
-        const sprite = this.add.image(0, 0, 'bee_wasp').setDisplaySize(beeSize, beeSize);
+        // PERF-FIX B: ong bão lấy từ pool slot (code cũ: không flap/bow — giữ tween pause)
+        const slot = this.beePool.acquire();
+        const { container, sprite, tag } = slot;
+        container.setPosition(this.lanes[l], -beeSize).setDepth(z.actor);
+        container.setActive(true).setVisible(true).setScale(1).setAlpha(1);
+        sprite.setDisplaySize(beeSize, beeSize);
         sprite.setFlipX(Math.random() < 0.5);
+        sprite.clearTint();
         sprite.setTint(0xFF4757);
-        container.add(sprite);
-        const bee: Bee = { container, sprite, type: 'speedy', lane: l, speedMult: 1.15, dodged: false, isSwarm: true };
+        sprite.setAngle(0).setX(0);
+        tag.setVisible(false);
+        slot.flap.pause();
+        slot.sway.pause();
+        slot.bow.pause();
+        slot.settle.pause();
+        const bee: Bee = { container, sprite, slot, type: 'speedy', lane: l, speedMult: 1.15, dodged: false, isSwarm: true };
         this.bees.push(bee);
       }
     }
@@ -1878,7 +1944,7 @@ export class GameplayScene extends Phaser.Scene {
     for (const b of this.bees) {
       if (b.container && b.container.active && b.type !== 'fat') {
         this.spawnBeeExplosion(b.container.x, b.container.y);
-        b.container.destroy();
+        this.retireBee(b);
       }
     }
     this.pruneBees();
