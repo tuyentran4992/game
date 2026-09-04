@@ -5,7 +5,7 @@ import { color, type, sp, radius, shadow, z, dur, fontStyle, toColor } from './t
 export function drawButton(
   scene: Phaser.Scene,
   x: number, y: number, text: string,
-  opts: { width?: number; height?: number; variant?: 'primary' | 'ghost'; testid?: string; textType?: { size: string; weight: string; lh: number } } = {}
+  opts: { width?: number; height?: number; variant?: 'primary' | 'ghost'; testid?: string; textType?: { size: string; weight: string; lh: number }; glow?: boolean; pulseMs?: number } = {}
 ): { container: Phaser.GameObjects.Container; textObj: Phaser.GameObjects.Text; } {
   const width = opts.width ?? 280;
   const height = opts.height ?? (opts.variant === 'ghost' ? 52 : 64);
@@ -76,6 +76,35 @@ export function drawButton(
     container.setData('testid', opts.testid);
   }
   container.setInteractive({ useHandCursor: true });
+
+  // R5 (t_a562b030): CTA glow ring + pulse — nút hành động chính nổi nhất màn.
+  // Glow là con của container (index 0) nên đi theo panel khi scale/resize; token-only màu.
+  if (opts.glow && variant === 'primary') {
+    const glowG = scene.add.graphics();
+    glowG.setScale(1.02);
+    glowG.setAlpha(0.4);
+    const drawGlow = (alpha: number) => {
+      glowG.clear();
+      glowG.fillStyle(toColor(color.primary), alpha);
+      glowG.fillRoundedRect(-width * 0.54, -height * 0.62, width * 1.08, height * 1.24, r);
+    };
+    drawGlow(0.4);
+    container.addAt(glowG, 0);
+    const pulseMs = opts.pulseMs ?? dur.slow;
+    const glowTween = scene.tweens.add({
+      targets: glowG,
+      scale: 1.14,
+      alpha: 0.14,
+      duration: pulseMs,
+      yoyo: true,
+      repeat: -1,
+      ease: 'sine.inout',
+    });
+    glowG.once('destroy', () => {
+      glowTween.remove();
+      glowG.clear();
+    });
+  }
 
   const playClick = () => {
     if (scene.cache.audio.exists('sfx_click')) scene.sound.play('sfx_click', { volume: 0.35 });
