@@ -92,11 +92,13 @@ dist/
 
 ## 3. HIỆN TRẠNG CÁC GAME
 
-### M1 — "Cuu Meo" (`M1-Rescue-Dodge/`) — rescue/dodge ✅ HOÀN CHỈNH
-- Gameplay: mèo né ong 3 lane; input = chạm/click; level-up đổi palette.
-- Âm thanh: 8 file numpy→mp3. Sprite WAN: mèo + ong.
-- Gói nộp Mediacube sẵn sàng: `build/cuu-meo.zip` + metadata.
-- Test: pipeline 53 pytest · game vitest 19 · tsc 0 · build OK.
+### M1 — "Buzz Blitz" (`M1-Rescue-Dodge/`) — rescue/dodge ✅ FIX ROUND 2 XONG, CHỜ FUN GATE BOSS (04/09)
+- Gameplay: mèo né ong 3 lane; input = chạm/click; level-up đổi palette + chapter cards.
+- **04/09 — PB-M1-FIX (feedback Sofiya/MediaCube):** curve D-A2 balance round 2 (warmup 30s flat 160 → ramp 1.2px/s tới 90s → 5px/s, softcap 440; mi 22, levelSpeedStep 10, spawnRateMax 4). Sim newbie-bot deterministic: sống cửa 30→60s **0%→60%** (24/40 seed), 0 chết warmup. HUD "NEXT LEVEL: x/22" + popup level + chapter (progression thấy được bằng mắt — đúng ý 1 của reviewer); acceleration đầu game giảm — đúng ý 2.
+- Test (main local = `09364856`, tree ≡ bản QA-RETEST t_68477b0d): verify_game.sh 4/4 · vitest **48/48** (BR-17 mô tả curve mới) · boot 390×844 0 lỗi · zip-boot cả 2 bản 0 lỗi.
+- **Gói nộp REPACK-2 (stamp 20260904-1247):** `build/buzz-blitz-mediacube-20260904-1247.zip` (md5 4998d5d0…, 1.34MB, 0 URL ngoài) + bản playgama (md5 67670518…). Dead art xoá sạch từ nguồn (1.81M→1.34M). Sổ: `docs/SUBMISSIONS.md`.
+- **CÒN CHỜ:** Fun Gate PB-2 — anh Tuyền chơi tay 3 phút trên preview (supervisor dựng lane sau PREVIEW-GATE 09364856) → đạt thì anh trả lời email Sofiya + bấm resubmit trên MC Play (quyền boss PB-6).
+- (Lịch sử cũ: bản "Cuu Meo" 24/08 nộp pending — title đã đổi "Buzz Blitz" từ 99d7b10.)
 
 ### M2 — "Neon Sort" (`M2-Color-Sort/`) — color-sort ✅ HOÀN CHỈNH
 - Puzzle xếp chất lỏng ống, art Neon Galaxy.
@@ -159,9 +161,9 @@ python -m pipeline package  --game-dir games/<name>
 ---
 
 ## 6. ĐỐI TÁC / NỘP
-- **Mediacube** — MC Pay account "Tuyen Tran" ✅, MC Play PENDING (chờ duyệt indie).
+- **Mediacube** — MC Pay account "Tuyen Tran" ✅, **MC Play APPROVED** (email Sofiya 04/09 — hết pending). M1 đã review: ⚠️ cần sửa 2 ý (levels progression + giảm acceleration đầu game) rồi resubmit — chi tiết `docs/REJECT-LESSONS.md`.
 - **Playgama** — account kotaro001 ✅, M3 submitted 2026-08-24, review 3-5 ngày.
-- **CrazyGames** — chưa nộp.
+- **CrazyGames** — ⛔ LOẠI khỏi phạm vi (boss chốt 04/09: chỉ duy trì Playgama + Mediacube + Reddit — xem PROJECT-RULES §PB-0).
 - **Reddit Devvit** — M3 port done, chưa deploy.
 
 ---

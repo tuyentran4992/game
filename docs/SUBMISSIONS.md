@@ -3,12 +3,20 @@
 > MỌI lần nộp/thay đổi trạng thái ở bất kỳ kênh nào phải ghi vào đây.
 > Agent trước khi nộp: đọc file này + chạy PRE-SUBMIT CHECKLIST.
 
-## PRE-SUBMIT CHECKLIST (đúng 1 lần, mọi kênh)
+## PRE-CODE CATALOG CHECK — GATE BƯỚC Ý TƯỞNG (boss lệnh 04/09 — án lệ M3 đổ sông cả game)
 
-**Originality (theo từng kênh):**
-- [ ] Search tên game trên catalog kênh đó → KHÔNG trùng (bài học: `juicy-merge` đã tồn tại trên Playgama)
-- [ ] Search 2-3 từ khóa thể loại (vd "suika", "merge", "melon") → đếm đối thủ cùng mechanic; nếu ≥3 bản tương đồng → KHÔNG nộp, phải đổi mechanic
-- [ ] Ghi lại đường link các bản tương tìm thấy vào entry nộp (bằng chứng đã soát)
+> Chạy NGAY khi có ý tưởng game mới, TRƯỚC khi CEO cho qua SPEC/code/asset. Kết quả ghi vào bảng "Nhật ký catalog check" bên dưới.
+
+- [ ] Search TÊN dự kiến trên catalog 3 kênh PB-0 (Playgama / Mediacube-MC Play / Reddit) → KHÔNG trùng tên (bài học: `juicy-merge` đã tồn tại trên Playgama)
+- [ ] Search 2-3 từ khóa MECHANIC cốt lõi (vd "suika", "merge", "melon") trên từng kênh → đếm bản tương đồng cùng mechanic
+- [ ] **≥3 bản tương đồng trên kênh đích = KILL ý tưởng hoặc đổi mechanic NGAY — KHÔNG qua SPEC.** <3 bản = ghi link bằng chứng, GO tiếp
+- [ ] Ghi entry vào "Nhật ký catalog check": ngày · tên ý tưởng · mechanic · link các bản tương đồng · verdict GO/KILL/ĐỔI
+
+## PRE-SUBMIT CHECKLIST (lúc nộp — chỉ RE-VERIFY, không phải lần soát đầu)
+
+**Originality:**
+- [ ] Re-check nhanh catalog (kể từ PRE-CODE CHECK có bản mới nào cùng mechanic không) — nếu PRE-CODE CHECK chưa từng chạy = DỪNG, chạy bù trước
+- [ ] Entry PRE-CODE CATALOG CHECK của game này tồn tại trong nhật ký (link bằng chứng)
 
 **Kỹ thuật (Playgama):** Game Ready event qua Bridge SDK · saveData qua SDK · mute + dừng audio khi minimize · globe ngôn ngữ · responsive 9:16→32:9 · bundle < 5MB target · load < 5s
 **Kỹ thuật (Reddit Devvit):** `devvit playtest` pass · leaderboard server OK · README theo yêu cầu review team · không vi phạm Devvit game policy
@@ -23,7 +31,15 @@
 | **Playgama** | Traffic + revenue sharing | Chống duplicate (toàn bộ HOẶC một phần), self-check | Review 3-5 ngày; có mentor/support chat — hỏi trước khi nộp |
 | **YouTube Playables** | Dài hạn, chờ IAP cuối 2026 | Cấm tự monetize, no network ngoài | indie trực tiếp duyệt chậm; qua publisher (Mediacube) |
 | **Mediacube (MC Play)** | Publisher pilot多渠道 | theo hợp đồng | pending indie approval |
-| **CrazyGames** | dự phòng | chưa nộp | |
+| **CrazyGames** | ⛔ LOẠI (boss 04/09) | ngoài phạm vi 3 kênh — PROJECT-RULES §PB-0 | không nộp, không đóng gói |
+
+## Nhật ký catalog check (PRE-CODE — gate ý tưởng, chạy TRƯỚC khi SPEC/code)
+
+| Ngày | Ý tưởng | Mechanic | Kênh đã soát | Bản tương đồng (link) | Verdict |
+|---|---|---|---|---|---|
+| 2026-09-04 | (hồi tố) M1 Buzz Blitz | dodge/cứu mèo 3 lane | Playgama + MC Play | <3 bản dodge-cứu-mèo cùng mechanic | GO (hồi tố — game đã có từ trước luật này) |
+| 2026-09-04 | (hồi tố) M2 Neon Sort | color/liquid sort | Playgama + MC Play | CHƯA SOÁT ĐẦY ĐỦ — sort là thể loại đông, re-check trước khi nộp | ⚠ chờ re-check |
+| 2026-08-27 | (án lệ) M3 hướng B Potion Panic | merge | Playgama | ≥4 Suika clone + trùng tên juicy-merge | ❌ KILL (nhưng quá muộn — đã code xong; luật mới ra đời từ đây) |
 
 ## Nhật ký nộp
 
@@ -37,9 +53,25 @@
 | 2026-08-27 | M3 Juicy Merge | Reddit Devvit | **NỘP (anh Tuyền)** | ⏳ chờ review | Reddit = kênh khả thi duy nhất còn lại của M3 |
 | — | M3 v2 Potion Panic | Playgama | **KHÔNG nộp** | ⛔ hủy — anh Tuyền chơi thử thấy CHÁN | đúng checklist anti-clone nhưng fun gate fail → dừng sớm, không tốn vòng polish/submission |
 | 2026-08-27 | M4 Neon Grid | Playgama | **KHUYẾN CÁO KHÔNG nộp nguyên trạng** | 🔴 reject risk cao | So catalog 27/08: block puzzle BÃO HÒA hơn cả Suika — `Neon Block Blast` (trùng cả theme+lối chơi), `Block Blaster` (Playgama tự mô tả "classic 1010! clone"), `Block Puzzle 1010: Jewel Lines`, `Sudoku Block Puzzle`, `Block Puzzle Legend`, category "Block Games" = 610 games. Core verb "đặt miếng ghép, clear hàng" y hệt Neon Grid. |
+| 2026-09-04 | M1 Buzz Blitz | Mediacube | REPACK QA (t_662df9e4) — zip mới `buzz-blitz-mediacube-20260904-1114.zip` 1,808,102 B, md5 `8de20a314554bf5165fc3c9e81d8912a`, SHA base `0ccf1ef8`, 0 bridge.playgama.com | ✅ gates 6/6 (residual: Phaser testString nội bộ, bất khả kháng) | CHỜ: bệnh án PROGRESS-1 (bot chết 44s sau ramp) — chưa nộp cho Sofiya tới khi CEO chốt round sửa |
+| 2026-09-04 | M1 Buzz Blitz | Playgama | REPACK QA — zip `buzz-blitz-playgama-20260904-1114.zip` 1,808,161 B, md5 `fa6525b0a9c4e787e96a22258e18eb6b` | ✅ gates pass (bridge whitelist đúng kênh) | cùng trạng thái chờ chốt |
 
 ## Bài học gốc (từ reject M3)
 
 1. Check trùng phải làm **TRƯỚC khi code**, không phải trước khi nộp — 3 tuần dev suýt lãng vì 1 cú search chưa làm.
 2. "Khác về checklist" ≠ "khác thực sự". Playgama reject bằng mắt thường 10 giây; nếu phải giải trình dài để chứng minh khác → khả năng cao là chưa đủ khác.
 3. **FUN là gate số 0.** Prototype placeholder chơi trước, SPEC sau. Game giống hệt người khác nhưng vui hơn nhiều → vẫn sống; game khác hẳn mà chán → chết cả 2 kênh.
+
+### 2026-09-04 ~12:48 UTC — REPACK-2 QA t_68477b0d (SHA 09364856, code balance t_2e94b3be)
+| bản | zip | md5 | bytes |
+| --- | --- | --- | --- |
+| Playgama | M1-Rescue-Dodge/build/buzz-blitz-playgama-20260904-1247.zip | 67670518d8d7d7da28e94a6f5e6c3388 | 1336805 |
+| MediaCube (0 URL ngoài) | M1-Rescue-Dodge/build/buzz-blitz-mediacube-20260904-1247.zip | 4998d5d078e8ba173ced60124e33ed52 | 1336776 |
+Gates REPACK-2 (logs full: /data/agents/qa-engineer/outbox/t_68477b0d/logs/repack_gates.json):
+title "Buzz Blitz" dist=src ✔, 0 "Cuu Meo" ✔, diff -r zip≡dist ✔ (cả 2 bản), 0 dead-art
+(_new/_pal_/ui_icons) trong zip ✔, MediaCube 0 bridge URL ✔ / Playgama chỉ bridge whitelist ✔,
+0 ký tự có dấu (ngoại lệ bất khả kháng Phaser testString "|MÃ‰qgy" như REPACK-1) ✔.
+Dung lượng 1.81M→1.34M do dead art đã xoá từ nguồn (t_2e94b3be). Lưu ý range "loại raw/ khỏi zip":
+raw/ dist = 19 file runtime asset (load keys main.ts baseURL './raw/', missing=0 — bằng chứng
+outbox/t_68477b0d/logs/raw_keep_check.json) → GIỮ raw/ trong zip là đúng; dead art thật đã sạch từ nguồn.
+Zip REPACK-1 (1114) giữ nguyên, không xoá — chống lẫn bản khi nộp.
