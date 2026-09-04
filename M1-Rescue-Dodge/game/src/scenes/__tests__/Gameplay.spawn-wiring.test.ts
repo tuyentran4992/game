@@ -154,7 +154,7 @@ describe('wiring runtime — scene.stepSpawn điều phối qua director (không
     // dùng director thật để tính kỳ vọng — hành vi quyết định thuộc director, scene chỉ vẽ
     const d = dir.update({ dt: 0.01, elapsed: 5.0, engine, world: {
       swarmActive: false, fatBeeActive: false, fatOnScreen: false,
-      occupiedLanes: [], safeLanes: [0, 1, 2], beeCount: after,
+      occupiedLanes: [], safeLanes: [0, 1, 2], safeLanesFast: [0, 1, 2], beeCount: after,
     } });
     // scene không được spawn thêm ngoài quyết định của director (director vừa tiêu thụ cadence → 0)
     expect(d.spawned).toHaveLength(0);
@@ -188,7 +188,7 @@ describe('wiring runtime — scene.stepSpawn điều phối qua director (không
     // second call: director không trigger lại ngay (lastSwarmTime đã = elapsed)
     expect(dir.update({ dt: 0.01, elapsed: 30.01, engine: scene.getEngineForTest(), world: {
       swarmActive: true, fatBeeActive: false, fatOnScreen: false,
-      occupiedLanes: [], safeLanes: [0, 1, 2], beeCount: 0,
+      occupiedLanes: [], safeLanes: [0, 1, 2], safeLanesFast: [0, 1, 2], beeCount: 0,
     } }).swarmTriggered).toBe(false);
     spy.mockRestore();
   });
@@ -204,11 +204,11 @@ describe('wiring runtime — scene.stepSpawn điều phối qua director (không
     // director cầm rng 0.1: lane pick + double trigger
     h.update({ dt: 2.0, elapsed: 35, engine, world: {
       swarmActive: true, fatBeeActive: false, fatOnScreen: false,
-      occupiedLanes: [], safeLanes: [0, 1, 2], beeCount: 0,
+      occupiedLanes: [], safeLanes: [0, 1, 2], safeLanesFast: [0, 1, 2], beeCount: 0,
     } });
     h.update({ dt: 2.0, elapsed: 37, engine, world: {
       swarmActive: false, fatBeeActive: false, fatOnScreen: false,
-      occupiedLanes: [], safeLanes: [0, 1, 2], beeCount: 0,
+      occupiedLanes: [], safeLanes: [0, 1, 2], safeLanesFast: [0, 1, 2], beeCount: 0,
     } });
     const before = scene.beeCount;
     scene.stepSpawnForTest(2.0, 37);
@@ -269,7 +269,7 @@ describe('wiring R1 — speedy validation theo speedMult (safeLanesFast)', () =>
     const spy = vi.spyOn(dir, 'update');
     scene.stepSpawnForTest(0.016, 1.0);
     const calls = spy.mock.calls;
-    const snap = calls[calls.length - 1][0].world as Record<string, unknown>;
+    const snap = calls[calls.length - 1][0].world as unknown as Record<string, unknown>;
     expect(Array.isArray(snap.safeLanesFast)).toBe(true);
     expect(snap.safeLanesFast).toEqual(snap.safeLanes); // 1.0 vs 1.18 cùng thăng hoa chi phối → lá 1.0 luôn bị chặn ở 1.18
     spy.mockRestore();
@@ -289,9 +289,10 @@ describe('wiring R1 — speedy validation theo speedMult (safeLanesFast)', () =>
     h.startSession(0);
     const engine = makeEngine([0.01]); // roll luôn speedy → refusal ở frame 2
     burnSwarm(h, engine);
-    h.update({ dt: 1.0, elapsed: 37, engine, world: r1World() }); // refusal speedy
-    const r = h.update({ dt: 0.5, elapsed: 37.5, engine, world: r1World() });
-    // lastSpawn = 1.5 >= 1.35 → refusal đã giữ ngưỡng thì frame này spawn được ngay
+    h.update({ dt: 1.0, elapsed: 37, engine, world: r1World() }); // refusal speedy (lá 1.18 rỗng)
+    // Frame sau: lá 1.18 xuất hiện + dt NGẮN (0.2) — nếu refusal reset nhầm lastSpawn về 0
+    // thì 0.2+1.0=1.2 < 1.35 → KHÔNG được spawn; giữ ngưỡng (3.01) thì spawn NGAY.
+    const r = h.update({ dt: 0.2, elapsed: 37.2, engine, world: r1World({ safeLanesFast: [1] }) });
     expect(r.spawned).toHaveLength(1);
     expect(r.lastSpawnReset).toBe(true);
   });
@@ -311,7 +312,7 @@ describe('wiring R1 — speedy validation theo speedMult (safeLanesFast)', () =>
     const spy = vi.spyOn(dir, 'update');
     scene.stepSpawnForTest(0.016, 1.0);
     const calls = spy.mock.calls;
-    const snap = calls[calls.length - 1][0].world as Record<string, unknown>;
+    const snap = calls[calls.length - 1][0].world as unknown as Record<string, unknown>;
     expect(snap.safeLanesFast).toBeDefined();
     spy.mockRestore();
   });

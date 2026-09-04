@@ -23,13 +23,14 @@ interface World {
   fatOnScreen: boolean;
   occupiedLanes: number[];
   safeLanes: number[];
+  safeLanesFast: number[];
   beeCount: number;
 }
 
 function makeWorld(over: Partial<World> = {}): World {
   return {
     swarmActive: false, fatBeeActive: false, fatOnScreen: false,
-    occupiedLanes: [], safeLanes: [0, 1, 2], beeCount: 0,
+    occupiedLanes: [], safeLanes: [0, 1, 2], safeLanesFast: [0, 1, 2], beeCount: 0,
     ...over,
   };
 }
