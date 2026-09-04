@@ -5,6 +5,7 @@ import { ctx } from '../context';
 import { sdk } from '@game/sdk';
 import { ShopModal } from '../ui/ShopModal';
 import { QuestsModal } from '../ui/QuestsModal';
+import { deltaBarText } from './deltaBar';
 
 export class StartScene extends Phaser.Scene {
   private bg!: Phaser.GameObjects.Image;
@@ -21,6 +22,7 @@ export class StartScene extends Phaser.Scene {
   private titleShadow!: Phaser.GameObjects.Text;
   private subTitleText!: Phaser.GameObjects.Text;
   private playContainer!: Phaser.GameObjects.Container;
+  private deltaBarText!: Phaser.GameObjects.Text;
   private skinsContainer!: Phaser.GameObjects.Container;
   private questsContainer!: Phaser.GameObjects.Container;
   private catShadow!: Phaser.GameObjects.Graphics;
@@ -78,6 +80,13 @@ export class StartScene extends Phaser.Scene {
       this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
       this.time.delayedCall(dur.scene, () => this.scene.start('TutorialScene'));
     });
+
+    // V-H1: delta-bar "suýt phá record" — 1 dòng dưới nút Play, ẩn khi delta 0 (vừa lập KL / chưa từng chơi).
+    // Chỉ đọc public state engine (bestScore + score = lastScore sống sót qua scene.start) — contract K0 §2.
+    const barText = deltaBarText(ctx.engine);
+    this.deltaBarText = this.add.text(width / 2, height * 0.65, barText, fontStyle({ size: '15px', weight: '800', lh: 1 }, '#FFD166'))
+      .setOrigin(0.5).setDepth(z.hud).setVisible(barText.length > 0);
+    this.deltaBarText.setData('testid', 'delta-bar');
 
     const { container: skinsCont } = drawButton(this, width / 2 - 72, height * 0.80, 'Skins 🐱', {
       variant: 'ghost',
@@ -155,6 +164,7 @@ export class StartScene extends Phaser.Scene {
 
     // Reposition Buttons
     this.playContainer.setPosition(width / 2, playBtnY);
+    this.deltaBarText.setPosition(width / 2, playBtnY + playH / 2 + 18);
     this.skinsContainer.setPosition(width / 2 - halfW / 2 - 7, secBtnY);
     this.questsContainer.setPosition(width / 2 + halfW / 2 + 7, secBtnY);
 
