@@ -3,6 +3,10 @@ import { color, type, sp, radius, z, dur, fontStyle, paletteForLevel, toColor } 
 import { ctx } from '../context';
 import { sdk } from '@game/sdk';
 import { MECHANICS, BeeType } from '../logic/mechanics';
+import { SpawnDirector, type SpawnDirectorResult } from '../logic/SpawnDirector';
+import { WIRING } from '../logic/wiring';
+import type { GameEngine } from '../logic/GameEngine';
+import type { MechanicsConfig } from '../logic/types';
 import { PauseModal } from '../ui/PauseModal';
 import { FxPool, RingPool, Pool, type DotFx } from '../systems/FxPool';
 
@@ -128,12 +132,12 @@ export class GameplayScene extends Phaser.Scene {
     propType: 'daisy' | 'grass' | 'flower_purple' | 'pebble';
   }> = [];
   private fatBeeActive = false;
+  // T1c: quyết định spawn dời về tầng A (logic/SpawnDirector) — scene chỉ orchestrate + vẽ
+  private spawnDirector: SpawnDirector | null = null;
 
   private elapsed = 0;
   private lastTick = 0;
-  private lastSpawn = 0;
   private lastItemSpawn = 0;
-  private lastSwarmTime = 0;
   private swarmActive = false;
   private swarmBeesRemaining = 0;
   private beeTrailTimer = 0;
@@ -436,9 +440,12 @@ export class GameplayScene extends Phaser.Scene {
 
     this.elapsed = isResume ? ctx.engine.elapsed : 0;
     this.lastTick = 0;
-    this.lastSpawn = 0;
     this.lastItemSpawn = 0;
-    this.lastSwarmTime = this.elapsed + 8;
+    // T1c: cadence spawn + swarm dời về SpawnDirector (mirror create cũ:
+    // startSession(elapsed) bung cadence về 0 + swarm đầu tại elapsed+8+interval)
+    const spawnCfg: MechanicsConfig = MECHANICS;
+    this.spawnDirector = new SpawnDirector(spawnCfg);
+    this.spawnDirector.startSession(this.elapsed);
     this.swarmActive = false;
     this.swarmBeesRemaining = 0;
     this.bees = [];
@@ -1060,22 +1067,10 @@ export class GameplayScene extends Phaser.Scene {
       this.triggerFatBeeBreather();
     }
 
-    // Kiểm tra kích hoạt Sự kiện Bão Ong (Swarm Wave)
-    if (!this.swarmActive && !this.fatBeeActive && this.elapsed - this.lastSwarmTime >= MECHANICS.swarmIntervalSec) {
-      this.lastSwarmTime = this.elapsed;
-      this.triggerSwarmWave();
-    }
-
-    // spawn ong theo độ khó tăng dần theo level & thời gian
+    // Kiểm tra kích hoạt Sự kiện Bão Ong (Swarm Wave) + spawn ong — T1c: quyết định
+    // (swarm gate/cadence/refusal/lane) thuộc SpawnDirector, scene chỉ orchestrate + vẽ.
     const diff = ctx.engine.difficulty(this.elapsed, currentLevel);
-    const spawnInterval = Math.max(0.38, 1.35 - (diff.speed - MECHANICS.startSpeed) * 0.0035 - (currentLevel - 1) * 0.10);
-    this.lastSpawn += dt;
-    if (!this.swarmActive && !this.fatBeeActive && this.lastSpawn >= spawnInterval && this.bees.length < diff.spawnCount + 2) {
-      const spawned = this.spawnBee(diff.speed);
-      if (spawned) {
-        this.lastSpawn = 0;
-      }
-    }
+    this.stepSpawn(dt, this.elapsed, ctx.engine, diff);
 
     // spawn vật phẩm (Cá vàng, Khiên, Nam châm)
     this.lastItemSpawn += dt;
@@ -1463,6 +1458,107 @@ export class GameplayScene extends Phaser.Scene {
     }
   }
 
+  // ---------- T1c: orchestration spawn (quyết định thuộc SpawnDirector — tầng A) ----------
+
+  /** Góc nhìn thuần cho director: làn tự do qua geography thật (willBlockAllLanes). */
+  private getSafeLanes(baseSpeed: number): number[] {
+    const occupied = this.getOccupiedLanesAtTop(200);
+    if (occupied.size >= 2) return [];
+    const beeSize = this.getBeeSize(this.scale.width, this.scale.height);
+    return [0, 1, 2].filter((l) => !occupied.has(l) && !this.willBlockAllLanes(l, undefined, 1.0, -beeSize, baseSpeed));
+  }
+
+  /** Snapshot thế giới pure-data — input duy nhất của director (0 tham chiếu Phaser). */
+  private buildSpawnWorld(baseSpeed: number) {
+    return {
+      swarmActive: this.swarmActive,
+      fatBeeActive: this.fatBeeActive,
+      fatOnScreen: this.bees.some((b) => b.type === 'fat'),
+      occupiedLanes: Array.from(this.getOccupiedLanesAtTop(200)),
+      safeLanes: this.getSafeLanes(baseSpeed),
+      beeCount: this.bees.length,
+    };
+  }
+
+  /** Spawn render 1 con ong theo quyết định của director (giữ nguyên createBeeEntity cũ). */
+  private spawnBeeEntity(type: BeeType, lane: number, speedMult: number, baseSpeed: number): void {
+    const beeSize = this.getBeeSize(this.scale.width, this.scale.height);
+    if (type === 'speedy') {
+      this.createBeeEntity('speedy', lane, beeSize * 0.90, speedMult, 0xFF4757);
+    } else if (type === 'zigzag') {
+      this.createBeeEntity('zigzag', lane, beeSize, speedMult, 0xBA68C8, '🌀');
+    } else {
+      this.createBeeEntity('normal', lane, beeSize, speedMult);
+    }
+    void baseSpeed;
+  }
+
+  /** Gọi director mỗi frame; scene chỉ VẼ quyết định (T1c — logic cadence/refusal/swarm ở tầng A). */
+  private stepSpawn(dt: number, elapsed: number, engine: GameEngine, diff: { speed: number }): void {
+    if (!this.spawnDirector) return;
+    const result: SpawnDirectorResult = this.spawnDirector.update({
+      dt,
+      elapsed,
+      engine,
+      world: this.buildSpawnWorld(diff.speed),
+    });
+
+    if (result.swarmTriggered) this.triggerSwarmWave();
+
+    for (const decision of result.spawned) {
+      this.spawnBeeEntity(decision.type, decision.lane, decision.speedMult, diff.speed);
+    }
+
+    if (result.doubleSpawn) {
+      const secondLane = result.doubleSpawn.lane;
+      const level = engine.getLevel();
+      const beeSize = this.getBeeSize(this.scale.width, this.scale.height);
+      const dirAtCall = this.spawnDirector;
+      this.time.delayedCall(WIRING.doubleSpawnDelayMs, () => {
+        if (this.running && !this.swarmActive && !this.bees.some((b) => b.type === 'fat')) {
+          if (!this.willBlockAllLanes(secondLane, undefined, 1.0, -beeSize, diff.speed)) {
+            const secondType = dirAtCall
+              ? dirAtCall.rollSecondBeeType(this.elapsed, engine, level)
+              : null;
+            if (secondType !== null) {
+              this.createBeeEntity(secondType, secondLane, beeSize, 1.0);
+            }
+          }
+        }
+      });
+    }
+  }
+
+  // ---------- TEST WIRING (bề mặt đọc/trình state cho UT+QA — không đổi hành vi runtime) ----------
+  /** Director đang gắn với scene (contract wiring UT/QA). */
+  getDirector(): SpawnDirector | null { return this.spawnDirector; }
+  /** Config đã truyền vào director (MechanicsConfig dùng chung — không config rời). */
+  getDirectorConfig(): MechanicsConfig { return MECHANICS; }
+  /** Engine phiên hiện tại (UT dựng kịch bản deterministic). */
+  getEngineForTest(): GameEngine { return ctx.engine; }
+  get beeCount(): number { return this.bees.length; }
+  get beeLanesView(): number[] { return this.bees.map((b) => b.lane); }
+  get swarmActiveView(): boolean { return this.swarmActive; }
+  get runningView(): boolean { return this.running; }
+  /** Reset phiên về trạng thái đầu (UT): dọn ong/item + engine mới + director mới. */
+  beginSessionForTest(elapsed = 0): void {
+    for (const b of this.bees) { if (b.container?.active) b.container.destroy(); }
+    this.bees = [];
+    for (const it of this.items) { if (it.container?.active) it.container.destroy(); }
+    this.items = [];
+    this.fatBeeActive = false;
+    this.swarmActive = false;
+    this.swarmBeesRemaining = 0;
+    ctx.engine.startNewGame();
+    this.spawnDirector = new SpawnDirector(MECHANICS);
+    this.spawnDirector.startSession(elapsed);
+  }
+  /** Step spawn thủ công (dt/elapsed kiểm soát được — không qua game loop). */
+  stepSpawnForTest(dt: number, elapsed: number): void {
+    const engine = ctx.engine;
+    this.stepSpawn(dt, elapsed, engine, engine.difficulty(elapsed, engine.getLevel()));
+  }
+
   private getOccupiedLanesAtTop(topYThreshold = 200): Set<number> {
     const occupied = new Set<number>();
     for (const b of this.bees) {
@@ -1498,65 +1594,6 @@ export class GameplayScene extends Phaser.Scene {
 
     // Nếu chặn cả 3 làn (hoặc không còn làn nào an toàn) -> CHẶN
     return blockedLanes.size >= 3;
-  }
-
-  private spawnBee(speed: number): boolean {
-    this.pruneBees();
-
-    // Không spawn bất kỳ con ong nào khác khi đang trong đợt Ong Béo Thư Giãn
-    if (this.fatBeeActive || this.bees.some(b => b.type === 'fat')) {
-      return false;
-    }
-
-    const occupied = this.getOccupiedLanesAtTop(200);
-    if (occupied.size >= 2) {
-      return false;
-    }
-
-    const type = ctx.engine.rollBeeType(this.elapsed, ctx.engine.getLevel());
-    const beeSize = this.getBeeSize(this.scale.width, this.scale.height);
-
-    const freeLanes = [0, 1, 2].filter(l => !occupied.has(l));
-    if (freeLanes.length === 0) return false;
-
-    const speedMult = type === 'speedy' ? 1.18 : 1.0;
-    const validLanes = freeLanes.filter(l => !this.willBlockAllLanes(l, undefined, speedMult, -beeSize, speed));
-    
-    // NGUYÊN TẮC VÀNG: Nếu không còn làn nào an toàn, HỦY SPAWN để giữ đường sống cho người chơi!
-    if (validLanes.length === 0) {
-      return false;
-    }
-
-    const lane = validLanes[Math.floor(Math.random() * validLanes.length)];
-
-    if (type === 'speedy') {
-      this.createBeeEntity('speedy', lane, beeSize * 0.90, speedMult, 0xFF4757);
-    } else if (type === 'zigzag') {
-      this.createBeeEntity('zigzag', lane, beeSize, 1.0, 0xBA68C8, '🌀');
-    } else {
-      this.createBeeEntity('normal', lane, beeSize, 1.0);
-    }
-
-    const currentLevel = ctx.engine.getLevel();
-    if (currentLevel >= 5 && occupied.size === 0 && Math.random() < 0.25) {
-      const remainingLanes = validLanes.filter(l => l !== lane);
-      if (remainingLanes.length >= 2) {
-        const secondLane = remainingLanes[0];
-        this.time.delayedCall(280, () => {
-          if (this.running && !this.swarmActive && !this.bees.some(b => b.type === 'fat')) {
-            // Kiểm tra an toàn trước khi spawn con thứ 2
-            if (!this.willBlockAllLanes(secondLane, undefined, 1.0, -beeSize, speed)) {
-              const secondType = ctx.engine.rollBeeType(this.elapsed, currentLevel);
-              if (secondType !== 'fat') {
-                this.createBeeEntity(secondType === 'speedy' ? 'speedy' : 'normal', secondLane, beeSize, 1.0);
-              }
-            }
-          }
-        });
-      }
-    }
-
-    return true;
   }
 
   private createBeeEntity(type: BeeType, lane: number, size: number, speedMult: number, tintColor?: number, iconExtra?: string): Bee {
@@ -1938,7 +1975,8 @@ export class GameplayScene extends Phaser.Scene {
 
   private triggerFatBeeBreather() {
     this.fatBeeActive = true;
-    this.lastSpawn = 0;
+    // T1c: mirror L1941 — bung cadence spawn về 0 (state cadence sống trong director)
+    this.spawnDirector?.resetSpawnTimer();
 
     // Dọn dẹp sạch toàn bộ ong thường đang có trên màn hình để làn an toàn đảm bảo 100% không có ong
     for (const b of this.bees) {

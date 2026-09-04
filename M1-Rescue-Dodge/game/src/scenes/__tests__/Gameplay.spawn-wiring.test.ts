@@ -93,7 +93,7 @@ function bootScene(): Promise<void> {
     scene = new GameplayScene();
     game.scene.add('GameplayScene', scene, true, { resume: false });
     const iv = setInterval(() => {
-      if (scene.scene && scene.scene.isActive() && scene.running && scene.swarmWarningPopup) {
+      if (scene.scene && scene.scene.isActive() && scene.runningView && scene.getDirector()) {
         clearInterval(iv);
         resolve();
       }
@@ -137,7 +137,7 @@ describe('wiring SpawnDirector → scene (TDD-B, mirrors CONTRACT §6)', () => {
 
 describe('wiring runtime — scene.stepSpawn điều phối qua director (không tự quyết)', () => {
   beforeEach(() => {
-    scene.resetForTest();
+    
     // start phiên mới: engine + director cả hai được startSession/resumeGame tương ứng create()
     scene.beginSessionForTest(0);
   });
@@ -146,9 +146,9 @@ describe('wiring runtime — scene.stepSpawn điều phối qua director (không
     const dir = scene.getDirector()!;
     const engine = scene.getEngineForTest();
     // ép director ra quyết định: dt lớn vượt interval
-    const before = scene.bees.length;
+    const before = scene.beeCount;
     scene.stepSpawnForTest(2.0, 5.0);
-    const after = scene.bees.length;
+    const after = scene.beeCount;
     // spawn phải diễn ra NGAY frame này (director đã chặn refusal: safeLanes đủ)
     expect(after).toBe(before + 1);
     // dùng director thật để tính kỳ vọng — hành vi quyết định thuộc director, scene chỉ vẽ
@@ -162,16 +162,16 @@ describe('wiring runtime — scene.stepSpawn điều phối qua director (không
 
   it('2 frame liên tiếp đủ cadence → 2 ong (cadence state do director giữ, scene không can thiệp)', () => {
     scene.stepSpawnForTest(2.0, 5.0);
-    const after1 = scene.bees.length;
+    const after1 = scene.beeCount;
     scene.stepSpawnForTest(2.0, 7.0);
-    expect(scene.bees.length).toBe(after1 + 1);
+    expect(scene.beeCount).toBe(after1 + 1);
   });
 
   it('refusal NGUYÊN TẮC VÀNG: safeLanes rỗng → 0 ong và scene không tự pick làn thay', () => {
     // scene.candidates trống → snapshot.safeLanes rỗng → director từ chối
     vi.spyOn(scene as unknown as { getSafeLanes: () => number[] }, 'getSafeLanes').mockReturnValue([]);
     scene.stepSpawnForTest(2.0, 5.0);
-    expect(scene.bees.length).toBe(0);
+    expect(scene.beeCount).toBe(0);
     vi.restoreAllMocks();
   });
 
@@ -183,7 +183,7 @@ describe('wiring runtime — scene.stepSpawn điều phối qua director (không
     expect(spy).not.toHaveBeenCalled();
     scene.stepSpawnForTest(0.016, 30.0);
     // director trả swarmTriggered → scene gọi triggerSwarmWave()
-    expect(scene.swarmActive).toBe(true);
+    expect(scene.swarmActiveView).toBe(true);
     expect(spy).toHaveBeenCalled();
     // second call: director không trigger lại ngay (lastSwarmTime đã = elapsed)
     expect(dir.update({ dt: 0.01, elapsed: 30.01, engine: scene.getEngineForTest(), world: {
@@ -194,7 +194,7 @@ describe('wiring runtime — scene.stepSpawn điều phối qua director (không
   });
 
   it('doubleSpawn → con thứ 2 do scene hẹn createBeeEntity 280ms (delay giữ ở render)', () => {
-    scene.resetForTest();
+    
     scene.beginSessionForTest(0);
     const engine = scene.getEngineForTest();
     engine.score = 4 * 22; // level 5
@@ -210,14 +210,14 @@ describe('wiring runtime — scene.stepSpawn điều phối qua director (không
       swarmActive: false, fatBeeActive: false, fatOnScreen: false,
       occupiedLanes: [], safeLanes: [0, 1, 2], beeCount: 0,
     } });
-    const before = scene.bees.length;
+    const before = scene.beeCount;
     scene.stepSpawnForTest(2.0, 37);
     // scene vẫn dùng director CỦA scene; assert con thứ 2 (delay 280ms) đã được hẹn
     vi.useFakeTimers();
     scene.stepSpawnForTest(2.0, 39);
     vi.advanceTimersByTime(300);
     vi.useRealTimers();
-    expect(scene.bees.length).toBeGreaterThanOrEqual(before);
+    expect(scene.beeCount).toBeGreaterThanOrEqual(before);
     // nếu director của scene cũng double → 2 con sau 280ms; giữ literal 280 ở render
     expect(dir).not.toBeNull();
   });
