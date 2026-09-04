@@ -19,6 +19,16 @@ interface Bee {
 
 type ItemType = 'fish' | 'shield' | 'magnet';
 
+// PERF-FIX A: key texture pre-render 1 lần ở create() — không vẽ vector lại mỗi frame
+const FLOW_TEX = {
+  dotWhite: 'fx_dot_white',
+  shadow: 'fx_cat_shadow',
+  dash: 'fx_lane_dash',
+  streak: (fever: boolean) => (fever ? 'fx_streak_fever' : 'fx_streak'),
+  flame: (fever: boolean) => (fever ? 'fx_flame_fever' : 'fx_flame'),
+  prop: (t: string) => `fx_prop_${t}`,
+} as const;
+
 interface Item {
   container: Phaser.GameObjects.Container;
   type: ItemType;
@@ -38,7 +48,6 @@ export class GameplayScene extends Phaser.Scene {
   private levelLabel!: Phaser.GameObjects.Text;
   private fishLabel!: Phaser.GameObjects.Text;
   private feverBarG!: Phaser.GameObjects.Graphics;
-  private feverFlameG!: Phaser.GameObjects.Graphics;
   private feverStatusLabel!: Phaser.GameObjects.Text;
   private levelProgressG!: Phaser.GameObjects.Graphics;
   private levelProgressLabel!: Phaser.GameObjects.Text;
@@ -52,15 +61,23 @@ export class GameplayScene extends Phaser.Scene {
   private swarmWarningPopup!: Phaser.GameObjects.Container;
   private swarmSurvivePopup!: Phaser.GameObjects.Text;
 
-  private catShadow!: Phaser.GameObjects.Graphics;
+  private catShadowImg!: Phaser.GameObjects.Image;
   private cat!: Phaser.GameObjects.Image;
   private shieldBubble!: Phaser.GameObjects.Graphics;
   private magnetIndicator!: Phaser.GameObjects.Text;
   private feverAura!: Phaser.GameObjects.Graphics;
   private bgG!: Phaser.GameObjects.Graphics;
-  private speedLinesG!: Phaser.GameObjects.Graphics;
-  private natureParticlesG!: Phaser.GameObjects.Graphics;
-  private roadsidePropsG!: Phaser.GameObjects.Graphics;
+  // PERF-FIX A: vector vẽ mỗi frame được pre-render 1 lần ở create(), mỗi frame chỉ
+  // cập nhật vị trí/alpha của Image — không còn tessellate + upload GPU buffer từng frame.
+  private laneDashTiles: Phaser.GameObjects.TileSprite[] = [];
+  private streakImgs: Phaser.GameObjects.Image[] = [];
+  private natureImgs: Phaser.GameObjects.Image[] = [];
+  private roadsideImgs: Phaser.GameObjects.Image[] = [];
+  private feverFlameImg!: Phaser.GameObjects.Image;
+  private lastFeverUiKey = '';
+  private shieldWasActive = false;
+  private magnetWasActive = false;
+  private feverAuraWasActive = false;
 
   private bgImage?: Phaser.GameObjects.Image;
   private lanes: number[] = [];
@@ -109,18 +126,186 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private drawCatShadow(x: number, y: number, w: number, h: number, scaleX = 1, scaleY = 1) {
-    if (!this.catShadow || !this.catShadow.active) return;
-    this.catShadow.clear();
-    // Radial-gradient ellipse: width ~1.4x cat body, height ~0.35x, peak alpha 0.22, feathered edges (no hard rim)
-    const shadowW = (w * 1.40) * scaleX;
-    const shadowH = (h * 0.35) * scaleY;
+    // PERF-FIX A: bóng đổ là 1 Image của texture pre-render (10 ellipse alpha-blend bake 1 lần).
+    // Mỗi frame chỉ đổi vị trí/scale — đồng nhất toán học vì ellipse bake scale tuyến tính quanh tâm.
+    if (!this.catShadowImg || !this.catShadowImg.active) return;
     const shadowY = y + h * 0.44;
-    const steps = 10;
-    const alphaStep = 0.22 / steps;
-    for (let i = steps; i >= 1; i--) {
-      const ratio = i / steps;
-      this.catShadow.fillStyle(0x1B1008, alphaStep);
-      this.catShadow.fillEllipse(x, shadowY, shadowW * ratio, shadowH * ratio);
+    this.catShadowImg.setPosition(x, shadowY).setScale(scaleX, scaleY);
+  }
+
+  // ---------- PERF-FIX A: pre-render doodad cuộn 1 lần ở create(), không vẽ vector mỗi frame ----------
+
+  private bakeTexture(key: string, w: number, h: number, draw: (g: Phaser.GameObjects.Graphics) => void) {
+    if (this.textures.exists(key)) this.textures.remove(key);
+    const g = this.add.graphics();
+    draw(g);
+    g.generateTexture(key, Math.ceil(w), Math.ceil(h));
+    g.destroy();
+  }
+
+  private bakeCatShadow(catSize: { w: number; h: number }) {
+    const shadowW = catSize.w * 1.40;
+    const shadowH = catSize.h * 0.35;
+    this.bakeTexture(FLOW_TEX.shadow, shadowW, shadowH, (g) => {
+      const steps = 10;
+      const alphaStep = 0.22 / steps;
+      for (let i = steps; i >= 1; i--) {
+        const ratio = i / steps;
+        g.fillStyle(0x1B1008, alphaStep);
+        g.fillEllipse(shadowW / 2, shadowH / 2, shadowW * ratio, shadowH * ratio);
+      }
+    });
+  }
+
+  private buildFlowTextures() {
+    const { width, height } = this.scale;
+    const catSize = this.getCatSize(width, height);
+
+    // Bóng mèo: giống hệt drawCatShadow cũ (steps=10, peak alpha 0.22), bake centered
+    this.bakeCatShadow(catSize);
+
+    // Dot trắng đơn vị (hạt nature / vòng tròn FX) — tint + scale mỗi ảnh
+    this.bakeTexture(FLOW_TEX.dotWhite, 16, 16, (g) => {
+      g.fillStyle(0xFFFFFF, 1);
+      g.fillCircle(8, 8, 8);
+    });
+
+    // Vạch làn: 1 chu kỳ dash(36)+gap(24) bake đứng, cuộn bằng TileSprite
+    const dashLength = 36;
+    const gapLength = 24;
+    const totalCycle = dashLength + gapLength;
+    this.bakeTexture(FLOW_TEX.dash, 4, totalCycle, (g) => {
+      g.lineStyle(2, 0x0F172A, 0.18);
+      g.strokeLineShape(new Phaser.Geom.Line(2, 0, 2, dashLength));
+    });
+
+    // Vệt gió thẳng đứng 1.6px x 28px (trắng — tint theo fever)
+    this.bakeTexture(FLOW_TEX.streak(false), 4, 28, (g) => {
+      g.lineStyle(1.6, 0xFFFFFF, 1);
+      g.strokeLineShape(new Phaser.Geom.Line(2, 0, 2, 28));
+    });
+
+    // Flame icon fever bar: 2 biến thể bake sẵn, đổi texture khi trạng thái đổi
+    for (const fever of [false, true]) {
+      this.bakeTexture(FLOW_TEX.flame(fever), 13, 19, (g) => {
+        const cx = 6.5;
+        const cy = 9.5;
+        g.fillStyle(fever ? 0xFF3838 : 0xFF6B35, 1.0);
+        g.fillPoints([
+          new Phaser.Math.Vector2(cx, cy - 9),
+          new Phaser.Math.Vector2(cx + 3.5, cy - 5.5),
+          new Phaser.Math.Vector2(cx + 6.5, cy - 1),
+          new Phaser.Math.Vector2(cx + 6, cy + 4),
+          new Phaser.Math.Vector2(cx + 3.5, cy + 8),
+          new Phaser.Math.Vector2(cx, cy + 9.5),
+          new Phaser.Math.Vector2(cx - 3.5, cy + 8),
+          new Phaser.Math.Vector2(cx - 6, cy + 4),
+          new Phaser.Math.Vector2(cx - 6.5, cy - 1),
+          new Phaser.Math.Vector2(cx - 3.5, cy - 5.5),
+        ], true);
+        g.fillStyle(0xFFD700, 1.0);
+        g.fillPoints([
+          new Phaser.Math.Vector2(cx, cy - 3.5),
+          new Phaser.Math.Vector2(cx + 2.5, cy - 0.5),
+          new Phaser.Math.Vector2(cx + 2.5, cy + 3.5),
+          new Phaser.Math.Vector2(cx, cy + 6),
+          new Phaser.Math.Vector2(cx - 2.5, cy + 3.5),
+          new Phaser.Math.Vector2(cx - 2.5, cy - 0.5),
+        ], true);
+      });
+    }
+
+    // Roadside props (daisy / grass / flower_purple / pebble) — geometry y như code cũ, scale 0.85
+    const S = 0.85;
+    const PS = 26; // canvas 26x26, prop centered at 13,13
+    const pcx = PS / 2;
+    const pcy = PS / 2;
+    this.bakeTexture(FLOW_TEX.prop('daisy'), PS, PS, (g) => {
+      g.fillStyle(0x388E3C, 0.8);
+      g.fillCircle(pcx - 3 * S, pcy + 2 * S, 2.5 * S);
+      g.fillCircle(pcx + 3 * S, pcy + 2 * S, 2.5 * S);
+      g.fillStyle(0xFFFFFF, 0.95);
+      const petalDist = 3.5 * S;
+      const petalR = 3.2 * S;
+      for (let a = 0; a < 5; a++) {
+        const ang = (a / 5) * Math.PI * 2;
+        g.fillCircle(pcx + Math.cos(ang) * petalDist, pcy + Math.sin(ang) * petalDist, petalR);
+      }
+      g.fillStyle(0xFFD700, 1);
+      g.fillCircle(pcx, pcy, 3.0 * S);
+    });
+    this.bakeTexture(FLOW_TEX.prop('flower_purple'), PS, PS, (g) => {
+      g.fillStyle(0x2E7D32, 0.8);
+      g.fillCircle(pcx, pcy + 3 * S, 2.8 * S);
+      g.fillStyle(0xBA68C8, 0.92);
+      const petalDist = 3.2 * S;
+      const petalR = 3.0 * S;
+      for (let a = 0; a < 5; a++) {
+        const ang = (a / 5) * Math.PI * 2;
+        g.fillCircle(pcx + Math.cos(ang) * petalDist, pcy + Math.sin(ang) * petalDist, petalR);
+      }
+      g.fillStyle(0xFFEB3B, 1);
+      g.fillCircle(pcx, pcy, 2.6 * S);
+    });
+    this.bakeTexture(FLOW_TEX.prop('grass'), PS, PS, (g) => {
+      g.lineStyle(2.4 * S, 0x4CAF50, 0.9);
+      g.strokeLineShape(new Phaser.Geom.Line(pcx, pcy, pcx - 5 * S, pcy - 9 * S));
+      g.strokeLineShape(new Phaser.Geom.Line(pcx, pcy, pcx, pcy - 11 * S));
+      g.strokeLineShape(new Phaser.Geom.Line(pcx, pcy, pcx + 5 * S, pcy - 9 * S));
+    });
+    this.bakeTexture(FLOW_TEX.prop('pebble'), PS, PS, (g) => {
+      g.fillStyle(0x1B1008, 0.25);
+      g.fillEllipse(pcx, pcy + 2 * S, 7 * S, 3.5 * S);
+      g.fillStyle(0x94A3B8, 0.85);
+      g.fillCircle(pcx, pcy, 4.5 * S);
+      g.fillStyle(0xE2E8F0, 0.7);
+      g.fillCircle(pcx - 1.5 * S, pcy - 1.5 * S, 2.0 * S);
+    });
+  }
+
+  private destroyFlowObjects() {
+    for (const t of this.laneDashTiles) t.destroy();
+    for (const im of this.streakImgs) im.destroy();
+    for (const im of this.natureImgs) im.destroy();
+    for (const im of this.roadsideImgs) im.destroy();
+    this.laneDashTiles = [];
+    this.streakImgs = [];
+    this.natureImgs = [];
+    this.roadsideImgs = [];
+  }
+
+  private buildFlowObjects() {
+    this.destroyFlowObjects();
+    const { width, height } = this.scale;
+    const { leftEdge, laneWidth } = this.getStraightRoadMetrics(width, height);
+
+    // 2 TileSprite vạch làn cuộn modulo (kết luận thread §5.1: dirty-flag vô dụng vì offset đổi mọi frame)
+    const totalCycle = 60;
+    for (const divIdx of [1, 2]) {
+      const lineX = leftEdge + divIdx * laneWidth;
+      const tile = this.add.tileSprite(lineX, height / 2, 4, height + totalCycle * 2, FLOW_TEX.dash)
+        .setDepth(z.bg + 1);
+      this.laneDashTiles.push(tile);
+    }
+
+    // 12 vệt gió (8 thường / 12 fever — như streakCount cũ; ẩn bớt bằng visible)
+    for (let i = 0; i < 12; i++) {
+      const im = this.add.image(0, 0, FLOW_TEX.streak(false)).setDepth(z.bg + 1).setVisible(false);
+      this.streakImgs.push(im);
+    }
+
+    // Hạt nature: dot trắng tint theo màu sẵn có
+    for (const p of this.natureParticles) {
+      const im = this.add.image(0, 0, FLOW_TEX.dotWhite).setDepth(z.bg + 2).setTint(p.color);
+      im.setDisplaySize(p.size * 2, p.size * 2);
+      this.natureImgs.push(im);
+    }
+
+    // Roadside props: 1 Image mỗi prop, đổi texture khi prop đổi loại ở cuối chu kỳ
+    for (const p of this.roadsideProps) {
+      const im = this.add.image(0, 0, FLOW_TEX.prop(p.propType))
+        .setDisplaySize(26, 26).setDepth(z.bg + 2).setVisible(false);
+      this.roadsideImgs.push(im);
     }
   }
 
@@ -292,7 +477,6 @@ export class GameplayScene extends Phaser.Scene {
 
     // Fever Bar Graphics & Label (Pill 28px height, Graphics vector flame icon)
     this.feverBarG = this.add.graphics().setDepth(z.hud);
-    this.feverFlameG = this.add.graphics().setDepth(z.hud + 1);
     this.feverStatusLabel = this.add.text(pf.center + 8, hudY + 38, 'FEVER 0%', fontStyle({ size: '13px', weight: '900', lh: 1 }, '#FFFFFF'))
       .setOrigin(0.5).setDepth(z.hud + 1)
       .setStroke('#1E0E02', 3.5)
@@ -306,10 +490,8 @@ export class GameplayScene extends Phaser.Scene {
       .setAlpha(0.95);
     this.levelProgressLabel.setData('testid', 'level-progress');
 
-    // Speed Lines, Nature Flow & Roadside Props Graphics
-    this.speedLinesG = this.add.graphics().setDepth(z.bg + 1);
-    this.natureParticlesG = this.add.graphics().setDepth(z.bg + 2);
-    this.roadsidePropsG = this.add.graphics().setDepth(z.bg + 2);
+    // PERF-FIX A: doodad cuộn (vạch làn, vệt gió, hạt nature, roadside, bóng mèo) được
+    // pre-render texture 1 lần rồi cuộn bằng Image/TileSprite — xem buildFlowTextures().
 
     this.natureParticles = [];
     for (let i = 0; i < 16; i++) {
@@ -336,6 +518,10 @@ export class GameplayScene extends Phaser.Scene {
         propType: propTypes[i % propTypes.length],
       });
     }
+
+    // PERF-FIX A: bake texture 1 lần rồi tạo sprite cuộn (sau khi có mảng natureParticles/roadsideProps)
+    this.buildFlowTextures();
+    this.buildFlowObjects();
 
     // Popups
     this.levelPopup = this.add.text(width / 2, height * 0.36, '', fontStyle(type.h1, color.textOnAccent))
@@ -378,7 +564,8 @@ export class GameplayScene extends Phaser.Scene {
     this.feverAura = this.add.graphics().setDepth(z.actor - 1).setAlpha(0);
 
     // Cat Ground Contact Shadow (Bóng đổ đất ấm neo chân mèo xuống sàn)
-    this.catShadow = this.add.graphics().setDepth(z.actor - 1);
+    this.catShadowImg = this.add.image(this.lanes[this.currentLane], catY + catSize.h * 0.44, FLOW_TEX.shadow)
+      .setDepth(z.actor - 1);
     this.drawCatShadow(this.lanes[this.currentLane], catY, catSize.w, catSize.h);
 
     this.cat = this.add.image(this.lanes[this.currentLane], catY, ctx.engine.getSelectedSkinTexture())
@@ -482,9 +669,7 @@ export class GameplayScene extends Phaser.Scene {
       this.scale.off('resize', resizeListener);
       if (this.bgImage && this.bgImage.active) this.bgImage.destroy();
       if (this.bgG && this.bgG.active) this.bgG.destroy();
-      if (this.speedLinesG && this.speedLinesG.active) this.speedLinesG.destroy();
-      if (this.natureParticlesG && this.natureParticlesG.active) this.natureParticlesG.destroy();
-      if (this.roadsidePropsG && this.roadsidePropsG.active) this.roadsidePropsG.destroy();
+      this.destroyFlowObjects();
       this.bgImage = undefined;
       this.bgG = undefined as any;
     });
@@ -1008,7 +1193,7 @@ export class GameplayScene extends Phaser.Scene {
         b.container.destroy();
       }
     }
-    this.bees = this.bees.filter(b => b.container && b.container.active);
+    this.pruneBees();
     if (this.fatBeeActive && !this.bees.some(b => b.type === 'fat')) {
       this.fatBeeActive = false;
     }
@@ -1088,86 +1273,74 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private drawGroundFlow(speed: number, dt: number, isFever: boolean) {
-    const g = this.speedLinesG;
-    g.clear();
+    // PERF-FIX A: không còn clear()+vẽ vector mỗi frame. Vạch làn = 2 TileSprite cuộn
+    // modulo; vệt gió + hạt nature = Image đã bake texture, mỗi frame chỉ đổi
+    // position/alpha/tint (không tessellate, không upload GPU buffer mới).
+    if (this.laneDashTiles.length === 0) this.buildFlowObjects();
 
     const { width, height } = this.scale;
     const { leftEdge, laneWidth, roadW } = this.getStraightRoadMetrics(width, height);
 
-    // 1. Moving dashed lane separators (downward straight vertical rolling motion)
-    const dashLength = 36;
-    const gapLength = 24;
-    const totalCycle = dashLength + gapLength;
+    // 1. Vạch làn: TileSprite cuộn xuống bằng tilePositionY modulo chu kỳ 60px
+    // (giảm tilePositionY = nội dung dịch xuống; always-positive để WebGL wrap chuẩn)
+    const totalCycle = 60;
     const flowOffset = (this.elapsed * speed * 0.85) % totalCycle;
-
-    g.lineStyle(2, 0x0F172A, 0.18);
-    for (const divIdx of [1, 2]) {
-      const lineX = leftEdge + divIdx * laneWidth;
-      let curY = flowOffset - totalCycle;
-      while (curY < height) {
-        const segStartY = Math.max(0, curY);
-        const segEndY = Math.min(height, curY + dashLength);
-        if (segEndY > segStartY) {
-          g.strokeLineShape(new Phaser.Geom.Line(lineX, segStartY, lineX, segEndY));
-        }
-        curY += totalCycle;
-      }
+    for (let d = 0; d < this.laneDashTiles.length; d++) {
+      const tile = this.laneDashTiles[d];
+      tile.setX(leftEdge + (d === 0 ? 1 : 2) * laneWidth).setY(height / 2)
+        .setSize(4, height + totalCycle * 2);
+      tile.tilePositionY = totalCycle - flowOffset;
     }
 
-    // 2. Straight vertical ground breeze / grass streaks
+    // 2. Vệt gió: 12 Image bake sẵn, ẩn/hiện theo streakCount như code cũ
     const streakCount = isFever ? 12 : 8;
-    const streakCol = isFever ? 0xFFA502 : 0xFFFFFF;
-    for (let i = 0; i < streakCount; i++) {
+    const streakTint = isFever ? 0xFFA502 : 0xFFFFFF;
+    for (let i = 0; i < this.streakImgs.length; i++) {
+      const im = this.streakImgs[i];
+      if (i >= streakCount) {
+        if (im.visible) im.setVisible(false);
+        continue;
+      }
       const cycleT = ((this.elapsed * (speed * 0.0016) + (i / streakCount)) % 1);
       const sy = cycleT * height;
-      const laneIndex = (i % 3);
+      const laneIndex = i % 3;
       const laneCenterX = leftEdge + (laneIndex + 0.5) * laneWidth;
       const laneOffset = Math.sin(i * 3.7 + this.elapsed * 0.5) * (laneWidth * 0.3);
-      const sx = laneCenterX + laneOffset;
-
-      const len = 28;
-      const endY = Math.min(height, sy + len);
-
       const alpha = Math.sin(cycleT * Math.PI) * (isFever ? 0.38 : 0.16);
-      const thickness = 1.6;
-
-      g.lineStyle(thickness, streakCol, alpha);
-      g.strokeLineShape(new Phaser.Geom.Line(sx, sy, sx, endY));
+      im.setVisible(true).setTint(streakTint).setPosition(laneCenterX + laneOffset, sy + 14).setAlpha(alpha);
     }
 
-    // 3. Update & render floating dandelion / leaf nature particles
-    const pG = this.natureParticlesG;
-    if (pG && pG.active) {
-      pG.clear();
-      for (const p of this.natureParticles) {
-        p.y += speed * 0.75 * p.speedMult * dt;
-        if (p.y > height + 20) {
-          p.y = Phaser.Math.Between(-20, 0);
-          p.xRatio = Math.random();
-        }
-
-        const sway = Math.sin(this.elapsed * p.swaySpeed + p.swayOffset) * 12;
-        const px = leftEdge + p.xRatio * roadW + sway;
-        const pProgress = Math.max(0, Math.min(1, p.y / height));
-        const pAlpha = Math.sin(pProgress * Math.PI) * p.alpha;
-
-        pG.fillStyle(p.color, pAlpha);
-        pG.fillCircle(px, p.y, p.size);
+    // 3. Hạt nature: cùng toán chuyển động cũ, render bằng Image tint
+    for (let i = 0; i < this.natureParticles.length; i++) {
+      const p = this.natureParticles[i];
+      p.y += speed * 0.75 * p.speedMult * dt;
+      if (p.y > height + 20) {
+        p.y = Phaser.Math.Between(-20, 0);
+        p.xRatio = Math.random();
       }
+      const sway = Math.sin(this.elapsed * p.swaySpeed + p.swayOffset) * 12;
+      const px = leftEdge + p.xRatio * roadW + sway;
+      const pProgress = Math.max(0, Math.min(1, p.y / height));
+      const pAlpha = Math.sin(pProgress * Math.PI) * p.alpha;
+      const im = this.natureImgs[i];
+      if (im) im.setPosition(px, p.y).setAlpha(pAlpha);
     }
   }
 
   private drawRoadsideProps(speed: number, dt: number) {
-    const g = this.roadsidePropsG;
-    if (!g || !g.active) return;
-    g.clear();
+    // PERF-FIX A: mỗi prop là 1 Image của texture bake sẵn (daisy/grass/flower/pebble),
+    // mỗi frame chỉ đổi position/alpha/texture — không clear()+~20 lệnh vector/frame.
+    if (this.roadsideImgs.length === 0) this.buildFlowObjects();
 
     const { width, height } = this.scale;
     const { leftEdge, roadW } = this.getStraightRoadMetrics(width, height);
 
     const propTypes: Array<'daisy' | 'grass' | 'flower_purple' | 'pebble'> = ['daisy', 'grass', 'flower_purple', 'pebble'];
 
-    for (const p of this.roadsideProps) {
+    for (let i = 0; i < this.roadsideProps.length; i++) {
+      const p = this.roadsideProps[i];
+      const im = this.roadsideImgs[i];
+      if (!im) continue;
       // Advance progress t downwards
       p.t += (speed * 0.00085 * p.speedMult) * dt;
       if (p.t >= 1.0) {
@@ -1176,79 +1349,46 @@ export class GameplayScene extends Phaser.Scene {
         p.speedMult = 0.85 + Math.random() * 0.30;
         p.lateralOffsetRatio = Math.random();
         p.propType = propTypes[Math.floor(Math.random() * propTypes.length)];
+        im.setTexture(FLOW_TEX.prop(p.propType));
       }
 
       const py = p.t * height;
       const edgeX = p.side === -1 ? leftEdge : (leftEdge + roadW);
       // Lateral outward offset into roadside grass
       const px = edgeX + p.side * (12 + p.lateralOffsetRatio * 28);
-      const scale = 0.85;
       const alpha = Math.min(1.0, Math.sin(p.t * Math.PI) * 1.5);
 
-      if (alpha <= 0.01) continue;
-
-      if (p.propType === 'daisy') {
-        // Daisy: Green leaves + 5 white petals + gold center
-        g.fillStyle(0x388E3C, alpha * 0.8);
-        g.fillCircle(px - 3 * scale, py + 2 * scale, 2.5 * scale);
-        g.fillCircle(px + 3 * scale, py + 2 * scale, 2.5 * scale);
-
-        // White petals
-        g.fillStyle(0xFFFFFF, alpha * 0.95);
-        const petalDist = 3.5 * scale;
-        const petalR = 3.2 * scale;
-        for (let a = 0; a < 5; a++) {
-          const ang = (a / 5) * Math.PI * 2;
-          g.fillCircle(px + Math.cos(ang) * petalDist, py + Math.sin(ang) * petalDist, petalR);
-        }
-        // Gold Center
-        g.fillStyle(0xFFD700, alpha);
-        g.fillCircle(px, py, 3.0 * scale);
-      } else if (p.propType === 'flower_purple') {
-        // Purple / Lavender blossom
-        g.fillStyle(0x2E7D32, alpha * 0.8);
-        g.fillCircle(px, py + 3 * scale, 2.8 * scale);
-
-        g.fillStyle(0xBA68C8, alpha * 0.92);
-        const petalDist = 3.2 * scale;
-        const petalR = 3.0 * scale;
-        for (let a = 0; a < 5; a++) {
-          const ang = (a / 5) * Math.PI * 2;
-          g.fillCircle(px + Math.cos(ang) * petalDist, py + Math.sin(ang) * petalDist, petalR);
-        }
-        g.fillStyle(0xFFEB3B, alpha);
-        g.fillCircle(px, py, 2.6 * scale);
-      } else if (p.propType === 'grass') {
-        // 3 Tuft blades of grass
-        g.lineStyle(2.4 * scale, 0x4CAF50, alpha * 0.9);
-        g.strokeLineShape(new Phaser.Geom.Line(px, py, px - 5 * scale, py - 9 * scale));
-        g.strokeLineShape(new Phaser.Geom.Line(px, py, px, py - 11 * scale));
-        g.strokeLineShape(new Phaser.Geom.Line(px, py, px + 5 * scale, py - 9 * scale));
-      } else if (p.propType === 'pebble') {
-        // Pebble with shadow & highlight
-        g.fillStyle(0x1B1008, alpha * 0.25);
-        g.fillEllipse(px, py + 2 * scale, 7 * scale, 3.5 * scale);
-
-        g.fillStyle(0x94A3B8, alpha * 0.85);
-        g.fillCircle(px, py, 4.5 * scale);
-
-        g.fillStyle(0xE2E8F0, alpha * 0.7);
-        g.fillCircle(px - 1.5 * scale, py - 1.5 * scale, 2.0 * scale);
+      if (alpha <= 0.01) {
+        if (im.visible) im.setVisible(false);
+        continue;
       }
+      im.setVisible(true).setPosition(px, py).setAlpha(alpha);
+    }
+  }
+
+  // PERF-FIX D: lọc in-place, không cấp phát array mới mỗi lần gọi (code cũ: bees.filter(...)/spawn)
+  private pruneBees() {
+    for (let i = this.bees.length - 1; i >= 0; i--) {
+      const b = this.bees[i];
+      if (!b.container || !b.container.active) this.bees.splice(i, 1);
     }
   }
 
   private updateCatEffects(catX: number, catY: number, catSize: { w: number; h: number }) {
-    if (ctx.engine.shieldActive) {
+    // PERF-FIX C: dirty-flag — shield/aura chỉ clear 1 lần khi chuyển on->off,
+    // không chạy clear()+setAlpha(0) mỗi frame khi hiệu ứng đang tắt.
+    const shieldActive = ctx.engine.shieldActive;
+    if (shieldActive) {
       this.shieldBubble.clear();
       this.shieldBubble.lineStyle(3, 0x00F0FF, 0.9);
       this.shieldBubble.fillStyle(0x00F0FF, 0.20);
       this.shieldBubble.strokeCircle(catX, catY, catSize.w * 0.65);
       this.shieldBubble.fillCircle(catX, catY, catSize.w * 0.65);
       this.shieldBubble.setAlpha(0.85);
-    } else {
+    } else if (this.shieldWasActive) {
       this.shieldBubble.clear().setAlpha(0);
     }
+    this.shieldWasActive = shieldActive;
 
     if (ctx.engine.isMagnetActive()) {
       this.magnetIndicator.setPosition(catX, catY - catSize.h * 0.65).setAlpha(1);
@@ -1256,16 +1396,18 @@ export class GameplayScene extends Phaser.Scene {
       this.magnetIndicator.setAlpha(0);
     }
 
-    if (ctx.engine.isFeverActive()) {
+    const feverActive = ctx.engine.isFeverActive();
+    if (feverActive) {
       this.feverAura.clear();
       this.feverAura.lineStyle(4, 0xFF9F1C, 0.8);
       this.feverAura.fillStyle(0xFF9F1C, 0.25);
       this.feverAura.strokeCircle(catX, catY, catSize.w * 0.75);
       this.feverAura.fillCircle(catX, catY, catSize.w * 0.75);
       this.feverAura.setAlpha(1);
-    } else {
+    } else if (this.feverAuraWasActive) {
       this.feverAura.clear().setAlpha(0);
     }
+    this.feverAuraWasActive = feverActive;
   }
 
   private handleSwarmBeeDone(b: Bee) {
@@ -1317,7 +1459,7 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private spawnBee(speed: number): boolean {
-    this.bees = this.bees.filter(b => b.container && b.container.active);
+    this.pruneBees();
 
     // Không spawn bất kỳ con ong nào khác khi đang trong đợt Ong Béo Thư Giãn
     if (this.fatBeeActive || this.bees.some(b => b.type === 'fat')) {
@@ -1739,7 +1881,7 @@ export class GameplayScene extends Phaser.Scene {
         b.container.destroy();
       }
     }
-    this.bees = this.bees.filter(b => b.container && b.container.active);
+    this.pruneBees();
 
     this.playSfx('sfx_combo', 0.6, 1.2);
     this.showPowerupPopup('👑 FAT BEE BREAK! 🐟', '#FFD700');
@@ -1820,39 +1962,6 @@ export class GameplayScene extends Phaser.Scene {
     this.spawnSparkles(width / 2, this.scale.height * 0.25, 0xFFA502);
   }
 
-  private drawFlameIcon(g: Phaser.GameObjects.Graphics, cx: number, cy: number, isFever: boolean) {
-    g.clear();
-    // Outer flame petal (smooth polygon)
-    const outerColor = isFever ? 0xFF3838 : 0xFF6B35;
-    g.fillStyle(outerColor, 1.0);
-    const outerPoints = [
-      new Phaser.Math.Vector2(cx, cy - 9),
-      new Phaser.Math.Vector2(cx + 3.5, cy - 5.5),
-      new Phaser.Math.Vector2(cx + 6.5, cy - 1),
-      new Phaser.Math.Vector2(cx + 6, cy + 4),
-      new Phaser.Math.Vector2(cx + 3.5, cy + 8),
-      new Phaser.Math.Vector2(cx, cy + 9.5),
-      new Phaser.Math.Vector2(cx - 3.5, cy + 8),
-      new Phaser.Math.Vector2(cx - 6, cy + 4),
-      new Phaser.Math.Vector2(cx - 6.5, cy - 1),
-      new Phaser.Math.Vector2(cx - 3.5, cy - 5.5),
-    ];
-    g.fillPoints(outerPoints, true);
-
-    // Inner flame core (bright gold)
-    const innerColor = 0xFFD700;
-    g.fillStyle(innerColor, 1.0);
-    const innerPoints = [
-      new Phaser.Math.Vector2(cx, cy - 3.5),
-      new Phaser.Math.Vector2(cx + 2.5, cy - 0.5),
-      new Phaser.Math.Vector2(cx + 2.5, cy + 3.5),
-      new Phaser.Math.Vector2(cx, cy + 6),
-      new Phaser.Math.Vector2(cx - 2.5, cy + 3.5),
-      new Phaser.Math.Vector2(cx - 2.5, cy - 0.5),
-    ];
-    g.fillPoints(innerPoints, true);
-  }
-
   // D-A2: pill tiến độ lên level tiếp theo — cùng pattern fever bar (track + gradient fill + label).
   private drawLevelProgress() {
     const { width, height } = this.scale;
@@ -1903,9 +2012,6 @@ export class GameplayScene extends Phaser.Scene {
     const barX = pf.center - barW / 2;
     const barY = hudY + 24; // >= 10px gap from score text (score at hudY - 4, bottom at hudY + 11)
 
-    const g = this.feverBarG;
-    g.clear();
-
     const isFever = ctx.engine.isFeverActive();
     let ratio = ctx.engine.fever / 100;
     if (isFever) {
@@ -1913,39 +2019,58 @@ export class GameplayScene extends Phaser.Scene {
     }
     ratio = Phaser.Math.Clamp(ratio, 0, 1);
 
-    // 1. Pill Track: rgba(255,255,255,0.12), fully rounded (14px)
-    g.fillStyle(0xFFFFFF, 0.12);
-    g.fillRoundedRect(barX, barY, barW, barH, 14);
-    g.lineStyle(1.5, 0xFFFFFF, 0.22);
-    g.strokeRoundedRect(barX, barY, barW, barH, 14);
-
-    // 2. Horizontal gradient fill (#FF9F1C -> #E71D36) when > 0
+    // PERF-FIX A/C: dirty-flag — chỉ clear()+redraw khi trạng thái nhìn thấy được đổi
+    // (fillW quantize 0.5px, glow alpha quantize 0.1 step). Bản cũ tessellate lại mỗi frame.
     const fillW = Math.max(0, barW * ratio);
-    if (fillW > 0) {
-      g.fillGradientStyle(0xFF9F1C, 0xE71D36, 0xFF9F1C, 0xE71D36, 1, 1, 1, 1);
-      g.fillRoundedRect(barX, barY, Math.max(28, fillW), barH, 14);
+    const pulsing = isFever || ratio >= 1.0;
+    const glowAlpha = pulsing ? 0.45 + 0.35 * Math.sin(this.elapsed * 10) : 0;
+    const key = `${barX.toFixed(1)}|${barY}|${barW}|${Math.round(fillW * 2)}|${isFever ? 1 : 0}|${Math.round(glowAlpha * 10)}|${Math.round(ctx.engine.fever)}`;
+    const layoutChanged = key !== this.lastFeverUiKey;
+    this.lastFeverUiKey = key;
+
+    if (layoutChanged) {
+      const g = this.feverBarG;
+      g.clear();
+
+      // 1. Pill Track: rgba(255,255,255,0.12), fully rounded (14px)
+      g.fillStyle(0xFFFFFF, 0.12);
+      g.fillRoundedRect(barX, barY, barW, barH, 14);
+      g.lineStyle(1.5, 0xFFFFFF, 0.22);
+      g.strokeRoundedRect(barX, barY, barW, barH, 14);
+
+      // 2. Horizontal gradient fill (#FF9F1C -> #E71D36) when > 0
+      if (fillW > 0) {
+        g.fillGradientStyle(0xFF9F1C, 0xE71D36, 0xFF9F1C, 0xE71D36, 1, 1, 1, 1);
+        g.fillRoundedRect(barX, barY, Math.max(28, fillW), barH, 14);
+      }
+
+      // 3. Pulsing outer glow when full or fever mode
+      if (pulsing) {
+        g.lineStyle(3.5, 0xFF9F1C, glowAlpha);
+        g.strokeRoundedRect(barX - 2, barY - 2, barW + 4, barH + 4, 16);
+      }
     }
 
-    // 3. Pulsing outer glow when full or fever mode
-    if (isFever || ratio >= 1.0) {
-      const glowAlpha = 0.45 + 0.35 * Math.sin(this.elapsed * 10);
-      g.lineStyle(3.5, 0xFF9F1C, glowAlpha);
-      g.strokeRoundedRect(barX - 2, barY - 2, barW + 4, barH + 4, 16);
-    }
-
-    // 4. Vector Flame Icon drawn with Graphics (NO font glyphs)
+    // 4. Flame icon: Image của texture bake sẵn (2 biến thể), chỉ đổi texture khi fever đổi
     const flameCX = barX + 16;
     const flameCY = barY + barH / 2;
-    this.drawFlameIcon(this.feverFlameG, flameCX, flameCY, isFever);
+    if (!this.feverFlameImg || !this.feverFlameImg.active) {
+      this.feverFlameImg = this.add.image(flameCX, flameCY, FLOW_TEX.flame(isFever)).setDepth(z.hud + 1);
+    } else {
+      const wantTex = FLOW_TEX.flame(isFever);
+      if (this.feverFlameImg.texture.key !== wantTex && this.textures.exists(wantTex)) this.feverFlameImg.setTexture(wantTex);
+      this.feverFlameImg.setPosition(flameCX, flameCY);
+    }
 
     // 5. Bold >= 12px readable label at small scale
     const labelX = barX + barW / 2 + 8;
     const labelY = barY + barH / 2;
     this.feverStatusLabel.setPosition(labelX, labelY);
     if (isFever) {
-      this.feverStatusLabel.setText('FEVER 2X!').setColor('#FFF275');
+      if (this.feverStatusLabel.text !== 'FEVER 2X!') this.feverStatusLabel.setText('FEVER 2X!').setColor('#FFF275');
     } else {
-      this.feverStatusLabel.setText(`FEVER ${Math.round(ctx.engine.fever)}%`).setColor('#FFFFFF');
+      const txt = `FEVER ${Math.round(ctx.engine.fever)}%`;
+      if (this.feverStatusLabel.text !== txt) this.feverStatusLabel.setText(txt).setColor('#FFFFFF');
     }
   }
 
@@ -2011,6 +2136,10 @@ export class GameplayScene extends Phaser.Scene {
 
   private onResize(g: Phaser.Structs.Size) {
     this.lanes = this.computeLanes(g.width, g.height);
+    // PERF-FIX A: bóng mèo bake theo catSize — bake lại khi màn hình đổi kích thước
+    const catSizeNow = this.getCatSize(g.width, g.height);
+    this.bakeCatShadow(catSizeNow);
+    if (this.catShadowImg && this.catShadowImg.active) this.catShadowImg.setTexture(FLOW_TEX.shadow);
     this.moveSeq++;
     this.tweens.killTweensOf(this.cat);
     const catY = this.getCatY(g.height);
