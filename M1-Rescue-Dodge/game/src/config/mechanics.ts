@@ -5,7 +5,9 @@ import type { MechanicsConfig } from '../logic/types';
 
 export const MECHANICS: MechanicsConfig = {
   laneCount: 3,
-  milestoneInterval: 10,
+  // BALANCE-M1 (t_2e94b3be, 04/09): newbie sim 300ms — mi 10→22, er 2.5→1.2,
+  // step 18→10, r 5→4 sống 30→60s: 0%→60%. Khung D-A2 giữ nguyên (CEO duyệt).
+  milestoneInterval: 22,
   comboPer: 5,
   comboBonus: 5,
   pointsPerDodge: 1,
@@ -24,11 +26,11 @@ export const MECHANICS: MechanicsConfig = {
   startSpeed: 160,
   maxSpeed: 440,
   speedIncreasePerSec: 5.0,
-  earlyRampPerSec: 2.5,
+  earlyRampPerSec: 1.2,
   earlyRampUntilSec: 90,
-  levelSpeedStep: 18,
+  levelSpeedStep: 10,
   spawnIncrease: 0.04,
-  spawnRateMax: 5,
+  spawnRateMax: 4,
   warmupSeconds: 30,
   continueMaxPerGameOver: 1,
   interstitialDelayGames: 2,

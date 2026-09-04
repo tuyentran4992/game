@@ -300,7 +300,7 @@ export class GameplayScene extends Phaser.Scene {
 
     // Level Progress Pill (D-A2: cảm giác tiến bộ nhìn thấy được — testid level-progress)
     this.levelProgressG = this.add.graphics().setDepth(z.hud);
-    this.levelProgressLabel = this.add.text(pf.center, hudY + 81, 'NEXT LEVEL: 0/10', fontStyle({ size: '13px', weight: '900', lh: 1 }, '#FFFFFF'))
+    this.levelProgressLabel = this.add.text(pf.center, hudY + 81, `NEXT LEVEL: 0/${MECHANICS.milestoneInterval}`, fontStyle({ size: '13px', weight: '900', lh: 1 }, '#FFFFFF'))
       .setOrigin(0.5).setDepth(z.hud + 1)
       .setStroke('#1E0E02', 3.5)
       .setAlpha(0.95);
