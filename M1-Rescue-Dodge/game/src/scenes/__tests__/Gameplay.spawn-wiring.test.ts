@@ -229,3 +229,90 @@ describe('wiring spawnBeeExplosion helpers', () => {
     expect(BEES.fatSpeedMult).toBe(0.72);
   });
 });
+
+// [R1 t_532845b9] Validation làn speedy 1.18: mirror OLD spawnBee L1522-1523 —
+// roll type XONG mới lọc validLanes theo speedMult của type (speedy=1.18).
+// Snapshot phải có safeLanesFast (chấm 1.18) + director pick list theo type vừa roll;
+// refusal speedy KHÔNG reset cadence (mirror OLD return false giữ threshold).
+describe('wiring R1 — speedy validation theo speedMult (safeLanesFast)', () => {
+  /** rng theo seq (deterministic — engine/director tách rng riêng như SpawnDirector.test.ts). */
+  function makeRng(seq: number[]): () => number {
+    let i = 0;
+    return () => {
+      const v = seq[i % seq.length];
+      i += 1;
+      return v;
+    };
+  }
+  /** Engine deterministic: rng 0.01 → rollBeeType = speedy (minh chứng T1a debut test). */
+  function makeEngine(rngSeq: number[]): GameEngine {
+    const engine = new GameEngine(MECHANICS, { rng: makeRng(rngSeq) });
+    engine.startNewGame();
+    return engine;
+  }
+  /** World chỉ an toàn khi chấm 1.0 — lá chỉ qua willBlockAllLanes ở 1.0, không qua ở 1.18. */
+  function r1World(over: Record<string, unknown> = {}) {
+    return {
+      swarmActive: false, fatBeeActive: false, fatOnScreen: false,
+      occupiedLanes: [], safeLanes: [1], safeLanesFast: [], beeCount: 0,
+      ...over,
+    };
+  }
+  function burnSwarm(h: SpawnDirector, engine: GameEngine): void {
+    h.update({ dt: 0.01, elapsed: 30, engine, world: r1World() });
+    h.update({ dt: 2.0, elapsed: 35, engine, world: r1World({ swarmActive: true }) });
+  }
+
+  it('scene.buildSpawnWorld luôn cấp safeLanesFast (getSafeLanes param hoá)', () => {
+    scene.beginSessionForTest(0);
+    const dir = scene.getDirector()!;
+    const spy = vi.spyOn(dir, 'update');
+    scene.stepSpawnForTest(0.016, 1.0);
+    const calls = spy.mock.calls;
+    const snap = calls[calls.length - 1][0].world as Record<string, unknown>;
+    expect(Array.isArray(snap.safeLanesFast)).toBe(true);
+    expect(snap.safeLanesFast).toEqual(snap.safeLanes); // 1.0 vs 1.18 cùng thăng hoa chi phối → lá 1.0 luôn bị chặn ở 1.18
+    spy.mockRestore();
+  });
+
+  it('speedy + làn chỉ an toàn ở 1.0 → director TỪ CHỐI spawn (giữ đường sống — RED: đang spawn)', () => {
+    const h = new SpawnDirector(MECHANICS, { rng: () => 0.01 });
+    h.startSession(0);
+    const engine = makeEngine([0.01]); // roll luôn speedy
+    burnSwarm(h, engine);
+    const r = h.update({ dt: 2.0, elapsed: 37, engine, world: r1World() });
+    expect(r.spawned).toHaveLength(0);
+  });
+
+  it('refusal speedy KHÔNG reset cadence (mirror OLD return false giữ threshold)', () => {
+    const h = new SpawnDirector(MECHANICS, { rng: () => 0.01 });
+    h.startSession(0);
+    const engine = makeEngine([0.01]); // roll luôn speedy → refusal ở frame 2
+    burnSwarm(h, engine);
+    h.update({ dt: 1.0, elapsed: 37, engine, world: r1World() }); // refusal speedy
+    const r = h.update({ dt: 0.5, elapsed: 37.5, engine, world: r1World() });
+    // lastSpawn = 1.5 >= 1.35 → refusal đã giữ ngưỡng thì frame này spawn được ngay
+    expect(r.spawned).toHaveLength(1);
+    expect(r.lastSpawnReset).toBe(true);
+  });
+
+  it('non-speedy vẫn pick từ safeLanes (không ăn theo safeLanesFast)', () => {
+    const h = new SpawnDirector(MECHANICS, { rng: () => 0.99 });
+    h.startSession(0);
+    const engine = makeEngine([0.99]); // roll normal
+    burnSwarm(h, engine);
+    const r = h.update({ dt: 2.0, elapsed: 37, engine, world: r1World({ safeLanes: [], safeLanesFast: [1] }) });
+    expect(r.spawned).toHaveLength(0); // roll normal → lá 1.0 rỗng → refusal
+  });
+
+  it('director thật đứng sau scene: speedy chấm 1.18 đúng như sẽ vẽ (wiring spawnBeeEntity)', () => {
+    scene.beginSessionForTest(0);
+    const dir = scene.getDirector()!;
+    const spy = vi.spyOn(dir, 'update');
+    scene.stepSpawnForTest(0.016, 1.0);
+    const calls = spy.mock.calls;
+    const snap = calls[calls.length - 1][0].world as Record<string, unknown>;
+    expect(snap.safeLanesFast).toBeDefined();
+    spy.mockRestore();
+  });
+});
