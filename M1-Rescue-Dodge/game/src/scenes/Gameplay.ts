@@ -40,8 +40,11 @@ export class GameplayScene extends Phaser.Scene {
   private feverBarG!: Phaser.GameObjects.Graphics;
   private feverFlameG!: Phaser.GameObjects.Graphics;
   private feverStatusLabel!: Phaser.GameObjects.Text;
+  private levelProgressG!: Phaser.GameObjects.Graphics;
+  private levelProgressLabel!: Phaser.GameObjects.Text;
 
   private levelPopup!: Phaser.GameObjects.Text;
+  private levelSubPopup!: Phaser.GameObjects.Text;
   private comboPopup!: Phaser.GameObjects.Text;
   private recordPopup!: Phaser.GameObjects.Container;
   private nearMissPopup!: Phaser.GameObjects.Text;
@@ -128,10 +131,11 @@ export class GameplayScene extends Phaser.Scene {
   private getHudBottom(): number {
     const hudY = Math.max(38, this.scale.height * 0.05);
     const feverBottom = hudY + 24 + 28; // fever pill bottom
+    const levelProgBottom = hudY + 62 + 12 + 14; // level-progress pill + label
     const fishBottom = hudY + 20 + 12;
     const scoreBottom = hudY - 4 + 18;
     const btnBottom = hudY + 17;
-    return Math.max(feverBottom, fishBottom, scoreBottom, btnBottom);
+    return Math.max(feverBottom, levelProgBottom, fishBottom, scoreBottom, btnBottom);
   }
 
   private getHudSafeAreaBottom(): number {
@@ -294,6 +298,14 @@ export class GameplayScene extends Phaser.Scene {
       .setStroke('#1E0E02', 3.5)
       .setAlpha(0.95);
 
+    // Level Progress Pill (D-A2: cảm giác tiến bộ nhìn thấy được — testid level-progress)
+    this.levelProgressG = this.add.graphics().setDepth(z.hud);
+    this.levelProgressLabel = this.add.text(pf.center, hudY + 81, 'NEXT LEVEL: 0/10', fontStyle({ size: '13px', weight: '900', lh: 1 }, '#FFFFFF'))
+      .setOrigin(0.5).setDepth(z.hud + 1)
+      .setStroke('#1E0E02', 3.5)
+      .setAlpha(0.95);
+    this.levelProgressLabel.setData('testid', 'level-progress');
+
     // Speed Lines, Nature Flow & Roadside Props Graphics
     this.speedLinesG = this.add.graphics().setDepth(z.bg + 1);
     this.natureParticlesG = this.add.graphics().setDepth(z.bg + 2);
@@ -329,6 +341,11 @@ export class GameplayScene extends Phaser.Scene {
     this.levelPopup = this.add.text(width / 2, height * 0.36, '', fontStyle(type.h1, color.textOnAccent))
       .setOrigin(0.5).setDepth(z.tutorial).setAlpha(0);
     this.levelPopup.setData('testid', 'level-popup');
+
+    // D-A2: phụ đề tên cảnh dưới level-popup + chapter card tại ranh giới palette (level 10/20)
+    this.levelSubPopup = this.add.text(width / 2, height * 0.36 + 46, '', fontStyle({ size: '22px', weight: '800', lh: 1.2 }, '#FFF275'))
+      .setOrigin(0.5).setDepth(z.tutorial).setAlpha(0);
+    this.levelSubPopup.setData('testid', 'level-popup-sub');
 
     this.comboPopup = this.add.text(width / 2, height * 0.48, '', fontStyle(type.display, color.success))
       .setOrigin(0.5).setDepth(z.tutorial).setAlpha(0);
@@ -1051,6 +1068,7 @@ export class GameplayScene extends Phaser.Scene {
     }
 
     this.drawFeverBar();
+    this.drawLevelProgress();
 
     if (ctx.engine.checkRecord()) this.showRecordPopup();
   }
@@ -1684,15 +1702,28 @@ export class GameplayScene extends Phaser.Scene {
     }
   }
 
+  // D-A2: popup 2s (thay 1.2s) + phụ đề tên cảnh theo palette; tại lv 10/20 đổi thành
+  // chapter card reuse chính popup này (0 asset mới — không làm chapter system riêng). Text EN (PB-5).
   private onLevelUp(level: number) {
     this.drawLevelBg(level);
     this.levelLabel.setText('Level ' + level);
     this.tweens.add({ targets: this.levelLabel, scale: 1.3, duration: dur.tn, yoyo: true, ease: 'back.out' });
-    this.levelPopup.setText('LEVEL ' + level + '!');
+
+    const sceneName = level < 10 ? 'MORNING GARDEN' : level < 20 ? 'SUNSET SPRINT' : 'NIGHT GARDEN';
+    const chapterNo = level === 10 ? 2 : level === 20 ? 3 : 0;
+    if (chapterNo > 0) {
+      this.levelPopup.setText(`CHAPTER ${chapterNo} \u00b7 ${sceneName}`);
+      this.levelSubPopup.setText('LEVEL ' + level);
+    } else {
+      this.levelPopup.setText('LEVEL ' + level + '!');
+      this.levelSubPopup.setText(sceneName);
+    }
+    // Tổng hiển thị ~2s: 220ms in + 1500ms hold + 300ms out
     this.tweens.add({
       targets: this.levelPopup, alpha: 1, scale: { from: 0.6, to: 1.15 }, duration: 220, ease: 'back.out',
-      onComplete: () => this.tweens.add({ targets: this.levelPopup, alpha: 0, scale: 1.0, duration: 300, delay: 900, ease: 'cubic.in' }),
+      onComplete: () => this.tweens.add({ targets: [this.levelPopup, this.levelSubPopup], alpha: 0, scale: 1.0, duration: 300, delay: 1500, ease: 'cubic.in' }),
     });
+    this.tweens.add({ targets: this.levelSubPopup, alpha: 1, duration: 260, delay: 120, ease: 'quad.out' });
     this.spawnLevelConfetti(level);
     this.playSfx('sfx_levelup', 0.45);
   }
@@ -1820,6 +1851,47 @@ export class GameplayScene extends Phaser.Scene {
       new Phaser.Math.Vector2(cx - 2.5, cy - 0.5),
     ];
     g.fillPoints(innerPoints, true);
+  }
+
+  // D-A2: pill tiến độ lên level tiếp theo — cùng pattern fever bar (track + gradient fill + label).
+  private drawLevelProgress() {
+    const { width, height } = this.scale;
+    const pf = this.getPlayfieldBounds(width, height);
+    const hudY = Math.max(38, height * 0.05);
+    const barW = Math.min(180, Math.max(140, pf.width * 0.38));
+    const barH = 12;
+    const barX = pf.center - barW / 2;
+    const barY = hudY + 62; // ngay dưới fever pill (fever bottom = hudY+52)
+
+    const interval = MECHANICS.milestoneInterval;
+    const score = ctx.engine.score;
+    const into = score % interval;
+    const ratio = Phaser.Math.Clamp(into / interval, 0, 1);
+
+    const g = this.levelProgressG;
+    g.clear();
+
+    // Track
+    g.fillStyle(0xFFFFFF, 0.12);
+    g.fillRoundedRect(barX, barY, barW, barH, barH / 2);
+    g.lineStyle(1.5, 0xFFFFFF, 0.22);
+    g.strokeRoundedRect(barX, barY, barW, barH, barH / 2);
+
+    // Fill — xanh success (khác nhiệt gradient cam đỏ của Fever để đọc nhanh)
+    if (ratio > 0) {
+      g.fillGradientStyle(0x5ED07A, 0x2ECC71, 0x5ED07A, 0x2ECC71, 1, 1, 1, 1);
+      g.fillRoundedRect(barX, barY, Math.max(barH, barW * ratio), barH, barH / 2);
+    }
+
+    // Pulsing glow khi sắp lên level (>=80%)
+    if (ratio >= 0.8) {
+      const glowAlpha = 0.35 + 0.3 * Math.sin(this.elapsed * 8);
+      g.lineStyle(2.5, 0x2ECC71, glowAlpha);
+      g.strokeRoundedRect(barX - 2, barY - 2, barW + 4, barH + 4, (barH + 4) / 2);
+    }
+
+    this.levelProgressLabel.setPosition(pf.center, barY + barH / 2 + 14);
+    this.levelProgressLabel.setText(`NEXT LEVEL: ${into}/${interval}`);
   }
 
   private drawFeverBar() {

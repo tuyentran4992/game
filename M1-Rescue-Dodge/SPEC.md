@@ -82,7 +82,7 @@ Player mở game (pre-roll ad tự chạy)
 → Tutorial 1 dòng: "Giữ để tránh ong, thả để né" (3 giây, không ad)
 → Chơi chính: thú mèo chạy trên track, ong bay tới, tap/giữ để đổi lane / lật tránh
 → Điểm tăng dần theo thời gian + mỗi lần né thành công
-→ [Mỗi 10 điểm: Level-up — đổi cảnh + nhảy khó + popup "Cấp {n}"]
+→ [Mỗi 10 điểm: Level-up — đổi cảnh + nhảy khó + popup "LEVEL {n}!" 2s (kèm tên cảnh)]
 → [Né liên tiếp ≥5 không chạm: combo bonus +5]
 → [Nếu vượt best-score: popup "KỶ LỤC MỚI!"]
 → Chạm ong → Game Over:
@@ -115,8 +115,8 @@ Player mở game (pre-roll ad tự chạy)
 ### 4.1 Gameplay (mô tả)
 - **Nhân vật**: 1 chú mèo (sprite tĩnh, hoạt ảnh lật/xoay bằng tween — KHÔNG sprite-sheet nhiều khung).
 - **Cơ chế & điều khiển**: track **3 lane dọc** — ong bay tới, player **chạm/click về phía lane muốn né** → mèo di chuyển **tới lane gần vị trí chạm/click nhất** (đi theo từng lane, tween mượt ~120ms; trùng lane hiện tại → không di chuyển khỏi giật). Hỗ trợ **bàn phím ↑/↓ hoặc W/S** để chuyển lane (desktop). Né thành công → +1 điểm; trúng ong → game over.
-- **Difficulty curve (BẮT BUỘC):** 10 giây đầu tốc độ ong THẤP (giữ chân người mới, không bỏ sớm); sau đó tốc độ & mật độ spawn tăng liên tục theo thời gian + **nhảy bậc** ở mỗi milestone Level (BR-17).
-- **Progression / Level-up (BR-14):** cứ mỗi **10 điểm** → lên 1 Level (KHÔNG reset). Ở mỗi Level: đổi art-palette nền (cảnh mới) + tốc độ/spawn ong tăng bậc + popup "Cấp {n}" 1.5s (không chặn gameplay, không ad). Ít nhất **3 palette nền** (level 1–3+ vòng lại) — asset trong DATA-MODEL.
+- **Difficulty curve (BẮT BUỘC — D-A2):** 30 giây đầu tốc độ ong giữ NGUYÊN mức thấp (warmup, giữ chân người mới không bỏ sớm); 30→90s ramp nhẹ ~2.5px/giây; sau 90s ramp nhanh ~5px/giây, softcap ~440px/s; cộng **nhảy bậc +18px/s** ở mỗi milestone Level (BR-17). Xem `config/mechanics.ts` (MECHANICS) — source of truth, doc không hardcode số.
+- **Progression / Level-up (BR-14):** cứ mỗi **10 điểm** → lên 1 Level (KHÔNG reset). Ở mỗi Level: đổi art-palette nền (cảnh mới) + tốc độ/spawn ong tăng bậc + popup **2s**: "LEVEL {n}!" + phụ đề tên cảnh (MORNING GARDEN / SUNSET SPRINT / NIGHT GARDEN); tại mốc chương (level 10/20) hiện chapter card "CHAPTER {n} · {tên cảnh}" (không chặn gameplay, không ad). HUD có **level-progress bar** "NEXT LEVEL: {vào}/{milestone}". Ít nhất **3 palette nền** (level 1–3+ vòng lại) — asset trong DATA-MODEL.
 - **Combo streak (BR-15):** né liên tiếp không chạm — mỗi 5 lần né liên tiếp cộng thưởng +5 (popup hiệu ứng). Reset combo khi chạm ong.
 - **Kỷ lục (BR-16):** khi vượt best-score đã lưu → popup "KỶ LỤC MỚI!" 1 lần/phiên + cập nhật best (saveData/sendScore).
 - **Hình**: nền gradient tối thiểu + animation physics; asset size thấp để < 5MB.
@@ -142,7 +142,7 @@ Player mở game (pre-roll ad tự chạy)
 - Start: **"Chơi"** / EN "Play"
 - Tutorial: **"Chạm để né ong"** / EN "Tap to dodge bees"
 - Game Over: **"Chơi lại"** / EN "Play Again" · **"Tiếp tục (xem ad)"** / EN "Continue (watch ad)"
-- Level-up: **"Cấp 2!"** / EN "Level 2!"
+- Level-up: **"LEVEL {n}!"** (EN, popup 2s + phụ đề tên cảnh; mốc chương 10/20: "CHAPTER {n} · {tên cảnh}")
 - Kỷ lục: **"KỶ LỤC MỚI!"** / EN "NEW RECORD!"
 - Combo bonus: **"+5"** (streak)
 - Title trên portal (≤50 ký tự): **"Cuu Meo - Bee Dodge"**
@@ -201,15 +201,15 @@ M1-Rescue-Dodge/
 | BR-06 | Target khán giả 13+, không nhắm trẻ em; content phù hợp chung. |
 | BR-07 | Metadata: title ≤ 50 ký tự, short desc ≤ 150 ký tự, thumbnail 1:1 + 5:7 + 16:9, preview video 16:9, publisher + 1-2 genre. KHÔNG logo/branding trong thumbnail/title/desc. |
 | BR-08 | Asset nhân vật thú = nền tĩnh + animation tween/physics (Phaser). CẤM để AI tạo khung chuyển động nhiều frame (WAN image-to-image bịa góc/khung — không hứa). |
-| BR-09 | Interstitial KHÔNG đặt ở level 1-2 hoặc trong 10s đầu — đặt sau khi player đã gắn kết (game over lần 2+), tránh bỏ game sớm. |
+| BR-09 | Interstitial KHÔNG đặt ở level 1-2 hoặc trong giai đoạn warmup đầu (mec `warmupSeconds` trong config/mechanics.ts) — đặt sau khi player đã gắn kết (game over lần 2+), tránh bỏ game sớm. |
 | BR-10 | Rewarded ad để "tiếp tục chơi" tối đa 1 lần/game over (anti-exploit + giữ engagement cân bằng). |
 | BR-11 | Score cao phải `sendScore` + `saveData`. Nếu load score lỗi → dùng hoàn toàn phiên hiện tại, không crash. |
 | BR-12 | Không có nội dung "hết màn" lơ lửng — khi game over phải có nút hành động rõ (Chơi lại / Tiếp tục). |
 | BR-13 | IN-SCOPE M1 chỉ 1 game cố định "Cuu Meo". Config `games/cuu-meo.yaml` là nguồn sự thật cho asset + metadata. |
-| BR-14 | Progression: cứ mỗi 10 điểm → lên 1 Level (KHÔNG reset). Mỗi Level đổi art-palette nền (cảnh mới) + tốc độ/spawn ong tăng nhảy bậc + popup "Cấp {n}" 1.5s (không chặn gameplay, không ad). Ít nhất 3 palette nền (level 1–3+ vòng lại). |
+| BR-14 | Progression: cứ mỗi 10 điểm → lên 1 Level (KHÔNG reset). Mỗi Level đổi art-palette nền (cảnh mới) + tốc độ/spawn ong tăng bậc + popup 2s "LEVEL {n}!" kèm tên cảnh; mốc chương (level 10/20) chapter card (không chặn, không ad). HUD có level-progress bar. Ít nhất 3 palette nền (level 1–3+ vòng lại). |
 | BR-15 | Combo streak: né liên tiếp không chạm, mỗi 5 lần liên tiếp cộng thưởng +5 (popup hiệu ứng `combo-popup`). Reset combo khi chạm ong. |
 | BR-16 | Kỷ lục: khi score vượt best-score đã lưu → popup "KỶ LỤC MỚI!" (`record-popup`) 1 lần/phiên + cập nhật best (saveData/sendScore). |
-| BR-17 | Difficulty curve: 10 giây đầu tốc độ ong THẤP (giữ chân người mới); sau tăng liên tục + nhảy bậc ở milestone Level; không đặt interstitial trong level đầu (khớp BR-09). |
+| BR-17 | Difficulty curve (D-A2): 30s đầu tốc độ ong giữ nguyên mức thấp; 30→90s ramp nhẹ; sau 90s ramp nhanh + softcap; nhảy bậc ở milestone Level (số cụ thể trong `config/mechanics.ts`); không đặt interstitial trong level đầu (khớp BR-09). |
 
 ---
 
@@ -222,7 +222,7 @@ M1-Rescue-Dodge/
 | Nhấn Start | click `start-btn` | Vào Tutorial |
 | Tutorial | text 3s | Đếm xuống rồi auto vào Gameplay |
 | Gameplay (active) | input tap/giữ | Đổi lane / né ong; cập nhật score-label |
-| Level-up | đạt mốc 10*n điểm | đổi palette nền + nhảy khó + popup "Cấp {n}" 1.5s (không chặn, không ad); cập nhật `level-label` |
+| Level-up | đạt mốc 10*n điểm | đổi palette nền + nhảy khó + popup "LEVEL {n}!" 2s kèm tên cảnh, chapter card ở mốc 10/20 (không chặn, không ad); cập nhật `level-label` + level-progress bar |
 | Combo | né liên tiếp | đếm streak; mỗi 5 lần → cộng +5 + popup `combo-popup` + âm thanh; reset khi chạm ong |
 | Kỷ lục | score > best đã lưu | popup `record-popup` 1 lần/phiên + lưu best mới (saveData/sendScore) |
 | Game over (chạm ong) | va chạm sprite ong-mèo | Dừng gameplay, hiện final-score + best-score + 2 nút |

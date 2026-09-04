@@ -35,11 +35,13 @@ export interface MechanicsConfig {
   feverPerSwarm: number;         // +30% Fever gauge upon surviving swarm raid
   startSpeed: number;            // Initial bee speed in pixels/s (warmup)
   maxSpeed: number;              // Maximum capped bee speed in pixels/s
-  speedIncreasePerSec: number;   // Acceleration rate per second
+  speedIncreasePerSec: number;   // Acceleration rate per second (khúc sau earlyRampUntilSec)
+  earlyRampPerSec: number;       // Gentle ramp px/s từ hết warmup đến earlyRampUntilSec (D-A2)
+  earlyRampUntilSec: number;     // Hết khúc ramp sớm (giây), sau đó dùng speedIncreasePerSec
   levelSpeedStep: number;        // Speed boost per level
   spawnIncrease: number;         // Spawn rate acceleration
   spawnRateMax: number;          // Maximum concurrent bees on screen
-  warmupSeconds: number;         // Initial gentle onboarding duration (10s)
+  warmupSeconds: number;         // Initial gentle onboarding duration (30s, D-A2)
   continueMaxPerGameOver: number;// Maximum rewarded continues per game over (1)
   interstitialDelayGames: number;// Interstitial delay count
   palettes: Palette[];
@@ -123,4 +125,5 @@ export interface GameEngineOptions {
   unlockedSkins?: string[];
   selectedSkin?: string;
   quests?: Quest[];
+  rng?: () => number;            // Injectable RNG cho deterministic test (default Math.random)
 }
