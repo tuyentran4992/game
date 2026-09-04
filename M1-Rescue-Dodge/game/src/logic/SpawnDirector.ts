@@ -28,6 +28,9 @@ export interface SpawnWorldSnapshot {
   occupiedLanes: number[];
   /** Làn qua willBlockAllLanes (NGUYÊN TẮC VÀNG — giữ đường sống). Rỗng = hủy spawn. */
   safeLanes: number[];
+  /** Làn qua willBlockAllLanes chấm speedMult 1.18 cho ứng viên speedy (mirror OLD spawnBee
+   * L1522-1523: roll type XONG mới lọc validLanes theo 1.18). Rỗng = hủy spawn speedy. */
+  safeLanesFast: number[];
   /** bees.length sau pruneBees(). */
   beeCount: number;
 }
@@ -170,8 +173,11 @@ export class SpawnDirector {
     if (occupiedSize >= 2) return null;
     // (3) mirror L1516: loại ong do engine quyết (warmup normal-only, D-A2).
     const type = engine.rollBeeType(elapsed, level);
-    // (4) mirror L1520/L1545: làn do scene chấm (geography thật), director chỉ pick bằng rng.
-    const validLanes = world.safeLanes;
+    // (4) mirror L1520-1523: roll type XONG mới chấm làn THEO speedMult của type —
+    // speedy 1.18 (safeLanesFast), còn lại 1.0 (safeLanes). Geography do scene chấm,
+    // director chỉ pick bằng rng. NGUYÊN TẮC VÀNG L1531: list rỗng → hủy spawn giữ đường sống
+    // (refusal KHÔNG reset lastSpawn — mirror OLD return false).
+    const validLanes = type === 'speedy' ? world.safeLanesFast : world.safeLanes;
     if (validLanes.length === 0) return null; // NGUYÊN TẮC VÀNG L1531: hủy spawn giữ đường sống
     const lane = validLanes[Math.floor(this.rngFn() * validLanes.length)];
     return { type, lane, occupiedSize, validLanes };

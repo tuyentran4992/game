@@ -4,7 +4,7 @@ import { ctx } from '../context';
 import { sdk } from '@game/sdk';
 import { MECHANICS, BeeType } from '../logic/mechanics';
 import { SpawnDirector, type SpawnDirectorResult } from '../logic/SpawnDirector';
-import { WIRING } from '../logic/wiring';
+import { WIRING, BEES } from '../logic/wiring';
 import type { GameEngine } from '../logic/GameEngine';
 import type { MechanicsConfig } from '../logic/types';
 import { PauseModal } from '../ui/PauseModal';
@@ -1460,12 +1460,14 @@ export class GameplayScene extends Phaser.Scene {
 
   // ---------- T1c: orchestration spawn (quyết định thuộc SpawnDirector — tầng A) ----------
 
-  /** Góc nhìn thuần cho director: làn tự do qua geography thật (willBlockAllLanes). */
-  private getSafeLanes(baseSpeed: number): number[] {
+  /** Góc nhìn thuần cho director: làn tự do qua geography thật (willBlockAllLanes).
+   * speedMult hoá: chấm 1.18 cho ứng viên speedy (safeLanesFast), 1.0 cho còn lại (safeLanes)
+   * — mirror OLD spawnBee L1522-1523. */
+  private getSafeLanes(baseSpeed: number, speedMult = 1.0): number[] {
     const occupied = this.getOccupiedLanesAtTop(200);
     if (occupied.size >= 2) return [];
     const beeSize = this.getBeeSize(this.scale.width, this.scale.height);
-    return [0, 1, 2].filter((l) => !occupied.has(l) && !this.willBlockAllLanes(l, undefined, 1.0, -beeSize, baseSpeed));
+    return [0, 1, 2].filter((l) => !occupied.has(l) && !this.willBlockAllLanes(l, undefined, speedMult, -beeSize, baseSpeed));
   }
 
   /** Snapshot thế giới pure-data — input duy nhất của director (0 tham chiếu Phaser). */
@@ -1476,6 +1478,7 @@ export class GameplayScene extends Phaser.Scene {
       fatOnScreen: this.bees.some((b) => b.type === 'fat'),
       occupiedLanes: Array.from(this.getOccupiedLanesAtTop(200)),
       safeLanes: this.getSafeLanes(baseSpeed),
+      safeLanesFast: this.getSafeLanes(baseSpeed, BEES.speedyMult),
       beeCount: this.bees.length,
     };
   }
