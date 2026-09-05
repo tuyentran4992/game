@@ -15,6 +15,18 @@ export type BeeType = 'normal' | 'speedy' | 'fat' | 'zigzag';
 
 export type ItemType = 'fish' | 'shield' | 'magnet';
 
+/** Loại có debut beat (UPG2-P1a): mọi loại ong + swarm wave; normal luôn bị loại ở runtime. */
+export type DebutType = BeeType | 'swarm';
+
+/** Cửa sổ telegraph/cụm thưa typed — tầng B (P1b) vẽ từ dữ liệu này, không tự tính. */
+export interface DebutWindow {
+  type: DebutType;
+  /** Giây elapsed của lần ra đầu tiên trong phiên. */
+  firstSeenAt: number;
+  /** Hạn cửa sổ = firstSeenAt + cfg.debutSparseSec (nửa mở [firstSeenAt, until)). */
+  until: number;
+}
+
 export interface MechanicsConfig {
   laneCount: number;
   milestoneInterval: number;     // points per level increase (BR-14)
@@ -73,6 +85,11 @@ export interface MechanicsConfig {
   speedyMult: number;            // Ong speedy bay nhanh hơn (cũ BEES.speedyMult = 1.18)
   normalMult: number;            // Ong thường (cũ BEES.normalMult = 1.0)
   fatSpeedMult: number;          // Ong to bay chậm (cũ BEES.fatSpeedMult = 0.72)
+
+  // --- Debut beat (UPG2-P1a, t_6035fb14): cụm thưa + telegraph lần đầu mỗi loại ong
+  // xuất hiện — [PLACEHOLDER] chưa playtest. KHÔNG đổi số bot tổng (KT#74(b)). ---
+  debutSparseSec: number;        // Độ dài cửa sổ debut/cụm thưa sau lần ra đầu (cũ literal 2.0)
+  debutTelegraphMinSec: number;  // Sàn telegraph tầng B phải vẽ ≥ (QA BLOCK: ≥1.2s dữ liệu)
 
   palettes: Palette[];
 }

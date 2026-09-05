@@ -12,12 +12,18 @@
 // [MIRROR→CONFIG] UPG2-N1 (t_79d2b77d): 4 hằng cadence 1.35/0.38/0.0035/0.10 và
 // speedMult 1.18/1.0 đã về MechanicsConfig (spawnIntervalBase/Floor/SpeedFactor/
 // LevelFactor + speedyMult/normalMult) — SpawnDirector đọc cfg, không giữ literal.
+//
+// [P1a] UPG2-P1a (t_6035fb14): debut beat — firstSeen set về GameEngine (noteDebut/
+// debutAt); cụm thưa = DOWNGRADE cùng loại trong cửa sổ debut về 'normal' (KHÔNG refusal —
+// KT#74(b) giữ nguyên tổng số bot); swarmTriggered đầu phiên xuất typed swarmDebut window.
+// Cửa sổ đọc cfg.debutSparseSec [PLACEHOLDER]; telegraph VẼ là việc tầng B (P1b) — 0 dòng scenes/.
 
 import type { GameEngine } from './GameEngine';
-import type { BeeType, MechanicsConfig } from './types';
+import type { BeeType, DebutType, DebutWindow, MechanicsConfig } from './types';
+import { MECHANICS } from '../config/mechanics';
 
-/** Cửa sổ "quãng thưa" sau lần ra mắt đầu tiên của 1 loại ong (hook P1a debut-beat). [PLACEHOLDER] */
-export const DEBUT_SPARSE_SEC = 2.0;
+/** Cửa sổ "quãng thưa" sau lần ra mắt đầu tiên của 1 loại ong — SHIM đọc MechanicsConfig (P1a). */
+export const DEBUT_SPARSE_SEC: number = MECHANICS.debutSparseSec;
 
 /** Snapshot thế giới do scene cung cấp mỗi frame — pure data, không tham chiếu Phaser. */
 export interface SpawnWorldSnapshot {
@@ -53,6 +59,9 @@ export interface SpawnDirectorResult {
   lastSpawnReset: boolean;
   /** Scene phải bật swarmActive + hiển thị cảnh báo ngay frame này. */
   swarmTriggered: boolean;
+  /** [P1a] Debut của swarm đầu phiên (typed window — tầng B gắn message "CH3 · NIGHT RAID")
+   *  hoặc null khi chỉ là swarm cadence lặp lại. Non-breaking: field mới vào Result hiện có. */
+  swarmDebut: DebutWindow | null;
 }
 
 export interface SpawnDirectorOptions {
@@ -65,7 +74,9 @@ export class SpawnDirector {
   private readonly rngFn: () => number;
   private lastSpawn = 0;
   private lastSwarmTime = 0;
-  private firstSeen = new Map<BeeType, number>();
+  private firstSeen = new Map<DebutType, number>();
+  /** [P1a] swarm debut chỉ 1 lần/phiên — lần trigger đầu mới xuất swarmDebut. */
+  private swarmSeen = false;
 
   constructor(cfg: MechanicsConfig, opts: SpawnDirectorOptions = {}) {
     this.cfg = cfg;
@@ -77,6 +88,7 @@ export class SpawnDirector {
     this.lastSpawn = 0;
     this.lastSwarmTime = elapsed + 8;
     this.firstSeen.clear();
+    this.swarmSeen = false;
   }
 
   /** Mirror L1941: fat bee breather bung lastSpawn về 0. */
@@ -101,6 +113,7 @@ export class SpawnDirector {
       doubleSpawn: null,
       lastSpawnReset: false,
       swarmTriggered: false,
+      swarmDebut: null,
     };
 
     // Cadence tick CHẠY LUÔN (mirror L1072) — kể cả khi swarm/fatbee đang khoá spawn.
@@ -110,6 +123,14 @@ export class SpawnDirector {
     if (!world.swarmActive && !world.fatBeeActive && elapsed - this.lastSwarmTime >= this.cfg.swarmIntervalSec) {
       this.lastSwarmTime = elapsed;
       result.swarmTriggered = true;
+      // [P1a] swarm debut chỉ 1 lần/phiên: lần trigger ĐẦU xuất typed window + ghi về engine
+      // (tầng B gắn message "CH3 · NIGHT RAID" từ DebutWindow này — P1b).
+      if (!this.swarmSeen) {
+        this.swarmSeen = true;
+        this.firstSeen.set('swarm', elapsed);
+        result.swarmDebut = { type: 'swarm', firstSeenAt: elapsed, until: elapsed + this.cfg.debutSparseSec };
+        engine.noteDebut('swarm', elapsed);
+      }
     }
     const swarmActiveNow = world.swarmActive || result.swarmTriggered;
 
@@ -124,7 +145,13 @@ export class SpawnDirector {
     const decided = this.decideSpawn(elapsed, engine, level, world);
     if (!decided) return result;
 
-    result.spawned.push(decisionToSpawn({ ...decided, mult: this.cfg }));
+    // [P1a] cụm thưa (KT#74(b)): cùng loại trong cửa sổ debut → HẠ về 'normal', VẪN SPAWN
+    // (giữ nguyên tổng số bot — không refusal). Loại KHÁC và lần ĐẦU TIÊN giữ nguyên.
+    const seenAt = decided.type !== 'normal' ? this.firstSeen.get(decided.type) : undefined;
+    const debutActive = seenAt !== undefined && elapsed < seenAt + this.cfg.debutSparseSec;
+    const finalType: BeeType = debutActive ? 'normal' : decided.type;
+
+    result.spawned.push(decisionToSpawn({ type: finalType, lane: decided.lane, mult: this.cfg }));
     this.lastSpawn = 0;
     result.lastSpawnReset = true;
 
@@ -134,19 +161,20 @@ export class SpawnDirector {
       result.doubleSpawn = { lane: remaining[0] };
     }
 
-    // Hook debut-beat (P1a): ghi lần đầu xuất hiện của loại ong mới (bỏ normal).
+    // [P1a] debut: ghi lần đầu của loại THẬT (trước downgrade) — mirror director + engine.
     if (decided.type !== 'normal' && !this.firstSeen.has(decided.type)) {
       this.firstSeen.set(decided.type, elapsed);
+      engine.noteDebut(decided.type, elapsed);
     }
 
     return result;
   }
 
-  /** Cửa sổ debut đang mở tại elapsed (cửa sớm nhất nếu trùng) — P1a dùng để telegraph + thưa. */
-  debutAt(elapsed: number): { type: BeeType; firstSeenAt: number; until: number } | null {
-    let best: { type: BeeType; firstSeenAt: number; until: number } | null = null;
+  /** Cửa sổ debut đang mở tại elapsed (cửa sớm nhất nếu trùng) — P1a/P1b dùng để telegraph + thưa. */
+  debutAt(elapsed: number): DebutWindow | null {
+    let best: DebutWindow | null = null;
     for (const [type, seen] of this.firstSeen) {
-      const until = seen + DEBUT_SPARSE_SEC;
+      const until = seen + this.cfg.debutSparseSec;
       if (elapsed >= seen && elapsed < until && (!best || seen < best.firstSeenAt)) {
         best = { type, firstSeenAt: seen, until };
       }

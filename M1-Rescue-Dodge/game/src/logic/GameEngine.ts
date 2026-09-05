@@ -16,8 +16,11 @@ import type {
   CatSkin,
   Quest,
   GameEngineOptions,
+  DebutType,
+  DebutWindow,
 } from './types';
 import { CAT_SKINS, INITIAL_QUESTS } from '../config';
+import { DebutBeat } from './DebutBeat';
 
 export {
   type DodgeResult,
@@ -66,9 +69,13 @@ export class GameEngine {
   // D-A2: rng injectable — mọi roll spawn/type logic phải đi qua đây (default Math.random).
   private readonly rngFn: () => number;
 
+  // UPG2-P1a: state debut beat ủy quyền cho DebutBeat (1 class 1 trách nhiệm — chống god-file).
+  private debut: DebutBeat;
+
   constructor(cfg: MechanicsConfig, opts: GameEngineOptions = {}) {
     this.cfg = cfg;
     this.rngFn = opts.rng ?? Math.random;
+    this.debut = new DebutBeat(cfg);
     this.bestScore = opts.bestScore ?? 0;
     this.totalFish = opts.totalFish ?? 0;
     this.totalGamesPlayed = opts.totalGamesPlayed ?? 0;
@@ -90,6 +97,8 @@ export class GameEngine {
     this.recordShownThisSession = false;
     this.continueUsed = false;
     this.fatBeeSpawnCount = 0;
+    // UPG2-P1a: debut 1 lần/PHIÊN — ván mới reset toàn bộ firstSeen.
+    this.debut.clear();
     this.totalGamesPlayed += 1;
   }
 
@@ -295,6 +304,17 @@ export class GameEngine {
       if (roll < 0.50) return 'zigzag';
       return 'normal';
     }
+  }
+
+  // --- Debut beat (UPG2-P1a, t_6035fb14) — ủy quyền DebutBeat, CONTRACT §3.3 ---
+  /** Ghi lần đầu xuất hiện của 1 loại trong phiên (spawn/swarm gọi; normal bị bỏ qua). */
+  noteDebut(type: DebutType, atElapsedSec: number): void {
+    this.debut.note(type, atElapsedSec);
+  }
+
+  /** Cửa sổ telegraph đang mở tại `at` (typed DebutWindow — tầng B vẽ từ dữ liệu này) hoặc null. */
+  debutAt(at: number): DebutWindow | null {
+    return this.debut.activeAt(at);
   }
 
   // --- Update Timers theo dt ---

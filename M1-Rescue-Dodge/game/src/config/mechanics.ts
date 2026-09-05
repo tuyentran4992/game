@@ -63,6 +63,11 @@ export const MECHANICS: MechanicsConfig = {
   normalMult: 1.0,
   fatSpeedMult: 0.72,
 
+  // --- UPG2-P1a (t_6035fb14): debut beat — cửa sổ cụm thưa + sàn telegraph (giây).
+  // [PLACEHOLDER] chưa playtest — QA BLOCK yêu cầu ≥1.2s dữ liệu telegraph (ô M4 plan P1'').
+  debutSparseSec: 2.0,
+  debutTelegraphMinSec: 1.2,
+
   palettes: [
     { key: 'pal_morning', level: 1, bgTop: '#7EC8FF', bgBottom: '#B8E6A8', grass: '#5ED07A', laneColor: '#FFFFFF', primary: '#FF9F1C', accent: '#E8820F' },
     { key: 'pal_sunset',  level: 2, bgTop: '#FFB578', bgBottom: '#FF8E7A', grass: '#C97B5D', laneColor: '#FFE4C2', primary: '#FF9F1C', accent: '#E8820F' },

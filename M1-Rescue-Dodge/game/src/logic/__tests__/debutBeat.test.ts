@@ -116,7 +116,7 @@ describe('P1a — cụm thưa: DOWNGRADE cùng loại trong cửa sổ (KHÔNG r
     const first = h.dir.update({ dt: 0.5, elapsed: 37.5, engine: h.engine, world: makeWorld() });
     expect(first.spawned[0]?.type).toBe('speedy');
     h.dir.resetSpawnTimer();
-    const second = h.dir.update({ dt: 1.0, elapsed: 38.5, engine: h.engine, world: makeWorld() });
+    const second = h.dir.update({ dt: 1.5, elapsed: 39.0, engine: h.engine, world: makeWorld() });
     expect(second.spawned).toHaveLength(1); // vẫn spawn — không refusal
     expect(second.spawned[0]?.type).toBe('normal'); // hạ loại
     expect(second.spawned[0]?.speedMult).toBe(MECHANICS.normalMult);
