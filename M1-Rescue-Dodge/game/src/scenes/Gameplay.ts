@@ -16,6 +16,7 @@ import {
 import { WIRING, BEES } from '../logic/wiring';
 import type { GameEngine } from '../logic/GameEngine';
 import type { MechanicsConfig } from '../logic/types';
+import type { DebutWindow } from '../logic/types';
 import { PauseModal } from '../ui/PauseModal';
 import { FxPool, Pool } from '../systems/FxPool';
 import { HudRenderer } from './render/HudRenderer';
@@ -102,6 +103,8 @@ export class GameplayScene extends Phaser.Scene {
   private powerupPopup!: Phaser.GameObjects.Text;
   private swarmWarningPopup!: Phaser.GameObjects.Container;
   private swarmSurvivePopup!: Phaser.GameObjects.Text;
+  // UPG2-P1b: telegraph debut — text chờ text, vẽ khi DebutWindow mở (đọc engine.debutAt)
+  private debutTelegraph!: Phaser.GameObjects.Text;
 
   private catShadowImg!: Phaser.GameObjects.Image;
   private cat!: Phaser.GameObjects.Image;
@@ -423,6 +426,8 @@ export class GameplayScene extends Phaser.Scene {
     // `scene.restart()` @Gameplay.ts:688) — ván mới phải sạch juice, hit-stop/zoom ván cũ
     // KHÔNG trôi sang (freeze dở + Restart = ván mới đóng băng ~90ms đầu + zoom lệch).
     this.resetJuiceState();
+    // UPG2-P1b: telegraph của ván cũ không trôi sang ván mới (mirror resetJuiceState).
+    if (this.debutTelegraph) this.debutTelegraph.setVisible(false);
 
     this.drawLevelBg(ctx.engine.getLevel());
     this.lanes = this.computeLanes(width, height);
@@ -525,10 +530,20 @@ export class GameplayScene extends Phaser.Scene {
     swBg.fillStyle(0xFF3838, 0.92); swBg.fillRoundedRect(-160, -30, 320, 60, 16);
     swBg.lineStyle(3, 0xFFFFFF, 1); swBg.strokeRoundedRect(-160, -30, 320, 60, 16);
     const swTxt = this.add.text(0, 0, '⚠️ SWARM INCOMING! ⚠️', fontStyle(type.h2, '#FFFFFF')).setOrigin(0.5);
+    // UPG2-P1b: text trong banner swarm có testid riêng (QA đọc message "CH3 · NIGHT RAID")
+    swTxt.setData('testid', 'swarm-warning-text');
     this.swarmWarningPopup.add([swBg, swTxt]);
 
     this.swarmSurvivePopup = this.add.text(width / 2, height * 0.45, '🎉 SWARM SURVIVED! +10', fontStyle(type.h1, color.warning))
       .setOrigin(0.5).setDepth(z.tutorial).setAlpha(0);
+
+    // UPG2-P1b (t_ec2e1a6c): telegraph debut — khung cảnh báo "loại ong mới lần đầu xuất hiện".
+    // Dữ liệu = DebutWindow typed từ tầng A (engine.debutAt, P1a); scene chỉ VẼ, không tự tính
+    // cửa sổ (CONTRACT K0 §6). Nền đỏ góc cảnh báo tái dùng ngôn ngữ swarm-warning; text EN (PB-5).
+    this.debutTelegraph = this.add.text(width / 2, height * 0.22, '', fontStyle(type.h2, '#FFFFFF'))
+      .setOrigin(0.5).setDepth(z.tutorial).setAlpha(1).setVisible(false)
+      .setBackgroundColor('#E74C3C').setPadding(14, 10, 14, 10);
+    this.debutTelegraph.setData('testid', 'debut-telegraph');
 
     // Mèo & Hiệu ứng quanh mèo
     const catY = this.getCatY(height);
@@ -1245,6 +1260,16 @@ export class GameplayScene extends Phaser.Scene {
     };
   }
 
+  // UPG2-P1b: vẽ telegraph debut từ DebutWindow typed của tầng A (không tự tính cửa sổ).
+  // Text EN (PB-5); định danh loại bám palette spawn: speedy đỏ / zigzag tím / swarm bão.
+  private showDebutTelegraph(win: DebutWindow): void {
+    const label =
+      win.type === 'speedy' ? 'NEW: FAST BEE INCOMING!'
+      : win.type === 'zigzag' ? 'NEW: ZIGZAG BEE INCOMING!'
+      : 'NEW: SWARM BEE INCOMING!';
+    this.debutTelegraph.setText(label).setVisible(true);
+  }
+
   /** Spawn render 1 con ong theo quyết định của director (giữ nguyên createBeeEntity cũ). */
   private spawnBeeEntity(type: BeeType, lane: number, speedMult: number): void {
     const beeSize = this.getBeeSize(this.scale.width, this.scale.height);
@@ -1267,10 +1292,21 @@ export class GameplayScene extends Phaser.Scene {
       world: this.buildSpawnWorld(diff.speed),
     });
 
-    if (result.swarmTriggered) this.triggerSwarmWave();
+    // UPG2-P1b: swarm debut (lần đầu/phiên — result.swarmDebut từ director) gắn message chương;
+    // trigger thường → warning generic.
+    if (result.swarmTriggered) this.triggerSwarmWave(result.swarmDebut !== null);
 
     for (const decision of result.spawned) {
       this.spawnBeeEntity(decision.type, decision.lane, decision.speedMult);
+    }
+
+    // UPG2-P1b: telegraph debut — cửa sổ đang mở tại elapsed này → vẽ; đóng → ẩn.
+    // Dữ liệu typed từ tầng A (engine.debutAt); scene không tự tính cửa sổ.
+    const debutWin = engine.debutAt(elapsed);
+    if (debutWin) {
+      this.showDebutTelegraph(debutWin);
+    } else if (this.debutTelegraph.visible) {
+      this.debutTelegraph.setVisible(false);
     }
 
     if (result.doubleSpawn) {
@@ -1322,6 +1358,8 @@ export class GameplayScene extends Phaser.Scene {
     this.swarmBeesRemaining = 0;
     // UPG2-J1: phiên mới phải sạch juice — hit-stop/zoom của ván cũ không trôi sang ván mới.
     this.resetJuiceState();
+    // UPG2-P1b: telegraph debut của ván cũ cũng không trôi (engine debut đã startNewGame clear).
+    this.debutTelegraph.setVisible(false);
     ctx.engine.startNewGame();
     this.spawnDirector = new SpawnDirector(MECHANICS);
     this.spawnDirector.startSession(elapsed);
@@ -1690,7 +1728,7 @@ export class GameplayScene extends Phaser.Scene {
     });
   }
 
-  private triggerSwarmWave() {
+  private triggerSwarmWave(debut = false) {
     this.swarmActive = true;
     this.playSfx('sfx_combo', 0.5, 1.4);
     this.cameras.main.shake(300, 0.008);
@@ -1699,6 +1737,14 @@ export class GameplayScene extends Phaser.Scene {
     this.time.delayedCall(4500, () => {
       this.swarmActive = false;
     });
+
+    // UPG2-P1b: swarm debut (lần đầu trong phiên — DebutWindow 'swarm' từ director P1a)
+    // → banner gắn message chương "CH3 · NIGHT RAID" (re-use đúng banner này, 0 asset mới);
+    // các lần sau về warning generic. Set lại text mỗi lần — tái dùng sạch (text EN, PB-5).
+    const swText = this.swarmWarningPopup.list.find(
+      (o) => o.getData && o.getData('testid') === 'swarm-warning-text',
+    ) as Phaser.GameObjects.Text | undefined;
+    if (swText) swText.setText(debut ? 'CH3 · NIGHT RAID' : '⚠️ SWARM INCOMING! ⚠️');
 
     // Hiển thị cảnh báo Bão Ong
     this.swarmWarningPopup.setAlpha(0).setScale(0.7);
