@@ -18,6 +18,8 @@ import type { GameEngine } from '../logic/GameEngine';
 import type { MechanicsConfig } from '../logic/types';
 import { PauseModal } from '../ui/PauseModal';
 import { FxPool, RingPool, Pool, type DotFx } from '../systems/FxPool';
+import { HudRenderer } from './render/HudRenderer';
+import { RoadsideRenderer } from './render/RoadsideRenderer';
 
 interface BeeSlot {
   container: Phaser.GameObjects.Container;
@@ -74,13 +76,10 @@ export class GameplayScene extends Phaser.Scene {
   private pauseModal?: PauseModal;
   private isPaused = false;
 
-  private scoreLabel!: Phaser.GameObjects.Text;
-  private levelLabel!: Phaser.GameObjects.Text;
-  private fishLabel!: Phaser.GameObjects.Text;
-  private feverBarG!: Phaser.GameObjects.Graphics;
-  private feverStatusLabel!: Phaser.GameObjects.Text;
-  private levelProgressG!: Phaser.GameObjects.Graphics;
-  private levelProgressLabel!: Phaser.GameObjects.Text;
+  // T1e: HUD + props ven đường dời về renderer (scenes/render/) — scene chỉ orchestrate
+  // + giữ metrics layout (single source getPlayfieldBounds/getStraightRoadMetrics)
+  hud!: HudRenderer;
+  roadside!: RoadsideRenderer;
 
   private levelPopup!: Phaser.GameObjects.Text;
   private levelSubPopup!: Phaser.GameObjects.Text;
@@ -101,10 +100,6 @@ export class GameplayScene extends Phaser.Scene {
   // cập nhật vị trí/alpha của Image — không còn tessellate + upload GPU buffer từng frame.
   private laneDashTiles: Phaser.GameObjects.TileSprite[] = [];
   private streakImgs: Phaser.GameObjects.Image[] = [];
-  private natureImgs: Phaser.GameObjects.Image[] = [];
-  private roadsideImgs: Phaser.GameObjects.Image[] = [];
-  private feverFlameImg!: Phaser.GameObjects.Image;
-  private lastFeverUiKey = '';
   private shieldWasActive = false;
   private magnetWasActive = false;
   private feverAuraWasActive = false;
@@ -125,23 +120,6 @@ export class GameplayScene extends Phaser.Scene {
 
   private bees: Bee[] = [];
   private items: Item[] = [];
-  private natureParticles: Array<{
-    xRatio: number;
-    y: number;
-    speedMult: number;
-    swayOffset: number;
-    swaySpeed: number;
-    size: number;
-    color: number;
-    alpha: number;
-  }> = [];
-  private roadsideProps: Array<{
-    side: -1 | 1;
-    t: number;
-    speedMult: number;
-    lateralOffsetRatio: number;
-    propType: 'daisy' | 'grass' | 'flower_purple' | 'pebble';
-  }> = [];
   private fatBeeActive = false;
   // T1c: quyết định spawn dời về tầng A (logic/SpawnDirector) — scene chỉ orchestrate + vẽ
   private spawnDirector: SpawnDirector | null = null;
@@ -313,12 +291,8 @@ export class GameplayScene extends Phaser.Scene {
   private destroyFlowObjects() {
     for (const t of this.laneDashTiles) t.destroy();
     for (const im of this.streakImgs) im.destroy();
-    for (const im of this.natureImgs) im.destroy();
-    for (const im of this.roadsideImgs) im.destroy();
     this.laneDashTiles = [];
     this.streakImgs = [];
-    this.natureImgs = [];
-    this.roadsideImgs = [];
   }
 
   private buildFlowObjects() {
@@ -340,20 +314,7 @@ export class GameplayScene extends Phaser.Scene {
       const im = this.add.image(0, 0, FLOW_TEX.streak(false)).setDepth(z.bg + 1).setVisible(false);
       this.streakImgs.push(im);
     }
-
-    // Hạt nature: dot trắng tint theo màu sẵn có
-    for (const p of this.natureParticles) {
-      const im = this.add.image(0, 0, FLOW_TEX.dotWhite).setDepth(z.bg + 2).setTint(p.color);
-      im.setDisplaySize(p.size * 2, p.size * 2);
-      this.natureImgs.push(im);
-    }
-
-    // Roadside props: 1 Image mỗi prop, đổi texture khi prop đổi loại ở cuối chu kỳ
-    for (const p of this.roadsideProps) {
-      const im = this.add.image(0, 0, FLOW_TEX.prop(p.propType))
-        .setDisplaySize(26, 26).setDepth(z.bg + 2).setVisible(false);
-      this.roadsideImgs.push(im);
-    }
+    // T1e: Image hạt nature + props ven đường dời về RoadsideRenderer (seed/rebuild riêng)
   }
 
   private getPlayfieldTop(_height: number): number {
@@ -431,8 +392,6 @@ export class GameplayScene extends Phaser.Scene {
     this.bgG = undefined as any;
     this.bees = [];
     this.items = [];
-    this.natureParticles = [];
-    this.roadsideProps = [];
     this.fatBeeActive = false;
     this.isMovingLane = false;
     this.runningPuffTimer = 0;
@@ -511,70 +470,28 @@ export class GameplayScene extends Phaser.Scene {
       this.toggleAudio();
     });
 
-    // 3. Score Label (Center Top - Arcade Casual Stroke)
-    this.scoreLabel = this.add.text(pf.center, hudY - 4, String(ctx.engine.score), fontStyle(type.score, '#FFFFFF'))
-      .setOrigin(0.5, 0.5).setDepth(z.hud)
-      .setStroke('#1E0E02', 6)
-      .setShadow(0, 3, 'rgba(0,0,0,0.45)', 4, false, true);
-    this.scoreLabel.setData('testid', 'score-label');
-
-    // 4. Level & Fish Labels (Top-Right inside playfield column - Single clear unit with tight spacing)
-    this.levelLabel = this.add.text(pf.right - 44, hudY - 2, 'Level ' + ctx.engine.getLevel(), fontStyle(type.small, '#FFFFFF'))
-      .setOrigin(0.5, 0.7).setDepth(z.hud)
-      .setStroke('#1E0E02', 4);
-    this.levelLabel.setData('testid', 'level-label');
-
-    this.fishLabel = this.add.text(pf.right - 44, hudY + 20, `🐟 ×${ctx.engine.fish}`, fontStyle(type.small, '#FFD700'))
-      .setOrigin(0.5, 0.7).setDepth(z.hud)
-      .setStroke('#1E0E02', 4);
-
-    // Fever Bar Graphics & Label (Pill 28px height, Graphics vector flame icon)
-    this.feverBarG = this.add.graphics().setDepth(z.hud);
-    this.feverStatusLabel = this.add.text(pf.center + 8, hudY + 38, 'FEVER 0%', fontStyle({ size: '13px', weight: '900', lh: 1 }, '#FFFFFF'))
-      .setOrigin(0.5).setDepth(z.hud + 1)
-      .setStroke('#1E0E02', 3.5)
-      .setAlpha(0.95);
-
-    // Level Progress Pill (D-A2: cảm giác tiến bộ nhìn thấy được — testid level-progress)
-    this.levelProgressG = this.add.graphics().setDepth(z.hud);
-    this.levelProgressLabel = this.add.text(pf.center, hudY + 81, `NEXT LEVEL: 0/${MECHANICS.milestoneInterval}`, fontStyle({ size: '13px', weight: '900', lh: 1 }, '#FFFFFF'))
-      .setOrigin(0.5).setDepth(z.hud + 1)
-      .setStroke('#1E0E02', 3.5)
-      .setAlpha(0.95);
-    this.levelProgressLabel.setData('testid', 'level-progress');
+    // 3-4. Score/Level/Fish labels + Fever bar + Level progress (T1e: dời về HudRenderer)
+    this.hud = new HudRenderer(this, ctx.engine, {
+      getElapsed: () => this.elapsed,
+      flameTexture: (fever: boolean) => FLOW_TEX.flame(fever),
+      playfield: () => this.getPlayfieldBounds(this.scale.width, this.scale.height),
+      hudY: () => Math.max(38, this.scale.height * 0.05),
+    });
 
     // PERF-FIX A: doodad cuộn (vạch làn, vệt gió, hạt nature, roadside, bóng mèo) được
     // pre-render texture 1 lần rồi cuộn bằng Image/TileSprite — xem buildFlowTextures().
+    // T1e: hạt nature + props ven đường dời về RoadsideRenderer (seed + update riêng)
+    this.roadside = new RoadsideRenderer(this, {
+      propTexture: (t: string) => FLOW_TEX.prop(t),
+      dotTexture: FLOW_TEX.dotWhite,
+    });
 
-    this.natureParticles = [];
-    for (let i = 0; i < 16; i++) {
-      this.natureParticles.push({
-        xRatio: Math.random(),
-        y: Phaser.Math.Between(0, height),
-        speedMult: 0.65 + Math.random() * 0.70,
-        swayOffset: Math.random() * Math.PI * 2,
-        swaySpeed: 1.8 + Math.random() * 2.2,
-        size: Phaser.Math.Between(3, 6),
-        color: Math.random() < 0.4 ? 0xFFFFFF : (Math.random() < 0.7 ? 0x88D49E : 0xFFD166),
-        alpha: 0.25 + Math.random() * 0.35,
-      });
-    }
-
-    this.roadsideProps = [];
-    const propTypes: Array<'daisy' | 'grass' | 'flower_purple' | 'pebble'> = ['daisy', 'grass', 'flower_purple', 'pebble'];
-    for (let i = 0; i < 14; i++) {
-      this.roadsideProps.push({
-        side: (i % 2 === 0 ? -1 : 1),
-        t: (i / 14) + Math.random() * 0.05,
-        speedMult: 0.85 + Math.random() * 0.30,
-        lateralOffsetRatio: Math.random(),
-        propType: propTypes[i % propTypes.length],
-      });
-    }
-
-    // PERF-FIX A: bake texture 1 lần rồi tạo sprite cuộn (sau khi có mảng natureParticles/roadsideProps)
+    // PERF-FIX A: bake texture 1 lần rồi tạo sprite cuộn (roadside/nature seed qua RoadsideRenderer)
     this.buildFlowTextures();
     this.buildFlowObjects();
+    // T1e: seed props/nature SAU khi bake texture (Image phải thấy texture sẵn có — như cũ:
+    // buildFlowObjects cũ cũng chạy sau buildFlowTextures)
+    this.roadside.seed(height);
 
     // PERF-FIX B: khởi tạo pool particle sau khi bake fx_dot_white/fx_ring
     this.fxDots = new FxPool(this, FLOW_TEX.dotWhite, 96, z.hud);
@@ -730,6 +647,9 @@ export class GameplayScene extends Phaser.Scene {
       if (this.bgImage && this.bgImage.active) this.bgImage.destroy();
       if (this.bgG && this.bgG.active) this.bgG.destroy();
       this.destroyFlowObjects();
+      // T1e: renderer dọn GameObject của riêng mình (label/bar/props/nature)
+      this.hud?.destroy();
+      this.roadside?.destroy();
       // PERF-FIX B: giải phóng pool khi scene shutdown (scene chạy lại → create mới)
       this.fxDots?.destroy();
       this.fxDust?.destroy();
@@ -1066,7 +986,7 @@ export class GameplayScene extends Phaser.Scene {
       if (res.levelUp && res.newLevel) {
         this.onLevelUp(res.newLevel);
       }
-      this.updateHud();
+      this.hud.update();
     }
 
     const currentLevel = ctx.engine.getLevel();
@@ -1080,6 +1000,7 @@ export class GameplayScene extends Phaser.Scene {
     // Kiểm tra kích hoạt Sự kiện Bão Ong (Swarm Wave) + spawn ong — T1c: quyết định
     // (swarm gate/cadence/refusal/lane) thuộc SpawnDirector, scene chỉ orchestrate + vẽ.
     const diff = ctx.engine.difficulty(this.elapsed, currentLevel);
+    const roadMetrics = this.getStraightRoadMetrics(this.scale.width, this.scale.height);
     this.stepSpawn(dt, this.elapsed, ctx.engine, diff);
 
     // spawn vật phẩm (Cá vàng, Khiên, Nam châm)
@@ -1196,7 +1117,7 @@ export class GameplayScene extends Phaser.Scene {
           this.showFloatingText(b.container.x, b.container.y, '+5 💥', color.warning);
           this.handleSwarmBeeDone(b);
           this.retireBee(b);
-          this.updateHud();
+          this.hud.update();
           continue;
         } else if (outcome === 'shield_consume') {
           ctx.engine.tryUseShield();
@@ -1206,7 +1127,7 @@ export class GameplayScene extends Phaser.Scene {
           this.cameras.main.shake(130, 0.012);
           this.handleSwarmBeeDone(b);
           this.retireBee(b);
-          this.updateHud();
+          this.hud.update();
           continue;
         } else {
           return this.onHit();
@@ -1249,9 +1170,9 @@ export class GameplayScene extends Phaser.Scene {
       this.bgImage.x = (this.scale.width / 2) + Math.sin(this.elapsed * 0.12) * 6;
     }
 
-    // 2. Draw ground flow, moving track dashes & nature particles
+    // 2. Draw ground flow, moving track dashes & nature particles (T1e: roadside qua renderer)
     this.drawGroundFlow(diff.speed, dt, isFever);
-    this.drawRoadsideProps(diff.speed, dt);
+    this.roadside.update(diff.speed, dt, this.elapsed, roadMetrics);
 
     // 3. Cat running trot / bobbing & footstep puffs
     if (this.running && !this.isPaused && !this.isMovingLane && this.cat && this.cat.active) {
@@ -1277,8 +1198,8 @@ export class GameplayScene extends Phaser.Scene {
       }
     }
 
-    this.drawFeverBar();
-    this.drawLevelProgress();
+    this.hud.drawFeverBar();
+    this.hud.drawLevelProgress();
 
     if (ctx.engine.checkRecord()) this.showRecordPopup();
   }
@@ -1302,7 +1223,7 @@ export class GameplayScene extends Phaser.Scene {
     if (this.laneDashTiles.length === 0) this.buildFlowObjects();
 
     const { width, height } = this.scale;
-    const { leftEdge, laneWidth, roadW } = this.getStraightRoadMetrics(width, height);
+    const { leftEdge, laneWidth } = this.getStraightRoadMetrics(width, height);
 
     // 1. Vạch làn: TileSprite cuộn xuống bằng tilePositionY modulo chu kỳ 60px
     // (giảm tilePositionY = nội dung dịch xuống; always-positive để WebGL wrap chuẩn)
@@ -1332,62 +1253,10 @@ export class GameplayScene extends Phaser.Scene {
       const alpha = Math.sin(cycleT * Math.PI) * (isFever ? 0.38 : 0.16);
       im.setVisible(true).setTint(streakTint).setPosition(laneCenterX + laneOffset, sy + 14).setAlpha(alpha);
     }
-
-    // 3. Hạt nature: cùng toán chuyển động cũ, render bằng Image tint
-    for (let i = 0; i < this.natureParticles.length; i++) {
-      const p = this.natureParticles[i];
-      p.y += speed * 0.75 * p.speedMult * dt;
-      if (p.y > height + 20) {
-        p.y = Phaser.Math.Between(-20, 0);
-        p.xRatio = Math.random();
-      }
-      const sway = Math.sin(this.elapsed * p.swaySpeed + p.swayOffset) * 12;
-      const px = leftEdge + p.xRatio * roadW + sway;
-      const pProgress = Math.max(0, Math.min(1, p.y / height));
-      const pAlpha = Math.sin(pProgress * Math.PI) * p.alpha;
-      const im = this.natureImgs[i];
-      if (im) im.setPosition(px, p.y).setAlpha(pAlpha);
-    }
+    // T1e: hạt nature dời về RoadsideRenderer.update (cùng toán, cùng tham số)
   }
 
-  private drawRoadsideProps(speed: number, dt: number) {
-    // PERF-FIX A: mỗi prop là 1 Image của texture bake sẵn (daisy/grass/flower/pebble),
-    // mỗi frame chỉ đổi position/alpha/texture — không clear()+~20 lệnh vector/frame.
-    if (this.roadsideImgs.length === 0) this.buildFlowObjects();
-
-    const { width, height } = this.scale;
-    const { leftEdge, roadW } = this.getStraightRoadMetrics(width, height);
-
-    const propTypes: Array<'daisy' | 'grass' | 'flower_purple' | 'pebble'> = ['daisy', 'grass', 'flower_purple', 'pebble'];
-
-    for (let i = 0; i < this.roadsideProps.length; i++) {
-      const p = this.roadsideProps[i];
-      const im = this.roadsideImgs[i];
-      if (!im) continue;
-      // Advance progress t downwards
-      p.t += (speed * 0.00085 * p.speedMult) * dt;
-      if (p.t >= 1.0) {
-        p.t = p.t % 1.0;
-        p.side = Math.random() < 0.5 ? -1 : 1;
-        p.speedMult = 0.85 + Math.random() * 0.30;
-        p.lateralOffsetRatio = Math.random();
-        p.propType = propTypes[Math.floor(Math.random() * propTypes.length)];
-        im.setTexture(FLOW_TEX.prop(p.propType));
-      }
-
-      const py = p.t * height;
-      const edgeX = p.side === -1 ? leftEdge : (leftEdge + roadW);
-      // Lateral outward offset into roadside grass
-      const px = edgeX + p.side * (12 + p.lateralOffsetRatio * 28);
-      const alpha = Math.min(1.0, Math.sin(p.t * Math.PI) * 1.5);
-
-      if (alpha <= 0.01) {
-        if (im.visible) im.setVisible(false);
-        continue;
-      }
-      im.setVisible(true).setPosition(px, py).setAlpha(alpha);
-    }
-  }
+  // T1e: drawRoadsideProps dời về RoadsideRenderer.update — scene gọi qua orchestration ở update()
 
   // PERF-FIX D: lọc in-place, không cấp phát array mới mỗi lần gọi (code cũ: bees.filter(...)/spawn)
   private pruneBees() {
@@ -1620,7 +1489,7 @@ export class GameplayScene extends Phaser.Scene {
     this.showNearMissPopup();
     this.spawnSparkles(this.cat.x, this.cat.y - 15, 0xFFEE55);
     this.cameras.main.flash(70, 255, 255, 200, true);
-    this.updateHud();
+    this.hud.update();
     if (nm.feverTriggered) this.onFeverStart();
   }
   /** Pickup qua system (item dạng điểm). */
@@ -1646,7 +1515,7 @@ export class GameplayScene extends Phaser.Scene {
     const bee = this.bees.find((b) => b.id === entity.id);
     if (bee) this.retireBee(bee);
     this.pruneBees();
-    this.updateHud();
+    this.hud.update();
   }
   /** Tạo ong THẬT (pool) đặt tại toạ độ cho UT collision — trả Bee đủ id để apply. */
   spawnBeeForTest(lane: number, x: number, y: number, type: BeeType = 'normal') {
@@ -1872,7 +1741,7 @@ export class GameplayScene extends Phaser.Scene {
       onComplete: () => this.tweens.add({ targets: this.swarmSurvivePopup, alpha: 0, duration: 400, delay: 900, ease: 'quad.in' }),
     });
 
-    this.updateHud();
+    this.hud.update();
     if (res.feverTriggered) this.onFeverStart();
     if (res.levelUp) this.onLevelUp(res.newLevel);
   }
@@ -1976,7 +1845,7 @@ export class GameplayScene extends Phaser.Scene {
       this.playSfx('sfx_score', 0.45, 1.1);
       this.spawnSparkles(it.container.x, it.container.y, 0xFFD700);
       this.showFloatingText(it.container.x, it.container.y, '+2 🐟', color.warning);
-      this.updateHud();
+      this.hud.update();
       if (res.feverTriggered) this.onFeverStart();
       if (res.levelUp) this.onLevelUp(res.newLevel);
     } else if (it.type === 'shield') {
@@ -1984,13 +1853,13 @@ export class GameplayScene extends Phaser.Scene {
       this.playSfx('sfx_levelup', 0.4);
       this.spawnShockwave(it.container.x, it.container.y, 0x00E5FF);
       this.showPowerupPopup('SHIELD READY! 🛡️', '#00E5FF');
-      this.updateHud();
+      this.hud.update();
     } else if (it.type === 'magnet') {
       ctx.engine.activateMagnet();
       this.playSfx('sfx_combo', 0.4);
       this.spawnSparkles(it.container.x, it.container.y, 0xFF4757);
       this.showPowerupPopup('MAGNET ON! 🧲', '#FF4757');
-      this.updateHud();
+      this.hud.update();
     }
   }
 
@@ -2003,12 +1872,12 @@ export class GameplayScene extends Phaser.Scene {
 
   private onFeverEnd() {
     this.feverAura.clear().setAlpha(0);
-    this.drawFeverBar();
+    this.hud.drawFeverBar();
   }
 
   private onDodge(bee: Bee) {
     const r = ctx.engine.registerDodge();
-    this.updateHud();
+    this.hud.update();
     this.playSfx('sfx_dodge', 0.4);
     this.playSfx('sfx_score', 0.3);
 
@@ -2054,8 +1923,8 @@ export class GameplayScene extends Phaser.Scene {
   // chapter card reuse chính popup này (0 asset mới — không làm chapter system riêng). Text EN (PB-5).
   private onLevelUp(level: number) {
     this.drawLevelBg(level);
-    this.levelLabel.setText('Level ' + level);
-    this.tweens.add({ targets: this.levelLabel, scale: 1.3, duration: dur.tn, yoyo: true, ease: 'back.out' });
+    // T1e: label + tween level dời về HudRenderer (popup/confetti/sfx vẫn ở scene)
+    this.hud.setLevel(level);
 
     const sceneName = level < 10 ? 'MORNING GARDEN' : level < 20 ? 'SUNSET SPRINT' : 'NIGHT GARDEN';
     const chapterNo = level === 10 ? 2 : level === 20 ? 3 : 0;
@@ -2169,123 +2038,7 @@ export class GameplayScene extends Phaser.Scene {
     this.spawnSparkles(width / 2, this.scale.height * 0.25, 0xFFA502);
   }
 
-  // D-A2: pill tiến độ lên level tiếp theo — cùng pattern fever bar (track + gradient fill + label).
-  private drawLevelProgress() {
-    const { width, height } = this.scale;
-    const pf = this.getPlayfieldBounds(width, height);
-    const hudY = Math.max(38, height * 0.05);
-    const barW = Math.min(180, Math.max(140, pf.width * 0.38));
-    const barH = 12;
-    const barX = pf.center - barW / 2;
-    const barY = hudY + 62; // ngay dưới fever pill (fever bottom = hudY+52)
-
-    const interval = MECHANICS.milestoneInterval;
-    const score = ctx.engine.score;
-    const into = score % interval;
-    const ratio = Phaser.Math.Clamp(into / interval, 0, 1);
-
-    const g = this.levelProgressG;
-    g.clear();
-
-    // Track
-    g.fillStyle(0xFFFFFF, 0.12);
-    g.fillRoundedRect(barX, barY, barW, barH, barH / 2);
-    g.lineStyle(1.5, 0xFFFFFF, 0.22);
-    g.strokeRoundedRect(barX, barY, barW, barH, barH / 2);
-
-    // Fill — xanh success (khác nhiệt gradient cam đỏ của Fever để đọc nhanh)
-    if (ratio > 0) {
-      g.fillGradientStyle(0x5ED07A, 0x2ECC71, 0x5ED07A, 0x2ECC71, 1, 1, 1, 1);
-      g.fillRoundedRect(barX, barY, Math.max(barH, barW * ratio), barH, barH / 2);
-    }
-
-    // Pulsing glow khi sắp lên level (>=80%)
-    if (ratio >= 0.8) {
-      const glowAlpha = 0.35 + 0.3 * Math.sin(this.elapsed * 8);
-      g.lineStyle(2.5, 0x2ECC71, glowAlpha);
-      g.strokeRoundedRect(barX - 2, barY - 2, barW + 4, barH + 4, (barH + 4) / 2);
-    }
-
-    this.levelProgressLabel.setPosition(pf.center, barY + barH / 2 + 14);
-    this.levelProgressLabel.setText(`NEXT LEVEL: ${into}/${interval}`);
-  }
-
-  private drawFeverBar() {
-    const { width, height } = this.scale;
-    const pf = this.getPlayfieldBounds(width, height);
-    const hudY = Math.max(38, height * 0.05);
-    const barW = Math.min(180, Math.max(140, pf.width * 0.38));
-    const barH = 28;
-    const barX = pf.center - barW / 2;
-    const barY = hudY + 24; // >= 10px gap from score text (score at hudY - 4, bottom at hudY + 11)
-
-    const isFever = ctx.engine.isFeverActive();
-    let ratio = ctx.engine.fever / 100;
-    if (isFever) {
-      ratio = ctx.engine.feverTimeRemaining / MECHANICS.feverDurationSec;
-    }
-    ratio = Phaser.Math.Clamp(ratio, 0, 1);
-
-    // PERF-FIX A/C: dirty-flag — chỉ clear()+redraw khi trạng thái nhìn thấy được đổi
-    // (fillW quantize 0.5px, glow alpha quantize 0.1 step). Bản cũ tessellate lại mỗi frame.
-    const fillW = Math.max(0, barW * ratio);
-    const pulsing = isFever || ratio >= 1.0;
-    const glowAlpha = pulsing ? 0.45 + 0.35 * Math.sin(this.elapsed * 10) : 0;
-    const key = `${barX.toFixed(1)}|${barY}|${barW}|${Math.round(fillW * 2)}|${isFever ? 1 : 0}|${Math.round(glowAlpha * 10)}|${Math.round(ctx.engine.fever)}`;
-    const layoutChanged = key !== this.lastFeverUiKey;
-    this.lastFeverUiKey = key;
-
-    if (layoutChanged) {
-      const g = this.feverBarG;
-      g.clear();
-
-      // 1. Pill Track: rgba(255,255,255,0.12), fully rounded (14px)
-      g.fillStyle(0xFFFFFF, 0.12);
-      g.fillRoundedRect(barX, barY, barW, barH, 14);
-      g.lineStyle(1.5, 0xFFFFFF, 0.22);
-      g.strokeRoundedRect(barX, barY, barW, barH, 14);
-
-      // 2. Horizontal gradient fill (#FF9F1C -> #E71D36) when > 0
-      if (fillW > 0) {
-        g.fillGradientStyle(0xFF9F1C, 0xE71D36, 0xFF9F1C, 0xE71D36, 1, 1, 1, 1);
-        g.fillRoundedRect(barX, barY, Math.max(28, fillW), barH, 14);
-      }
-
-      // 3. Pulsing outer glow when full or fever mode
-      if (pulsing) {
-        g.lineStyle(3.5, 0xFF9F1C, glowAlpha);
-        g.strokeRoundedRect(barX - 2, barY - 2, barW + 4, barH + 4, 16);
-      }
-    }
-
-    // 4. Flame icon: Image của texture bake sẵn (2 biến thể), chỉ đổi texture khi fever đổi
-    const flameCX = barX + 16;
-    const flameCY = barY + barH / 2;
-    if (!this.feverFlameImg || !this.feverFlameImg.active) {
-      this.feverFlameImg = this.add.image(flameCX, flameCY, FLOW_TEX.flame(isFever)).setDepth(z.hud + 1);
-    } else {
-      const wantTex = FLOW_TEX.flame(isFever);
-      if (this.feverFlameImg.texture.key !== wantTex && this.textures.exists(wantTex)) this.feverFlameImg.setTexture(wantTex);
-      this.feverFlameImg.setPosition(flameCX, flameCY);
-    }
-
-    // 5. Bold >= 12px readable label at small scale
-    const labelX = barX + barW / 2 + 8;
-    const labelY = barY + barH / 2;
-    this.feverStatusLabel.setPosition(labelX, labelY);
-    if (isFever) {
-      if (this.feverStatusLabel.text !== 'FEVER 2X!') this.feverStatusLabel.setText('FEVER 2X!').setColor('#FFF275');
-    } else {
-      const txt = `FEVER ${Math.round(ctx.engine.fever)}%`;
-      if (this.feverStatusLabel.text !== txt) this.feverStatusLabel.setText(txt).setColor('#FFFFFF');
-    }
-  }
-
-  private updateHud() {
-    this.scoreLabel.setText(String(ctx.engine.score));
-    this.fishLabel.setText(`🐟 ×${ctx.engine.fish}`);
-    this.tweens.add({ targets: this.scoreLabel, scale: 1.35, duration: 150, yoyo: true, ease: 'back.out' });
-  }
+  // T1e: drawLevelProgress + drawFeverBar + updateHud dời về HudRenderer (scenes/render/)
 
   private async onHit() {
     this.running = false;
@@ -2361,10 +2114,9 @@ export class GameplayScene extends Phaser.Scene {
     const hudY = Math.max(38, g.height * 0.05);
     if (this.pauseBtnContainer) this.pauseBtnContainer.setPosition(pf.left + 26, hudY);
     if (this.audioBtnContainer) this.audioBtnContainer.setPosition(pf.left + 66, hudY);
-    if (this.scoreLabel) this.scoreLabel.setPosition(pf.center, hudY - 4);
-    if (this.levelLabel) this.levelLabel.setPosition(pf.right - 44, hudY - 2);
-    if (this.fishLabel) this.fishLabel.setPosition(pf.right - 44, hudY + 20);
-    this.drawFeverBar();
+    // T1e: reposition HUD labels qua renderer (fever bar tự layout lại khi drawFrame sau)
+    this.hud.relayout(pf, hudY);
+    this.hud.drawFeverBar();
     if (this.levelPopup) this.levelPopup.setPosition(pf.center, g.height * 0.36);
     this.drawLevelBg(ctx.engine.getLevel());
   }
