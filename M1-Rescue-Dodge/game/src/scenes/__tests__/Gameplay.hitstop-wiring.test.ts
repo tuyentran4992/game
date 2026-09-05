@@ -211,6 +211,38 @@ describe('UPG2-J1 — applyJuiceForOutcome: hit-stop đóng băng world, không 
   });
 });
 
+// ---------- (3b) Replay path: scene.restart()/create() trên CÙNG instance phải sạch juice ----------
+// Defect review round 1: đường replay THẬT — GameOver retry `scene.start('GameplayScene')`
+// (GameOver.ts:234) + pause-modal Restart `scene.restart()` (Gameplay.ts:688) — re-run
+// create() trên cùng instance scene; reset juice cũ chỉ nằm trong beginSessionForTest
+// (helper CHỈ test gọi) → ván mới mở đầu đóng băng ~90ms + zoom lệch. Khóa: KHÔNG sửa
+// create() thì 2 test này FAIL (repro đúng luồng reviewer).
+describe('UPG2-J1 — juice reset qua đường replay create()/restart (không trôi ván mới)', () => {
+  beforeEach(() => { scene.beginSessionForTest(0); });
+
+  it('scene.restart() (đường pause-modal Restart): create() mới reset hit-stop + zoom = 1', async () => {
+    scene.applyJuiceForOutcome('fever_kill');           // freeze còn dở 90ms
+    expect(scene.hitStopLeftForTest()).toBe(MECHANICS.hitStopHitMs);
+    scene.scene.restart({ resume: false });             // đường restart thật của pause-modal
+    await vi.waitFor(() => {
+      expect(scene.runningView).toBe(true);             // ván mới đã vào vòng chạy
+    }, { timeout: 8000, interval: 25 });
+    expect(scene.hitStopLeftForTest()).toBe(0);         // KHÔNG trôi freeze sang ván mới
+    expect(scene.zoomViewForTest()).toBeCloseTo(1, 5);  // zoom không lệch
+  });
+
+  it('create() trên cùng instance (đường GameOver retry): ván mới sạch juice', async () => {
+    scene.applyJuiceForOutcome('game_over');            // freeze chết 110ms còn treo
+    expect(scene.hitStopLeftForTest()).toBe(MECHANICS.hitStopDeathMs);
+    scene.scene.start('GameplayScene', { resume: false }); // đường retry thật GameOver.ts:234
+    await vi.waitFor(() => {
+      expect(scene.runningView).toBe(true);
+    }, { timeout: 8000, interval: 25 });
+    expect(scene.hitStopLeftForTest()).toBe(0);
+    expect(scene.zoomViewForTest()).toBeCloseTo(1, 5);
+  });
+});
+
 // ---------- (4) Wiring runtime: nhánh va chạm gọi juice qua 1 nguồn (grep source) ----------
 describe('UPG2-J1 — wiring nhánh outcome trong update loop đi qua 1 nguồn juice', () => {
   it('nhánh outcome trong vòng ong áp juice QUA biến outcome (không literal trùng nhánh if)', () => {
