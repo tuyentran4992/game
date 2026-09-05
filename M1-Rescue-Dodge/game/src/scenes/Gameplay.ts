@@ -1388,7 +1388,7 @@ export class GameplayScene extends Phaser.Scene {
       this.updateJuiceZoom();
       if (this.hitStopLeft === 0 && this.deathFadeQueued) {
         this.deathFadeQueued = false;
-        this.finishDeathSequence();
+        this.startDeathFade();
       }
     } else if (this.punchAmp > 0) {
       this.updateJuiceZoom();
@@ -2061,25 +2061,11 @@ export class GameplayScene extends Phaser.Scene {
     this.playSfx('sfx_hit', 0.45);
     this.sound.stopByKey('bgm_main');
 
-    // UPG2-J1: hit-stop đóng băng world trước, camera punch chạy cùng lúc (zoom suy từ
-    // hitStopLeft — không đụng timeScale toàn cục). Fade-out + chuyển cảnh GameOver CHỈ
-    // chạy sau khi hit-stop trôi xong trong update() (stepJuice gọi finishDeathSequence)
-    // — đúng nhịp UX#63 (freeze ≤120ms, HUD/fx không băng).
+    // UPG2-J1: juice hit-stop + camera punch — world đóng băng ≤120ms, còn fx (shake,
+    // explosion, squash) chạy NGAY realtime trong lúc đóng băng (UX#63: không băng fx/HUD;
+    // hit-stop giữ frame đầu của burst nổ — đúng chất hit-stop, không phải khựng vô nghĩa).
     this.applyJuiceForOutcome('game_over');
-    if (this.hitStopLeft > 0) {
-      this.juiceEnding = true;
-      this.deathFadeQueued = true;
-      return;
-    }
-    this.finishDeathSequence();
-  }
 
-  /** Đuôi chuỗi chết: shake + explosion + squash cat + fade-out → GameOver (chạy sau hit-stop). */
-  private async finishDeathSequence(): Promise<void> {
-    this.juiceEnding = false;
-    this.punchAmp = 0;
-    this.punchStopMs = 0;
-    this.cameras.main.setZoom(1);
     // Camera micro-shake <= 4px (ART-PASS §4.3)
     this.cameras.main.shake(180, 0.005);
     // Honey-gold & white particle explosion
@@ -2110,6 +2096,21 @@ export class GameplayScene extends Phaser.Scene {
       },
     });
 
+    // Fade-out + chuyển GameOver CHỈ chạy sau khi hit-stop trôi xong (stepJuice gọi đuôi).
+    if (this.hitStopLeft > 0) {
+      this.juiceEnding = true;
+      this.deathFadeQueued = true;
+      return;
+    }
+    this.startDeathFade();
+  }
+
+  /** Đuôi chuỗi chết: chốt điểm + fade-out → GameOver (chạy sau khi hit-stop trôi xong). */
+  private async startDeathFade(): Promise<void> {
+    this.juiceEnding = false;
+    this.punchAmp = 0;
+    this.punchStopMs = 0;
+    this.cameras.main.setZoom(1);
     const end = ctx.engine.endGame();
     sdk.sendScore(end.score);
     await ctx.saveBest();

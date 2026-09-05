@@ -223,7 +223,7 @@ describe('UPG2-J1 — wiring nhánh outcome trong update loop đi qua 1 nguồn 
   it('onHit hoãn chuỗi chết khi còn freeze (deathFadeQueued) + stepJuice mở khoá trong update', () => {
     expect(SRC).toMatch(/hitStopLeft > 0/);
     expect(SRC).toMatch(/deathFadeQueued/);
-    expect(SRC).toMatch(/private async finishDeathSequence\(\)/);
+    expect(SRC).toMatch(/private async startDeathFade\(\)/);
     expect(SRC).toMatch(/stepJuice\(deltaMs\)/);
   });
 
