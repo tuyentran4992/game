@@ -116,15 +116,15 @@ describe('UPG2-CH runtime — HUD level-progress hiển thị chip chương', ()
     expect(levelProgressText()).toBe(`CH1 · NEXT 0/${MECHANICS.milestoneInterval}`);
   });
 
-  it('Score 120 (level 2, paletteIndex 0) → `CH1`; score 202 (level 10, paletteIndex 1) → `CH2`', () => {
+  it('Score 42 (level 2, paletteIndex 0) → `CH1`; score 202 (level 10, paletteIndex 1) → `CH2`', () => {
     const engine = engineOf();
     const s = engine as unknown as { score: number };
-    s.score = MECHANICS.milestoneInterval + 20; // 120 → level 2, paletteIndex 0
+    s.score = MECHANICS.milestoneInterval + 20; // 42 → level 2, paletteIndex 0
     scene.hud.drawLevelProgress();
     expect(levelProgressText()).toBe(`CH1 · NEXT 20/${MECHANICS.milestoneInterval}`);
-    s.score = 9 * MECHANICS.milestoneInterval + 22; // 202 → level 10 → paletteIndex 1
+    s.score = 9 * MECHANICS.milestoneInterval + 4; // 202 → level 10 → paletteIndex 1
     scene.hud.drawLevelProgress();
-    expect(levelProgressText()).toBe(`CH2 · NEXT 22/${MECHANICS.milestoneInterval}`);
+    expect(levelProgressText()).toBe(`CH2 · NEXT 4/${MECHANICS.milestoneInterval}`);
   });
 
   it('Score 382 (level 20, paletteIndex 2) → `CH3 · NEXT 2/{interval}`', () => {

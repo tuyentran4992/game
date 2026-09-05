@@ -82,7 +82,7 @@ export class HudRenderer {
 
     // Level Progress Pill (D-A2: cảm giác tiến bộ nhìn thấy được — testid level-progress)
     this.levelProgressG = this.scene.add.graphics().setDepth(z.hud);
-    this.levelProgressLabel = this.scene.add.text(pf.center, hudY + 81, `NEXT LEVEL: 0/${MECHANICS.milestoneInterval}`, fontStyle({ size: '13px', weight: '900', lh: 1 }, '#FFFFFF'))
+    this.levelProgressLabel = this.scene.add.text(pf.center, hudY + 81, `CH${this.engine.paletteIndex + 1} · NEXT 0/${MECHANICS.milestoneInterval}`, fontStyle({ size: '13px', weight: '900', lh: 1 }, '#FFFFFF'))
       .setOrigin(0.5).setDepth(z.hud + 1)
       .setStroke('#1E0E02', 3.5)
       .setAlpha(0.95);
@@ -140,7 +140,8 @@ export class HudRenderer {
     }
 
     this.levelProgressLabel.setPosition(pf.center, barY + barH / 2 + 14);
-    this.levelProgressLabel.setText(`NEXT LEVEL: ${into}/${interval}`);
+    // UPG2-CH: chip chương — CH{paletteIndex+1} đọc qua interface tầng A (CONTRACT §2)
+    this.levelProgressLabel.setText(`CH${this.engine.paletteIndex + 1} · NEXT ${into}/${interval}`);
   }
 
   /** Fever pill + label + flame icon — mirror drawFeverBar cũ (dirty-flag PERF-FIX A/C giữ nguyên). */
