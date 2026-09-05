@@ -83,6 +83,11 @@ export class GameplayScene extends Phaser.Scene {
   private punchAmp = 0;
   private punchStopMs = 0;
   private deathFadeQueued = false;
+  // Chặn xả hit-stop sau khi onHit tắt running (chuỗi chết chờ freeze trôi xong mới chạy).
+  private juiceEnding = false;
+  // Boot-check QA: đứng đồng hồ update() (không xả hit-stop theo thời gian thực) để chụp
+  // frame đóng băng deterministic — chỉ bật/tắt qua probe window.__gameJuice.freeze().
+  private probeClockStopped = false;
 
   // T1e: HUD + props ven đường dời về renderer (scenes/render/) — scene chỉ orchestrate
   // + giữ metrics layout (single source getPlayfieldBounds/getStraightRoadMetrics)
@@ -892,15 +897,15 @@ export class GameplayScene extends Phaser.Scene {
   update(_time: number, deltaMs: number) {
     // PERF-FIX B: particle pool bước theo dt game (T1f: qua FxRenderer.step). Pause = đóng băng
     // (như đóng băng gameplay); hết running (game over) vẫn fade hết burst như tween cũ.
-    if (this.isPaused) return;
+    if (this.isPaused || this.probeClockStopped) return;
     // UPG2-J1: hit-stop bằng dt REAL — fx (particle/tween fx) vẫn chạy trong lúc world
     // đứng im (giữ punch juice sống, đúng UX#63 "không băng fx/HUD").
-    if (!this.running) { this.fx.step(deltaMs); this.stepJuice(deltaMs); return; }
     if (this.hitStopLeft > 0) {
       this.fx.step(deltaMs);
       this.stepJuice(deltaMs);
       return;
     }
+    if (!this.running) { this.fx.step(deltaMs); this.stepJuice(deltaMs); return; }
     const dt = deltaMs / 1000;
     this.elapsed += dt;
 
@@ -1315,6 +1320,7 @@ export class GameplayScene extends Phaser.Scene {
     this.punchAmp = 0;
     this.punchStopMs = 0;
     this.deathFadeQueued = false;
+    this.juiceEnding = false;
     this.cameras.main.setZoom(1);
     ctx.engine.startNewGame();
     this.spawnDirector = new SpawnDirector(MECHANICS);
@@ -1372,8 +1378,11 @@ export class GameplayScene extends Phaser.Scene {
    * phải trôi qua hit-stop để mở khoá chuỗi chết; fx/tweens/HUD không bị băng — UX#63).
    * Trừ hit-stop, cập nhật zoom punch, và khi hết freeze + deathFadeQueued thì chạy nốt
    * fade-out + chuyển GameOver.
+   * LƯU Ý: sau khi onHit tắt running, stepJuice chỉ được xả khi juiceEnding=true (chuỗi
+   * chết đang chờ) — không vậy hit-stop bị xả trôi trong 1 frame đầu sau khi chết.
    */
   private stepJuice(deltaMs: number): void {
+    if (!this.running && !this.juiceEnding) return;
     if (this.hitStopLeft > 0) {
       this.hitStopLeft = Math.max(0, this.hitStopLeft - deltaMs);
       this.updateJuiceZoom();
@@ -1388,8 +1397,10 @@ export class GameplayScene extends Phaser.Scene {
 
   // ---------- UPG2-J1: probe QA E2E (boot-check frame đóng băng — không đụng runtime) ----------
   // Kích hoạt juice từ console/playwright: window.__gameJuice.drive('game_over'|'fever_kill'|
-  // 'shield_consume') → trả snapshot { hitStopLeft, zoom, frozen } để QA chụp frame đóng băng;
-  // tick(ms) giảm hitStopLeft bằng tay. Tiền lệ: __gameoverCta của R5 (GameOver.ts).
+  // 'shield_consume') → mô phỏng đúng trạng thái sau juice (game_over: running=false +
+  // juiceEnding + deathFadeQueued như onHit, KHÔNG mutate engine) và trả snapshot
+  // { hitStopLeft, zoom, frozen }; tick(ms) trừ freeze bằng tay; freeze(true/false) đứng/
+  // nhả đồng hồ update() để chụp frame đóng băng deterministic. Tiền lệ: __gameoverCta R5.
   private registerJuiceProbe(): void {
     const g = window as unknown as {
       __gameJuice?: {
@@ -1397,6 +1408,7 @@ export class GameplayScene extends Phaser.Scene {
           hitStopLeft: number; zoom: number; frozen: boolean;
         };
         tick: (ms: number) => { hitStopLeft: number; zoom: number; frozen: boolean };
+        freeze: (on: boolean) => void;
       };
     };
     const snap = () => ({
@@ -1407,12 +1419,19 @@ export class GameplayScene extends Phaser.Scene {
     g.__gameJuice = {
       drive: (outcome) => {
         this.applyJuiceForOutcome(outcome as unknown as BeeHitOutcome);
+        if (outcome === 'game_over') {
+          this.running = false;
+          this.juiceEnding = true;
+          this.deathFadeQueued = true;
+        }
+        this.updateJuiceZoom();
         return snap();
       },
       tick: (ms: number) => {
         this.stepJuice(ms);
         return snap();
       },
+      freeze: (on: boolean) => { this.probeClockStopped = on; },
     };
   }
 
@@ -2048,6 +2067,7 @@ export class GameplayScene extends Phaser.Scene {
     // — đúng nhịp UX#63 (freeze ≤120ms, HUD/fx không băng).
     this.applyJuiceForOutcome('game_over');
     if (this.hitStopLeft > 0) {
+      this.juiceEnding = true;
       this.deathFadeQueued = true;
       return;
     }
@@ -2056,6 +2076,10 @@ export class GameplayScene extends Phaser.Scene {
 
   /** Đuôi chuỗi chết: shake + explosion + squash cat + fade-out → GameOver (chạy sau hit-stop). */
   private async finishDeathSequence(): Promise<void> {
+    this.juiceEnding = false;
+    this.punchAmp = 0;
+    this.punchStopMs = 0;
+    this.cameras.main.setZoom(1);
     // Camera micro-shake <= 4px (ART-PASS §4.3)
     this.cameras.main.shake(180, 0.005);
     // Honey-gold & white particle explosion

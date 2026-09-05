@@ -227,8 +227,14 @@ describe('UPG2-J1 — wiring nhánh outcome trong update loop đi qua 1 nguồn 
     expect(SRC).toMatch(/stepJuice\(deltaMs\)/);
   });
 
-  it('probe QA __gameJuice (boot-check E2E: drive + đọc state juice như R5 probe tiền lệ)', () => {
+  it('probe QA __gameJuice (boot-check E2E: drive + tick + freeze, như R5 probe tiền lệ)', () => {
     expect(SRC).toMatch(/__gameJuice/);
     expect(SRC).toMatch(/applyJuiceForOutcome\(outcome as unknown as BeeHitOutcome\)/);
+    // drive('game_over') mô phỏng đúng trạng thái onHit sau juice (không mutate engine)
+    expect(SRC).toMatch(/freeze: \(on: boolean\)/);
+  });
+
+  it('gate: sau khi onHit tắt running, hit-stop chỉ xả khi juiceEnding (chống xả trôi 1 frame)', () => {
+    expect(SRC).toMatch(/if \(!this\.running && !this\.juiceEnding\) return;/);
   });
 });
