@@ -4,6 +4,15 @@ import { ctx } from '../context';
 import { sdk } from '@game/sdk';
 import { MECHANICS, BeeType } from '../logic/mechanics';
 import { SpawnDirector, type SpawnDirectorResult } from '../logic/SpawnDirector';
+import {
+  CollisionSystem,
+  DEFAULT_TUNING,
+  type BeeHitOutcome,
+  type CatBox,
+  type CollisionEntity,
+  type CollisionTuning,
+  type ItemPoint,
+} from '../logic/CollisionSystem';
 import { WIRING, BEES } from '../logic/wiring';
 import type { GameEngine } from '../logic/GameEngine';
 import type { MechanicsConfig } from '../logic/types';
@@ -26,6 +35,8 @@ interface Bee {
   container: Phaser.GameObjects.Container;
   sprite: Phaser.GameObjects.Image;
   slot?: BeeSlot;
+  /** T1d: id phục vụ CollisionSystem (entity map — không bắt buộc). */
+  id?: number;
   type: BeeType;
   lane: number;
   secondaryLane?: number;
@@ -134,6 +145,9 @@ export class GameplayScene extends Phaser.Scene {
   private fatBeeActive = false;
   // T1c: quyết định spawn dời về tầng A (logic/SpawnDirector) — scene chỉ orchestrate + vẽ
   private spawnDirector: SpawnDirector | null = null;
+  // T1d: hệ tọa độ va chạm (tầng A) — quyết "chạm/near-miss/pickup/né";
+  // mutation điểm/fever/shield vẫn thuộc engine (CONTRACT §2).
+  private collision: CollisionSystem | null = null;
 
   private elapsed = 0;
   private lastTick = 0;
@@ -446,6 +460,9 @@ export class GameplayScene extends Phaser.Scene {
     const spawnCfg: MechanicsConfig = MECHANICS;
     this.spawnDirector = new SpawnDirector(spawnCfg);
     this.spawnDirector.startSession(this.elapsed);
+    // T1d: collision system dùng DEFAULT_TUNING — giữ NGUYÊN giá trị cảm giác cũ
+    // (hitbox/threshold hoá param, không đổi gameplay — rủi ro ghi trong card).
+    this.collision = new CollisionSystem(MECHANICS);
     this.swarmActive = false;
     this.swarmBeesRemaining = 0;
     this.bees = [];
@@ -967,16 +984,9 @@ export class GameplayScene extends Phaser.Scene {
     this.spawnDust(this.cat.x, this.cat.y);
 
     // Check Near-Miss (Né sát sạt): Có con ong nào ở làn cũ đang sát mèo không?
-    const catY = this.cat.y;
-    const nearMissBee = this.bees.find(b => (b.lane === prev || b.secondaryLane === prev) && !b.dodged && Math.abs(b.container.y - catY) < 70 && b.container.y < catY + 30);
-    if (nearMissBee) {
-      const nm = ctx.engine.registerNearMiss();
-      this.playSfx('sfx_dodge', 0.55, 1.15);
-      this.showNearMissPopup();
-      this.spawnSparkles(this.cat.x, catY - 15, 0xFFEE55);
-      this.cameras.main.flash(70, 255, 255, 200, true);
-      this.updateHud();
-      if (nm.feverTriggered) this.onFeverStart();
+    // T1d: điều kiện near-miss thuộc CollisionSystem (tầng A) — scene chỉ map + mutate engine.
+    if (this.checkNearMissForTest(this.toCollisionEntities(), prev)) {
+      this.applyNearMissForTest(true);
     }
 
     // Tween bóng đổ tiếp đất cùng nhịp nhảy (slightly delayed for depth feel)
@@ -1106,8 +1116,8 @@ export class GameplayScene extends Phaser.Scene {
         it.container.x = this.lanes[it.lane];
       }
 
-      // Ăn vật phẩm (Collision)
-      if (Math.abs(it.container.y - catY) < 52 && Math.abs(it.container.x - catX) < 52) {
+      // Ăn vật phẩm (Collision) — T1d: cửa sổ pickup thuộc CollisionSystem
+      if (this.checkItemPickupForTest({ x: it.container.x, y: it.container.y })) {
         it.collected = true;
         this.collectItem(it);
         it.container.destroy();
@@ -1163,44 +1173,22 @@ export class GameplayScene extends Phaser.Scene {
         }
       }
 
-      // Né thành công
-      if (!b.dodged && b.container.y > catY + catSize.h * 0.4) {
+      // Né thành công — T1d: điều kiện "đã qua mèo + đủ điều kiện né" thuộc CollisionSystem
+      const catBox: CatBox = { x: catX, y: catY, w: catSize.w, h: catSize.h, lane: this.currentLane };
+      if (!b.dodged && this.collision!.hasPassedCat(this.toCollisionEntity(b), catBox)) {
         b.dodged = true;
-        let isCatInBeeLane = false;
-        if (isFat) {
-          const safeLane = (b.lane === 0 && b.secondaryLane === 1) ? 2 : 0;
-          isCatInBeeLane = (this.currentLane !== safeLane);
-        } else {
-          isCatInBeeLane = (b.lane === this.currentLane);
-        }
-        if (!isCatInBeeLane) {
+        if (this.collision!.canRegisterDodge(this.toCollisionEntity(b), catBox)) {
           this.onDodge(b);
         }
         this.handleSwarmBeeDone(b);
       }
 
-      // Va chạm ong — Chuẩn xác cho Ong Béo (chắn 2 làn) và Ong Thường
-      const hitY = Math.abs(b.container.y - catY) < (catSize.h * 0.52);
-      let hitX = false;
-      if (isFat) {
-        // Ong Béo chiếm 2 làn (lane1 và lane2). Làn còn lại là safeLane.
-        const safeLane = (b.lane === 0 && b.secondaryLane === 1) ? 2 : 0;
-        const { leftEdge, laneWidth } = this.getStraightRoadMetrics(this.scale.width, this.scale.height);
-        if (safeLane === 2) {
-          // Làn an toàn là làn Phải (2). Vùng nguy hiểm là làn Trái (0) và Giữa (1)
-          const rightBoundary = leftEdge + 2 * laneWidth;
-          hitX = catX < (rightBoundary - catSize.w * 0.18);
-        } else {
-          // Làn an toàn là làn Trái (0). Vùng nguy hiểm là làn Giữa (1) và Phải (2)
-          const leftBoundary = leftEdge + laneWidth;
-          hitX = catX > (leftBoundary + catSize.w * 0.18);
-        }
-      } else {
-        hitX = (b.lane === this.currentLane || Math.abs(b.container.x - catX) < (catSize.w * 0.45)) && Math.abs(b.container.x - catX) < (catSize.w * 0.45);
-      }
+      // Va chạm ong — T1d: hitbox + thứ tự ưu tiên fever/shield/game_over thuộc CollisionSystem;
+      // scene chỉ map Result sang mutation engine (CONTRACT §2) + vẽ fx.
+      const outcome: BeeHitOutcome = this.resolveBeeHitForTest(this.toCollisionEntity(b), catBox, this.scale.width);
 
-      if (hitY && hitX) {
-        if (isFever) {
+      if (outcome !== 'pass') {
+        if (outcome === 'fever_kill') {
           ctx.engine.destroyBeeInFever();
           this.playSfx('sfx_hit', 0.35, 1.2);
           this.cameras.main.shake(90, 0.008);
@@ -1210,7 +1198,8 @@ export class GameplayScene extends Phaser.Scene {
           this.retireBee(b);
           this.updateHud();
           continue;
-        } else if (ctx.engine.tryUseShield()) {
+        } else if (outcome === 'shield_consume') {
+          ctx.engine.tryUseShield();
           this.playSfx('sfx_dodge', 0.55);
           this.spawnShockwave(catX, catY, 0x00F0FF);
           this.showPowerupPopup('SHIELD SAVED! 🛡️', color.primary);
@@ -1561,6 +1550,115 @@ export class GameplayScene extends Phaser.Scene {
     this.stepSpawn(dt, elapsed, engine, engine.difficulty(elapsed, engine.getLevel()));
   }
 
+  // ---------- T1d: orchestration va chạm (quyết định thuộc CollisionSystem — tầng A) ----------
+
+  /** Map 1 Bee Phaser → entity thuần cho CollisionSystem (không mutate gì). */
+  private toCollisionEntity(b: Bee): CollisionEntity {
+    return {
+      id: b.id ?? 0,
+      type: b.type,
+      lane: b.lane,
+      secondaryLane: b.secondaryLane,
+      x: b.container.x,
+      y: b.container.y,
+      speedMult: b.speedMult,
+      dodged: b.dodged,
+      swerved: b.swerved,
+      isSwarm: b.isSwarm,
+    };
+  }
+
+  /** Map toàn bộ ong đang sống → entity thuần (near-miss cần quét danh sách). */
+  private toCollisionEntities(): CollisionEntity[] {
+    return this.bees
+      .filter((b) => b.container && b.container.active)
+      .map((b) => this.toCollisionEntity(b));
+  }
+
+  /** Hitbox mèo dạng thuần cho CollisionSystem. */
+  private getCatBox(): CatBox {
+    const size = this.getCatSize(this.scale.width, this.scale.height);
+    return { x: this.cat.x, y: this.cat.y, w: size.w, h: size.h, lane: this.currentLane };
+  }
+
+  /**
+   * Resolve 1 ong chạm mèo → outcome ('pass'|'fever_kill'|'shield_consume'|'game_over').
+   * Flags fever/shield đọc từ engine (public state CONTRACT §2) — system không mutate.
+   */
+  private resolveBeeHit(b: Bee): BeeHitOutcome {
+    if (!this.collision) return 'pass';
+    return this.collision.resolveBeeHit(this.toCollisionEntity(b), this.getCatBox(), {
+      feverActive: ctx.engine.isFeverActive(),
+      shieldActive: ctx.engine.shieldActive,
+    }, this.scale.width);
+  }
+
+  // ---------- TEST WIRING collision (bề mặt UT — không đổi hành vi runtime) ----------
+  /** CollisionSystem đang gắn với scene. */
+  getCollision(): CollisionSystem | null { return this.collision; }
+  /** Tuning đang dùng (phải là DEFAULT_TUNING — giữ nguyên cảm giác cũ). */
+  getCollisionTuning(): CollisionTuning { return { ...DEFAULT_TUNING }; }
+  /** Gọi resolveBeeHit của system với entity/catBox tường minh (UT dựng kịch bản). */
+  resolveBeeHitForTest(entity: CollisionEntity, catBox: CatBox, width: number): BeeHitOutcome {
+    if (!this.collision) return 'pass';
+    return this.collision.resolveBeeHit(entity, catBox, {
+      feverActive: ctx.engine.isFeverActive(),
+      shieldActive: ctx.engine.shieldActive,
+    }, width);
+  }
+  /** Near-miss qua system (prevLane là làn cũ của mèo). */
+  checkNearMissForTest(entities: CollisionEntity[], prevLane: number): boolean {
+    if (!this.collision) return false;
+    const size = this.getCatSize(this.scale.width, this.scale.height);
+    return this.collision.checkNearMiss(entities, { x: this.cat.x, y: this.cat.y, w: size.w, h: size.h, lane: this.currentLane }, prevLane);
+  }
+  /** Áp kết quả near-miss: mutate engine + fx (tách từ moveLane để UT được). */
+  applyNearMissForTest(hit: boolean): void {
+    if (!hit) return;
+    const nm = ctx.engine.registerNearMiss();
+    this.playSfx('sfx_dodge', 0.55, 1.15);
+    this.showNearMissPopup();
+    this.spawnSparkles(this.cat.x, this.cat.y - 15, 0xFFEE55);
+    this.cameras.main.flash(70, 255, 255, 200, true);
+    this.updateHud();
+    if (nm.feverTriggered) this.onFeverStart();
+  }
+  /** Pickup qua system (item dạng điểm). */
+  checkItemPickupForTest(item: ItemPoint): boolean {
+    if (!this.collision) return false;
+    return this.collision.checkItemPickup(item, this.getCatBox());
+  }
+  /** Điều kiện né qua system. */
+  canRegisterDodgeForTest(entity: CollisionEntity, catBox: CatBox): boolean {
+    if (!this.collision) return false;
+    return this.collision.canRegisterDodge(entity, catBox);
+  }
+  /** Áp outcome đã resolve: mutate engine đúng nhánh (UT 4 nhánh outcome) — mirror runtime. */
+  applyBeeHitForTest(entity: CollisionEntity, outcome: BeeHitOutcome): void {
+    if (outcome === 'game_over') {
+      // mirror runtime: onHit() tự registerHit + running=false + endGame + chuyển cảnh
+      void this.onHit();
+      return;
+    }
+    // fever_kill / shield_consume: mutate engine + retire ong + prune (mirror vòng ong)
+    if (outcome === 'fever_kill') ctx.engine.destroyBeeInFever();
+    if (outcome === 'shield_consume') ctx.engine.tryUseShield();
+    const bee = this.bees.find((b) => b.id === entity.id);
+    if (bee) this.retireBee(bee);
+    this.pruneBees();
+    this.updateHud();
+  }
+  /** Tạo ong THẬT (pool) đặt tại toạ độ cho UT collision — trả Bee đủ id để apply. */
+  spawnBeeForTest(lane: number, x: number, y: number, type: BeeType = 'normal') {
+    const beeSize = this.getBeeSize(this.scale.width, this.scale.height);
+    const bee = this.createBeeEntity(type, lane, beeSize, 1.0);
+    bee.container.setPosition(x, y);
+    return bee;
+  }
+  /** Vị trí mèo hiện tại (UT dựng hitbox). */
+  getCatYForTest(): number { return this.cat.y; }
+  getCatXForTest(): number { return this.cat.x; }
+
   private getOccupiedLanesAtTop(topYThreshold = 200): Set<number> {
     const occupied = new Set<number>();
     for (const b of this.bees) {
@@ -1624,10 +1722,12 @@ export class GameplayScene extends Phaser.Scene {
     slot.settle.pause();
     slot.bow.restart();
 
-    const bee: Bee = { container, sprite, slot, type, lane, speedMult, dodged: false };
+    const bee: Bee = { container, sprite, slot, type, lane, speedMult, dodged: false, id: this.beeSeq++ };
     this.bees.push(bee);
     return bee;
   }
+  /** Đếm dùng chung cấp id cho Bee (CollisionSystem cần id ổn định — T1d). */
+  private beeSeq = 1;
 
   private buildBeeSlot(): BeeSlot {
     const container = this.add.container(0, 0).setDepth(z.actor);
@@ -1680,6 +1780,7 @@ export class GameplayScene extends Phaser.Scene {
       secondaryLane: lane2,
       speedMult: 0.72,
       dodged: false,
+      id: this.beeSeq++,
     };
     this.bees.push(bee);
 
@@ -1749,7 +1850,7 @@ export class GameplayScene extends Phaser.Scene {
         slot.sway.pause();
         slot.bow.pause();
         slot.settle.pause();
-        const bee: Bee = { container, sprite, slot, type: 'speedy', lane: l, speedMult: 1.15, dodged: false, isSwarm: true };
+        const bee: Bee = { container, sprite, slot, type: 'speedy', lane: l, speedMult: 1.15, dodged: false, isSwarm: true, id: this.beeSeq++ };
         this.bees.push(bee);
       }
     }

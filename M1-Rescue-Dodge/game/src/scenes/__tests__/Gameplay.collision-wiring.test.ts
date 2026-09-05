@@ -89,6 +89,8 @@ function bootScene(): Promise<void> {
     });
     scene = new GameplayScene();
     game.scene.add('GameplayScene', scene, true, { resume: false });
+    // Stub GameOverScene để nhánh game_over chuyển cảnh thật (không cần màn đầy đủ)
+    game.scene.add('GameOverScene', new Phaser.Scene('GameOverScene'));
     const iv = setInterval(() => {
       if (scene.scene && scene.scene.isActive() && scene.runningView && scene.getEngineForTest()) {
         clearInterval(iv);
@@ -169,40 +171,29 @@ describe('wiring runtime — scene.stepCollide điều phối qua CollisionSyste
     scene.beginSessionForTest(0);
   });
 
-  /** Ong thường cùng làn mèo, y trùng tâm mèo → chạm hitbox. */
-  function hitBee(engine: GameEngine) {
-    const { leftEdge, laneWidth } = roadMetrics(720, MECHANICS.laneCount);
-    const laneX = [leftEdge + laneWidth / 2, leftEdge + laneWidth * 1.5, leftEdge + laneWidth * 2.5];
-    return { laneX, bee: { id: 1, type: 'normal' as const, lane: 1, x: laneX[1], y: scene.getCatYForTest() } };
+  /** Ong THẬT (pool) cùng làn mèo, y trùng tâm mèo → chạm hitbox; trả Bee đủ id. */
+  function makeHitBee() {
+    const catX = scene.getCatXForTest();
+    const bee = scene.spawnBeeForTest(1, catX, scene.getCatYForTest());
+    return { catX, bee, entity: { id: bee.id!, type: 'normal' as const, lane: 1, x: catX, y: scene.getCatYForTest() } };
   }
-
-  it('không fever/không shield + ong chạm → game_over: registerHit + running=false + scene chuyển GameOverScene', async () => {
-    const engine = scene.getEngineForTest();
-    const { bee } = hitBee(engine);
-    const outcome = scene.resolveBeeHitForTest(bee, { x: 260.8, y: scene.getCatYForTest(), w: 100, h: 100, lane: 1 }, 720);
-    expect(outcome).toBe('game_over');
-    // qua nhánh orchestrate thật: engine bị mutate đúng (score/streak) + running tắt
-    const spyRegisterHit = vi.spyOn(engine, 'registerHit');
-    scene.applyBeeHitForTest(bee, outcome);
-    expect(spyRegisterHit).toHaveBeenCalledTimes(1);
-    expect(scene.runningView).toBe(false);
-    // onHit() async: đợi chuyển cảnh GameOverScene (fade + delayedCall)
-    await vi.waitFor(() => expect(scene.scene.isActive('GameOverScene')).toBe(true), { timeout: 8000 });
-    expect(scene.scene.isActive('GameplayScene')).toBe(false);
-  });
+  /** CatBox khớp vị trí cat thật (w/h đủ lớn để hitX/hitY trúng khi trùng tâm). */
+  function realCatBox(catX: number) {
+    return { x: catX, y: scene.getCatYForTest(), w: 100, h: 100, lane: 1 };
+  }
 
   it('fever bật + ong chạm → fever_kill: destroyBeeInFever + ong bị retire (không game over)', () => {
     const engine = scene.getEngineForTest();
     engine.startNewGame();
     engine.addFever(999);
     expect(engine.isFeverActive()).toBe(true);
-    const { bee } = hitBee(engine);
-    const outcome = scene.resolveBeeHitForTest(bee, { x: 260.8, y: scene.getCatYForTest(), w: 100, h: 100, lane: 1 }, 720);
+    const { catX, entity } = makeHitBee();
+    const outcome = scene.resolveBeeHitForTest(entity, realCatBox(catX), 720);
     expect(outcome).toBe('fever_kill');
     const scoreBefore = engine.score;
     const spyKill = vi.spyOn(engine, 'destroyBeeInFever');
     const before = scene.beeCount;
-    scene.applyBeeHitForTest(bee, outcome);
+    scene.applyBeeHitForTest(entity, outcome);
     expect(spyKill).toHaveBeenCalledTimes(1);
     expect(engine.score).toBe(scoreBefore + MECHANICS.feverKillBonus);
     expect(scene.beeCount).toBe(before - 1); // retireBee đã nhả ong
@@ -213,12 +204,12 @@ describe('wiring runtime — scene.stepCollide điều phối qua CollisionSyste
     const engine = scene.getEngineForTest();
     engine.startNewGame();
     engine.activateShield();
-    const { bee } = hitBee(engine);
-    const outcome = scene.resolveBeeHitForTest(bee, { x: 260.8, y: scene.getCatYForTest(), w: 100, h: 100, lane: 1 }, 720);
+    const { catX, entity } = makeHitBee();
+    const outcome = scene.resolveBeeHitForTest(entity, realCatBox(catX), 720);
     expect(outcome).toBe('shield_consume');
     const spyShield = vi.spyOn(engine, 'tryUseShield');
     const before = scene.beeCount;
-    scene.applyBeeHitForTest(bee, outcome);
+    scene.applyBeeHitForTest(entity, outcome);
     expect(spyShield).toHaveBeenCalledTimes(1);
     expect(engine.shieldActive).toBe(false); // khiên đã tiêu
     expect(scene.beeCount).toBe(before - 1);
@@ -227,11 +218,11 @@ describe('wiring runtime — scene.stepCollide điều phối qua CollisionSyste
 
   it('near-miss: ong chiếm làn cũ chưa né, trong cửa sổ → registerNearMiss + fever có thể trigger', () => {
     const engine = scene.getEngineForTest();
-    const { laneX } = hitBee(engine);
+    const catX = scene.getCatXForTest();
     const catY = scene.getCatYForTest();
     // mirror điều kiện cũ: |dy| < 70 && y < catY + 30 — ong cách 20px phía trên
     const outcome = scene.checkNearMissForTest(
-      [{ id: 2, type: 'normal', lane: 1, x: laneX[1], y: catY - 20 }],
+      [{ id: 2, type: 'normal', lane: 1, x: catX, y: catY - 20 }],
       1,
     );
     expect(outcome).toBe(true);
@@ -251,15 +242,31 @@ describe('wiring runtime — scene.stepCollide điều phối qua CollisionSyste
   });
 
   it('canRegisterDodge: ong đã qua mèo + khác làn → đủ điều kiện né (threshold dodgeYFactor 0.4)', () => {
-    const engine = scene.getEngineForTest();
-    const { laneX } = hitBee(engine);
+    const catX = scene.getCatXForTest();
     const catY = scene.getCatYForTest();
     // ong cách làn, y = catY + 39 (< catH*0.4 = 40) → chưa đủ; y = catY + 41 → đủ
     expect(scene.canRegisterDodgeForTest(
-      { id: 3, type: 'normal', lane: 0, x: laneX[0], y: catY + 39 }, { x: laneX[1], y: catY, w: 100, h: 100, lane: 1 },
+      { id: 3, type: 'normal', lane: 0, x: catX, y: catY + 39 }, { x: catX, y: catY, w: 100, h: 100, lane: 1 },
     )).toBe(false);
     expect(scene.canRegisterDodgeForTest(
-      { id: 3, type: 'normal', lane: 0, x: laneX[0], y: catY + 41 }, { x: laneX[1], y: catY, w: 100, h: 100, lane: 1 },
+      { id: 3, type: 'normal', lane: 0, x: catX, y: catY + 41 }, { x: catX, y: catY, w: 100, h: 100, lane: 1 },
     )).toBe(true);
   });
+
+  // ĐỂ CUỐI CÙNG: test này kết thúc phiên (chuyển GameOverScene) — các test sau nó
+  // sẽ thấy scene đã shutdown, không thể tiếp tục assert runtime.
+  it('không fever/không shield + ong chạm → game_over: registerHit + running=false + scene chuyển GameOverScene', async () => {
+    const engine = scene.getEngineForTest();
+    const { catX, entity } = makeHitBee();
+    const outcome = scene.resolveBeeHitForTest(entity, realCatBox(catX), 720);
+    expect(outcome).toBe('game_over');
+    // qua nhánh orchestrate thật: engine bị mutate đúng (score/streak) + running tắt
+    const spyRegisterHit = vi.spyOn(engine, 'registerHit');
+    scene.applyBeeHitForTest(entity, outcome);
+    expect(spyRegisterHit).toHaveBeenCalledTimes(1);
+    expect(scene.runningView).toBe(false);
+    // onHit() async: đợi chuyển cảnh GameOverScene (fade + delayedCall)
+    await vi.waitFor(() => expect(scene.scene.isActive('GameOverScene')).toBe(true), { timeout: 8000 });
+    expect(scene.scene.isActive('GameplayScene')).toBe(false);
+  }, 10000);
 });
