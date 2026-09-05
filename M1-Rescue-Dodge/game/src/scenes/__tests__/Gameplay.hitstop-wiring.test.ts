@@ -8,7 +8,7 @@
 // branch (update loop) và applyBeeHitForTest (UT mirror); Date/không rng mới — J1
 // không thêm random (rng injectable rule: code mới KHÔNG dùng Math.random thô).
 // @vitest-environment jsdom
-import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 
 // Phaser 4 tự kiểm canvas 2D lúc MODULE-INIT (checkInverseAlpha) — jsdom không có
 // canvas backend. Stub 2D context tối thiểu, cài TRƯỚC mọi import (như collision-wiring).
@@ -219,27 +219,43 @@ describe('UPG2-J1 — applyJuiceForOutcome: hit-stop đóng băng world, không 
 // create() thì 2 test này FAIL (repro đúng luồng reviewer).
 describe('UPG2-J1 — juice reset qua đường replay create()/restart (không trôi ván mới)', () => {
   beforeEach(() => { scene.beginSessionForTest(0); });
+  afterEach(() => { (window as any).__gameJuice?.freeze(false); });
 
   it('scene.restart() (đường pause-modal Restart): create() mới reset hit-stop + zoom = 1', async () => {
+    (window as any).__gameJuice.freeze(true);           // đóng đồng hồ update — freeze giữ nguyên tới khi create() reset
     scene.applyJuiceForOutcome('fever_kill');           // freeze còn dở 90ms
     expect(scene.hitStopLeftForTest()).toBe(MECHANICS.hitStopHitMs);
-    scene.scene.restart({ resume: false });             // đường restart thật của pause-modal
+    const createSpy = vi.spyOn(scene, 'create');
+    scene.scene.restart({ resume: false });             // đường restart thật của pause-modal (Gameplay.ts:688)
     await vi.waitFor(() => {
-      expect(scene.runningView).toBe(true);             // ván mới đã vào vòng chạy
+      expect(createSpy).toHaveBeenCalled();             // create() re-run trên cùng instance
+    }, { timeout: 8000, interval: 25 });
+    await vi.waitFor(() => {
+      expect(scene.runningView).toBe(true);             // ván mới đã vào vòng chạy (fadeIn xong)
     }, { timeout: 8000, interval: 25 });
     expect(scene.hitStopLeftForTest()).toBe(0);         // KHÔNG trôi freeze sang ván mới
     expect(scene.zoomViewForTest()).toBeCloseTo(1, 5);  // zoom không lệch
   });
 
   it('create() trên cùng instance (đường GameOver retry): ván mới sạch juice', async () => {
-    scene.applyJuiceForOutcome('game_over');            // freeze chết 110ms còn treo
+    (window as any).__gameJuice.freeze(true);           // giữ freeze chết 110ms — không tự trôi khi running=false
+    (window as any).__gameJuice.drive('game_over');     // mô phỏng trạng thái onHit: freeze + juiceEnding + deathFadeQueued
     expect(scene.hitStopLeftForTest()).toBe(MECHANICS.hitStopDeathMs);
-    scene.scene.start('GameplayScene', { resume: false }); // đường retry thật GameOver.ts:234
+    const s = scene as unknown as { juiceEnding: boolean; deathFadeQueued: boolean };
+    expect(s.juiceEnding).toBe(true);
+    expect(s.deathFadeQueued).toBe(true);
+    const createSpy = vi.spyOn(scene, 'create');
+    scene.scene.start('GameplayScene', { resume: false }); // đường retry thật (GameOver.ts:234)
+    await vi.waitFor(() => {
+      expect(createSpy).toHaveBeenCalled();
+    }, { timeout: 8000, interval: 25 });
     await vi.waitFor(() => {
       expect(scene.runningView).toBe(true);
     }, { timeout: 8000, interval: 25 });
     expect(scene.hitStopLeftForTest()).toBe(0);
     expect(scene.zoomViewForTest()).toBeCloseTo(1, 5);
+    expect(s.juiceEnding).toBe(false);                  // chuỗi chết cũ KHÔNG trôi sang ván mới
+    expect(s.deathFadeQueued).toBe(false);
   });
 });
 

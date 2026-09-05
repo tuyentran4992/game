@@ -418,6 +418,11 @@ export class GameplayScene extends Phaser.Scene {
     this.running = false;
     this.isPaused = false;
     this.muted = !sdk.isAudioEnabled();
+    // UPG2-J1 (review r2): đường replay THẬT re-run create() trên CÙNG instance scene
+    // (GameOver retry `scene.start('GameplayScene')` @GameOver.ts:234 + pause-modal Restart
+    // `scene.restart()` @Gameplay.ts:688) — ván mới phải sạch juice, hit-stop/zoom ván cũ
+    // KHÔNG trôi sang (freeze dở + Restart = ván mới đóng băng ~90ms đầu + zoom lệch).
+    this.resetJuiceState();
 
     this.drawLevelBg(ctx.engine.getLevel());
     this.lanes = this.computeLanes(width, height);
@@ -1316,12 +1321,7 @@ export class GameplayScene extends Phaser.Scene {
     this.swarmActive = false;
     this.swarmBeesRemaining = 0;
     // UPG2-J1: phiên mới phải sạch juice — hit-stop/zoom của ván cũ không trôi sang ván mới.
-    this.hitStopLeft = 0;
-    this.punchAmp = 0;
-    this.punchStopMs = 0;
-    this.deathFadeQueued = false;
-    this.juiceEnding = false;
-    this.cameras.main.setZoom(1);
+    this.resetJuiceState();
     ctx.engine.startNewGame();
     this.spawnDirector = new SpawnDirector(MECHANICS);
     this.spawnDirector.startSession(elapsed);
@@ -1334,6 +1334,19 @@ export class GameplayScene extends Phaser.Scene {
 
   // ---------- T1d: orchestration va chạm (quyết định thuộc CollisionSystem — tầng A) ----------
   // ---------- UPG2-J1: juice hit-stop + camera punch (dữ liệu số thuộc MechanicsConfig) ----------
+  /** Dọn sạch juice về trạng thái đầu — MỘT nguồn, gọi từ create() (đường replay THẬT re-run
+   *  create() trên cùng instance scene: GameOver retry `scene.start('GameplayScene')` +
+   *  pause-modal Restart `scene.restart()`) và beginSessionForTest (reset phiên UT).
+   *  Thiếu step này → freeze/zoom ván cũ trôi sang ván mới (defect review round 1). */
+  private resetJuiceState(): void {
+    this.hitStopLeft = 0;
+    this.punchAmp = 0;
+    this.punchStopMs = 0;
+    this.deathFadeQueued = false;
+    this.juiceEnding = false;
+    this.probeClockStopped = false;
+    this.cameras.main.setZoom(1);
+  }
   /** Áp juice cho 1 outcome va chạm — MỘT nguồn cho nhánh runtime (vòng ong trong update)
    *  và UT mirror (applyBeeHitForTest). Hit-stop: cộng dồn ms đóng băng (update() trừ dần
    * bằng dt REAL); camera punch: zoom neo 1-punchZoom trong punchHoldMs đầu rồi hồi tuyến
