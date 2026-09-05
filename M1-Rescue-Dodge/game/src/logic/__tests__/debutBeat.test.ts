@@ -179,3 +179,49 @@ describe('P1a — swarm debut: swarmTriggered đầu phiên xuất typed window 
     expect(h.engine.debutAt(52)).toBeNull();
   });
 });
+
+// [P1a r1 — review t_6035fb14] Luồng doubleSpawn (con 2 do scene gọi trễ 280ms qua
+// rollSecondBeeType) phải đi QUA debut policy như spawn chính: trong cửa sổ cùng loại
+// → HẠ 'normal' (≤1 speedy song song trong 2s sau lần ra đầu); lần đầu của loại giữ
+// nguyên → GHI firstSeen (director map + engine.noteDebut). Deterministic rng injectable.
+describe('P1a r1 — con 2 doubleSpawn QUA debut policy (review r1: nhất quán mọi đường tạo ong)', () => {
+  it('speedy debut 37.5 kèm doubleSpawn → con 2 (scene gọi trễ 37.78) trong cửa sổ → HẠ normal (≤1 speedy song song)', () => {
+    const h = makeHarness([0.9], [0.01]);
+    h.dir.update({ dt: 0.01, elapsed: 30, engine: h.engine, world: makeWorld() });
+    h.dir.update({ dt: 2.0, elapsed: 35, engine: h.engine, world: makeWorld({ swarmActive: true }) });
+    const first = h.dir.update({ dt: 0.5, elapsed: 37.5, engine: h.engine, world: makeWorld() });
+    expect(first.spawned[0]?.type).toBe('speedy'); // spawn chính = debut speedy 37.5
+    const second = h.dir.rollSecondBeeType(37.78, h.engine); // mirror scene delayedCall 280ms
+    expect(second).toBe('normal'); // RED r1: cũ trả 'speedy' → 2 speedy song song trong cửa sổ 2s
+    expect(h.engine.debutAt(37.9)?.firstSeenAt).toBe(37.5); // debut không bị ghi đè bởi con 2
+  });
+
+  it('con 2 doubleSpawn speedy LẦN ĐẦU (chưa debut) → ghi firstSeen (director + engine) → spawn chính trong cửa sổ bị hạ', () => {
+    const h = makeHarness([0.9], [0.01]);
+    h.dir.update({ dt: 0.01, elapsed: 30, engine: h.engine, world: makeWorld() }); // swarm đầu trigger
+    h.dir.update({ dt: 2.0, elapsed: 35, engine: h.engine, world: makeWorld({ swarmActive: true }) });
+    const second = h.dir.rollSecondBeeType(35.3, h.engine); // 35.3 ≥ warmup 30 → roll speedy LẦN ĐẦU
+    expect(second).toBe('speedy'); // lần đầu giữ nguyên loại
+    expect(h.engine.debutAt(35.5)?.type).toBe('speedy'); // RED r1: cũ không ghi → null
+    expect(h.engine.debutAt(35.5)?.firstSeenAt).toBe(35.3);
+    expect(h.dir.debutAt(35.5)?.type).toBe('speedy'); // director map đồng bộ nguồn policy
+    h.dir.resetSpawnTimer();
+    const main = h.dir.update({ dt: 1.4, elapsed: 36.3, engine: h.engine, world: makeWorld() });
+    expect(main.spawned[0]?.type).toBe('normal'); // cửa sổ mở cho cả spawn chính (36.3 < 35.3+2.0)
+  });
+
+  it('con 2 SAU khi hết cửa sổ (39.5 == until) → giữ speedy (biên at < until)', () => {
+    const h = makeHarness([0.9], [0.01]);
+    h.dir.update({ dt: 0.01, elapsed: 30, engine: h.engine, world: makeWorld() });
+    h.dir.update({ dt: 2.0, elapsed: 35, engine: h.engine, world: makeWorld({ swarmActive: true }) });
+    h.dir.update({ dt: 0.5, elapsed: 37.5, engine: h.engine, world: makeWorld() }); // speedy debut 37.5
+    expect(h.dir.rollSecondBeeType(39.5, h.engine)).toBe('speedy'); // cửa đóng → policy không hạ
+  });
+
+  it('con 2 zigzag → giữ mapping normal (mirror guard cũ) + KHÔNG ghi debut zigzag ảo', () => {
+    const h = makeHarness([0.9], [0.31]);
+    h.engine.score = 9 * 22; // level 10 — zigzag khả dụng trong roll
+    expect(h.dir.rollSecondBeeType(35.3, h.engine)).toBe('normal'); // mapping cũ giữ nguyên
+    expect(h.engine.debutAt(35.5)).toBeNull(); // zigzag bị map normal → không mở cửa sổ zigzag ảo
+  });
+});

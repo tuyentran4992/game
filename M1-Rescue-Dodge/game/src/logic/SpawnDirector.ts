@@ -185,11 +185,27 @@ export class SpawnDirector {
   /**
    * Con thứ 2 của double spawn (mirror L1570-1573): scene gọi TRỄ 280ms.
    * Guard 'fat' giữ nguyên dù rollBeeType không trả fat (mirror defensive code).
+   * [P1a r1] debut policy NHẤT QUÁN mọi đường tạo ong non-normal của director:
+   * cùng loại trong cửa sổ debut → HẠ 'normal' (≤1 song song trong 2s — spec card);
+   * lần ĐẦU của loại → giữ nguyên + ghi firstSeen (mirror map + engine.noteDebut) —
+   * cửa sổ mở cho cả spawn chính sau đó. Mapping zigzag→normal giữ nguyên (test cũ L270),
+   * zigzag bị map normal KHÔNG mở cửa sổ zigzag ảo.
    */
   rollSecondBeeType(elapsedSec: number, engine: GameEngine, level = engine.getLevel()): BeeType | null {
     const t = engine.rollBeeType(elapsedSec, level);
     if (t === 'fat') return null;
-    return t === 'zigzag' ? 'normal' : t;
+    const mapped: BeeType = t === 'zigzag' ? 'normal' : t;
+    if (mapped !== 'normal') {
+      const seenAt = this.firstSeen.get(mapped);
+      if (seenAt !== undefined) {
+        if (elapsedSec < seenAt + this.cfg.debutSparseSec) return 'normal'; // cửa sổ mở → hạ
+      } else {
+        // lần đầu: ghi cả mirror map lẫn engine (DebutBeat.note tự bỏ qua lần lặp)
+        this.firstSeen.set(mapped, elapsedSec);
+        engine.noteDebut(mapped, elapsedSec);
+      }
+    }
+    return mapped;
   }
 
   private decideSpawn(
