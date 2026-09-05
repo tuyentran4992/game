@@ -112,6 +112,10 @@ export class GameplayScene extends Phaser.Scene {
   private currentLane = 1;
   private moveSeq = 0;
   private isMovingLane = false;
+  // UPG2-N1: input buffer cho lane-switch — đọc MechanicsConfig.inputBufferMs (0 = tắt,
+  // nguyên trạng tức thì; >0 = lệnh gõ trong buffer window được xử lý ở update kế tiếp).
+  private pendingLaneDir: number | null = null;
+  private pendingLaneAt = 0;
   private runningPuffTimer = 0;
 
   private bees: Bee[] = [];
@@ -364,6 +368,7 @@ export class GameplayScene extends Phaser.Scene {
     this.items = [];
     this.fatBeeActive = false;
     this.isMovingLane = false;
+    this.pendingLaneDir = null;
     this.runningPuffTimer = 0;
   }
 
@@ -398,6 +403,7 @@ export class GameplayScene extends Phaser.Scene {
     this.items = [];
     this.currentLane = 1;
     this.moveSeq = 0;
+    this.pendingLaneDir = null;
     this.running = false;
     this.isPaused = false;
     this.muted = !sdk.isAudioEnabled();
@@ -798,8 +804,17 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private moveLane(dir: number) {
+    // UPG2-N1: buffer lệnh khi đang giữa nhịp đổi làn (chỉ khi inputBufferMs > 0).
+    if (this.isMovingLane && MECHANICS.inputBufferMs > 0) {
+      this.pendingLaneDir = dir;
+      this.pendingLaneAt = this.time.now;
+      return;
+    }
     const target = Phaser.Math.Clamp(this.currentLane + dir, 0, MECHANICS.laneCount - 1);
-    if (target === this.currentLane) return;
+    if (target === this.currentLane) {
+      this.pendingLaneDir = null; // lệnh về biên — dọn buffer cũ
+      return;
+    }
     const prev = this.currentLane;
     this.currentLane = target;
     this.moveSeq++;
@@ -824,9 +839,9 @@ export class GameplayScene extends Phaser.Scene {
     this.tweens.addCounter({
       from: 0,
       to: 1,
-      duration: dur.tn,
-      delay: 35,
-      ease: 'cubic.out',
+      duration: MECHANICS.laneMoveMs,
+      delay: MECHANICS.laneMoveDelayMs,
+      ease: MECHANICS.laneMoveEase,
       onUpdate: (tw) => {
         const p = tw.getValue() ?? 0;
         const curX = prevX + (targetX - prevX) * p;
@@ -848,15 +863,15 @@ export class GameplayScene extends Phaser.Scene {
       scaleX: baseScaleX * 0.90,
       scaleY: baseScaleY * 1.10,
       angle: targetAngle,
-      duration: dur.tn,
-      ease: 'cubic.out',
+      duration: MECHANICS.laneMoveMs,
+      ease: MECHANICS.laneMoveEase,
       onComplete: () => {
         this.tweens.add({
           targets: this.cat,
           scaleX: baseScaleX,
           scaleY: baseScaleY,
           angle: 0,
-          duration: 80,
+          duration: MECHANICS.laneMoveSettleMs,
           ease: 'quad.out',
           onComplete: () => {
             this.isMovingLane = false;
@@ -1068,6 +1083,18 @@ export class GameplayScene extends Phaser.Scene {
     // 2. Draw ground flow, moving track dashes & nature particles (T1e: roadside qua renderer)
     this.drawGroundFlow(diff.speed, dt, isFever);
     this.roadside.update(diff.speed, dt, this.elapsed, roadMetrics);
+
+    // UPG2-N1: xả input buffer lane-switch khi mèo rảnh — lệnh gõ giữa nhịp đổi làn
+    // (khi inputBufferMs > 0) được thực thi ở frame kế trong hạn buffer, quá hạn thì bỏ.
+    if (this.pendingLaneDir !== null) {
+      if (this.time.now - this.pendingLaneAt <= MECHANICS.inputBufferMs) {
+        const dir = this.pendingLaneDir;
+        this.pendingLaneDir = null;
+        if (this.running && !this.isPaused && !this.isMovingLane) this.moveLane(dir);
+      } else {
+        this.pendingLaneDir = null;
+      }
+    }
 
     // 3. Cat running trot / bobbing & footstep puffs
     if (this.running && !this.isPaused && !this.isMovingLane && this.cat && this.cat.active) {
@@ -1498,7 +1525,7 @@ export class GameplayScene extends Phaser.Scene {
       type: 'fat',
       lane: lane1,
       secondaryLane: lane2,
-      speedMult: 0.72,
+      speedMult: BEES.fatSpeedMult,
       dodged: false,
       id: this.beeSeq++,
     };

@@ -44,6 +44,26 @@ export interface MechanicsConfig {
   warmupSeconds: number;         // Initial gentle onboarding duration (30s, D-A2)
   continueMaxPerGameOver: number;// Maximum rewarded continues per game over (1)
   interstitialDelayGames: number;// Interstitial delay count
+
+  // --- Input-feel: lane-switch tween (UPG2-N1, card t_79d2b77d) — [PLACEHOLDER] tới playtest boss ---
+  laneMoveMs: number;            // Duration tween đổi làn của mèo (ms, cũ dur.tn = 120)
+  laneMoveDelayMs: number;       // Delay tween bóng đổ bám nhịp nhảy (ms, cũ 35)
+  laneMoveEase: string;          // Ease tween đổi làn (Phaser ease name, cũ 'cubic.out')
+  laneMoveSettleMs: number;      // Tween dựng dậy scale/angle sau khi tới làn (ms, cũ 80)
+  inputBufferMs: number;         // Buffer input đổi làn (ms, 0 = phản hồi tức thì)
+
+  // --- Cadence spawn (SCOPE+ T1a: 4 hằng từng [MIRROR] literal) — công thức:
+  // max(floor, base - (speed-startSpeed)*speedFactor - (level-1)*levelFactor) ---
+  spawnIntervalBase: number;     // Interval spawn ở speed bắt đầu, level 1 (giây, cũ 1.35)
+  spawnIntervalFloor: number;    // Sàn interval spawn (giây, cũ 0.38)
+  spawnSpeedFactor: number;      // Co speed: mỗi px/s tốc độ rút ngắn interval (cũ 0.0035)
+  spawnLevelFactor: number;      // Co level: mỗi level rút ngắn interval (cũ 0.10)
+
+  // --- SpeedMult loại ong (SCOPE+ round 2: hợp nhất WIRING/BEES vào MechanicsConfig) ---
+  speedyMult: number;            // Ong speedy bay nhanh hơn (cũ BEES.speedyMult = 1.18)
+  normalMult: number;            // Ong thường (cũ BEES.normalMult = 1.0)
+  fatSpeedMult: number;          // Ong to bay chậm (cũ BEES.fatSpeedMult = 0.72)
+
   palettes: Palette[];
 }
 

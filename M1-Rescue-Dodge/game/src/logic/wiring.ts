@@ -1,23 +1,25 @@
 // wiring.ts — TẦNG A (pure TS, 0 import Phaser/DOM) — CONTRACT K0 §6.
-// Hằng [MIRROR] literal từ scenes/Gameplay.ts @ d0011c1, gom về tầng A để
-// lead/boss chỉnh số không đọc code scene (ROLE-RULES fe-dev: tuning 1 chỗ).
-// Scene (tầng B) chỉ import + truyền qua constructor SpawnDirector.
-// Lưu ý: đưa thẳng vào MechanicsConfig cần sửa types.ts (CẤM với card này,
-// scope T1a/T1c) — card riêng của lead sẽ hợp nhất.
+// UPG2-N1 (t_79d2b77d): WIRING/BEES ĐÃ HỢP NHẤT về MechanicsConfig (types.ts mở sau
+// T1 chain — đúng kế hoạch lead). File này còn là SHIM backward-compat cho import cũ
+// (Gameplay.ts + test T1a): số đọc từ MECHANICS, KHÔNG giữ literal riêng.
+// Còn lại ở đây duy nhất doubleSpawnDelayMs — delay hẹn của scene cho con ong thứ 2
+// (double-spawn), thuộc wiring scene chứ không phải luật spawn của director.
 
-/** Hằng cadence spawn — mirror công thức max(0.38, 1.35 - (speed-start)*0.0035 - (level-1)*0.10). */
+import { MECHANICS } from '../config/mechanics';
+
+/** Hằng cadence spawn — SHIM đọc từ MechanicsConfig (nguồn thật, sửa 1 chỗ). */
 export const WIRING = {
-  spawnIntervalBase: 1.35,
-  spawnSpeedFactor: 0.0035,
-  spawnLevelFactor: 0.10,
-  spawnIntervalFloor: 0.38,
+  get spawnIntervalBase() { return MECHANICS.spawnIntervalBase; },
+  get spawnSpeedFactor() { return MECHANICS.spawnSpeedFactor; },
+  get spawnLevelFactor() { return MECHANICS.spawnLevelFactor; },
+  get spawnIntervalFloor() { return MECHANICS.spawnIntervalFloor; },
   /** Delay scene hẹn tạo con ong thứ 2 của double-spawn (ms). */
   doubleSpawnDelayMs: 280,
 } as const;
 
-/** Hằng loại ong — mirror speedMult trong spawnBee/createFatBeeEntity. */
+/** Hằng loại ong — SHIM đọc từ MechanicsConfig (nguồn thật, sửa 1 chỗ). */
 export const BEES = {
-  speedyMult: 1.18,
-  normalMult: 1.0,
-  fatSpeedMult: 0.72,
+  get speedyMult() { return MECHANICS.speedyMult; },
+  get normalMult() { return MECHANICS.normalMult; },
+  get fatSpeedMult() { return MECHANICS.fatSpeedMult; },
 } as const;

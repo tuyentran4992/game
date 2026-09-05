@@ -72,15 +72,18 @@ describe('UPG2-N1 — SpawnDirector tính spawnInterval từ config (determinist
   }
 
   it('đổi spawnIntervalBase → spawnInterval đổi theo (đọc config, không literal 1.35)', () => {
+    // base 2.0: update 1 (dt 1.5) tích luỹ lastSpawn=1.5, chưa đủ 2.0 → chưa spawn;
+    // update 2 (dt 0.5) đạt 2.0 → spawn + reset. Nếu còn literal 1.35 thì update 2 ĐÃ spawn.
     const base = harness({ spawnIntervalBase: 2.0 });
-    expect(base.dir.update({ dt: 1.5, elapsed: 5, engine: base.engine, world: mkWorld() }).spawnInterval).toBeCloseTo(2.0, 5);
-    expect(base.dir.update({ dt: 0.5, elapsed: 5.5, engine: base.engine, world: mkWorld() }).spawned).toHaveLength(0);
-    const r = base.dir.update({ dt: 0.5, elapsed: 6, engine: base.engine, world: mkWorld() });
+    expect(base.dir.update({ dt: 1.5, elapsed: 5, engine: base.engine, world: mkWorld() }).spawned).toHaveLength(0);
+    const r = base.dir.update({ dt: 0.5, elapsed: 5.5, engine: base.engine, world: mkWorld() });
+    expect(r.spawned).toHaveLength(1);
     expect(r.lastSpawnReset).toBe(true);
   });
 
   it('đổi spawnLevelFactor → mức level 4 đổi theo (mèo 3 level trên mức base)', () => {
-    const eng = harness({ spawnLevelFactor: 0.5 });
+    // base 3.0 + floor 0.2 + speedFactor 0 để cô lập thành phần level (không phụ thuộc curve speed)
+    const eng = harness({ spawnIntervalBase: 3.0, spawnIntervalFloor: 0.2, spawnSpeedFactor: 0, spawnLevelFactor: 0.5 });
     eng.engine.score = 3 * eng.mechanics.milestoneInterval; // level 4
     const r = eng.dir.update({ dt: 0.1, elapsed: 5, engine: eng.engine, world: mkWorld() });
     // warmup: speed = startSpeed → chỉ thành phần level: base - 3*0.5
@@ -99,12 +102,15 @@ describe('UPG2-N1 — SpawnDirector tính spawnInterval từ config (determinist
 describe('UPG2-N1 — speedMult speedy theo config ( SpawnDirector decisionToSpawn)', () => {
   it('đổi BEES.speedyMult (truyền qua MechanicsConfig) → decision.speedMult đổi theo', () => {
     const mechanics: MechanicsConfig = { ...MECHANICS, speedyMult: 1.4 };
-    const engine = new GameEngine(mechanics, { rng: makeRng([0.0]) }); // 0.0 → roll speedy theo gate D-A2
+    const engine = new GameEngine(mechanics, { rng: makeRng([0.0]) }); // 0.0 mãi mãi → roll luôn speedy (<0.30 level 10+)
     engine.startNewGame();
-    engine.score = 10 * mechanics.milestoneInterval; // qua warmup 30s
-    const dir = new SpawnDirector(mechanics, { rng: makeRng([0.0]) });
-    dir.startSession(0);
+    engine.score = 10 * mechanics.milestoneInterval; // level 11 — qua warmup + branch roll D-A2
+    const dir = new SpawnDirector(mechanics, { rng: makeRng([0.1, 0.9, 0.9]) });
+    // startSession(25) → swarm kế tại elapsed 33: update ở elapsed 40 KHÔNG dính swarm gate
+    dir.startSession(25);
+    // dt 5 > mọi interval hợp lệ → frame này chắc chắn tới nhịp roll type
     const r = dir.update({ dt: 5, elapsed: 40, engine, world: mkWorld() });
+    expect(r.swarmTriggered).toBe(false);
     expect(r.spawned.length).toBeGreaterThan(0);
     const speedy = r.spawned.find((s) => s.type === 'speedy');
     expect(speedy).toBeDefined();

@@ -66,7 +66,9 @@ const CAT_SIZE = Math.min(120, LANE_W * 0.70);
 const BEE_SIZE = Math.min(84, LANE_W * 0.50);
 const HIT_Y = CAT_SIZE * 0.52;
 const HIT_X = CAT_SIZE * 0.45;
-const MOVE_MS = 120 + 35; // tween cubic + delay (dur.tn=120, delay 35)
+// UPG2-N1 (t_79d2b77d): MOVE_MS cũ 120+35 literal — giờ đọc cfg.laneMoveMs + cfg.laneMoveDelayMs
+// trong runNewbieGame (physics 1:1 scene theo MechanicsConfig). SAFE_TIME_DELTA thuộc miền
+// collision (DEFAULT_TUNING T1d) — không thuộc scope N1.
 const SAFE_TIME_DELTA = 0.38;
 
 export function runNewbieGame(
@@ -78,6 +80,8 @@ export function runNewbieGame(
   const rng = mulberry32(seed);
   const engine = new GameEngine(cfg, { rng });
   engine.startNewGame();
+  // UPG2-N1: quãng thời gian mèo đổi làn theo config (tween + delay) — 1:1 với scene.
+  const moveMs = cfg.laneMoveMs + cfg.laneMoveDelayMs;
 
   let t = 0;
   let lane = 1;
@@ -120,7 +124,7 @@ export function runNewbieGame(
 
     // cat tween
     if (t < moveEndT) {
-      const p = 1 - (moveEndT - t) / (MOVE_MS / 1000);
+      const p = 1 - (moveEndT - t) / (moveMs / 1000);
       catX = moveFromX + (moveToX - moveFromX) * Math.min(1, Math.max(0, p));
     } else {
       catX = LANES[lane];
@@ -130,7 +134,7 @@ export function runNewbieGame(
     if (t - lastScan >= scanGap) {
       lastScan = t;
       const react = policy.reactionMs / 1000;
-      const lead = (react + MOVE_MS / 1000) * policy.leadFactor + policy.marginSec;
+      const lead = (react + moveMs / 1000) * policy.leadFactor + policy.marginSec;
       const threat = bees.some(b => !b.dodged && b.y < CAT_Y + HIT_Y &&
         (b.lane === lane || b.secondaryLane === lane) && ttc(b, speed) < lead && ttc(b, speed) > 0);
       if (threat && pendingMoveAt === null && t >= moveEndT) {
@@ -151,7 +155,7 @@ export function runNewbieGame(
         moveFromX = catX;
         moveToX = LANES[pendingTarget];
         lane = pendingTarget; // Gameplay: currentLane đổi ngay khi bấm
-        moveEndT = t + MOVE_MS / 1000;
+        moveEndT = t + moveMs / 1000;
       }
     }
 
@@ -180,9 +184,12 @@ export function runNewbieGame(
     }
     if (swarmActive && t >= swarmEndT) swarmActive = false;
 
-    // --- spawn ong (công thức interval y hệt Gameplay.ts) ---
+    // --- spawn ong (công thức interval theo MechanicsConfig — UPG2-N1 đọc cfg) ---
     if (!swarmActive) {
-      const spawnInterval = Math.max(0.38, 1.35 - (speed - cfg.startSpeed) * 0.0035 - (level - 1) * 0.10);
+      const spawnInterval = Math.max(
+        cfg.spawnIntervalFloor,
+        cfg.spawnIntervalBase - (speed - cfg.startSpeed) * cfg.spawnSpeedFactor - (level - 1) * cfg.spawnLevelFactor,
+      );
       lastSpawn += dt;
       if (lastSpawn >= spawnInterval && bees.length < diff.spawnCount + 2) {
         lastSpawn = 0;
@@ -191,7 +198,7 @@ export function runNewbieGame(
         for (const b of bees) if (b.y < 200) { occupied.add(b.lane); if (b.secondaryLane !== undefined) occupied.add(b.secondaryLane); }
         if (occupied.size < 2) {
           const type = engine.rollBeeType(t, level);
-          const speedMult = type === 'speedy' ? 1.18 : 1.0;
+          const speedMult = type === 'speedy' ? cfg.speedyMult : cfg.normalMult;
           const freeLanes = [0, 1, 2].filter(l => !occupied.has(l));
           const valid = freeLanes.filter(l => {
             const tNew = (CAT_Y + BEE_SIZE) / (speed * speedMult);

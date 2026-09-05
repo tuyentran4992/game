@@ -9,8 +9,9 @@
 //   engine.rollBeeType() (D-A2: warmup normal-only) + engine.difficulty(): DifficultyResult.
 // Scene (tầng B) giữ địa lý thật: occupied/safe lane, willBlockAllLanes, pool, tween.
 //
-// [MIRROR] Hằng 1.35/0.38/0.0035/0.10 đang là literal trong Gameplay.ts; đưa về
-// MechanicsConfig phải sửa types.ts (CẤM với card này — scope T1a) → việc của lead.
+// [MIRROR→CONFIG] UPG2-N1 (t_79d2b77d): 4 hằng cadence 1.35/0.38/0.0035/0.10 và
+// speedMult 1.18/1.0 đã về MechanicsConfig (spawnIntervalBase/Floor/SpeedFactor/
+// LevelFactor + speedyMult/normalMult) — SpawnDirector đọc cfg, không giữ literal.
 
 import type { GameEngine } from './GameEngine';
 import type { BeeType, MechanicsConfig } from './types';
@@ -42,7 +43,8 @@ export interface SpawnDecision {
 }
 
 export interface SpawnDirectorResult {
-  /** Interval frame này: max(0.38, 1.35 - (speed-startSpeed)*0.0035 - (level-1)*0.10). */
+  /** Interval frame này — công thức cadence đọc từ MechanicsConfig (UPG2-N1):
+   *  max(spawnIntervalFloor, spawnIntervalBase - (speed-startSpeed)*spawnSpeedFactor - (level-1)*spawnLevelFactor). */
   spawnInterval: number;
   spawned: SpawnDecision[];
   /** Con thứ 2 (delay 280ms do scene xử lý): mirror remainingLanes[0]. */
@@ -87,8 +89,10 @@ export class SpawnDirector {
     const level = engine.getLevel();
     const diff = engine.difficulty(elapsed, level);
     const spawnInterval = Math.max(
-      0.38,
-      1.35 - (diff.speed - this.cfg.startSpeed) * 0.0035 - (level - 1) * 0.10,
+      this.cfg.spawnIntervalFloor,
+      this.cfg.spawnIntervalBase
+        - (diff.speed - this.cfg.startSpeed) * this.cfg.spawnSpeedFactor
+        - (level - 1) * this.cfg.spawnLevelFactor,
     );
 
     const result: SpawnDirectorResult = {
@@ -120,7 +124,7 @@ export class SpawnDirector {
     const decided = this.decideSpawn(elapsed, engine, level, world);
     if (!decided) return result;
 
-    result.spawned.push(decisionToSpawn(decided));
+    result.spawned.push(decisionToSpawn({ ...decided, mult: this.cfg }));
     this.lastSpawn = 0;
     result.lastSpawnReset = true;
 
@@ -165,7 +169,7 @@ export class SpawnDirector {
     engine: GameEngine,
     level: number,
     world: SpawnWorldSnapshot,
-  ): { type: BeeType; lane: number; occupiedSize: number; validLanes: number[] } | null {
+  ): { type: BeeType; lane: number; occupiedSize: number; validLanes: number[]; mult: MechanicsConfig } | null {
     // (1) mirror L1507: fat bee đang diễn ra → không spawn gì thêm.
     if (world.fatBeeActive || world.fatOnScreen) return null;
     // (2) mirror L1511: >=2 làn bị chiếm đầu màn → từ chối.
@@ -180,11 +184,12 @@ export class SpawnDirector {
     const validLanes = type === 'speedy' ? world.safeLanesFast : world.safeLanes;
     if (validLanes.length === 0) return null; // NGUYÊN TẮC VÀNG L1531: hủy spawn giữ đường sống
     const lane = validLanes[Math.floor(this.rngFn() * validLanes.length)];
-    return { type, lane, occupiedSize, validLanes };
+    return { type, lane, occupiedSize, validLanes, mult: this.cfg };
   }
 }
 
-function decisionToSpawn(d: { type: BeeType; lane: number }): SpawnDecision {
-  // mirror L1546: speedy bay nhanh 1.18x, còn lại 1.0.
-  return { type: d.type, lane: d.lane, speedMult: d.type === 'speedy' ? 1.18 : 1.0 };
+function decisionToSpawn(d: { type: BeeType; lane: number; mult: MechanicsConfig }): SpawnDecision {
+  // mirror L1546: speedy bay nhanh theo BEES.speedyMult (UPG2-N1: đọc MechanicsConfig),
+  // còn lại normalMult. Default giữ nguyên 1.18/1.0 — không đổi cảm giác.
+  return { type: d.type, lane: d.lane, speedMult: d.type === 'speedy' ? d.mult.speedyMult : d.mult.normalMult };
 }

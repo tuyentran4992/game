@@ -34,6 +34,25 @@ export const MECHANICS: MechanicsConfig = {
   warmupSeconds: 30,
   continueMaxPerGameOver: 1,
   interstitialDelayGames: 2,
+
+  // --- UPG2-N1 (t_79d2b77d): input-feel lane-switch + cadence spawn + speedMult ong
+  // về MỘT chỗ — lead/boss chỉnh số không đọc code. Default GIỮ NGUYÊN giá trị đang
+  // chạy (giữ nguyên cảm giác); số chưa playtest đánh dấu [PLACEHOLDER].
+  laneMoveMs: 120,        // [PLACEHOLDER] — cũ dur.tn trong tokens.ts
+  laneMoveDelayMs: 35,    // [PLACEHOLDER] — delay tween bóng đổ
+  laneMoveEase: 'cubic.out',
+  laneMoveSettleMs: 80,   // [PLACEHOLDER] — tween dựng dậy sau khi tới làn
+  inputBufferMs: 0,       // [PLACEHOLDER] — 0 = phản hồi tức thì (nguyên trạng)
+
+  spawnIntervalBase: 1.35,
+  spawnIntervalFloor: 0.38,
+  spawnSpeedFactor: 0.0035,
+  spawnLevelFactor: 0.10,
+
+  speedyMult: 1.18,
+  normalMult: 1.0,
+  fatSpeedMult: 0.72,
+
   palettes: [
     { key: 'pal_morning', level: 1, bgTop: '#7EC8FF', bgBottom: '#B8E6A8', grass: '#5ED07A', laneColor: '#FFFFFF', primary: '#FF9F1C', accent: '#E8820F' },
     { key: 'pal_sunset',  level: 2, bgTop: '#FFB578', bgBottom: '#FF8E7A', grass: '#C97B5D', laneColor: '#FFE4C2', primary: '#FF9F1C', accent: '#E8820F' },
