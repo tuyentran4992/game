@@ -49,6 +49,16 @@ export const MECHANICS: MechanicsConfig = {
   spawnSpeedFactor: 0.0035,
   spawnLevelFactor: 0.10,
 
+  // --- UPG2-J1 (t_cc6c390d): juice hit-stop + camera punch — [PLACEHOLDER] chưa playtest.
+  // Điều kiện UX#63: hit-stop ≤120ms; KHÔNG băng HUD tween/input buffer (freeze áp
+  // dt=0 cho world trong update(), không đụng tweens/time.timeScale toàn cục).
+  hitStopShieldMs: 60,    // khiên đỡ đòn — lực va nhỏ nhất (cửa dưới khung 60–120ms)
+  hitStopHitMs: 90,       // va chạm thường — giữa khung
+  hitStopDeathMs: 110,    // chết — mạnh nhất, ≤120 (UX#63)
+  punchHitZoom: 0.04,     // biên zoom punch va chạm thường
+  punchDeathZoom: 0.07,   // biên zoom punch khi chết (mạnh hơn va chạm)
+  punchHoldMs: 70,        // giữ điểm đáy zoom trước khi hồi
+
   speedyMult: 1.18,
   normalMult: 1.0,
   fatSpeedMult: 0.72,

@@ -77,6 +77,12 @@ export class GameplayScene extends Phaser.Scene {
   private audioBtnText!: Phaser.GameObjects.Text;
   private pauseModal?: PauseModal;
   private isPaused = false;
+  // UPG2-J1 (t_cc6c390d): hit-stop — ms còn lại world đóng băng (đếm bằng dt REAL trong
+  // update()); camera punch suy từ hitStopLeft (deterministic, không tween timing — UX#63).
+  private hitStopLeft = 0;
+  private punchAmp = 0;
+  private punchStopMs = 0;
+  private deathFadeQueued = false;
 
   // T1e: HUD + props ven đường dời về renderer (scenes/render/) — scene chỉ orchestrate
   // + giữ metrics layout (single source getPlayfieldBounds/getStraightRoadMetrics)
@@ -885,7 +891,14 @@ export class GameplayScene extends Phaser.Scene {
     // PERF-FIX B: particle pool bước theo dt game (T1f: qua FxRenderer.step). Pause = đóng băng
     // (như đóng băng gameplay); hết running (game over) vẫn fade hết burst như tween cũ.
     if (this.isPaused) return;
-    if (!this.running) { this.fx.step(deltaMs); return; }
+    // UPG2-J1: hit-stop bằng dt REAL — fx (particle/tween fx) vẫn chạy trong lúc world
+    // đứng im (giữ punch juice sống, đúng UX#63 "không băng fx/HUD").
+    if (!this.running) { this.fx.step(deltaMs); this.stepJuice(deltaMs); return; }
+    if (this.hitStopLeft > 0) {
+      this.fx.step(deltaMs);
+      this.stepJuice(deltaMs);
+      return;
+    }
     const dt = deltaMs / 1000;
     this.elapsed += dt;
 
@@ -1026,6 +1039,7 @@ export class GameplayScene extends Phaser.Scene {
       const outcome: BeeHitOutcome = this.resolveBeeHitForTest(this.toCollisionEntity(b), catBox, this.scale.width);
 
       if (outcome !== 'pass') {
+        this.applyJuiceForOutcome(outcome);
         if (outcome === 'fever_kill') {
           ctx.engine.destroyBeeInFever();
           this.playSfx('sfx_hit', 0.35, 1.2);
@@ -1278,6 +1292,13 @@ export class GameplayScene extends Phaser.Scene {
   get beeLanesView(): number[] { return this.bees.map((b) => b.lane); }
   get swarmActiveView(): boolean { return this.swarmActive; }
   get runningView(): boolean { return this.running; }
+  // UPG2-J1: surface juice cho UT/QA (hit-stop còn lại ms, zoom camera hiện tại).
+  hitStopLeftForTest(): number { return this.hitStopLeft; }
+  zoomViewForTest(): number { return this.cameras.main.zoom; }
+  /** Nhân bản nhịp juice runtime: đi qua stepJuice (trừ freeze + zoom + mở khoá chết). */
+  stepHitStopForTest(deltaMs: number): void {
+    this.stepJuice(deltaMs);
+  }
   /** Reset phiên về trạng thái đầu (UT): dọn ong/item + engine mới + director mới. */
   beginSessionForTest(elapsed = 0): void {
     for (const b of this.bees) { if (b.container?.active) b.container.destroy(); }
@@ -1287,6 +1308,12 @@ export class GameplayScene extends Phaser.Scene {
     this.fatBeeActive = false;
     this.swarmActive = false;
     this.swarmBeesRemaining = 0;
+    // UPG2-J1: phiên mới phải sạch juice — hit-stop/zoom của ván cũ không trôi sang ván mới.
+    this.hitStopLeft = 0;
+    this.punchAmp = 0;
+    this.punchStopMs = 0;
+    this.deathFadeQueued = false;
+    this.cameras.main.setZoom(1);
     ctx.engine.startNewGame();
     this.spawnDirector = new SpawnDirector(MECHANICS);
     this.spawnDirector.startSession(elapsed);
@@ -1298,6 +1325,65 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   // ---------- T1d: orchestration va chạm (quyết định thuộc CollisionSystem — tầng A) ----------
+  // ---------- UPG2-J1: juice hit-stop + camera punch (dữ liệu số thuộc MechanicsConfig) ----------
+  /**
+   * Áp juice cho 1 outcome va chạm — MỘT nguồn cho nhánh runtime (vòng ong trong update)
+   * và UT mirror (applyBeeHitForTest). Hit-stop: cộng dồn ms đóng băng (update() trừ dần
+   * bằng dt REAL); camera punch: zoom neo 1-punchZoom trong punchHoldMs đầu rồi hồi tuyến
+   * tính về 1 — suy từ hitStopLeft trong update(), KHÔNG tween timing (deterministic, UT
+   * step thủ công được) và không đụng tweens/time.timeScale toàn cục (HUD/fx vẫn chạy
+   * theo UX#63). Camera nền (fadeIn/fadeOut/shake) không đổi zoom → baseline 1 an toàn.
+   */
+  applyJuiceForOutcome(outcome: BeeHitOutcome): void {
+    if (outcome === 'pass') return;
+    const stopMs = outcome === 'game_over'
+      ? MECHANICS.hitStopDeathMs
+      : outcome === 'fever_kill'
+        ? MECHANICS.hitStopHitMs
+        : MECHANICS.hitStopShieldMs;
+    this.hitStopLeft = Math.min(MECHANICS.hitStopDeathMs, this.hitStopLeft + stopMs);
+
+    const punchZoom = outcome === 'game_over' ? MECHANICS.punchDeathZoom : MECHANICS.punchHitZoom;
+    // punch theo lực va: giữ biên mạnh hơn nếu đè lên punch đang chạy
+    this.punchAmp = Math.max(this.punchAmp, punchZoom);
+    this.punchStopMs = Math.max(this.punchStopMs, stopMs);
+  }
+
+  /** Camera punch theo hitStopLeft: giữ đáy 1-amp trong punchHoldMs, rồi hồi tuyến tính về 1. */
+  private updateJuiceZoom(): void {
+    if (this.hitStopLeft <= 0) {
+      if (this.punchAmp > 0) { this.punchAmp = 0; this.punchStopMs = 0; this.cameras.main.setZoom(1); }
+      return;
+    }
+    if (this.punchAmp <= 0) return;
+    const elapsedMs = this.punchStopMs - this.hitStopLeft;
+    if (elapsedMs <= MECHANICS.punchHoldMs) {
+      this.cameras.main.setZoom(1 - this.punchAmp);
+    } else {
+      const recoverMs = this.punchStopMs - MECHANICS.punchHoldMs;
+      const p = recoverMs > 0 ? Math.min(1, (elapsedMs - MECHANICS.punchHoldMs) / recoverMs) : 1;
+      this.cameras.main.setZoom(1 - this.punchAmp * (1 - p));
+    }
+  }
+
+  /**
+   * Nhịp juice mỗi frame REAL (gọi cả khi running lẫn !running — sau khi chết world vẫn
+   * phải trôi qua hit-stop để mở khoá chuỗi chết; fx/tweens/HUD không bị băng — UX#63).
+   * Trừ hit-stop, cập nhật zoom punch, và khi hết freeze + deathFadeQueued thì chạy nốt
+   * fade-out + chuyển GameOver.
+   */
+  private stepJuice(deltaMs: number): void {
+    if (this.hitStopLeft > 0) {
+      this.hitStopLeft = Math.max(0, this.hitStopLeft - deltaMs);
+      this.updateJuiceZoom();
+      if (this.hitStopLeft === 0 && this.deathFadeQueued) {
+        this.deathFadeQueued = false;
+        this.finishDeathSequence();
+      }
+    } else if (this.punchAmp > 0) {
+      this.updateJuiceZoom();
+    }
+  }
 
   /** Map 1 Bee Phaser → entity thuần cho CollisionSystem (không mutate gì). */
   private toCollisionEntity(b: Bee): CollisionEntity {
@@ -1925,12 +2011,24 @@ export class GameplayScene extends Phaser.Scene {
     this.playSfx('sfx_hit', 0.45);
     this.sound.stopByKey('bgm_main');
 
+    // UPG2-J1: hit-stop đóng băng world trước, camera punch chạy cùng lúc (zoom suy từ
+    // hitStopLeft — không đụng timeScale toàn cục). Fade-out + chuyển cảnh GameOver CHỈ
+    // chạy sau khi hit-stop trôi xong trong update() (stepJuice gọi finishDeathSequence)
+    // — đúng nhịp UX#63 (freeze ≤120ms, HUD/fx không băng).
+    this.applyJuiceForOutcome('game_over');
+    if (this.hitStopLeft > 0) {
+      this.deathFadeQueued = true;
+      return;
+    }
+    this.finishDeathSequence();
+  }
+
+  /** Đuôi chuỗi chết: shake + explosion + squash cat + fade-out → GameOver (chạy sau hit-stop). */
+  private async finishDeathSequence(): Promise<void> {
     // Camera micro-shake <= 4px (ART-PASS §4.3)
     this.cameras.main.shake(180, 0.005);
-
     // Honey-gold & white particle explosion
     this.fx.spawnBeeExplosion(this.cat.x, this.cat.y);
-
     // Squash & stretch cat (scaleY 0.85 -> 1.15 -> 1.0, dur.pop)
     const catSize = this.getCatSize(this.scale.width, this.scale.height);
     const baseScaleX = catSize.w / this.cat.width;

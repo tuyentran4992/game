@@ -59,6 +59,16 @@ export interface MechanicsConfig {
   spawnSpeedFactor: number;      // Co speed: mỗi px/s tốc độ rút ngắn interval (cũ 0.0035)
   spawnLevelFactor: number;      // Co level: mỗi level rút ngắn interval (cũ 0.10)
 
+  // --- Juice: hit-stop + camera punch (UPG2-J1, card t_cc6c390d) — [PLACEHOLDER] tới playtest boss ---
+  // Điều kiện UX#63: hit-stop ≤120ms; KHÔNG băng HUD tween/input buffer (freeze áp dt=0
+  // cho world, không đụng timeScale toàn cục). Camera punch: zoom out-then-in theo lực va.
+  hitStopShieldMs: number;       // Đóng băng world khi khiên đỡ đòn (ms, lực va nhỏ nhất)
+  hitStopHitMs: number;          // Đóng băng world khi va chạm thường (ms)
+  hitStopDeathMs: number;        // Đóng băng world khi chết (ms, ≤120 theo UX#63)
+  punchHitZoom: number;          // Biên zoom camera punch khi va chạm thường (0.04 = +4%)
+  punchDeathZoom: number;        // Biên zoom camera punch khi chết (0.07 = +7%, mạnh hơn)
+  punchHoldMs: number;           // Thời gian giữ điểm đáy zoom trước khi hồi (ms)
+
   // --- SpeedMult loại ong (SCOPE+ round 2: hợp nhất WIRING/BEES vào MechanicsConfig) ---
   speedyMult: number;            // Ong speedy bay nhanh hơn (cũ BEES.speedyMult = 1.18)
   normalMult: number;            // Ong thường (cũ BEES.normalMult = 1.0)

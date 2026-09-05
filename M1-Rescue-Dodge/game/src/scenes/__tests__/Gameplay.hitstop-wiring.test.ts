@@ -213,15 +213,17 @@ describe('UPG2-J1 — applyJuiceForOutcome: hit-stop đóng băng world, không 
 
 // ---------- (4) Wiring runtime: nhánh va chạm gọi juice qua 1 nguồn (grep source) ----------
 describe('UPG2-J1 — wiring nhánh outcome trong update loop đi qua 1 nguồn juice', () => {
-  it('nhánh fever_kill/shield_consume/game_over trong vòng ong gọi applyJuiceForOutcome', () => {
-    // 3 nhánh outcome trong update(): game_over (else cuối) → applyJuiceForOutcome('game_over')
-    expect(SRC).toMatch(/applyJuiceForOutcome\('game_over'\)/);
-    expect(SRC).toMatch(/applyJuiceForOutcome\('fever_kill'\)/);
-    expect(SRC).toMatch(/applyJuiceForOutcome\('shield_consume'\)/);
+  it('nhánh outcome trong vòng ong áp juice QUA biến outcome (không literal trùng nhánh if)', () => {
+    // runtime: 1 nguồn applyJuiceForOutcome(outcome) ngay đầu khối `if (outcome !== 'pass')`
+    expect(SRC).toMatch(/if \(outcome !== 'pass'\) \{\s*\n\s*this\.applyJuiceForOutcome\(outcome\);/);
+    // nhánh literal duy nhất nằm trong onHit (chết) — applyJuiceForOutcome('game_over')
+    expect((SRC.match(/applyJuiceForOutcome\('game_over'\)/g) ?? []).length).toBe(1);
   });
 
-  it('onHit tiếp tục sau freeze: fadeOut chỉ lên lịch khi hit-stop đã chạy xong', () => {
+  it('onHit hoãn chuỗi chết khi còn freeze (deathFadeQueued) + stepJuice mở khoá trong update', () => {
     expect(SRC).toMatch(/hitStopLeft > 0/);
     expect(SRC).toMatch(/deathFadeQueued/);
+    expect(SRC).toMatch(/private async finishDeathSequence\(\)/);
+    expect(SRC).toMatch(/stepJuice\(deltaMs\)/);
   });
 });
