@@ -626,6 +626,8 @@ export class GameplayScene extends Phaser.Scene {
     });
 
     this.startBgm();
+    // UPG2-J1: probe QA E2E (window.__gameJuice — drive/tick juice cho boot-check đóng băng)
+    this.registerJuiceProbe();
     const resizeListener = (g: Phaser.Structs.Size) => this.onResize(g);
     this.scale.on('resize', resizeListener);
     this.events.once('shutdown', () => {
@@ -1326,9 +1328,8 @@ export class GameplayScene extends Phaser.Scene {
 
   // ---------- T1d: orchestration va chạm (quyết định thuộc CollisionSystem — tầng A) ----------
   // ---------- UPG2-J1: juice hit-stop + camera punch (dữ liệu số thuộc MechanicsConfig) ----------
-  /**
-   * Áp juice cho 1 outcome va chạm — MỘT nguồn cho nhánh runtime (vòng ong trong update)
-   * và UT mirror (applyBeeHitForTest). Hit-stop: cộng dồn ms đóng băng (update() trừ dần
+  /** Áp juice cho 1 outcome va chạm — MỘT nguồn cho nhánh runtime (vòng ong trong update)
+   *  và UT mirror (applyBeeHitForTest). Hit-stop: cộng dồn ms đóng băng (update() trừ dần
    * bằng dt REAL); camera punch: zoom neo 1-punchZoom trong punchHoldMs đầu rồi hồi tuyến
    * tính về 1 — suy từ hitStopLeft trong update(), KHÔNG tween timing (deterministic, UT
    * step thủ công được) và không đụng tweens/time.timeScale toàn cục (HUD/fx vẫn chạy
@@ -1383,6 +1384,36 @@ export class GameplayScene extends Phaser.Scene {
     } else if (this.punchAmp > 0) {
       this.updateJuiceZoom();
     }
+  }
+
+  // ---------- UPG2-J1: probe QA E2E (boot-check frame đóng băng — không đụng runtime) ----------
+  // Kích hoạt juice từ console/playwright: window.__gameJuice.drive('game_over'|'fever_kill'|
+  // 'shield_consume') → trả snapshot { hitStopLeft, zoom, frozen } để QA chụp frame đóng băng;
+  // tick(ms) giảm hitStopLeft bằng tay. Tiền lệ: __gameoverCta của R5 (GameOver.ts).
+  private registerJuiceProbe(): void {
+    const g = window as unknown as {
+      __gameJuice?: {
+        drive: (outcome: 'game_over' | 'fever_kill' | 'shield_consume') => {
+          hitStopLeft: number; zoom: number; frozen: boolean;
+        };
+        tick: (ms: number) => { hitStopLeft: number; zoom: number; frozen: boolean };
+      };
+    };
+    const snap = () => ({
+      hitStopLeft: this.hitStopLeft,
+      zoom: this.cameras.main.zoom,
+      frozen: this.hitStopLeft > 0,
+    });
+    g.__gameJuice = {
+      drive: (outcome) => {
+        this.applyJuiceForOutcome(outcome as unknown as BeeHitOutcome);
+        return snap();
+      },
+      tick: (ms: number) => {
+        this.stepJuice(ms);
+        return snap();
+      },
+    };
   }
 
   /** Map 1 Bee Phaser → entity thuần cho CollisionSystem (không mutate gì). */

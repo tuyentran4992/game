@@ -226,4 +226,9 @@ describe('UPG2-J1 — wiring nhánh outcome trong update loop đi qua 1 nguồn 
     expect(SRC).toMatch(/private async finishDeathSequence\(\)/);
     expect(SRC).toMatch(/stepJuice\(deltaMs\)/);
   });
+
+  it('probe QA __gameJuice (boot-check E2E: drive + đọc state juice như R5 probe tiền lệ)', () => {
+    expect(SRC).toMatch(/__gameJuice/);
+    expect(SRC).toMatch(/applyJuiceForOutcome\(outcome as unknown as BeeHitOutcome\)/);
+  });
 });
