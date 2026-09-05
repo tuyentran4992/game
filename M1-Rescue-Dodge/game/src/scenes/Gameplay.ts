@@ -1312,7 +1312,7 @@ export class GameplayScene extends Phaser.Scene {
     this.stepJuice(deltaMs);
   }
   /** Reset phiên về trạng thái đầu (UT): dọn ong/item + engine mới + director mới. */
-  beginSessionForTest(elapsed = 0): void {
+  beginSessionForTest(elapsed = 0, cfgOverride: Partial<MechanicsConfig> = {}): void {
     for (const b of this.bees) { if (b.container?.active) b.container.destroy(); }
     this.bees = [];
     for (const it of this.items) { if (it.container?.active) it.container.destroy(); }
@@ -1323,7 +1323,9 @@ export class GameplayScene extends Phaser.Scene {
     // UPG2-J1: phiên mới phải sạch juice — hit-stop/zoom của ván cũ không trôi sang ván mới.
     this.resetJuiceState();
     ctx.engine.startNewGame();
-    this.spawnDirector = new SpawnDirector(MECHANICS);
+    // UPG2-B1 (t_a990dc20): cfgOverride chỉ dùng bởi test (pin timeline swarm 22s trong
+    // Gameplay.spawn-wiring.test) — runtime thật gọi không đối số → MECHANICS nguyên vẹn.
+    this.spawnDirector = new SpawnDirector({ ...MECHANICS, ...cfgOverride });
     this.spawnDirector.startSession(elapsed);
   }
   /** Step spawn thủ công (dt/elapsed kiểm soát được — không qua game loop). */

@@ -126,28 +126,30 @@ describe('GameEngine — difficulty curve D-A2 (BR-17)', () => {
     expect(engine.difficulty(30).speed).toBe(MECHANICS.startSpeed);
   });
 
-  it('khúc ramp sớm (30-90s): tốc độ ramp 1.2px/s, liên tục tại 2 mốc', () => {
-    expect(MECHANICS.earlyRampPerSec).toBe(1.2);
+  it('khúc ramp sớm (30-90s): tốc độ ramp theo config B1 (0.85px/s), liên tục tại 2 mốc', () => {
+    // UPG2-B1: số neo 1.2→0.85 theo điều khoản card (test cũ khóa giá trị cũ → cập nhật số neo,
+    // công thức D-A2 giữ nguyên; khóa giá trị mới ở balanceB1.test.ts)
+    expect(MECHANICS.earlyRampPerSec).toBe(0.85);
     expect(MECHANICS.earlyRampUntilSec).toBe(90);
-    expect(engine.difficulty(40).speed).toBe(160 + 1.2 * 10);   // 172
-    expect(engine.difficulty(90).speed).toBe(160 + 1.2 * 60);   // 232
+    expect(engine.difficulty(40).speed).toBe(160 + 0.85 * 10);   // 168.5
+    expect(engine.difficulty(90).speed).toBe(160 + 0.85 * 60);   // 211
     // liền mạch tại ranh giới 90s
     expect(engine.difficulty(90.001).speed).toBeCloseTo(engine.difficulty(90).speed, 1);
   });
 
   it('sau 90s: phần vượt ramp tính theo 5.0px/s', () => {
-    // difficulty(100) = 160 + 1.2*60 + 5.0*10 = 282
-    expect(engine.difficulty(100).speed).toBe(160 + 72 + 5.0 * 10);
-    // difficulty(110) = 160 + 72 + 5.0*20 = 332 (<440, chưa softcap)
-    expect(engine.difficulty(110).speed).toBe(160 + 72 + 5.0 * 20);
-    // 150s raw = 532 > 440 → softcap sqrt: 440 + 1.5*sqrt(92)
-    expect(engine.difficulty(150).speed).toBeCloseTo(440 + 1.5 * Math.sqrt(92), 5);
+    // difficulty(100) = 160 + 0.85*60 + 5.0*10 = 261
+    expect(engine.difficulty(100).speed).toBe(160 + 51 + 5.0 * 10);
+    // difficulty(110) = 160 + 51 + 5.0*20 = 311 (<440, chưa softcap)
+    expect(engine.difficulty(110).speed).toBe(160 + 51 + 5.0 * 20);
+    // 150s raw = 511 > 440 → softcap sqrt: 440 + 1.5*sqrt(71)
+    expect(engine.difficulty(150).speed).toBeCloseTo(440 + 1.5 * Math.sqrt(71), 5);
   });
 
   it('levelSpeedStep = 10: levelBonus = 10*(level-1)', () => {
     expect(MECHANICS.levelSpeedStep).toBe(10);
-    // elapsed 60s (ramp 1.2*30=36), level 5: 160+36+10*4 = 236 (<440, chưa softcap)
-    expect(engine.difficulty(60, 5).speed).toBe(160 + 36 + 10 * 4);
+    // elapsed 60s (ramp 0.85*30=25.5), level 5: 160+25.5+10*4 = 225.5 (<440, chưa softcap)
+    expect(engine.difficulty(60, 5).speed).toBe(160 + 0.85 * 30 + 10 * 4);
   });
 
   it('tốc độ sau mốc 440 tăng siêu chậm (soft cap K=1.5) thay vì bị chặn cứng', () => {

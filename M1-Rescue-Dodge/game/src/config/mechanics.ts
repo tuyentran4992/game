@@ -20,17 +20,23 @@ export const MECHANICS: MechanicsConfig = {
   feverDurationSec: 4.5,
   magnetDurationSec: 6.0,
   feverKillBonus: 5,
-  swarmIntervalSec: 22,
+  swarmIntervalSec: 44, // UPG2-B1: 22→44 — bot không còn lane thoát khi swarm dồn (diag N=100)
   swarmBonus: 10,
   feverPerSwarm: 30,
   startSpeed: 160,
   maxSpeed: 440,
   speedIncreasePerSec: 5.0,
-  earlyRampPerSec: 1.2,
+  // UPG2-B1 (t_a990dc20, khung CEO #78-Y2): re-sim khóa curve sau P1b debut beat.
+  // earlyRampPerSec 1.2→0.85 (knob i của card) + 2 nút MẬT ĐỘ (evidence diag N=100):
+  // 99% ca chết khi ≥4 ong đồng thời, 64% chết khi bot không còn lane thoát an toàn,
+  // ~47% rơi cửa swarm → spawnRateMax 4→2 (cap ong đồng thời) + swarmIntervalSec 22→44.
+  // Kết quả (newbie bot 300ms, N=100): 30→90s 13%→45% (3 batch seed 45/40/52%),
+  // 30→60s 77% (gate cũ ≥50%), old N=40 test cũ 38% (≥20%). [PLACEHOLDER] tới boss Fun Gate PB-2.
+  earlyRampPerSec: 0.85,
   earlyRampUntilSec: 90,
   levelSpeedStep: 10,
   spawnIncrease: 0.04,
-  spawnRateMax: 4,
+  spawnRateMax: 2, // UPG2-B1: 4→2 — 99% ca chết khi ≥4 ong đồng thời (diag N=100), cap mật độ
   warmupSeconds: 30,
   continueMaxPerGameOver: 1,
   interstitialDelayGames: 2,

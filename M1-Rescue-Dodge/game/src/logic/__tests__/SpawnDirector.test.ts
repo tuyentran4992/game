@@ -70,11 +70,11 @@ describe('SpawnDirector — cadence spawn (mirror Gameplay.ts update L1070-1078)
 
   it('interval co theo DifficultyResult.speed + level (công thức max(0.38, 1.35 - (speed-start)*0.0035 - (level-1)*0.10))', () => {
     h.engine.score = 44; // level 3
-    // elapsed 60: ramp = 1.2*(60-30)=36, levelBonus=10*2 → speed=216
+    // elapsed 60: ramp = 0.85*(60-30)=25.5, levelBonus=10*2 → speed=205.5 (B1: ramp 0.85)
     const r = h.dir.update({ dt: 0.01, elapsed: 60, engine: h.engine, world: makeWorld() });
-    const expected = Math.max(0.38, 1.35 - (216 - 160) * 0.0035 - 2 * 0.10);
+    const expected = Math.max(0.38, 1.35 - (205.5 - 160) * 0.0035 - 2 * 0.10);
     expect(r.spawnInterval).toBeCloseTo(expected, 5);
-    expect(expected).toBeCloseTo(0.954, 3);
+    expect(expected).toBeCloseTo(0.991, 3); // B1: ramp 0.85 → speed 205.5 → interval 0.99075
   });
 
   it('refusal KHÔNG reset lastSpawn (mirror: chỉ reset khi spawn thành công)', () => {
@@ -97,12 +97,13 @@ describe('SpawnDirector — mật độ theo DifficultyResult.spawnCount', () =>
     expect(ok.spawned).toHaveLength(1);
   });
 
-  it('elapsed 60 level 3: spawnCount=4 → cap 6', () => {
+  it('elapsed 60 level 3: spawnCount theo config → cap = spawnCount + 2 (B1: cap 4)', () => {
+    // UPG2-B1: spawnRateMax 4→2 → spawnCount(60,lv3)=min(3,2)=2, cap=4 (trước B1: 4→cap 6)
     const h = makeHarness();
     h.engine.score = 44;
-    const blocked = h.dir.update({ dt: 2.0, elapsed: 60, engine: h.engine, world: makeWorld({ beeCount: 6 }) });
+    const blocked = h.dir.update({ dt: 2.0, elapsed: 60, engine: h.engine, world: makeWorld({ beeCount: 4 }) });
     expect(blocked.spawned).toHaveLength(0);
-    const ok = h.dir.update({ dt: 2.0, elapsed: 60, engine: h.engine, world: makeWorld({ beeCount: 5 }) });
+    const ok = h.dir.update({ dt: 2.0, elapsed: 60, engine: h.engine, world: makeWorld({ beeCount: 3 }) });
     expect(ok.spawned).toHaveLength(1);
   });
 });
@@ -196,15 +197,15 @@ describe('SpawnDirector — lane pick qua rng injectable', () => {
   });
 });
 
-describe('SpawnDirector — cadence swarm 22s theo config (mirror L441/L1064)', () => {
-  it('startSession(0): swarm đầu tại elapsed 30 (8s delay + 22s interval)', () => {
+describe('SpawnDirector — cadence swarm theo config (mirror L441/L1064; B1: interval 44s)', () => {
+  it('startSession(0): swarm đầu tại elapsed 52 (8s delay + 44s interval — B1)', () => {
     const h = makeHarness();
-    expect(h.dir.update({ dt: 0.01, elapsed: 29, engine: h.engine, world: makeWorld() }).swarmTriggered).toBe(false);
-    expect(h.dir.update({ dt: 0.01, elapsed: 29.9, engine: h.engine, world: makeWorld() }).swarmTriggered).toBe(false);
-    expect(h.dir.update({ dt: 0.01, elapsed: 30, engine: h.engine, world: makeWorld() }).swarmTriggered).toBe(true);
-    // lastSwarmTime = 30 → lần sau tại 52
+    expect(h.dir.update({ dt: 0.01, elapsed: 51, engine: h.engine, world: makeWorld() }).swarmTriggered).toBe(false);
     expect(h.dir.update({ dt: 0.01, elapsed: 51.9, engine: h.engine, world: makeWorld() }).swarmTriggered).toBe(false);
     expect(h.dir.update({ dt: 0.01, elapsed: 52, engine: h.engine, world: makeWorld() }).swarmTriggered).toBe(true);
+    // lastSwarmTime = 52 → lần sau tại 96
+    expect(h.dir.update({ dt: 0.01, elapsed: 95.9, engine: h.engine, world: makeWorld() }).swarmTriggered).toBe(false);
+    expect(h.dir.update({ dt: 0.01, elapsed: 96, engine: h.engine, world: makeWorld() }).swarmTriggered).toBe(true);
   });
 
   it('interval lấy từ MechanicsConfig (swarmIntervalSec=5 → trigger tại 13)', () => {
@@ -215,25 +216,25 @@ describe('SpawnDirector — cadence swarm 22s theo config (mirror L441/L1064)', 
 
   it('không trigger khi swarmActive hoặc fatBeeActive (mirror gate L1064)', () => {
     const h = makeHarness();
-    expect(h.dir.update({ dt: 0.01, elapsed: 30, engine: h.engine, world: makeWorld({ swarmActive: true }) }).swarmTriggered).toBe(false);
-    expect(h.dir.update({ dt: 0.01, elapsed: 30, engine: h.engine, world: makeWorld({ fatBeeActive: true }) }).swarmTriggered).toBe(false);
+    expect(h.dir.update({ dt: 0.01, elapsed: 52, engine: h.engine, world: makeWorld({ swarmActive: true }) }).swarmTriggered).toBe(false);
+    expect(h.dir.update({ dt: 0.01, elapsed: 52, engine: h.engine, world: makeWorld({ fatBeeActive: true }) }).swarmTriggered).toBe(false);
   });
 
   it('frame trigger swarm → chặn luôn spawn thường (mirror: swarmActive=true đồng bộ)', () => {
     const h = makeHarness();
-    const r = h.dir.update({ dt: 2.0, elapsed: 31, engine: h.engine, world: makeWorld() });
+    const r = h.dir.update({ dt: 2.0, elapsed: 53, engine: h.engine, world: makeWorld() });
     expect(r.swarmTriggered).toBe(true);
     expect(r.spawned).toHaveLength(0);
     expect(r.lastSpawnReset).toBe(false);
   });
 
-  it('không gọi startSession → swarm theo default lastSwarmTime=0 (tại 22s)', () => {
+  it('không gọi startSession → swarm theo default lastSwarmTime=0 (tại B1 interval 44s)', () => {
     const mechanics: MechanicsConfig = { ...MECHANICS };
     const engine = new GameEngine(mechanics, { rng: makeRng([0.99]) });
     engine.startNewGame();
     const dir = new SpawnDirector(mechanics, { rng: makeRng([0.99]) });
-    expect(dir.update({ dt: 0.01, elapsed: 21.9, engine, world: makeWorld() }).swarmTriggered).toBe(false);
-    expect(dir.update({ dt: 0.01, elapsed: 22, engine, world: makeWorld() }).swarmTriggered).toBe(true);
+    expect(dir.update({ dt: 0.01, elapsed: 43.9, engine, world: makeWorld() }).swarmTriggered).toBe(false);
+    expect(dir.update({ dt: 0.01, elapsed: 44, engine, world: makeWorld() }).swarmTriggered).toBe(true);
   });
 });
 
