@@ -48,6 +48,10 @@ export class FxPool {
   private parts: (DotFx | null)[] = [];
   private cursor = 0;
 
+  /** Số slot đang sống (đọc-only, cho test/QA probe rò rỉ — gate pool J2). */
+  get activeCount(): number { return this.parts.reduce<number>((n, p) => (p ? n + 1 : n), 0); }
+  get capacity(): number { return this.cap; }
+
   constructor(scene: Phaser.Scene, texKey: string, cap: number, depth: number) {
     this.cap = cap;
     for (let i = 0; i < cap; i++) {
@@ -117,6 +121,10 @@ export class RingPool {
   private rings: Phaser.GameObjects.Image[] = [];
   private parts: (DotFx | null)[] = [];
   private cursor = 0;
+
+  /** Số slot đang sống (đọc-only, cho test/QA probe rò rỉ — gate pool J2). */
+  get activeCount(): number { return this.parts.reduce<number>((n, p) => (p ? n + 1 : n), 0); }
+  get capacity(): number { return this.cap; }
 
   constructor(scene: Phaser.Scene, texKey: string, cap: number, depth: number) {
     this.cap = cap;

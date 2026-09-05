@@ -17,9 +17,11 @@ import { WIRING, BEES } from '../logic/wiring';
 import type { GameEngine } from '../logic/GameEngine';
 import type { MechanicsConfig } from '../logic/types';
 import { PauseModal } from '../ui/PauseModal';
-import { FxPool, RingPool, Pool, type DotFx } from '../systems/FxPool';
+import { FxPool, Pool } from '../systems/FxPool';
 import { HudRenderer } from './render/HudRenderer';
 import { RoadsideRenderer } from './render/RoadsideRenderer';
+// T1f: hạt/fx/vệt gió dời về FxRenderer (scenes/render/) — scene orchestrate, renderer gọi pool
+import { FxRenderer } from './render/FxRenderer';
 
 interface BeeSlot {
   container: Phaser.GameObjects.Container;
@@ -96,19 +98,13 @@ export class GameplayScene extends Phaser.Scene {
   private magnetIndicator!: Phaser.GameObjects.Text;
   private feverAura!: Phaser.GameObjects.Graphics;
   private bgG!: Phaser.GameObjects.Graphics;
-  // PERF-FIX A: vector vẽ mỗi frame được pre-render 1 lần ở create(), mỗi frame chỉ
-  // cập nhật vị trí/alpha của Image — không còn tessellate + upload GPU buffer từng frame.
-  private laneDashTiles: Phaser.GameObjects.TileSprite[] = [];
-  private streakImgs: Phaser.GameObjects.Image[] = [];
   private shieldWasActive = false;
   private magnetWasActive = false;
   private feverAuraWasActive = false;
 
-  // PERF-FIX B: pool particle + container ong (không sinh-hủy GameObject/tween mỗi burst)
-  private fxDots!: FxPool;      // sparkles + bee-explosion (depth per-burst qua DotFx.depth)
-  private fxDust!: FxPool;      // running puff + lane-switch dust
-  private fxTrail!: FxPool;     // vệt mờ sau ong (depth actor-1)
-  private fxRing!: RingPool;    // shockwave (depth actor+2)
+  // T1f: pool hạt + vạch làn/vệt gió sống trong FxRenderer — scene chỉ orchestrate qua this.fx
+  // (public như hud/roadside: QA runtime test đụng được, scene không giữ GameObject fx riêng)
+  fx!: FxRenderer;
   private beePool!: Pool<BeeSlot>; // container ong tái sinh
 
   private bgImage?: Phaser.GameObjects.Image;
@@ -288,34 +284,8 @@ export class GameplayScene extends Phaser.Scene {
     });
   }
 
-  private destroyFlowObjects() {
-    for (const t of this.laneDashTiles) t.destroy();
-    for (const im of this.streakImgs) im.destroy();
-    this.laneDashTiles = [];
-    this.streakImgs = [];
-  }
-
-  private buildFlowObjects() {
-    this.destroyFlowObjects();
-    const { width, height } = this.scale;
-    const { leftEdge, laneWidth } = this.getStraightRoadMetrics(width, height);
-
-    // 2 TileSprite vạch làn cuộn modulo (kết luận thread §5.1: dirty-flag vô dụng vì offset đổi mọi frame)
-    const totalCycle = 60;
-    for (const divIdx of [1, 2]) {
-      const lineX = leftEdge + divIdx * laneWidth;
-      const tile = this.add.tileSprite(lineX, height / 2, 4, height + totalCycle * 2, FLOW_TEX.dash)
-        .setDepth(z.bg + 1);
-      this.laneDashTiles.push(tile);
-    }
-
-    // 12 vệt gió (8 thường / 12 fever — như streakCount cũ; ẩn bớt bằng visible)
-    for (let i = 0; i < 12; i++) {
-      const im = this.add.image(0, 0, FLOW_TEX.streak(false)).setDepth(z.bg + 1).setVisible(false);
-      this.streakImgs.push(im);
-    }
-    // T1e: Image hạt nature + props ven đường dời về RoadsideRenderer (seed/rebuild riêng)
-  }
+  // T1f: destroyFlowObjects/buildFlowObjects dời vào FxRenderer (pool + flow objects sống
+  // trong renderer — scene không giữ GameObject fx riêng nữa)
 
   private getPlayfieldTop(_height: number): number {
     return 0;
@@ -488,16 +458,20 @@ export class GameplayScene extends Phaser.Scene {
 
     // PERF-FIX A: bake texture 1 lần rồi tạo sprite cuộn (roadside/nature seed qua RoadsideRenderer)
     this.buildFlowTextures();
-    this.buildFlowObjects();
     // T1e: seed props/nature SAU khi bake texture (Image phải thấy texture sẵn có — như cũ:
     // buildFlowObjects cũ cũng chạy sau buildFlowTextures)
     this.roadside.seed(height);
 
-    // PERF-FIX B: khởi tạo pool particle sau khi bake fx_dot_white/fx_ring
-    this.fxDots = new FxPool(this, FLOW_TEX.dotWhite, 96, z.hud);
-    this.fxDust = new FxPool(this, FLOW_TEX.dotWhite, 32, z.actor - 1);
-    this.fxTrail = new FxPool(this, FLOW_TEX.dotWhite, 40, z.actor - 1);
-    this.fxRing = new RingPool(this, FLOW_TEX.ring, 6, z.actor + 2);
+    // T1f (kế nhiệm PERF-FIX B): pool hạt + vạch làn/vệt gió dời vào FxRenderer —
+    // khởi tạo sau khi bake fx_dot_white/fx_ring (cap 96/32/40/6 + depth giữ nguyên PERF3)
+    const roadMetrics0 = this.getStraightRoadMetrics(width, height);
+    this.fx = new FxRenderer(this, {
+      dotTexture: FLOW_TEX.dotWhite,
+      ringTexture: FLOW_TEX.ring,
+      dashTexture: FLOW_TEX.dash,
+      streakTexture: FLOW_TEX.streak(false),
+      flowMetrics: { leftEdge: roadMetrics0.leftEdge, laneWidth: roadMetrics0.laneWidth },
+    });
     this.beePool = new Pool<BeeSlot>(() => this.buildBeeSlot());
 
     // Popups
@@ -635,7 +609,7 @@ export class GameplayScene extends Phaser.Scene {
       this.running = true;
       if (isResume) {
         this.showPowerupPopup('REVIVED! 🛡️ READY!', color.primary);
-        this.spawnShockwave(this.cat.x, this.cat.y, 0x00F0FF);
+        this.fx.spawnShockwave(this.cat.x, this.cat.y, 0x00F0FF);
       }
     });
 
@@ -646,15 +620,11 @@ export class GameplayScene extends Phaser.Scene {
       this.scale.off('resize', resizeListener);
       if (this.bgImage && this.bgImage.active) this.bgImage.destroy();
       if (this.bgG && this.bgG.active) this.bgG.destroy();
-      this.destroyFlowObjects();
       // T1e: renderer dọn GameObject của riêng mình (label/bar/props/nature)
       this.hud?.destroy();
       this.roadside?.destroy();
-      // PERF-FIX B: giải phóng pool khi scene shutdown (scene chạy lại → create mới)
-      this.fxDots?.destroy();
-      this.fxDust?.destroy();
-      this.fxTrail?.destroy();
-      this.fxRing?.destroy();
+      // T1f: FxRenderer dọn pool hạt + vạch làn/vệt gió (scene chạy lại → create mới)
+      this.fx?.destroy();
       this.beePool?.drain((s) => s.container.destroy());
       this.bgImage = undefined;
       this.bgG = undefined as any;
@@ -751,69 +721,8 @@ export class GameplayScene extends Phaser.Scene {
     if (this.cache.audio.exists(key)) this.sound.play(key, { volume, rate });
   }
 
-  // PERF-FIX B: 5 hàm spawn dưới KHÔNG còn add.circle+add.tweens sinh-hủy.
-  // Dot lấy từ pool cố định (FxPool.step nội suy trong update), cùng toán chuyển động/ease
-  // cũ; shockwave dùng Image fx_ring bake sẵn scale r12->r75 (quad.out như addCounter cũ).
-  private spawnDust(x: number, y: number) {
-    for (let foot = -1; foot <= 1; foot += 2) {
-      const fx = x + foot * 16;
-      const fy = y + 16;
-      for (let i = 0; i < 3; i++) {
-        this.fxDust.spawn({
-          x0: fx + Phaser.Math.Between(-5, 5), y0: fy + Phaser.Math.Between(-4, 6),
-          x1: fx + foot * Phaser.Math.Between(6, 18), y1: fy + Phaser.Math.Between(4, 14),
-          life: 320, age: 0,
-          r0: Phaser.Math.Between(4, 7), r1: 0.8,
-          a0: 0.55, a1: 0,
-          color: 0xFFFFFF, ease: 2,
-        });
-      }
-    }
-  }
-
-  private spawnSparkles(x: number, y: number, starColor = 0xFFD700) {
-    for (let i = 0; i < 7; i++) {
-      const angle = (i / 7) * Math.PI * 2 + Math.random() * 0.3;
-      const dist = Phaser.Math.Between(22, 45);
-      this.fxDots.spawn({
-        x0: x, y0: y,
-        x1: x + Math.cos(angle) * dist, y1: y + Math.sin(angle) * dist,
-        life: 400, age: 0,
-        r0: Phaser.Math.Between(3, 6), r1: 0.6,
-        a0: 0.95, a1: 0,
-        color: starColor, ease: 1, depth: z.hud,
-      });
-    }
-  }
-
-  private spawnShockwave(x: number, y: number, shockColor = 0x00F0FF) {
-    // Code cũ: strokeCircle r12→75 (320ms quad.out), alpha 1→0, nét 3.5px.
-    // fx_ring bake nét 3.5px ở r40; scale theo r giữ bề dày nét tương đối như cũ.
-    this.fxRing.spawn({
-      x0: x, y0: y, x1: x, y1: y,
-      life: 320, age: 0,
-      r0: 12, r1: 75,
-      a0: 1, a1: 0,
-      color: shockColor, ease: 1,
-    });
-  }
-
-  private spawnBeeExplosion(x: number, y: number) {
-    // Honey-gold + white particles per ART-PASS §4.3
-    const colors = [0xFFA502, 0xFFD700, 0xFFEAA7, 0xFFFFFF];
-    for (let i = 0; i < 14; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const dist = Phaser.Math.Between(30, 70);
-      this.fxDots.spawn({
-        x0: x, y0: y,
-        x1: x + Math.cos(angle) * dist, y1: y + Math.sin(angle) * dist,
-        life: 420, age: 0,
-        r0: Phaser.Math.Between(4, 8), r1: 0.8,
-        a0: 0.95, a1: 0,
-        color: colors[i % colors.length], ease: 2, depth: z.actor + 1,
-      });
-    }
-  }
+  // T1f: 5 hàm spawn hạt dời về FxRenderer (scenes/render/FxRenderer.ts) — tham số giữ
+  // nguyên từng số (life/radius/alpha/ease/màu/cap). Scene gọi qua this.fx.*.
 
   private drawLevelBg(level: number) {
     const { width, height } = this.scale;
@@ -901,7 +810,7 @@ export class GameplayScene extends Phaser.Scene {
     const baseScaleY = catSize.h / this.cat.height;
 
     // Hiệu ứng 2 vệt bụi khói dưới chân khi nhảy chuyển làn (chống trượt băng)
-    this.spawnDust(this.cat.x, this.cat.y);
+    this.fx.spawnDust(this.cat.x, this.cat.y);
 
     // Check Near-Miss (Né sát sạt): Có con ong nào ở làn cũ đang sát mèo không?
     // T1d: điều kiện near-miss thuộc CollisionSystem (tầng A) — scene chỉ map + mutate engine.
@@ -957,22 +866,15 @@ export class GameplayScene extends Phaser.Scene {
     });
   }
 
-  private stepFx(deltaMs: number) {
-    this.fxDots.step(deltaMs);
-    this.fxDust.step(deltaMs);
-    this.fxTrail.step(deltaMs);
-    this.fxRing.step(deltaMs);
-  }
-
   update(_time: number, deltaMs: number) {
-    // PERF-FIX B: particle pool bước theo dt game. Pause = đóng băng (như đóng băng
-    // gameplay); hết running (game over) vẫn fade hết burst như tween cũ.
+    // PERF-FIX B: particle pool bước theo dt game (T1f: qua FxRenderer.step). Pause = đóng băng
+    // (như đóng băng gameplay); hết running (game over) vẫn fade hết burst như tween cũ.
     if (this.isPaused) return;
-    if (!this.running) { this.stepFx(deltaMs); return; }
+    if (!this.running) { this.fx.step(deltaMs); return; }
     const dt = deltaMs / 1000;
     this.elapsed += dt;
 
-    this.stepFx(deltaMs);
+    this.fx.step(deltaMs);
 
     // Cập nhật timers Power-ups & Fever
     const { feverEnded } = ctx.engine.updateTimers(dt);
@@ -1113,7 +1015,7 @@ export class GameplayScene extends Phaser.Scene {
           ctx.engine.destroyBeeInFever();
           this.playSfx('sfx_hit', 0.35, 1.2);
           this.cameras.main.shake(90, 0.008);
-          this.spawnBeeExplosion(b.container.x, b.container.y);
+          this.fx.spawnBeeExplosion(b.container.x, b.container.y);
           this.showFloatingText(b.container.x, b.container.y, '+5 💥', color.warning);
           this.handleSwarmBeeDone(b);
           this.retireBee(b);
@@ -1122,7 +1024,7 @@ export class GameplayScene extends Phaser.Scene {
         } else if (outcome === 'shield_consume') {
           ctx.engine.tryUseShield();
           this.playSfx('sfx_dodge', 0.55);
-          this.spawnShockwave(catX, catY, 0x00F0FF);
+          this.fx.spawnShockwave(catX, catY, 0x00F0FF);
           this.showPowerupPopup('SHIELD SAVED! 🛡️', color.primary);
           this.cameras.main.shake(130, 0.012);
           this.handleSwarmBeeDone(b);
@@ -1151,15 +1053,8 @@ export class GameplayScene extends Phaser.Scene {
         this.beeTrailTimer = 0;
         for (const b of this.bees) {
           if (b.container && b.container.active && b.container.y > 0 && b.container.y < this.scale.height) {
-            // PERF-FIX B: dot pool thay add.circle+destroy (alpha 0.22→0, scale→0.3*14px như cũ)
-            this.fxTrail.spawn({
-              x0: b.container.x, y0: b.container.y - 10,
-              x1: b.container.x, y1: b.container.y - 10,
-              life: 180, age: 0,
-              r0: 14, r1: 4.2,
-              a0: 0.22, a1: 0,
-              color: 0xFFA502, ease: 1,
-            });
+            // T1f: dot pool qua FxRenderer (alpha 0.22→0, scale→0.3*14px như cũ)
+            this.fx.spawnBeeTrail(b.container.x, b.container.y - 10);
           }
         }
       }
@@ -1194,7 +1089,7 @@ export class GameplayScene extends Phaser.Scene {
       this.runningPuffTimer += dt;
       if (this.runningPuffTimer >= 0.26) {
         this.runningPuffTimer = 0;
-        this.spawnRunningPuff(this.cat.x, baseCatY + catSize.h * 0.38);
+        this.fx.spawnRunningPuff(this.cat.x, baseCatY + catSize.h * 0.38);
       }
     }
 
@@ -1204,56 +1099,12 @@ export class GameplayScene extends Phaser.Scene {
     if (ctx.engine.checkRecord()) this.showRecordPopup();
   }
 
-  private spawnRunningPuff(x: number, y: number) {
-    const footX = x + (Math.random() < 0.5 ? -14 : 14) + Phaser.Math.Between(-3, 3);
-    this.fxDust.spawn({
-      x0: footX, y0: y,
-      x1: footX, y1: y + Phaser.Math.Between(8, 16),
-      life: 250, age: 0,
-      r0: Phaser.Math.Between(4, 7), r1: 1.2,
-      a0: 0.35, a1: 0,
-      color: 0xFFFFFF, ease: 1,
-    });
-  }
-
+  // T1f: spawnRunningPuff + drawGroundFlow dời về FxRenderer (scene giữ timer 0.26s +
+  // getStraightRoadMetrics — single source layout; renderer chỉ vẽ)
   private drawGroundFlow(speed: number, dt: number, isFever: boolean) {
-    // PERF-FIX A: không còn clear()+vẽ vector mỗi frame. Vạch làn = 2 TileSprite cuộn
-    // modulo; vệt gió + hạt nature = Image đã bake texture, mỗi frame chỉ đổi
-    // position/alpha/tint (không tessellate, không upload GPU buffer mới).
-    if (this.laneDashTiles.length === 0) this.buildFlowObjects();
-
-    const { width, height } = this.scale;
-    const { leftEdge, laneWidth } = this.getStraightRoadMetrics(width, height);
-
-    // 1. Vạch làn: TileSprite cuộn xuống bằng tilePositionY modulo chu kỳ 60px
-    // (giảm tilePositionY = nội dung dịch xuống; always-positive để WebGL wrap chuẩn)
-    const totalCycle = 60;
-    const flowOffset = (this.elapsed * speed * 0.85) % totalCycle;
-    for (let d = 0; d < this.laneDashTiles.length; d++) {
-      const tile = this.laneDashTiles[d];
-      tile.setX(leftEdge + (d === 0 ? 1 : 2) * laneWidth).setY(height / 2)
-        .setSize(4, height + totalCycle * 2);
-      tile.tilePositionY = totalCycle - flowOffset;
-    }
-
-    // 2. Vệt gió: 12 Image bake sẵn, ẩn/hiện theo streakCount như code cũ
-    const streakCount = isFever ? 12 : 8;
-    const streakTint = isFever ? 0xFFA502 : 0xFFFFFF;
-    for (let i = 0; i < this.streakImgs.length; i++) {
-      const im = this.streakImgs[i];
-      if (i >= streakCount) {
-        if (im.visible) im.setVisible(false);
-        continue;
-      }
-      const cycleT = ((this.elapsed * (speed * 0.0016) + (i / streakCount)) % 1);
-      const sy = cycleT * height;
-      const laneIndex = i % 3;
-      const laneCenterX = leftEdge + (laneIndex + 0.5) * laneWidth;
-      const laneOffset = Math.sin(i * 3.7 + this.elapsed * 0.5) * (laneWidth * 0.3);
-      const alpha = Math.sin(cycleT * Math.PI) * (isFever ? 0.38 : 0.16);
-      im.setVisible(true).setTint(streakTint).setPosition(laneCenterX + laneOffset, sy + 14).setAlpha(alpha);
-    }
-    // T1e: hạt nature dời về RoadsideRenderer.update (cùng toán, cùng tham số)
+    const { width } = this.scale;
+    const { leftEdge, laneWidth } = this.getStraightRoadMetrics(width, this.scale.height);
+    this.fx.updateFlow(speed, dt, this.elapsed, isFever, { leftEdge, laneWidth });
   }
 
   // T1e: drawRoadsideProps dời về RoadsideRenderer.update — scene gọi qua orchestration ở update()
@@ -1487,7 +1338,7 @@ export class GameplayScene extends Phaser.Scene {
     const nm = ctx.engine.registerNearMiss();
     this.playSfx('sfx_dodge', 0.55, 1.15);
     this.showNearMissPopup();
-    this.spawnSparkles(this.cat.x, this.cat.y - 15, 0xFFEE55);
+    this.fx.spawnSparkles(this.cat.x, this.cat.y - 15, 0xFFEE55);
     this.cameras.main.flash(70, 255, 255, 200, true);
     this.hud.update();
     if (nm.feverTriggered) this.onFeverStart();
@@ -1729,7 +1580,7 @@ export class GameplayScene extends Phaser.Scene {
     this.swarmActive = false;
     const res = ctx.engine.registerSwarmSurvive();
     this.playSfx('sfx_levelup', 0.5, 1.2);
-    this.spawnSparkles(this.scale.width / 2, this.scale.height * 0.45, 0xFFA502);
+    this.fx.spawnSparkles(this.scale.width / 2, this.scale.height * 0.45, 0xFFA502);
 
     this.swarmSurvivePopup.setAlpha(0).setScale(0.7);
     this.tweens.add({
@@ -1843,7 +1694,7 @@ export class GameplayScene extends Phaser.Scene {
     if (it.type === 'fish') {
       const res = ctx.engine.collectFish();
       this.playSfx('sfx_score', 0.45, 1.1);
-      this.spawnSparkles(it.container.x, it.container.y, 0xFFD700);
+      this.fx.spawnSparkles(it.container.x, it.container.y, 0xFFD700);
       this.showFloatingText(it.container.x, it.container.y, '+2 🐟', color.warning);
       this.hud.update();
       if (res.feverTriggered) this.onFeverStart();
@@ -1851,13 +1702,13 @@ export class GameplayScene extends Phaser.Scene {
     } else if (it.type === 'shield') {
       ctx.engine.activateShield();
       this.playSfx('sfx_levelup', 0.4);
-      this.spawnShockwave(it.container.x, it.container.y, 0x00E5FF);
+      this.fx.spawnShockwave(it.container.x, it.container.y, 0x00E5FF);
       this.showPowerupPopup('SHIELD READY! 🛡️', '#00E5FF');
       this.hud.update();
     } else if (it.type === 'magnet') {
       ctx.engine.activateMagnet();
       this.playSfx('sfx_combo', 0.4);
-      this.spawnSparkles(it.container.x, it.container.y, 0xFF4757);
+      this.fx.spawnSparkles(it.container.x, it.container.y, 0xFF4757);
       this.showPowerupPopup('MAGNET ON! 🧲', '#FF4757');
       this.hud.update();
     }
@@ -1953,7 +1804,7 @@ export class GameplayScene extends Phaser.Scene {
     // Dọn dẹp sạch toàn bộ ong thường đang có trên màn hình để làn an toàn đảm bảo 100% không có ong
     for (const b of this.bees) {
       if (b.container && b.container.active && b.type !== 'fat') {
-        this.spawnBeeExplosion(b.container.x, b.container.y);
+        this.fx.spawnBeeExplosion(b.container.x, b.container.y);
         this.retireBee(b);
       }
     }
@@ -1992,7 +1843,7 @@ export class GameplayScene extends Phaser.Scene {
     });
     const pitch = Math.min(1.5, 1.0 + Math.floor((ctx.engine.streak - 1) / 5) * 0.12);
     this.playSfx('sfx_combo', 0.45, pitch);
-    this.spawnSparkles(this.cat.x, this.cat.y - 40, 0x2ECC71);
+    this.fx.spawnSparkles(this.cat.x, this.cat.y - 40, 0x2ECC71);
   }
 
   private showNearMissPopup() {
@@ -2035,7 +1886,7 @@ export class GameplayScene extends Phaser.Scene {
       targets: this.recordPopup, alpha: 1, scale: 1, duration: 250, ease: 'back.out',
       onComplete: () => this.tweens.add({ targets: this.recordPopup, alpha: 0, duration: 350, delay: 1000, ease: 'linear' }),
     });
-    this.spawnSparkles(width / 2, this.scale.height * 0.25, 0xFFA502);
+    this.fx.spawnSparkles(width / 2, this.scale.height * 0.25, 0xFFA502);
   }
 
   // T1e: drawLevelProgress + drawFeverBar + updateHud dời về HudRenderer (scenes/render/)
@@ -2051,7 +1902,7 @@ export class GameplayScene extends Phaser.Scene {
     this.cameras.main.shake(180, 0.005);
 
     // Honey-gold & white particle explosion
-    this.spawnBeeExplosion(this.cat.x, this.cat.y);
+    this.fx.spawnBeeExplosion(this.cat.x, this.cat.y);
 
     // Squash & stretch cat (scaleY 0.85 -> 1.15 -> 1.0, dur.pop)
     const catSize = this.getCatSize(this.scale.width, this.scale.height);
