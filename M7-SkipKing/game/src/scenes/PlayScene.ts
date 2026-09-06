@@ -24,6 +24,7 @@ import { CameraFx } from '../render/CameraFx';
 import { AimGuide } from '../render/AimGuide';
 import { PullBackInput } from '../input/PullBackInput';
 import { Hud } from '../ui/Hud';
+import { EndCard } from '../ui/EndCard';
 
 /** Trần step/update — chặn spiral khi tab nền quay lại (delta khổng lồ). */
 const MAX_STEPS_PER_UPDATE = 4000; // 4000 × (1/120)s ≈ 33s > trần sim TIME_LIMIT
@@ -45,6 +46,8 @@ export class PlayScene extends Phaser.Scene {
   protected camFx!: CameraFx;
   protected aim!: AimGuide;
   protected hud!: Hud; // protected T4: finishDemo render lại HUD sau trao tay (0 đổi hành vi)
+  /** End-card (T5 — CONTRACT 3.5): overlay cuối run — CHỈ stage local (demo = không gian an toàn, Đ3). */
+  protected endCard!: EndCard;
   private pull!: PullBackInput;
   private acc = 0;
   protected pendingFlicks: { dirX: number; dirZ: number; power: number }[] = [];
@@ -81,6 +84,7 @@ export class PlayScene extends Phaser.Scene {
     this.camFx = new CameraFx(this.cameras.main);
     this.aim = new AimGuide(this, w);
     this.hud = new Hud(this);
+    this.endCard = new EndCard(this);
     this.aim.setLabelY(this.proj.waterlineY - 90);
     this.aim.setLabelAlpha(1);
     this.labelAlpha.a = 1;
@@ -123,7 +127,16 @@ export class PlayScene extends Phaser.Scene {
 
     if (this.engine.finished && !this.runClosed) {
       this.runClosed = true;
-      this.lifecycle.applyRun(this.engine.toResult()); // tầng A chốt — scene chỉ chuyển tay
+      // End-card CHỈ stage local (demo = không gian an toàn — CONTRACT 3.1 Đ3).
+      // Gap-gap đọc best-TRƯỚC-run từ lifecycle (tầng A) rồi applyRun mới chốt best mới.
+      if (this.stage !== 'local') {
+        this.lifecycle.applyRun(this.engine.toResult()); // tầng A chốt — scene chỉ chuyển tay
+      } else {
+        this.endCard.hide(); // run kế chưa bắt đầu — tắt card cũ (an toàn idle→run)
+        const bestBefore = this.lifecycle.best;
+        this.lifecycle.applyRun(this.engine.toResult());
+        this.endCard.show({ bestBeforeRun: bestBefore, run: this.engine.toResult() });
+      }
       this.hud.render(this.lifecycle);
     }
     this.consumePending();
@@ -192,6 +205,7 @@ export class PlayScene extends Phaser.Scene {
     this.engine.throwFlick(flick);
     if (judgePerfect(flick, this.cfg)) this.engine.markPerfect();
     this.runClosed = false;
+    this.endCard.hide(); // thả cú mới → end-card tắt ngay (CONTRACT 3.5 THROW AGAIN)
     this.renderAim(null); // tắt guide ngay khi bắn
   }
 
@@ -236,5 +250,9 @@ export class PlayScene extends Phaser.Scene {
   }
   pendingCountForTest(): number {
     return this.pendingFlicks.length;
+  }
+  /** Mirror T5 — EndCard wiring (không lộ logic mới). */
+  getEndCardForTest(): EndCard {
+    return this.endCard;
   }
 }

@@ -74,6 +74,8 @@ export interface MechanicsConfig {
   touchTargetPx: number;
   /** banner 2 dòng khi PERFECT — ×2 ĐIỂM cú thả, không multiplier chuỗi (CONTRACT §2). */
   comboBanner: { line1: string; line2: string };
+  /** End-card (T5 — CONTRACT 3.5): wording nút + headline SPLASH — 0 nảy thay FAILED. 100% EN (PB-5). */
+  endCard: { splash: string; button: string };
   /** × — timescale slow-mo cuối PERFECT run (CONTRACT §2). */
   slowmoTimescale: number;
   /** nảy — số nảy tối thiểu để run chốt là PERFECT (CONTRACT §3 beat B3: "~7 nảy"). */
@@ -106,6 +108,11 @@ export const MECHANICS: MechanicsConfig = {
   comboBanner: {
     line1: 'PERFECT FLICK!', // EN (PB-5)
     line2: '×2',             // ×2 điểm cú thả — CONTRACT §2 mục 3.4
+  },
+
+  endCard: {
+    splash: 'SPLASH!',        // EN — headline 0 nảy (thay FAILED — CONTRACT 3.5)
+    button: 'THROW AGAIN',    // EN — nút ≥44px nửa dưới màn (CONTRACT §2)
   },
 
   slowmoTimescale: 0.4,      // × — CONTRACT §2: slow-mo cuối PERFECT run

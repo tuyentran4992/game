@@ -223,7 +223,9 @@ export class OnboardingPlayScene extends PlayScene {
     // (scene không tự ghi best; runLifecycle là chủ sở hữu storage điểm).
     this.lifecycle = new RunLifecycle(this.storage, { stage: 'local' });
     this.hud.render(this.lifecycle);
-    this.storage.setItem(DEMO_DONE_KEY, '1');
+    // Demo-once ĐÚNG 1 LẦN (T5 guard double-write): natural end director ĐÃ markDone qua
+    // update() (public interface tầng A) — scene chỉ ghi khi chưa có marker (đường skip-on-touch).
+    if (!isDemoDone(this.storage)) this.storage.setItem(DEMO_DONE_KEY, '1');
   }
 
   /** Vẽ vùng ngọt (U2) — gọi trong renderAim khi stage demo VÀ highlight đang bật. */
