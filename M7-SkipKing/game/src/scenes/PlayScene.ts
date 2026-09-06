@@ -12,6 +12,7 @@ import type { EngineEvent } from '../logic/types';
 import { HumanFlickProvider } from '../logic/flickProvider';
 import { PhysicsEngine } from '../logic/physicsEngine';
 import { RunLifecycle, memoryStorage } from '../logic/runLifecycle';
+import type { KvStorage } from '../logic/runLifecycle';
 import { judgePerfect } from '../logic/mechanics';
 import { assistFlick } from '../logic/firstThrowAssist';
 import { mulberry32 } from '../logic/rng';
@@ -59,7 +60,13 @@ export class PlayScene extends Phaser.Scene {
     const w = this.scale.width;
     this.cameras.main.setBackgroundColor(0x0d1b2a);
     this.engine = new PhysicsEngine(this.cfg, mulberry32(Date.now() >>> 0));
-    this.lifecycle = new RunLifecycle(memoryStorage(), { stage: 'local' });
+    // Storage inject: localStorage thật là đường chính (best persist qua reload) —
+    // memoryStorage CHỈ là fallback (test/SSR). REVIEW round 1 điểm 2.
+    const storage: KvStorage =
+      typeof window !== 'undefined' && window.localStorage
+        ? window.localStorage
+        : memoryStorage();
+    this.lifecycle = new RunLifecycle(storage, { stage: 'local' });
     this.water = new WaterRenderer(this, this.proj, w);
     this.ripple = new RippleFx(this);
     this.stoneRenderer = new StoneRenderer(this, this.proj);
@@ -149,7 +156,9 @@ export class PlayScene extends Phaser.Scene {
   private renderAim(input: { dirX: number; dirZ: number; power: number } | null): void {
     const ox = this.proj.xToScreenX(0, 0);
     const oy = this.proj.waterlineY - 10;
-    this.aim.render(ox, oy, input, input ? judgePerfect(input, this.cfg) : false);
+    // U2: highlight window PERFECT CHỈ trong demo — stage local truyền false CỨNG,
+    // không judgePerfect khi người chơi thật kéo (REVIEW round 1 điểm 3).
+    this.aim.render(ox, oy, input, false);
   }
 
   /** Thả tay → assist Đ2 (chỉ cú đầu run đầu) → hàng đợi → engine khi rảnh. */
@@ -161,13 +170,15 @@ export class PlayScene extends Phaser.Scene {
     this.consumePending();
   }
 
-  /** Tiêu thụ hàng đợi qua HumanFlickProvider (tầng A) — 1 đường sim duy nhất. */
+  /** Tiêu thụ hàng đợi qua HumanFlickProvider (tầng A) — 1 đường sim duy nhất.
+   * Mỗi lần chỉ tiêu thụ ĐÚNG 1 cú (shift) — cú sau chờ run hiện tại xong,
+   * không mất cú khi người chơi spam (REVIEW round 1 điểm 1). */
   private consumePending(): void {
     if (this.pendingFlicks.length === 0) return;
     if (!this.engine.finished && this.engine.stone) return; // đang bay — chờ run xong
-    const provider = new HumanFlickProvider(this.pendingFlicks);
+    const provider = new HumanFlickProvider([this.pendingFlicks[0]]);
     const flick = provider.nextFlick();
-    this.pendingFlicks = [];
+    this.pendingFlicks.shift();
     this.engine.throwFlick(flick);
     if (judgePerfect(flick, this.cfg)) this.engine.markPerfect();
     this.runClosed = false;
@@ -212,5 +223,8 @@ export class PlayScene extends Phaser.Scene {
   }
   dispatchFlickForTest(input: { dirX: number; dirZ: number; power: number }): void {
     this.onPlayerRelease(input);
+  }
+  pendingCountForTest(): number {
+    return this.pendingFlicks.length;
   }
 }

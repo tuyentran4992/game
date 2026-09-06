@@ -9,7 +9,12 @@ import { AIM } from './layout';
 import { throwAngleDeg } from '../logic/mechanics';
 
 const GAUGE_COLOR = 0xffffff;
-const GAUGE_COLOR_PERFECT = 0x8ef6b2;
+/**
+ * Màu highlight window PERFECT — CHỈ demo dùng (U2, ALIGNMENT-DECISION dòng 47:
+ * "highlight vùng ngọt CHỈ trong demo"). Export để T4 (onboarding demo B3) gọi;
+ * PlayScene stage local truyền highlightPerfect=false CỨNG — không lộ window cho người chơi.
+ */
+export const GAUGE_COLOR_PERFECT = 0x8ef6b2;
 
 export class AimGuide {
   private line: Phaser.GameObjects.Graphics;
@@ -44,8 +49,14 @@ export class AimGuide {
   /**
    * Vẽ aim guide từ điểm xuất phát đá theo FlickInput đang kéo.
    * input null → xoá sạch (không vẽ rác).
+   * highlightPerfect CHỈ true khi stage demo (T4) — người chơi thật luôn false (U2).
    */
-  render(ox: number, oy: number, input: FlickInput | null, isPerfect: boolean): void {
+  render(
+    ox: number,
+    oy: number,
+    input: FlickInput | null,
+    highlightPerfect: boolean,
+  ): void {
     this.line.clear();
     this.gauge.clear();
     if (!input) return;
@@ -55,7 +66,7 @@ export class AimGuide {
     const rad = (angleDeg * Math.PI) / 180;
     const dx = Math.sin(rad);
     const dy = -Math.cos(rad); // hướng bắn ra xa (lên màn)
-    const color = isPerfect ? GAUGE_COLOR_PERFECT : GAUGE_COLOR;
+    const color = highlightPerfect ? GAUGE_COLOR_PERFECT : GAUGE_COLOR; // trắng-đục alpha 0.9 (U4)
     const width = 2 + 5 * power; // dày ∝ lực
     // Đường ngắm đứt nét tiến dần — mũi tên chỉ hướng bay.
     this.line.lineStyle(width, color, 0.9);
