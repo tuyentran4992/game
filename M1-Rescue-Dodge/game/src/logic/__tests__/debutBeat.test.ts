@@ -156,27 +156,27 @@ describe('P1a — cụm thưa: DOWNGRADE cùng loại trong cửa sổ (KHÔNG r
 });
 
 describe('P1a — swarm debut: swarmTriggered đầu phiên xuất typed window (non-breaking)', () => {
-  it('swarm đầu (elapsed 30) → result.swarmDebut {type: swarm, firstSeenAt: 30} + engine ghi nhận', () => {
+  it('swarm đầu (elapsed 52 — B1 interval 44s) → result.swarmDebut {type: swarm, firstSeenAt: 52} + engine ghi nhận', () => {
     const h = makeHarness([0.99], [0.99]);
     h.dir.update({ dt: 2.0, elapsed: 5, engine: h.engine, world: makeWorld() }); // normal, không debut
-    const r = h.dir.update({ dt: 0.01, elapsed: 30, engine: h.engine, world: makeWorld() });
+    const r = h.dir.update({ dt: 0.01, elapsed: 52, engine: h.engine, world: makeWorld() });
     expect(r.swarmTriggered).toBe(true);
     expect(r.swarmDebut).not.toBeNull();
     expect(r.swarmDebut?.type).toBe('swarm');
-    expect(r.swarmDebut?.firstSeenAt).toBe(30);
-    expect(r.swarmDebut?.until).toBeCloseTo(30 + MECHANICS.debutSparseSec, 5);
-    expect(h.engine.debutAt(31)?.type).toBe('swarm');
+    expect(r.swarmDebut?.firstSeenAt).toBe(52);
+    expect(r.swarmDebut?.until).toBeCloseTo(52 + MECHANICS.debutSparseSec, 5);
+    expect(h.engine.debutAt(53)?.type).toBe('swarm');
     // tầng B đọc window qua director (contract P1b — SpawnDirectorResult là mặt hàng chính)
-    expect(h.dir.debutAt(31)?.type).toBe('swarm');
+    expect(h.dir.debutAt(53)?.type).toBe('swarm');
   });
 
-  it('swarm lần 2 (elapsed 52) → swarmTriggered true nhưng swarmDebut null (debut chỉ 1 lần/phiên)', () => {
+  it('swarm lần 2 (elapsed 96) → swarmTriggered true nhưng swarmDebut null (debut chỉ 1 lần/phiên)', () => {
     const h = makeHarness([0.99], [0.99]);
-    h.dir.update({ dt: 0.01, elapsed: 30, engine: h.engine, world: makeWorld() });
-    const r2 = h.dir.update({ dt: 0.01, elapsed: 52, engine: h.engine, world: makeWorld() });
+    h.dir.update({ dt: 0.01, elapsed: 52, engine: h.engine, world: makeWorld() });
+    const r2 = h.dir.update({ dt: 0.01, elapsed: 96, engine: h.engine, world: makeWorld() });
     expect(r2.swarmTriggered).toBe(true);
     expect(r2.swarmDebut).toBeNull();
-    expect(h.engine.debutAt(52)).toBeNull();
+    expect(h.engine.debutAt(96)).toBeNull();
   });
 });
 

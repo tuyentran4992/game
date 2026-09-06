@@ -139,7 +139,9 @@ describe('wiring runtime — scene.stepSpawn điều phối qua director (không
   beforeEach(() => {
     
     // start phiên mới: engine + director cả hai được startSession/resumeGame tương ứng create()
-    scene.beginSessionForTest(0);
+    // UPG2-B1: pin swarm 22s — test này soi timeline swarm đầu ở 30s (scaffolding của assert,
+    // không phải đối tượng test); runtime thật đọc MECHANICS (B1: 44s) nguyên vẹn.
+    scene.beginSessionForTest(0, { swarmIntervalSec: 22 });
   });
 
   it('frame đủ cadence → scene tạo ong đúng làn/loại director quyết (không tự roll lại)', () => {
