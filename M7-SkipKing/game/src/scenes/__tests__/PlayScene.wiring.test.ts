@@ -3,6 +3,7 @@
 // Test dựng scene Phaser thật (headless jsdom — mô hình T1e M1) và assert qua mirror của scene.
 // @vitest-environment jsdom
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 
 // Phaser 4 tự kiểm canvas 2D lúc MODULE-INIT (checkInverseAlpha) — jsdom không có
 // canvas backend nên getContext trả null. Stub 2D context tối thiểu, cài TRƯỚC
@@ -157,6 +158,62 @@ describe('PlayScene wiring — dispatch input → FlickInput (K4×V1 schema tầ
     const lc = scene.getLifecycleForTest()!;
     expect(lc.score).toBeGreaterThanOrEqual(0);
     expect(lc.best).toBeGreaterThanOrEqual(0);
+  });
+
+  it('REGRESSION round-1 #1: spam 3 cú liên tiếp — đủ 3 cú ĐƯỢC THROW theo trình tự, 0 cú mất', () => {
+    const engine = scene.getEngineForTest()!;
+    // Chờ run dở (từ describe trước) kết thúc — hàng đợi phải trống trước khi spam.
+    let frames = 0;
+    while (!engine.finished && frames < 3600) {
+      scene.updateForTest(5000 + frames * 16, 16);
+      frames++;
+    }
+    scene.updateForTest(5000 + frames * 16 + 16, 16); // frame kế — rút nốt hàng đợi còn lại
+    expect(scene.pendingCountForTest()).toBe(0);
+    // Spam 3 cú LIÊN TIẾP đúng bệnh án lead: cú 1 vào engine ngay (engine rảnh),
+    // cú 2+3 phải ở lại hàng đợi — code cũ xoá sạch pendingFlicks sau nextFlick().
+    scene.dispatchFlickForTest({ dirX: 0, dirZ: -1, power: 0.7 });
+    scene.dispatchFlickForTest({ dirX: 0.5, dirZ: -1, power: 0.7 });
+    scene.dispatchFlickForTest({ dirX: -0.5, dirZ: -1, power: 0.7 });
+    expect(scene.pendingCountForTest()).toBe(2); // 1 đang bay + 2 chờ
+    // Đuổi đủ 2 run còn lại qua loop frame — mỗi cú phải được throw ĐÚNG 1 lần
+    // (mất cú = pendingCount không về 0 hoặc run không terminal).
+    frames = 0;
+    while (scene.pendingCountForTest() > 0 && frames < 7200) {
+      scene.updateForTest(6000 + frames * 16, 16);
+      frames++;
+    }
+    expect(scene.pendingCountForTest()).toBe(0); // đủ 3 cú đều được throw — 0 cú mất
+    // Cú 3 (run cuối) vừa được throw → đuổi tới terminal: cú bị DROP thì không bao giờ
+    // có run này (code cũ: pending rỗng ngay sau cú 1, run cuối không tồn tại).
+    frames = 0;
+    while (!engine.finished && frames < 3600) {
+      scene.updateForTest(10000 + frames * 16, 16);
+      frames++;
+    }
+    expect(engine.finished).toBe(true);
+  });
+
+  it('REGRESSION round-1 #2: storage inject — jsdom có localStorage → best persist qua localStorage', () => {
+    // PlayScene.create phải dùng window.localStorage (đường chính) khi có —
+    // memoryStorage chỉ là fallback test/SSR (runLifecycle T2 thiết kế).
+    // Score 999 lớn hơn mọi best tiềm năng trong phiên test → chắc chắn ghi qua storage.
+    window.localStorage.removeItem('sk_best');
+    const lc = scene.getLifecycleForTest()!;
+    lc.applyRun({ score: 999, bounces: 999, best: 999 });
+    expect(window.localStorage.getItem('sk_best')).toBe('999');
+    window.localStorage.removeItem('sk_best'); // dọn — không nhiễm test khác
+  });
+
+  it('REGRESSION round-1 #3: stage local KHÔNG highlight window (U2) — màu PERFECT chỉ export cho T4 demo', () => {
+    // Grep-cap TDD-B (precedent M1 Gameplay.fx-wiring): scene local truyền false CỨNG —
+    // không judgePerfect(input, cfg) khi người chơi thật đang kéo (bản cũ vi phạm U2).
+    const src = readFileSync('src/scenes/PlayScene.ts', 'utf8');
+    expect(src).toContain('this.aim.render(ox, oy, input, false)');
+    expect(src).not.toContain('judgePerfect(input, this.cfg)');
+    // AimGuide giữ export màu PERFECT cho T4 demo (U2: highlight CHỈ trong demo).
+    const ag = readFileSync('src/render/AimGuide.ts', 'utf8');
+    expect(ag).toContain('export const GAUGE_COLOR_PERFECT');
   });
 });
 
