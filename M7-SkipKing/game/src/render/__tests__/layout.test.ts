@@ -3,7 +3,7 @@
  * → toạ độ màn 720×1280. Số render đọc qua LAYOUT — test khoá hành vi projection.
  */
 import { describe, it, expect } from 'vitest';
-import { makeProjection, LAYOUT, AIM } from '../layout';
+import { makeProjection, LAYOUT, AIM, FX } from '../layout';
 import { MECHANICS } from '../../config/mechanics';
 
 describe('makeProjection — z → màn hình (waterline z=0 đáy màn, CONTRACT §2)', () => {
@@ -50,12 +50,12 @@ describe('LAYOUT — hằng render có đơn vị + rationale (không số rải
   });
 
   it('ripple pool có trần (object pool — ROLE-RULES perf)', () => {
-    expect(LAYOUT.ripplePool).toBeGreaterThan(0);
-    expect(LAYOUT.ripplePool).toBeLessThanOrEqual(20);
+    expect(FX.ripplePool).toBeGreaterThan(0);
+    expect(FX.ripplePool).toBeLessThanOrEqual(20);
   });
 
   it('squash đúng 80ms — CONTRACT §6 juice giữ', () => {
-    expect(LAYOUT.squashMs).toBe(80);
+    expect(FX.squashMs).toBe(80);
   });
 
   it('kéo tối đa ≥ 44px target chạm của config (vùng kéo thoải mái hơn target)', () => {

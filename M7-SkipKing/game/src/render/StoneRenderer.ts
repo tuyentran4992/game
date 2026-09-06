@@ -1,0 +1,67 @@
+/**
+ * M7 Skip King — StoneRenderer (T3 Tầng B): vẽ viên đá qua projection.
+ * Sprite 'stone' (T6 art) nếu có, fallback shape tự generate đủ boot (CONTRACT §5.6).
+ * Renderer KHÔNG tự tính luật — vị trí/cao độ đọc trực tiếp Stone của tầng A.
+ */
+import * as Phaser from 'phaser';
+import type { Stone } from '../logic/types';
+import type { Projection } from './layout';
+import { SquashFx } from './SquashFx';
+
+export const STONE_TEX = 'stone';
+const STONE_FB_KEY = 'stone_fb';
+const STONE_FB_PX = 44;
+
+export class StoneRenderer {
+  private sprite: Phaser.GameObjects.Image;
+  private squash: SquashFx;
+
+  constructor(scene: Phaser.Scene, private proj: Projection) {
+    if (!scene.textures.exists(STONE_TEX)) {
+      // Fallback shape: viên đá xám viền sáng đủ đọc trên nước — chỉ dùng khi T6 art chưa nạp.
+      const g = scene.make.graphics({ x: 0, y: 0 });
+      g.fillStyle(0x8d99ae, 1);
+      g.slice(STONE_FB_PX / 2, STONE_FB_PX / 2, STONE_FB_PX / 2 - 2, 0, Math.PI * 2);
+      g.fillPath();
+      g.fillStyle(0xc9d3e0, 1);
+      g.slice(STONE_FB_PX / 2 - 8, STONE_FB_PX / 2 - 8, STONE_FB_PX / 6, 0, Math.PI * 2);
+      g.fillPath();
+      g.generateTexture(STONE_FB_KEY, STONE_FB_PX, STONE_FB_PX);
+      g.destroy();
+    }
+    const key = scene.textures.exists(STONE_TEX) ? STONE_TEX : STONE_FB_KEY;
+    this.sprite = scene.add
+      .image(this.proj.xToScreenX(0, 0), this.proj.waterlineY, key)
+      .setOrigin(0.5, 0.5)
+      .setDepth(30)
+      .setData('testid', 'stone'); // pattern M1 — QA bấm/soi qua testid
+    this.squash = new SquashFx();
+  }
+
+  /** Đá đang bay: đặt theo Stone 2.5D (y = cao độ trên mặt nước). */
+  renderStone(s: Stone, timeMs: number): void {
+    const x = this.proj.xToScreenX(s.x, s.z);
+    const y = this.proj.zToY(s.z) - s.y * this.proj.pxPerM(s.z);
+    const scale = this.proj.zScale(s.z);
+    this.sprite.setPosition(x, y).setScale(scale).setVisible(true);
+    this.sprite.rotation = (timeMs * 0.004) % (Math.PI * 2); // đá xoay khi bay — cảm giác vật lý
+  }
+
+  /** Đá đợi ở điểm xuất phát (chưa ném) — neo aim guide. */
+  renderIdle(): void {
+    this.sprite.setPosition(this.proj.xToScreenX(0, 0), this.proj.waterlineY - 10);
+    this.sprite.setScale(1).setRotation(0).setVisible(true);
+  }
+
+  hide(): void {
+    this.sprite.setVisible(false);
+  }
+
+  squashFx(): void {
+    this.squash.apply(this.sprite);
+  }
+
+  get spriteForTest(): Phaser.GameObjects.Image {
+    return this.sprite;
+  }
+}
