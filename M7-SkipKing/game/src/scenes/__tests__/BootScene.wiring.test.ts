@@ -68,6 +68,11 @@ vi.hoisted(() => {
 import Phaser from 'phaser';
 import { BootScene } from '../BootScene';
 
+// Spy cài ở module scope — TRƯỚC khi game boot, bắt mọi lệnh start trên
+// ScenePlugin.prototype. Trong test này CHỈ BootScene có thể gọi start('PlayScene')
+// (PlayScene là stub trơ, autoStart=false). Restore ở afterAll.
+const startSpy = vi.spyOn(Phaser.Scenes.ScenePlugin.prototype, 'start');
+
 const CANVAS = document.createElement('canvas');
 const NATIVE_RAF = globalThis.requestAnimationFrame;
 const NATIVE_CAF = globalThis.cancelAnimationFrame;
@@ -99,12 +104,8 @@ function waitFor(cond: () => boolean, label: string, ms = 12000): Promise<void> 
 }
 
 let game: Phaser.Game | null = null;
-let startSpy: ReturnType<typeof vi.spyOn>;
 
 beforeAll(async () => {
-  // Spy TRƯỚC khi tạo game — bắt mọi lệnh start trên ScenePlugin.prototype.
-  // Trong test này CHỈ BootScene có thể gọi start('PlayScene') (stub PlayScene trơ).
-  startSpy = vi.spyOn(Phaser.Scenes.ScenePlugin.prototype, 'start');
   game = new Phaser.Game({
     type: Phaser.CANVAS,
     parent: document.body,
