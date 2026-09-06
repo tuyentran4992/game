@@ -204,8 +204,9 @@ describe('UPG2-P1b — swarm debut message "CH3 · NIGHT RAID" (0 asset mới, t
   }
 
   it('lần trigger swarm ĐẦU trong phiên → banner hiện đúng "CH3 · NIGHT RAID" (đường runtime director)', () => {
-    // mốc swarm đầu ~30s (mirror startSession(0) — y hệt wiring test spawn hiện hữu)
-    scene.stepSpawnForTest(0.016, 30.0);
+    // mốc swarm đầu ~52s (startSession(0): lastSwarmTime=8 + swarmIntervalSec 44 —
+    // re-anchor theo curve B1 8df43fd..561f807 merge; y hệt wiring test spawn hiện hữu)
+    scene.stepSpawnForTest(0.016, 52.0);
     expect(scene.swarmActiveView).toBe(true);
     expect(swarmText().text).toBe('CH3 · NIGHT RAID');
   });
