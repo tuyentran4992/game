@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 
 /**
- * T6 — preload art Skip King (stone/splash/ripple/sunset_bg), sau đó chuyển PlayScene (T3/T4).
+ * T6 — preload art Skip King (stone/splash/ripple/sunset_bg), sau đó chuyển OnboardingPlayScene (T4).
  * Tầng B mỏng (CONTRACT mục 1): CHỈ load asset — không render, không luật chơi.
  * Key/file viết LITERAL để asset manifest check của verify_game.sh (rào 4) grep được.
  */
@@ -18,8 +18,9 @@ export class BootScene extends Phaser.Scene {
   }
 
   public create(): void {
-    // Preload xong → handoff PlayScene (BUG-L2-01: create() rỗng khiến game màn đen —
-    // không ai sở hữu dòng glue này giữa T3/T6/T4; QA boot browser thật bắt được).
-    this.scene.start('PlayScene');
+    // Preload xong → handoff OnboardingPlayScene (T4: demo-once tự quyết stage demo/local qua
+    // OnboardingDirector tầng A — CONTRACT 3.1; BUG-L2-01: create() rỗng khiến game màn đen —
+    // dòng glue này giữa T3/T6/T4 do MG hợp nhất khi merge tuần tự).
+    this.scene.start('OnboardingPlayScene');
   }
 }

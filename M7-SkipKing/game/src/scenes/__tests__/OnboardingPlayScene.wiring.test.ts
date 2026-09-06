@@ -46,6 +46,8 @@ import Phaser from 'phaser';
 import { PlayScene } from '../PlayScene';
 import { OnboardingPlayScene } from '../OnboardingPlayScene';
 import { MECHANICS } from '../../config/mechanics';
+import { plopParams, type PlopParams } from '../../logic/audioMapper';
+import type { EngineEvent } from '../../logic/types';
 
 const CANVAS = document.createElement('canvas');
 const NATIVE_RAF = globalThis.requestAnimationFrame;
@@ -186,5 +188,82 @@ describe('T4 — TEST-FIELDS QA hook PlayScene base (plopSynth + resume hook)', 
   it('updateForTest base PlayScene nguyên vẹn — OnboardingPlayScene kế thừa mirror test T3', () => {
     const scene2 = scene as unknown as PlayScene;
     expect(() => scene2.updateForTest(9000, 16)).not.toThrow();
+  });
+});
+
+describe('T4 round-2 — review [REVIEW-CHANGES] điểm 1+2 (TDD RED trước fix)', () => {
+  /** Path plop thật qua applyEvents (đường scene DIỄN duy nhất — tái lập bug pitch).
+   * Pin cả 2 getter engine (bounces + judgedPerfect) — state test trước không Lem constrain. */
+  function applyBounce(bounces: number, perfect: boolean): { sent: PlopParams; events: EngineEvent[] } {
+    const engine = scene.getEngineForTest();
+    // Engine getter có sẵn (bản fix min-fit của lead) — mirror đọc giá trị thật của run.
+    Object.defineProperty(engine, 'bounces', { value: bounces, configurable: true });
+    Object.defineProperty(engine, 'judgedPerfect', { value: perfect, configurable: true });
+    const sent: PlopParams[] = [];
+    const spy = vi
+      .spyOn(scene.plopSynthForTest(), 'play')
+      .mockImplementation((p: PlopParams) => sent.push(p));
+    try {
+      scene.applyEventsForTest([
+        { type: 'bounce', stoneX: 0, stoneZ: 0.4, impact: 0.8 },
+      ]);
+    } finally {
+      spy.mockRestore();
+      // trả lại getter thật (descriptor gốc của PhysicsEngine)
+      delete (engine as unknown as Record<string, unknown>).bounces;
+      delete (engine as unknown as Record<string, unknown>).judgedPerfect;
+    }
+    return { sent: sent[0], events: [] };
+  }
+
+  it('r2-1 plop pitch BÁM engine.bounces thật — applyEvents KHÔNG truyền bounces cứng 0', () => {
+    // Bounce thứ 3 (semi=3, ≥0 khác 0) — bug cũ: cứng `bounces: 0` → freq như bounce đầu.
+    const { sent } = applyBounce(3, false);
+    const expected = plopParams({ bounces: 3, impact: 0.8, hit: true, perfect: false });
+    expect(sent.layers[0].freqHz).toBeCloseTo(expected.layers[0].freqHz, 6);
+    // Tiến độ nảy thật sự đổi pitch (không phải đỉnh chôn ở bounce 0)
+    const first = plopParams({ bounces: 0, impact: 0.8, hit: true, perfect: false });
+    expect(expected.layers[0].freqHz).not.toBeCloseTo(first.layers[0].freqHz, 3);
+  });
+
+  it('r2-1 splash plop truyền TỔNG nảy của run (không cứng 0)', () => {
+    const engine = scene.getEngineForTest();
+    Object.defineProperty(engine, 'bounces', { value: 5, configurable: true });
+    const sent: PlopParams[] = [];
+    const spy = vi
+      .spyOn(scene.plopSynthForTest(), 'play')
+      .mockImplementation((p: PlopParams) => sent.push(p));
+    try {
+      scene.applyEventsForTest([
+        { type: 'splash', stoneX: 0.2, stoneZ: 0.9 },
+      ]);
+    } finally {
+      spy.mockRestore();
+      delete (engine as unknown as Record<string, unknown>).bounces;
+    }
+    const expected = plopParams({ bounces: 5, impact: 0.5, hit: false }); // splash 0 perfect boost (hành vi gốc T4 giữ nguyên)
+    expect(sent[0].layers[0].freqHz).toBeCloseTo(expected.layers[0].freqHz, 6);
+  });
+
+  it('r2-2 sound-off latch: banner "SOUND OFF" + ripple boost ĐÚNG 1 LẦN, không spam', () => {
+    const synth = scene.plopSynthForTest();
+    const banner = scene.demoBannerForTest()!;
+    // Latch sound-off qua public surface plopSynth (resume fail thật) — không tựa field private.
+    Object.defineProperty(synth, 'soundOff', { value: true, configurable: true });
+    const spawnSpy = vi.spyOn(scene.rippleForTest(), 'spawn');
+    try {
+      scene.applyEventsForTest([{ type: 'bounce', stoneX: 0, stoneZ: 0.4, impact: 0.5 }]);
+      const sub = banner.list[1] as Phaser.GameObjects.Text & { text: string };
+      expect(sub.text).toBe('SOUND OFF');
+      const boosted = spawnSpy.mock.calls.filter((c) => (c[2] as number) >= 1.3);
+      expect(boosted.length).toBe(1); // boost đúng 1 lần
+      // Frame sau — KHÔNG lặp banner/boost (soundOffShown latch)
+      scene.applyEventsForTest([{ type: 'bounce', stoneX: 0, stoneZ: 0.5, impact: 0.5 }]);
+      expect(spawnSpy.mock.calls.filter((c) => (c[2] as number) >= 1.3).length).toBe(1);
+      expect(sub.text).toBe('SOUND OFF'); // banner giữ nguyên — không show lại
+    } finally {
+      spawnSpy.mockRestore();
+      Object.defineProperty(synth, 'soundOff', { value: false, configurable: true });
+    }
   });
 });

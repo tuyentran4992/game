@@ -19,6 +19,7 @@ import { memoryStorage, RunLifecycle } from '../logic/runLifecycle';
 import type { KvStorage } from '../logic/runLifecycle';
 import { judgePerfect } from '../logic/mechanics';
 import { GAUGE_COLOR_PERFECT } from '../render/AimGuide';
+import type { RippleFx } from '../render/RippleFx';
 import { AIM } from '../render/layout';
 
 /** Độ dày vùng ngọt vẽ trong demo (U2) — nhắm trùng band lực window (0.7–0.9). */
@@ -94,6 +95,8 @@ export class OnboardingPlayScene extends PlayScene {
   private spray!: SprayFx;
   private sweetZone = false;
   private soundOffShown = false;
+  /** Sound-off ripple boost chờ bounce kế (đặt khi latch — review r2 điểm 2). */
+  private soundOffBoostNext = false;
   private usedDemoFlick = false;
   private comboShownThisRun = false;
   private storage!: KvStorage;
@@ -154,16 +157,37 @@ export class OnboardingPlayScene extends PlayScene {
 
   /** Juice bổ sung T4: plop pitch (audioMapper) + spray pool + combo banner + slow-mo.
    * PERFECT bám ĐÚNG đường judge tầng A (engine.judgedPerfect — consumePending markPerfect):
-   * bounce ĐẦU của run PERFECT → banner 2 dòng + slow-mo 0.4×; splash (run kết thúc) → trả nhịp. */
+   * bounce ĐẦU của run PERFECT → banner 2 dòng + slow-mo 0.4×; splash (run kết thúc) → trả nhịp.
+   * Plop pitch truyền SỐ NẢY THẬT của run (engine.bounces — review r2 điểm 1): tại thời điểm
+   * bounce event, getter ĐÃ gồm cú hiện tại; tại splash = tổng nảy của run. 0 đụng audioMapper. */
   protected override applyEvents(events: EngineEvent[]): void {
     super.applyEvents(events);
+    // Sound-off UX (CONTRACT mục 5 — review r2 điểm 2): resume fail → banner "SOUND OFF"
+    // + ripple boost ở bounce kế. Latch ĐÚNG 1 LẦN — không spam banner/boost.
+    if (!this.soundOffShown && this.plop.isSoundOff()) {
+      this.soundOffShown = true;
+      this.soundOffBoostNext = true;
+      this.demoText.showNote('SOUND OFF');
+    }
     for (const ev of events) {
       if (ev.type === 'bounce') {
         this.plop.play(
-          plopParams({ bounces: 0, impact: ev.impact, hit: true, perfect: this.engine.judgedPerfect }),
+          plopParams({
+            bounces: this.engine.bounces,
+            impact: ev.impact,
+            hit: true,
+            perfect: this.engine.judgedPerfect,
+          }),
         );
+        const x = this.proj.xToScreenX(ev.stoneX, ev.stoneZ);
+        const y = this.proj.zToY(ev.stoneZ);
+        // Ripple boost 1 lần cho sound-off (ripple TO HƠN đè lên ripple thường của base — CONTRACT mục 5).
+        if (this.soundOffBoostNext) {
+          this.ripple.spawn(x, y, (0.5 + ev.impact) * 1.35);
+          this.soundOffBoostNext = false;
+        }
         if (ev.impact >= SPRAY_IMPACT_MIN) {
-          this.spray.burst(this.proj.xToScreenX(ev.stoneX, ev.stoneZ), this.proj.zToY(ev.stoneZ), ev.impact);
+          this.spray.burst(x, y, ev.impact);
         }
         if (this.engine.judgedPerfect && !this.comboShownThisRun) {
           this.comboShownThisRun = true;
@@ -171,7 +195,9 @@ export class OnboardingPlayScene extends PlayScene {
           this.applySlowmoForTest(MECHANICS.slowmoTimescale); // slow-mo 0.4× (CONTRACT §2)
         }
       } else if (ev.type === 'splash') {
-        this.plop.play(plopParams({ bounces: 0, impact: ev.stoneZ > 0 ? 0.5 : 0.2, hit: false }));
+        this.plop.play(
+          plopParams({ bounces: this.engine.bounces, impact: ev.stoneZ > 0 ? 0.5 : 0.2, hit: false }),
+        );
         this.spray.burst(this.proj.xToScreenX(ev.stoneX, ev.stoneZ), this.proj.zToY(ev.stoneZ), 1);
         this.comboShownThisRun = false;
         this.clearSlowmoForTest(); // run kết thúc — nhịp thường cho cú tiếp theo
@@ -236,6 +262,16 @@ export class OnboardingPlayScene extends PlayScene {
   /** Skip-on-touch mirror (CONTRACT 3.1) — dùng bởi wiring test (finishDemo private). */
   skipDemoForTest(): void {
     this.finishDemo();
+  }
+  // ---- mirror test round-2 (review điểm 1+2 — không lộ logic mới) ----
+  plopSynthForTest(): PlopSynth {
+    return this.plop;
+  }
+  rippleForTest(): RippleFx {
+    return this.ripple;
+  }
+  applyEventsForTest(events: EngineEvent[]): void {
+    this.applyEvents(events);
   }
   triggerComboForTest(input: FlickInput): void {
     // Cùng đường judge tầng A: throw + markPerfect — banner/slow-mo do applyEvents diễn khi bounce.
