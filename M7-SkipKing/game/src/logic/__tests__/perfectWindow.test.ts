@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { MECHANICS } from '../../config/mechanics';
 import type { MechanicsConfig } from '../../config/mechanics';
 import { PerfectWindowFitter, flickFromSeed, perfectRate, sweep, SWEEP_SEED_COUNT } from '../perfectWindow';
-import { judgePerfect } from '../perfectWindow';
+import { judgePerfect } from '../mechanics';
 import { throwAngleDeg } from '../mechanics';
 import type { FlickInput } from '../types';
 
@@ -78,15 +78,15 @@ describe('G2-3 perfect-rate — config-là-nguồn-duy-nhất', () => {
     expect(PTS[0].seed).toBe(1);
     expect(PTS[1799].seed).toBe(1800);
     for (const pt of PTS.slice(0, 50)) {
-      expect(pt.angleDeg).toBeGreaterThanOrEqual(-60);
-      expect(pt.angleDeg).toBeLessThanOrEqual(60);
+      expect(pt.angleDeg).toBeGreaterThanOrEqual(-50);
+      expect(pt.angleDeg).toBeLessThanOrEqual(50);
       expect(pt.power).toBeGreaterThanOrEqual(0);
-      expect(pt.power).toBeLessThan(1);
+      expect(pt.power).toBeLessThanOrEqual(0.95);
       expect(pt.bounces).toBeGreaterThanOrEqual(0);
     }
     // FlickInput sinh từ seed đúng schema đường sim
     const f = flickFromSeed(1);
-    expect(throwAngleDeg(f)).toBeGreaterThanOrEqual(-60);
-    expect(throwAngleDeg(f)).toBeLessThanOrEqual(60);
+    expect(throwAngleDeg(f)).toBeGreaterThanOrEqual(-50);
+    expect(throwAngleDeg(f)).toBeLessThanOrEqual(50);
   });
 });

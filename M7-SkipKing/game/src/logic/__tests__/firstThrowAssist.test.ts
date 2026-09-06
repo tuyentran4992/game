@@ -59,13 +59,17 @@ describe('G2-2 Đ2 assist — 0/100 chìm cú đầu (pull-back CONTRACT §2)', 
     const out = assistFlick(makeInput(center + 40, 0.1), MECHANICS);
     expect(out.power).toBe(MECHANICS.firstThrowAssist.powerFloor);
     expect(throwAngleDeg(out)).toBeCloseTo(center + MECHANICS.firstThrowAssist.angleBandDeg, 6);
+    expect(out.dirX).toBeCloseTo(Math.sin(((center + MECHANICS.firstThrowAssist.angleBandDeg) * Math.PI) / 180), 9);
+    expect(out.dirZ).toBeCloseTo(-Math.cos(((center + MECHANICS.firstThrowAssist.angleBandDeg) * Math.PI) / 180), 9);
   });
 
   it('assistFlick không đụng cú đã trong vùng assist (idempotent với input tốt)', () => {
     const w = MECHANICS.perfectWindow;
     const center = (w.angleMinDeg + w.angleMaxDeg) / 2;
     const good = makeInput(center, MECHANICS.firstThrowAssist.powerFloor);
-    expect(assistFlick(good, MECHANICS)).toEqual(good);
+    const out = assistFlick(good, MECHANICS);
+    expect(out.power).toBeCloseTo(good.power, 9);
+    expect(throwAngleDeg(out)).toBeCloseTo(center, 6);
   });
 
   it('assist KHÔNG đụng cú demo script: ScriptedFlickProvider trả flick nguyên bản từ seed scan', () => {

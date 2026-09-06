@@ -47,15 +47,15 @@ describe('M7 T1 — MechanicsConfig skeleton (khóa cấu trúc, số chốt the
     expect(MECHANICS.comboBanner.line2).toBe('×2');
   });
 
-  it('[PLACEHOLDER] marker nằm trên TỪNG field chờ T2 (perfectWindow + firstThrowAssist), field đã chốt sạch marker', () => {
+  it('T2 đã khoá số sweep: 6 field perfectWindow + firstThrowAssist SẠCH marker [PLACEHOLDER]', () => {
     const src = readFileSync(new URL('../../config/mechanics.ts', import.meta.url), 'utf8');
     const constSrc = src.slice(src.indexOf('export const MECHANICS'));
     const lines = constSrc.split('\n');
-    // 6 field chờ T2 sweep/đo sim — mỗi field phải mang marker [PLACEHOLDER]
+    // T2 đã khoá số (sweep 1800 seed 1..1800 + sim 100 seed assist): 6 field phải SẠCH marker
     for (const f of ['angleMinDeg', 'angleMaxDeg', 'powerMin', 'powerMax', 'powerFloor', 'angleBandDeg']) {
       const line = lines.find((l) => new RegExp(`\\b${f}\\s*:`).test(l));
       expect(line, `field ${f} phải tồn tại`).toBeDefined();
-      expect(line!, `field ${f} phải có [PLACEHOLDER]`).toContain('[PLACEHOLDER]');
+      expect(line!, `field ${f} phải sạch [PLACEHOLDER] sau khi T2 khoá số`).not.toContain('[PLACEHOLDER]');
     }
     // Field đã chốt: dòng khai báo số chốt phải sạch marker
     for (const line of lines) {
