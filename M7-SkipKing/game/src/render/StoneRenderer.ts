@@ -35,6 +35,17 @@ export class StoneRenderer {
       .setOrigin(0.5, 0.5)
       .setDepth(30)
       .setData('testid', 'stone'); // pattern M1 — QA bấm/soi qua testid
+    if (key === STONE_FB_KEY) {
+      // BootScene (T6) preload chạy SONG SONG PlayScene.create — sprite chưa chắc đã nạp.
+      // Khi texture 'stone' xuất hiện → chuyển ngay từ fallback sang art thật (merge T6 trước T3).
+      const swap = (texKey: string): void => {
+        if (texKey !== STONE_TEX) return;
+        this.sprite.setTexture(STONE_TEX);
+        scene.textures.off('addtexture', swap);
+      };
+      scene.textures.on('addtexture', swap);
+      scene.events.once('shutdown', () => scene.textures.off('addtexture', swap));
+    }
     this.squash = new SquashFx();
   }
 

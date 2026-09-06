@@ -37,6 +37,16 @@ export class RippleFx {
         .setActive(false);
       this.pool.push({ img, baseScale: 1, t: 1, active: false });
     }
+    if (key === RIPPLE_FB_KEY) {
+      // T6 art nạp xong (BootScene preload song song) → pool chuyển sprite 'ripple'.
+      const swap = (texKey: string): void => {
+        if (texKey !== RIPPLE_TEX) return;
+        for (const r of this.pool) r.img.setTexture(RIPPLE_TEX);
+        scene.textures.off('addtexture', swap);
+      };
+      scene.textures.on('addtexture', swap);
+      scene.events.once('shutdown', () => scene.textures.off('addtexture', swap));
+    }
   }
 
   /** Spawn 1 vòng ripple tại điểm màn hình; scale = độ mạnh chạm (0..1+). */
