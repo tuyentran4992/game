@@ -18,6 +18,8 @@ export class BootScene extends Phaser.Scene {
   }
 
   public create(): void {
-    // T3 — chuyển PlayScene
+    // Preload xong → handoff PlayScene (BUG-L2-01: create() rỗng khiến game màn đen —
+    // không ai sở hữu dòng glue này giữa T3/T6/T4; QA boot browser thật bắt được).
+    this.scene.start('PlayScene');
   }
 }

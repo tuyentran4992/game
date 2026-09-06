@@ -61,6 +61,7 @@ const NATIVE_CAF = globalThis.cancelAnimationFrame;
 
 beforeAll(() => {
   document.body.appendChild(CANVAS);
+  window.localStorage.setItem('sk_done', '1'); // T4 demo-once: wiring test ĐÃ xem demo — boot thẳng stage local
   (globalThis as Record<string, unknown>).requestAnimationFrame = (cb: (t: number) => void) =>
     setTimeout(() => cb(performance.now()), 16);
   (globalThis as Record<string, unknown>).cancelAnimationFrame = (id: number) => clearTimeout(id);

@@ -20,11 +20,14 @@ export class AimGuide {
   private line: Phaser.GameObjects.Graphics;
   private gauge: Phaser.GameObjects.Graphics;
   private label: Phaser.GameObjects.Text;
+  /** Vùng ngọt demo (U2) — CHỈ OnboardingPlayScene vẽ khi highlight bật. */
+  private sweet: Phaser.GameObjects.Graphics;
 
   constructor(scene: Phaser.Scene, canvasWidth: number) {
     this.line = scene.add.graphics().setDepth(25);
     this.gauge = scene.add.graphics().setDepth(26);
     this.gauge.setData('testid', 'aim-gauge'); // QA soi gauge lực khi kéo
+    this.sweet = scene.add.graphics().setDepth(24); // dưới line/gauge — nền vùng ngọt
     this.label = scene.add
       .text(canvasWidth / 2, 0, 'DRAG & RELEASE', {
         fontFamily: 'Arial, sans-serif',
@@ -44,6 +47,29 @@ export class AimGuide {
 
   setLabelY(y: number): void {
     this.label.setY(y);
+  }
+
+  /** Tắt vùng ngọt demo (U2) — xoá graphics vùng highlight. */
+  clearSweetZone(): void {
+    this.sweet.clear();
+  }
+
+  /**
+   * Vùng ngọt highlight (U2 — CHỈ demo T4 gọi): dải ngang quanh điểm xuất phát,
+   * mép trong [minPx..maxPx] theo band lực window — rip cong 2 đầu.
+   */
+  renderSweetZone(
+    ox: number,
+    oy: number,
+    minPx: number,
+    maxPx: number,
+    color: number,
+    alpha: number,
+    ripPx: number,
+  ): void {
+    this.sweet.clear();
+    this.sweet.fillStyle(color, alpha);
+    this.sweet.fillRoundedRect(ox - ripPx, oy - maxPx - ripPx, ripPx * 2 + 2, maxPx - minPx + ripPx * 2, ripPx);
   }
 
   /**

@@ -30,30 +30,36 @@ const MAX_STEPS_PER_UPDATE = 4000; // 4000 × (1/120)s ≈ 33s > trần sim TIME
 
 export class PlayScene extends Phaser.Scene {
   private cfg: MechanicsConfig = MECHANICS;
-  private engine!: PhysicsEngine;
-  private lifecycle!: RunLifecycle;
-  private proj = makeProjection(
+  // T4 kế thừa OnboardingPlayScene — các thành viên dưới đây mở protected (hook thiết kế T3),
+  // 0 đổi hành vi: engine/proj/ripple/camFx/aim/stage + applyEvents/consumePending.
+  protected engine!: PhysicsEngine;
+  protected lifecycle!: RunLifecycle; // protected T4: finishDemo trao lifecycle local (0 đổi hành vi)
+  protected proj = makeProjection(
     MECHANICS.canvas.width,
     MECHANICS.canvas.height,
     MECHANICS.fieldZMax,
   );
   private stoneRenderer!: StoneRenderer;
-  private water!: WaterRenderer;
-  private ripple!: RippleFx;
-  private camFx!: CameraFx;
-  private aim!: AimGuide;
-  private hud!: Hud;
+  protected water!: WaterRenderer;
+  protected ripple!: RippleFx;
+  protected camFx!: CameraFx;
+  protected aim!: AimGuide;
+  protected hud!: Hud; // protected T4: finishDemo render lại HUD sau trao tay (0 đổi hành vi)
   private pull!: PullBackInput;
   private acc = 0;
-  private pendingFlicks: { dirX: number; dirZ: number; power: number }[] = [];
+  protected pendingFlicks: { dirX: number; dirZ: number; power: number }[] = [];
   private runClosed = false;
   private firstHumanFlick = true;
   private labelFadeStarted = false;
   private labelAlpha = { a: 0 }; // proxy tween cho nhãn DRAG & RELEASE (U2)
   private booted = false;
+  /** 'local' = người chơi thật · 'demo' = script onboarding (T4 flip demo→local khi xong). */
+  protected stage: 'local' | 'demo' = 'local';
+  /** Slow-mo juice gate (T4 — 0.4× cuối PERFECT run): scale hiển thị, KHÔNG bẻ engine tầng A. */
+  protected slowmoScale = 1;
 
-  constructor() {
-    super('PlayScene');
+  constructor(sceneKey = 'PlayScene') {
+    super(sceneKey);
   }
 
   public create(): void {
@@ -66,7 +72,9 @@ export class PlayScene extends Phaser.Scene {
       typeof window !== 'undefined' && window.localStorage
         ? window.localStorage
         : memoryStorage();
-    this.lifecycle = new RunLifecycle(storage, { stage: 'local' });
+    // Lifecycle dựng theo stage của scene (mặc định 'local' — hành vi cũ giữ nguyên):
+    // stage 'demo' → tầng A (runLifecycle) KHÔNG ghi best (demo không bẩn best người chơi).
+    this.lifecycle = new RunLifecycle(storage, { stage: this.stage });
     this.water = new WaterRenderer(this, this.proj, w);
     this.ripple = new RippleFx(this);
     this.stoneRenderer = new StoneRenderer(this, this.proj);
@@ -122,7 +130,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   /** Events engine → juice (ripple CÙNG FRAME + squash + camera + haptic <100ms). */
-  private applyEvents(events: EngineEvent[]): void {
+  protected applyEvents(events: EngineEvent[]): void {
     for (const ev of events) {
       if (ev.type === 'bounce') {
         const x = this.proj.xToScreenX(ev.stoneX, ev.stoneZ);
@@ -153,7 +161,8 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
-  private renderAim(input: { dirX: number; dirZ: number; power: number } | null): void {
+  /** Vẽ/tắt aim guide (hook protected cho T4 demo sweet-zone). */
+  protected renderAim(input: { dirX: number; dirZ: number; power: number } | null): void {
     const ox = this.proj.xToScreenX(0, 0);
     const oy = this.proj.waterlineY - 10;
     // U2: highlight window PERFECT CHỈ trong demo — stage local truyền false CỨNG,
@@ -173,7 +182,7 @@ export class PlayScene extends Phaser.Scene {
   /** Tiêu thụ hàng đợi qua HumanFlickProvider (tầng A) — 1 đường sim duy nhất.
    * Mỗi lần chỉ tiêu thụ ĐÚNG 1 cú (shift) — cú sau chờ run hiện tại xong,
    * không mất cú khi người chơi spam (REVIEW round 1 điểm 1). */
-  private consumePending(): void {
+  protected consumePending(): void {
     if (this.pendingFlicks.length === 0) return;
     if (!this.engine.finished && this.engine.stone) return; // đang bay — chờ run xong
     const provider = new HumanFlickProvider([this.pendingFlicks[0]]);
@@ -216,7 +225,7 @@ export class PlayScene extends Phaser.Scene {
     return this.lifecycle;
   }
   getStageForTest(): 'local' | 'demo' {
-    return 'local';
+    return this.stage; // T4: stage demo có thật — mirror đọc field, không cứng 'local'
   }
   updateForTest(time: number, delta: number): void {
     this.update(time, delta);

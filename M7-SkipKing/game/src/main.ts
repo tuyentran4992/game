@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { MECHANICS } from './config/mechanics';
 import { BootScene } from './scenes/BootScene';
-import { PlayScene } from './scenes/PlayScene';
+import { OnboardingPlayScene } from './scenes/OnboardingPlayScene';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -12,7 +12,7 @@ const config: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, PlayScene],
+  scene: [BootScene, OnboardingPlayScene],
 };
 
 window.addEventListener('load', () => {

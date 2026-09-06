@@ -1,0 +1,236 @@
+/**
+ * M7 Skip King — OnboardingPlayScene (T4 TẦNG B — CONTRACT 3.1 + mục 5 + §6):
+ * onboarding B0–B4 diễn theo OnboardingDirector (tầng A) + ScriptedFlickProvider (cùng schema sim),
+ * juice 6 (ripple/plop pitch/squash/camera/slow-mo/spray pool) + plopSynth + resume pointerdown ĐẦU
+ * + combo-banner PERFECT + demo banner + sweet-zone CHỈ demo (U2) + demo-once (sk_done).
+ * Kế thừa PlayScene T3 (mở protected hook) — scene vẫn mỏng: mọi luật ở tầng A.
+ */
+import * as Phaser from 'phaser';
+import { PlayScene } from './PlayScene';
+import { MECHANICS } from '../config/mechanics';
+import type { EngineEvent, FlickInput } from '../logic/types';
+import { ScriptedFlickProvider } from '../logic/flickProvider';
+import { OnboardingDirector, isDemoDone, DEMO_DONE_KEY } from '../logic/onboarding';
+import { plopParams } from '../logic/audioMapper';
+import { PlopSynth, installResumeHook } from '../audio/plopSynth';
+import { ComboBanner } from '../ui/ComboBanner';
+import { DemoBanner } from '../ui/DemoBanner';
+import { memoryStorage, RunLifecycle } from '../logic/runLifecycle';
+import type { KvStorage } from '../logic/runLifecycle';
+import { judgePerfect } from '../logic/mechanics';
+import { GAUGE_COLOR_PERFECT } from '../render/AimGuide';
+import { AIM } from '../render/layout';
+
+/** Độ dày vùng ngọt vẽ trong demo (U2) — nhắm trùng band lực window (0.7–0.9). */
+const SWEET_MIN_PX = Math.round(AIM.aimMinPx + (AIM.aimMaxPx - AIM.aimMinPx) * MECHANICS.perfectWindow.powerMin);
+const SWEET_MAX_PX = Math.round(AIM.aimMinPx + (AIM.aimMaxPx - AIM.aimMinPx) * MECHANICS.perfectWindow.powerMax);
+/** Alpha vùng ngọt + rip xung quanh (U2 — mờ, chỉ demo). */
+const SWEET_ALPHA = 0.28;
+const SWEET_RIP_PX = 14;
+
+/** Khi nào bắt đầu spray quanh điểm nảy (nảy mạnh mới bắn — pool tiết kiệm). */
+const SPRAY_IMPACT_MIN = 0.72;
+
+interface SprayParticle {
+  img: Phaser.GameObjects.Arc;
+  vx: number;
+  vy: number;
+  life: number; // 0..1
+  active: boolean;
+}
+
+/** Pool spray nước — object pool tái dùng, không new/destroy mỗi frame (ROLE-RULES perf). */
+class SprayFx {
+  private pool: SprayParticle[] = [];
+
+  constructor(scene: Phaser.Scene, size = 16) {
+    for (let i = 0; i < size; i++) {
+      const img = scene.add.circle(-100, -100, 3, 0xbfe4ff, 0.9).setDepth(7).setVisible(false).setActive(false);
+      this.pool.push({ img, vx: 0, vy: 0, life: 1, active: false });
+    }
+  }
+
+  burst(screenX: number, screenY: number, strength: number): void {
+    let n = 0;
+    const count = 4 + Math.round(strength * 4); // 4..8 hạt/burst
+    for (const p of this.pool) {
+      if (n >= count) break;
+      if (p.active) continue;
+      p.active = true;
+      p.life = 1;
+      const ang = Math.PI * (0.6 + Math.random() * 0.8); // vòm nước — juice, không phải luật
+      const spd = 60 + strength * 90;
+      p.vx = Math.cos(ang) * spd * (Math.random() < 0.5 ? -1 : 1);
+      p.vy = -Math.sin(ang) * spd;
+      p.img.setPosition(screenX, screenY).setVisible(true).setActive(true).setAlpha(0.9);
+      n++;
+    }
+  }
+
+  update(deltaMs: number): void {
+    const dt = deltaMs / 1000;
+    for (const p of this.pool) {
+      if (!p.active) continue;
+      p.life -= dt / 0.5; // hạt sống ~0.5s — [PLACEHOLDER] feel-tune
+      if (p.life <= 0) {
+        p.active = false;
+        p.img.setVisible(false).setActive(false);
+        continue;
+      }
+      p.vy += 420 * dt; // trọng lực rơi hạt — juice
+      p.img.x += p.vx * dt;
+      p.img.y += p.vy * dt;
+      p.img.setAlpha(0.9 * p.life);
+    }
+  }
+}
+
+export class OnboardingPlayScene extends PlayScene {
+  private demoProvider!: ScriptedFlickProvider;
+  private director!: OnboardingDirector;
+  private combo!: ComboBanner;
+  private demoText!: DemoBanner;
+  private plop!: PlopSynth;
+  private spray!: SprayFx;
+  private sweetZone = false;
+  private soundOffShown = false;
+  private usedDemoFlick = false;
+  private storage!: KvStorage;
+
+  constructor(sceneKey = 'OnboardingPlayScene') {
+    super(sceneKey);
+  }
+  public create(): void {
+    // Demo-once: sk_done có sẵn → KHÔNG demo, thẳng stage local (lần 2+ vào game).
+    // Chốt stage TRƯỚC super.create() — base dựng lifecycle theo stage
+    // (runLifecycle tầng A: stage 'demo' KHÔNG ghi best — demo không bẩn best người chơi).
+    this.storage =
+      typeof window !== 'undefined' && window.localStorage ? window.localStorage : memoryStorage();
+    const demoDone = isDemoDone(this.storage);
+    this.stage = demoDone ? 'local' : 'demo';
+
+    super.create();
+
+    this.demoProvider = new ScriptedFlickProvider(MECHANICS);
+    this.director = new OnboardingDirector(this.demoProvider, this.storage);
+    this.combo = new ComboBanner(this, this.scale.width / 2, this.scale.height * 0.38);
+    this.demoText = new DemoBanner(this, this.scale.width / 2, this.scale.height * 0.22);
+    this.spray = new SprayFx(this);
+    this.plop = new PlopSynth();
+
+    // AudioContext.resume() chạy ngay pointerdown ĐẦU — bắt buộc (CONTRACT mục 5).
+    installResumeHook(this.plop);
+
+    // Skip-on-touch: chạm bất kỳ → cắt demo NGAY (CONTRACT 3.1).
+    if (this.stage === 'demo') {
+      this.input.once('pointerdown', () => this.finishDemo());
+      this.demoText.showTitle('SKIP KING', 'FLICK TO SKIP');
+    }
+  }
+
+  /** Director mỗi frame — diễn banner/flick/sweet-zone theo beat (scene chỉ DIỄN). */
+  public override update(time: number, delta: number): void {
+    super.update(time, delta);
+    if (this.stage !== 'demo') return;
+    // storage demo-once nằm trong director (constructor) — ĐÚNG 1 nguồn.
+    const u = this.director.update(time / 1000);
+    if (u.flick) {
+      this.usedDemoFlick = true;
+      this.pendingFlicks.push(u.flick); // NGUYÊN BẢN — không assist (consumePending Pending cũng không assist)
+      this.consumePending();
+    }
+    if (u.banner === 'YOUR TURN') {
+      this.demoText.showYourTurn();
+    }
+    // Sweet-zone CHỈ demo (U2) — highlight vùng ngọt theo window config (không phải lúc tự kéo).
+    if (u.sweetZone !== this.sweetZone) {
+      this.sweetZone = u.sweetZone;
+      if (!this.sweetZone) this.aim.clearSweetZone();
+    }
+    if (u.slowmo) this.applySlowmoForTest(MECHANICS.slowmoTimescale); // B3: slow-mo 0.4×
+    if (u.done) this.finishDemo();
+  }
+
+  /** Juice bổ sung T4: plop pitch (audioMapper) + spray pool quanh điểm nảy. */
+  protected override applyEvents(events: EngineEvent[]): void {
+    super.applyEvents(events);
+    for (const ev of events) {
+      if (ev.type === 'bounce') {
+        this.plop.play(
+          plopParams({ bounces: 0, impact: ev.impact, hit: true, perfect: this.engine.judgedPerfect }),
+        );
+        if (ev.impact >= SPRAY_IMPACT_MIN) {
+          this.spray.burst(this.proj.xToScreenX(ev.stoneX, ev.stoneZ), this.proj.zToY(ev.stoneZ), ev.impact);
+        }
+      } else if (ev.type === 'splash') {
+        this.plop.play(plopParams({ bounces: 0, impact: ev.stoneZ > 0 ? 0.5 : 0.2, hit: false }));
+        this.spray.burst(this.proj.xToScreenX(ev.stoneX, ev.stoneZ), this.proj.zToY(ev.stoneZ), 1);
+      }
+    }
+  }
+
+  /** PERFECT → combo banner 2 dòng + camera punch (juice — số ×2 sống ở tầng A). */
+  private showCombo(): void {
+    this.combo.show(this);
+    this.camFx.punch(0.03);
+  }
+
+  /** Hết demo (hết 12s / skip-on-touch) — flip demo→local + banner sạch + slow-mo thả + trao tay. */
+  private finishDemo(): void {
+    if (this.stage === 'local') return;
+    this.stage = 'local';
+    this.sweetZone = false;
+    this.aim.clearSweetZone();
+    this.clearSlowmoForTest();
+    this.demoText.clear();
+    // Trao tay B4: lifecycle local MỚI — lượt người chơi chấm best thật qua tầng A
+    // (scene không tự ghi best; runLifecycle là chủ sở hữu storage điểm).
+    this.lifecycle = new RunLifecycle(this.storage, { stage: 'local' });
+    this.hud.render(this.lifecycle);
+    this.storage.setItem(DEMO_DONE_KEY, '1');
+  }
+
+  /** Vẽ vùng ngọt (U2) — gọi trong renderAim khi stage demo VÀ highlight đang bật. */
+  protected override renderAim(input: { dirX: number; dirZ: number; power: number } | null): void {
+    const ox = this.proj.xToScreenX(0, 0);
+    const oy = this.proj.waterlineY - 10;
+    const demo = this.stage === 'demo';
+    this.aim.render(ox, oy, input, demo && this.sweetZone);
+    if (demo && this.sweetZone) {
+      // Vùng ngọt = band lực window (0.7–0.9) — mép vẽ nhắm đúng độ dài aim line.
+      this.aim.renderSweetZone(ox, oy, SWEET_MIN_PX, SWEET_MAX_PX, GAUGE_COLOR_PERFECT, SWEET_ALPHA, SWEET_RIP_PX);
+    }
+  }
+
+  // ---- mirror test (TDD-B wiring — không lộ logic mới) ----
+  demoDoneForTest(): boolean {
+    return isDemoDone(
+      typeof window !== 'undefined' && window.localStorage ? window.localStorage : memoryStorage(),
+    );
+  }
+  comboBannerForTest(): Phaser.GameObjects.Container | null {
+    return (this.combo as unknown as { line1?: unknown }).line1 ? { list: [(this.combo as unknown as { line1: unknown }).line1, (this.combo as unknown as { line2: unknown }).line2] } as unknown as Phaser.GameObjects.Container : null;
+  }
+  demoBannerForTest(): Phaser.GameObjects.Container | null {
+    return (this.demoText as unknown as { main?: unknown }).main ? { list: [(this.demoText as unknown as { main: unknown }).main, (this.demoText as unknown as { sub: unknown }).sub] } as unknown as Phaser.GameObjects.Container : null;
+  }
+  slowmoScaleForTest(): number {
+    return this.slowmoScale;
+  }
+  applySlowmoForTest(scale: number): void {
+    this.slowmoScale = scale;
+  }
+  clearSlowmoForTest(): void {
+    this.slowmoScale = 1;
+  }
+  /** Skip-on-touch mirror (CONTRACT 3.1) — dùng bởi wiring test (finishDemo private). */
+  skipDemoForTest(): void {
+    this.finishDemo();
+  }
+  triggerComboForTest(input: FlickInput): void {
+    // Cùng đường judge tầng A: markPerfect trước khi throw — engine chấm PERFECT.
+    this.engine.throwFlick(input);
+    if (judgePerfect(input, MECHANICS)) this.engine.markPerfect();
+    if (judgePerfect(input, MECHANICS)) this.showCombo();
+  }
+}
