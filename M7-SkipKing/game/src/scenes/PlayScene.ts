@@ -116,14 +116,19 @@ export class PlayScene extends Phaser.Scene {
     this.acc += Math.min(delta, 100) / 1000 * this.slowmoScale;
     const dt = this.cfg.fixedDt;
     let steps = 0;
+    // BUG-GOM-01 (P0, QA t_570777d1/FIX-ROUND-1.md): PhysicsEngine.step() TỰ drainEvents()
+    // nội bộ ở mọi nhánh push event → return của step là NƠI DUY NHẤT có event.
+    // Vứt return = nuốt sạch (banner/plop/ripple/squash/haptic chết + slow-mo kẹt).
+    // Gom events qua các step rồi apply MỘT lần sau loop (MAX_STEPS_PER_UPDATE + cap acc giữ nguyên).
+    const evs: EngineEvent[] = [];
     while (this.acc >= dt && steps < MAX_STEPS_PER_UPDATE) {
-      this.engine.step(dt);
+      evs.push(...this.engine.step(dt));
       this.acc -= dt;
       steps++;
     }
     if (this.acc > dt) this.acc = 0;
 
-    this.applyEvents(this.engine.drainEvents());
+    this.applyEvents(evs);
 
     if (this.engine.finished && !this.runClosed) {
       this.runClosed = true;
