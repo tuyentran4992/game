@@ -106,9 +106,10 @@ export class PlayScene extends Phaser.Scene {
     this.booted = true;
   }
 
-  /** Fixed-step accumulator — engine bước đúng fixedDt bất kể fps (CONTRACT §2). */
+  /** Fixed-step accumulator — engine bước đúng fixedDt bất kể fps (CONTRACT §2).
+   * T4: ×slowmoScale (juice slow-mo 0.4× cuối PERFECT run — pacing scene, KHÔNG bẻ engine tầng A; 1× = hành vi cũ). */
   public update(_time: number, delta: number): void {
-    this.acc += Math.min(delta, 100) / 1000; // clamp delta frames vẽ lớn (tab nền)
+    this.acc += Math.min(delta, 100) / 1000 * this.slowmoScale;
     const dt = this.cfg.fixedDt;
     let steps = 0;
     while (this.acc >= dt && steps < MAX_STEPS_PER_UPDATE) {

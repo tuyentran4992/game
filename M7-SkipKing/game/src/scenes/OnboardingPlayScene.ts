@@ -95,6 +95,7 @@ export class OnboardingPlayScene extends PlayScene {
   private sweetZone = false;
   private soundOffShown = false;
   private usedDemoFlick = false;
+  private comboShownThisRun = false;
   private storage!: KvStorage;
 
   constructor(sceneKey = 'OnboardingPlayScene') {
@@ -151,7 +152,9 @@ export class OnboardingPlayScene extends PlayScene {
     if (u.done) this.finishDemo();
   }
 
-  /** Juice bổ sung T4: plop pitch (audioMapper) + spray pool quanh điểm nảy. */
+  /** Juice bổ sung T4: plop pitch (audioMapper) + spray pool + combo banner + slow-mo.
+   * PERFECT bám ĐÚNG đường judge tầng A (engine.judgedPerfect — consumePending markPerfect):
+   * bounce ĐẦU của run PERFECT → banner 2 dòng + slow-mo 0.4×; splash (run kết thúc) → trả nhịp. */
   protected override applyEvents(events: EngineEvent[]): void {
     super.applyEvents(events);
     for (const ev of events) {
@@ -162,9 +165,16 @@ export class OnboardingPlayScene extends PlayScene {
         if (ev.impact >= SPRAY_IMPACT_MIN) {
           this.spray.burst(this.proj.xToScreenX(ev.stoneX, ev.stoneZ), this.proj.zToY(ev.stoneZ), ev.impact);
         }
+        if (this.engine.judgedPerfect && !this.comboShownThisRun) {
+          this.comboShownThisRun = true;
+          this.showCombo(); // banner "PERFECT FLICK! / ×2" + camera punch (×2 điểm cú thả — tầng A)
+          this.applySlowmoForTest(MECHANICS.slowmoTimescale); // slow-mo 0.4× (CONTRACT §2)
+        }
       } else if (ev.type === 'splash') {
         this.plop.play(plopParams({ bounces: 0, impact: ev.stoneZ > 0 ? 0.5 : 0.2, hit: false }));
         this.spray.burst(this.proj.xToScreenX(ev.stoneX, ev.stoneZ), this.proj.zToY(ev.stoneZ), 1);
+        this.comboShownThisRun = false;
+        this.clearSlowmoForTest(); // run kết thúc — nhịp thường cho cú tiếp theo
       }
     }
   }
@@ -228,9 +238,8 @@ export class OnboardingPlayScene extends PlayScene {
     this.finishDemo();
   }
   triggerComboForTest(input: FlickInput): void {
-    // Cùng đường judge tầng A: markPerfect trước khi throw — engine chấm PERFECT.
+    // Cùng đường judge tầng A: throw + markPerfect — banner/slow-mo do applyEvents diễn khi bounce.
     this.engine.throwFlick(input);
     if (judgePerfect(input, MECHANICS)) this.engine.markPerfect();
-    if (judgePerfect(input, MECHANICS)) this.showCombo();
   }
 }
