@@ -121,6 +121,7 @@ dist/
 - Quy trình: anh code local → **fun gate** → con nào VUI mới viết SPEC đủ 5 file (`specs/1-<slug>/`) + chuẩn bị `games/<slug>`.
 - Test nền cũ vẫn tốt: vitest 109 · tsc 0 · build OK.
 - **27/08 — NÂNG CHUẨN ART (anh Tuyền chốt):** DESIGN-SYSTEM §4 viết lại thành PREMIUM CASUAL (benchmark 195 game Playgama Trending: candy volumetric, thumbnail-first, juice bắt buộc, art QA gate 5 câu). Áp dụng riêng M5: `M5-Peel/specs/1-peel/ART-STANDARD.md`. Có hiệu lực cả prototype fun gate.
+- **06/09 — PB-IDEA-M5 (CEO, sau khi M1 bị Playgama reject):** quét MoA 3 góc + anti-clone catalog check web (PB-5) → 2 ứng viên sống: **Skip King** (flick đá skip nước, 0 bản cùng mechanic) + **Slice Studio** (trace cắt đúng hình, 1 bản kề Perfect Half — cần khác biệt hóa); pottery = dự phòng. Trình boss chọn → prototype fun gate PB-2 → mới SPEC. Bằng chứng: `/data/agents/ceo/outbox/t_fced83bb/IDEA-LIST.md` + nhật ký catalog trong `docs/SUBMISSIONS.md`. ⚠ M5 Peel: Playgama đã có "Sticker Jam: Peel Off & Match" — re-check catalog trước khi đầu tư lại M5.
 
 ### M4 — "Neon Grid" (`g4-neon-grid/`) — block puzzle ✅ CODE + BUILD
 - **Kiến trúc monorepo đầu tiên:** `@game/core` + `@game/sdk`.

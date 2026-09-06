@@ -41,6 +41,16 @@
 | 2026-09-04 | (hồi tố) M2 Neon Sort | color/liquid sort | Playgama + MC Play | CHƯA SOÁT ĐẦY ĐỦ — sort là thể loại đông, re-check trước khi nộp | ⚠ chờ re-check |
 | 2026-08-27 | (án lệ) M3 hướng B Potion Panic | merge | Playgama | ≥4 Suika clone + trùng tên juicy-merge | ❌ KILL (nhưng quá muộn — đã code xong; luật mới ra đời từ đây) |
 
+| 2026-09-06 | Skip King (flick đá skip nước) | flick-throw / skip | Playgama | **0 bản cùng mechanic** — search "skipping stones/skip stone/pebble/pond/bounce rock": chỉ My pet Pebble (pet-sim), Pebble: bubble evolution (bắn bong bóng), Ball Bounce (platformer), Throw ball into box (ném vào hộp) — không ai làm game ném đá attendant skip mặt nước | GO (chờ fun gate PB-2) |
+| 2026-09-06 | Slice Studio (trace cắt đúng hình) | precision cut / trace | Playgama | **1 bản kề cạnh**: Perfect Half `/game/perfect-half` (kéo đường thẳng cắt đôi đều) + Ninja Veggie Slice (arcade phản xạ khác mục tiêu) — <3 nhưng phải khác biệt hóa: trace-path quanh silhouette + % sai số + chapter (khác Perfect Half ở verb-điều khiển + cấu trúc level) | GO (kèm điều kiện khác biệt hóa, chờ fun gate PB-2) |
+| 2026-09-06 | Pottery Spin (spin nặn gốm) | shape-clay | Playgama | 0 bản shaping-gốm trực tiếp (chỉ Vlad&Niki Plasticine kids-racing + blog Minecraft) | GO-dự phòng (E/I thấp — chỉ khi 2 ý trên fail fun gate) |
+| 2026-09-06 | Wood-turning/carve variant | lathe carve | Playgama | ≥3: Wood Turning Wood Carving ASMR Processing · Turning Lathe `/game/turning-lathe` · Wood Cutting `/game/wood-cutting` | ❌ KILL |
+| 2026-09-06 | Soap cutting ASMR | slice-soap | Playgama | ≥2: Soap cutting. Relax `/game/soap-cutting-relax` · Soap Cutting ASMR `/game/soap-cutting-asmr` | ❌ KILL |
+| 2026-09-06 | Glass blow/fill | draw-line water | Playgama | ≥4: Happy Glass `/game/happy-glass-1` · Happy Glass 2 · Joy of Glass · Fill The Glass · Make the glass happy | ❌ KILL |
+| 2026-09-06 | Gem cut/polish | gem cutting | Playgama | 1 kề: Gem Stack `/game/gem-stack` + clicker-adjacent | ❌ KILL (verb mỏng) |
+| 2026-09-06 | Laser route/toggle | beam ricochet | Playgama | 1–2: Laser Bounce Miner `/game/laser-bounce-miner` · Turn Off the Light | ❌ GẠT (audience hẹp) |
+| 2026-09-06 | (ghi nhận hàng tồn) M5 "Peel!" | peel-ribbon | Playgama | ⚠ MỚI: Sticker Jam: Peel Off & Match `/game/sticker-jam-peel-off--match` (peel-sticker+match) — M5 peel-fruit vẫn khác cơ chế chính nhưng TRƯỚC KHI đầu tư lại M5 phải re-check catalog toàn bộ (PB-3b cửa 3) | ⏸ re-check trước khi dùng lại |
+
 ## Nhật ký nộp
 
 | Ngày | Game | Kênh | Action | Kết quả | Ghi chú |

@@ -10,10 +10,10 @@
 
 | # | Nút | Chi tiết | Cổng |
 |---|---|---|---|
-| B0.1 | **DUYỆT PLAN NÀY** | GO = CEO mở vòng fan-out thực thi (§1 chặng 5, v1.7: 1 card code cho dev-lead). KHÔNG = dây Sofiya trôi, goodwill 2-3 tuần tự tiêu từ 04/09 [GD1]. | anh Tuyền |
-| B0.2 | **EMAIL 1 → SOFIYA** | Gửi **D+1..2 (05–06/09)**. Bản nháp 5 dòng TIẾNG ANH verdict-ready nằm trong REBUT-MONEY #72(a) — anh duyệt nội dung + **anh bấm gửi** (PB-6: danh tính thật là quyền boss). Email **KHÔNG hứa ngày resubmit cứng**; nếu vỡ lịch D+11 → email 2 đúng 1 dòng (ngày mới, không xin lỗi dài, không hứa "tuần sau"). CẤM đính kèm zip/ảnh chưa QA-verify. | anh Tuyền (0h dev) |
-| B0.3 | **FUN GATE PB-2** | D+9..10 (13–14/09): anh chơi tay bản code-freeze. Câu hỏi duy nhất "chơi có vui không / độ khó hợp lý chưa". FAIL = FIX-ROUND, resubmit lùi trong dải 13–22/09. | anh Tuyền |
-| B0.4 | **NÚT NỘP MEDIANE** | Target resubmit **D+11 = 15/09**, dải thực tế 13–22/09. Hồ sơ do growth soạn + QA verify, anh bấm nộp trên tài khoản publisher. | anh Tuyền |
+| B0.1 | **DUYỆT PLAN NÀY** ✅ | GO = CEO mở vòng fan-out thực thi (§1 chặng 5, v1.7: 1 card code cho dev-lead). KHÔNG = dây Sofiya trôi, goodwill 2-3 tuần tự tiêu từ 04/09 [GD1]. | anh Tuyền |
+| B0.2 | **EMAIL 1 → SOFIYA** ✅ ĐÃ GỬI 06/09 | Gửi **D+1..2 (05–06/09)**. Bản nháp 5 dòng TIẾNG ANH verdict-ready nằm trong REBUT-MONEY #72(a) — anh duyệt nội dung + **anh bấm gửi** (PB-6: danh tính thật là quyền boss). Email **KHÔNG hứa ngày resubmit cứng**; nếu vỡ lịch D+11 → email 2 đúng 1 dòng (ngày mới, không xin lỗi dài, không hứa "tuần sau"). CẤM đính kèm zip/ảnh chưa QA-verify. — *Thực tế 06/09: gửi reply thread cũ, có link Netlify @07ca06a (build QA-verified), hỏi "còn chỉnh gì nữa trước khi submit", không hứa ngày.* | anh Tuyền (0h dev) |
+| B0.3 | **FUN GATE PB-2** ✅ CHƠI SỚM 06/09 ("preview OK rồi") | D+9..10 (13–14/09): anh chơi tay bản code-freeze. Câu hỏi duy nhất "chơi có vui không / độ khó hợp lý chưa". FAIL = FIX-ROUND, resubmit lùi trong dải 13–22/09. | anh Tuyền |
+| B0.4 | **NÚT NỘP MEDIANE** ⏸ CHỜ REPLY SOFIYA (boss chốt 06/09: có phản hồi rồi mới nộp) | Target resubmit **D+11 = 15/09**, dải thực tế 13–22/09. Hồ sơ do growth soạn + QA verify, anh bấm nộp trên tài khoản publisher. — *Nếu reply "nothing else" → nộp ngay; nếu góp ý thêm → dây FIX mới trước khi nộp.* | anh Tuyền |
 
 **Lịch dây (MONEY#72(a), neo D0=04/09, chấp nhận nguyên văn #78-Y3):**
 `D+1..2 email 1 → D+2..4 PERF3 khép (t_0bf09818→t_162eea7a→t_e49b5119) → D+4..7 T1 + 6 feature PRE → D+8 QA-GOM + repackage + RE-SHOOT ảnh 1 LẦN tại code-freeze (không chờ verdict boss) → D+9..10 Fun Gate → D+11 nộp.`
