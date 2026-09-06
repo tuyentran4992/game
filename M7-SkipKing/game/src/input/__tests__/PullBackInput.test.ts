@@ -19,14 +19,14 @@ function harness() {
 }
 
 describe('PullBackInput — kéo ngược = tích lực (power ∝ độ dài kéo)', () => {
-  it('kéo 1/2 maxDrag → power 0.5, hướng NGƯỢC chiều kéo (dây cung)', () => {
+  it('kéo ngang 1/2 maxDrag → power 0.5, hướng NGƯỢC chiều kéo (dây cung)', () => {
     const { pull, released } = harness();
     pull.onDown(360, 900);
-    pull.onMove(360 - AIM.maxDragPx / 2, 900 + AIM.maxDragPx / 2); // kéo trái-xuống
-    pull.onUp(360 - AIM.maxDragPx / 2, 900 + AIM.maxDragPx / 2);
+    pull.onMove(360 - AIM.maxDragPx / 2, 900); // kéo trái ngang
+    pull.onUp(360 - AIM.maxDragPx / 2, 900);
     expect(released).toHaveLength(1);
     expect(released[0].power).toBeCloseTo(0.5, 6);
-    // kéo trái-xuống → đá bay phải-lên (ngược): dirX > 0, dirZ < 0 (đi tới xa)
+    // kéo trái → đá bay phải (ngược): dirX > 0; kéo ngang → bay ra xa (dirZ < 0)
     expect(released[0].dirX).toBeGreaterThan(0);
     expect(released[0].dirZ).toBeLessThan(0);
   });
@@ -54,7 +54,7 @@ describe('PullBackInput — kéo ngược = tích lực (power ∝ độ dài k�
     pull.onMove(362, 903); // ~3.6px < minDrag
     pull.onUp(362, 903);
     expect(released).toHaveLength(0);
-    expect(aims.at(-1)).toBeNull(); // aim guide tắt
+    expect(aims[aims.length - 1]).toBeNull(); // aim guide tắt
   });
 
   it('onAim stream null khi chưa kéo / null sau khi thả — aim guide đúng trạng thái', () => {
@@ -63,10 +63,10 @@ describe('PullBackInput — kéo ngược = tích lực (power ∝ độ dài k�
     pull.onDown(360, 900);
     pull.onMove(360, 900 + 100);
     expect(pull.currentInput()).not.toBeNull();
-    expect(aims.at(-1)).not.toBeNull();
+    expect(aims[aims.length - 1]).not.toBeNull();
     pull.onUp(360, 900 + 100);
     expect(pull.currentInput()).toBeNull();
-    expect(aims.at(-1)).toBeNull();
+    expect(aims[aims.length - 1]).toBeNull();
   });
 
   it('cancel() huỷ cú kéo đang giữa chừng', () => {

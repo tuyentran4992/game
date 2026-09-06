@@ -51,6 +51,7 @@ vi.hoisted(() => {
 import Phaser from 'phaser';
 import { PlayScene } from '../PlayScene';
 import { Hud } from '../../ui/Hud';
+import { LAYOUT } from '../../render/layout';
 import { MECHANICS } from '../../config/mechanics';
 
 const CANVAS = document.createElement('canvas');
@@ -139,8 +140,14 @@ describe('PlayScene wiring — dispatch input → FlickInput (K4×V1 schema tầ
   });
 
   it('chain cú 2 (không assist vì run đã có cú đầu) — vẫn vào engine cùng schema', () => {
-    scene.updateForTest(3000, 30000); // sim tới hết run 1 (terminal)
     const engine = scene.getEngineForTest()!;
+    // Sim như runtime thật: loop frame 16ms (clamp delta 100ms/frame chống spiral —
+    // một update call không thể vượt 100ms) tới run 1 terminal, trần 3600 frame > 30s sim.
+    let frames = 0;
+    while (!engine.finished && frames < 3600) {
+      scene.updateForTest(3000 + frames * 16, 16);
+      frames++;
+    }
     expect(engine.finished).toBe(true);
     scene.dispatchFlickForTest({ dirX: 0, dirZ: -1, power: 0.5 });
     expect(engine.stone).not.toBeNull();
@@ -168,7 +175,7 @@ describe('Hud — testid + text EN + cỡ chữ ≥24px trên canvas 720 (PB-5, 
     expect(hud.fontSizePx).toBeGreaterThanOrEqual(24);
   });
 
-  it('màu HUD đủ tương phản trên nền sunset (WCAG AA ≥4.5 — QA-SUB-2 đo)', () => {
+  it('màu HUD đủ tương phản trên nền sunset (WCAG AA ≥4.5 — T6 đo worst-case 8.2:1)', () => {
     const hud = new Hud(scene as unknown as Phaser.Scene);
     const rgb = hud.colorHex.replace('#', '');
     const r = parseInt(rgb.slice(0, 2), 16) / 255;
@@ -176,9 +183,11 @@ describe('Hud — testid + text EN + cỡ chữ ≥24px trên canvas 720 (PB-5, 
     const b = parseInt(rgb.slice(4, 6), 16) / 255;
     const lin = (c: number) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
     const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-    // nền HUD = dải trời tối (overlay) — dùng L nền tối nhất contract (LAYOUT.hudBandLuminance)
-    const bandL = 0.05; // doc LAYOUT.hudBandLuminance — dải trời tối phía trên
-    const ratio = (L + 0.05) / (bandL + 0.05);
+    // nền HUD = dải trời — luminance worst-case T6 đo trên sunset_bg thật (LAYOUT.hudBandLuminance)
+    const bandL = LAYOUT.hudBandLuminance;
+    const hi = Math.max(L, bandL);
+    const lo = Math.min(L, bandL);
+    const ratio = (hi + 0.05) / (lo + 0.05);
     expect(ratio).toBeGreaterThanOrEqual(4.5);
   });
 
