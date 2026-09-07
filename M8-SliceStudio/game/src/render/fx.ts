@@ -6,6 +6,7 @@
 import * as Phaser from 'phaser';
 import { resampleUniform, type Vec } from '../geom/path';
 import type { LevelShape } from '../level/levels';
+import { ATLAS_KEYS, ART } from '../config/theme-config';
 
 export interface Halves {
   a: Vec[];
@@ -80,6 +81,72 @@ export function fillPoly(g: Phaser.GameObjects.Graphics, pts: readonly Vec[], co
   );
 }
 
+// ---------- S1 art pipeline (interior sprite + shadow — added, old signatures untouched) ----------
+
+export interface FillPolyArtOpts {
+  /** chapter 1..4 → atlas key (theme-config). Omit = legacy flat fill (proto behavior). */
+  chapter?: 1 | 2 | 3 | 4;
+  /** ellipse the polygon represents — used for the interior sprite placement. */
+  shape?: LevelShape;
+}
+
+/**
+ * S1: legacy flat silhouette fill + INTERIOR ART layer inside the ellipse hit-shape.
+ * The chapter atlas sprite already carries the rough-edge mask baked into its alpha
+ * (scripts/gen_slice_sprites.py — same deterministic pts as theme-config), so no
+ * runtime geometry mask is needed: sprite sits ABOVE the flat fill; the flat fill
+ * stays dimmed to read as the thin color ring between art edge and outline.
+ * Callers that pass no opts get exactly the proto behavior (TDD-B: no signature change).
+ */
+export function fillPolyWithArt(
+  scene: Phaser.Scene,
+  levelRoot: Phaser.GameObjects.Container,
+  g: Phaser.GameObjects.Graphics,
+  pts: readonly Vec[],
+  color: number,
+  alpha = 1,
+  opts: FillPolyArtOpts = {},
+): void {
+  fillPoly(g, pts, color, alpha);
+  const { chapter, shape } = opts;
+  if (!chapter || !shape) return;
+  const key = ATLAS_KEYS[chapter];
+  if (!scene.textures.exists(key)) return; // asset missing → flat Graphics only (safe fallback)
+  const src = scene.textures.get(key).getSourceImage() as { width?: number } | null;
+  if (!src || !src.width) return;
+
+  // sprite canvas ellipse (r0 = n/2 - 24) maps onto the level ellipse; the baked mask
+  // polygon inscribes it, so the art edge stays inside the hit-shape edge (S1-T2 anchor)
+  const r0 = src.width / 2 - 24;
+  const scale = 1 / (r0 / (src.width / 2)); // ≈1.049 — canvas ellipse → level ellipse
+  const sprite = scene.add
+    .image(shape.cx, shape.cy, key)
+    .setDisplaySize(shape.rx * 2 * scale, shape.ry * 2 * scale);
+  levelRoot.addAt(sprite, 1); // right above the flat-fill graphics (index 0)
+  g.setAlpha(0.55); // flat fill dims — reads as ring + split-flash base
+}
+
+/** Drop-shadow ellipse under the interior art (DESIGN-SPEC §2 shadow layer). */
+export function addSilhouetteShadow(
+  scene: Phaser.Scene,
+  levelRoot: Phaser.GameObjects.Container,
+  shape: LevelShape,
+  chapter: 1 | 2 | 3 | 4,
+): Phaser.GameObjects.Ellipse | null {
+  if (!scene.textures.exists(ATLAS_KEYS[chapter])) return null; // art-mode only
+  const sh = scene.add.ellipse(
+    shape.cx,
+    shape.cy + ART.shadow.offsetY,
+    shape.rx * 2 * ART.shadow.scale,
+    shape.ry * 2 * ART.shadow.scale,
+    ART.shadow.color,
+    ART.shadow.alpha,
+  );
+  sh.setDepth(4); // under the silhouette fill (levelRoot children: g=0 …)
+  levelRoot.addAt(sh, 0);
+  return sh;
+}
+
 /** 5-point star polygon points (for core reveal + star icons). */
 export function starPoints(cx: number, cy: number, r: number): Phaser.Math.Vector2[] {
   const pts: Phaser.Math.Vector2[] = [];
@@ -134,4 +201,55 @@ export function sparkBurst(scene: Phaser.Scene, x: number, y: number, tint: numb
   p.setDepth(60);
   p.explode(count);
   scene.time.delayedCall(900, () => p.destroy());
+}
+
+/** Seam particles along the cut entry→exit (DESIGN-SPEC §2 seam-speck direction). */
+export function seamBurst(scene: Phaser.Scene, entry: Vec, exit: Vec, tint: number, opts?: { count?: number }): void {
+  ensureSparkTexture(scene);
+  const cfg = ART.seam;
+  const count = opts?.count ?? cfg.count;
+  const mx = (entry.x + exit.x) / 2;
+  const my = (entry.y + exit.y) / 2;
+  const angle = Math.atan2(exit.y - entry.y, exit.x - entry.x);
+  const spread = (cfg.spreadDeg * Math.PI) / 180;
+  const p = scene.add.particles(mx, my, 'spark', {
+    speed: { min: cfg.speedMin, max: cfg.speedMax },
+    angle: {
+      min: ((angle - spread / 2) * 180) / Math.PI,
+      max: ((angle + spread / 2) * 180) / Math.PI,
+    },
+    lifespan: { min: cfg.lifespanMin, max: cfg.lifespanMax },
+    scale: { start: 1.1, end: 0 },
+    quantity: count,
+    tint,
+    blendMode: Phaser.BlendModes.ADD,
+    emitting: false,
+  });
+  p.setDepth(55);
+  p.explode(count);
+  scene.time.delayedCall(cfg.lifespanMax + 120, () => p.destroy());
+}
+
+/**
+ * S1 atlas preload — boot scene whose preload() pulls the 4 chapter atlases through
+ * `this.load.image`, so the verify_game.sh asset-manifest gate (bar 4) sees every
+ * atlas key ↔ file, and so scenes can register this before TraceScene (S4 owns the
+ * wiring). 0 runtime image loads outside these atlases (DESIGN-SPEC §1.3).
+ */
+export class AtlasBootScene extends Phaser.Scene {
+  constructor() {
+    super('AtlasBoot');
+  }
+
+  preload(): void {
+    this.load.image('atlas-m1', 'atlas-m1.png');
+    this.load.image('atlas-m2', 'atlas-m2.png');
+    this.load.image('atlas-m3', 'atlas-m3.png');
+    this.load.image('atlas-m4', 'atlas-m4.png');
+  }
+
+  create(): void {
+    // hand off to the game flow already registered in the config (TraceScene default)
+    this.scene.start('TraceScene');
+  }
 }
