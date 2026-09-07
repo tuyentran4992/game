@@ -21,7 +21,7 @@ import { StoneRenderer } from '../render/StoneRenderer';
 import { WaterRenderer } from '../render/WaterRenderer';
 import { RippleFx } from '../render/RippleFx';
 import { WakeTrail } from '../render/WakeTrail';
-import { FoamFx } from '../render/FoamFx';
+import { FoamFx, SprayFx } from '../render/FoamFx';
 import { CameraFx } from '../render/CameraFx';
 import { AimGuide } from '../render/AimGuide';
 import { PullBackInput } from '../input/PullBackInput';
@@ -76,6 +76,8 @@ export class PlayScene extends Phaser.Scene {
   private simMs = 0;
   private wake!: WakeTrail; // FUN2-C2 — vệt lướt liên tục theo đá bay
   private foam!: FoamFx; // FUN2-C2 — foam trắng nổ tại điểm chạm (lớp thêm, không thay ripple)
+  /** FUN2-C3 — spray nước theo impact (pool render Tầng B; MỌI bounce bung — không gate cứng). */
+  protected spray!: SprayFx; // protected: OnboardingPlayScene update qua hook updateExtraFx
   private lastWakeSpawnMs = -1e9;
 
   constructor(sceneKey = 'PlayScene') {
@@ -99,6 +101,7 @@ export class PlayScene extends Phaser.Scene {
     this.ripple = new RippleFx(this);
     this.wake = new WakeTrail(this, 4); // FUN2-C2 — dưới ripple/foam, trên dải nước (depth 3)
     this.foam = new FoamFx(this, 5); // FUN2-C2 — ngang ripple (đè lớp), dưới đá (depth 30)
+    this.spray = new SprayFx(this); // FUN2-C3 — pool spray theo impact (TESTID skim-spray)
     this.stoneRenderer = new StoneRenderer(this, this.proj);
     this.camFx = new CameraFx(this.cameras.main);
     this.aim = new AimGuide(this, w);
@@ -190,6 +193,10 @@ export class PlayScene extends Phaser.Scene {
         const y = this.proj.zToY(ev.stoneZ);
         this.ripple.spawn(x, y, 0.5 + ev.impact);
         this.foam.spawn(x, y, SKIM.foamRadiusPx, 0.7 + ev.impact * 0.6, this.proj.zScale(ev.stoneZ)); // FUN2-C2 — lớp thêm
+        // FUN2-C3 — MỌI bounce bung spray theo công thức SKIM (bỏ gate cứng 0.72:
+        // feedback boss "phản hồi mỗi bounce đều đặn" — cú micro vẫn có hạt tối thiểu).
+        this.spray.burst(x, y, ev.impact);
+        this.hud.pop(); // FUN2-C3 — HUD pop scale-only mỗi điểm nhảy (feedback <100ms)
         this.stoneRenderer.squashFx(); // squash 80ms (CONTRACT §6)
         if (ev.impact > 0.85) this.camFx.punch(0.02);
         // FUN2-C2 hitstop: hàm tầng A C1 xuất — impact < ngưỡng → 0ms (không cửa sổ).
@@ -204,6 +211,7 @@ export class PlayScene extends Phaser.Scene {
         const y = this.proj.zToY(ev.stoneZ);
         this.ripple.spawn(x, y, 1.3);
         this.foam.spawn(x, y, SKIM.splashFoamRadiusPx, 1, this.proj.zScale(ev.stoneZ)); // FUN2-C2
+        this.foam.spawnCrown(x, y, this.proj.zScale(ev.stoneZ)); // FUN2-C3 — vòm cung foam TRẮNG (tái dùng pool)
         this.camFx.shake(120);
         this.haptic(10);
       }
@@ -222,6 +230,7 @@ export class PlayScene extends Phaser.Scene {
     this.ripple.update(fxDelta);
     this.wake.update(fxDelta);
     this.foam.update(fxDelta);
+    this.updateExtraFx(fxDelta); // FUN2-C3 — spray + pop tiến tuổi qua hook (hitstop → đứng hình đồng bộ)
     const s = this.engine.stone;
     if (s && !this.engine.finished) {
       if (this.simMs - this.lastWakeSpawnMs >= SKIM.wakeSpawnEveryMs) {
@@ -232,6 +241,13 @@ export class PlayScene extends Phaser.Scene {
     } else {
       this.stoneRenderer.renderIdle();
     }
+  }
+
+  /** FUN2-C3 — hook FX thêm Tầng B (base: spray + HUD pop decay). Scene override nối
+   * FX riêng của mình (mô hình onWhoosh) — KHÔNG đụng signature applyEvents/consumePending. */
+  protected updateExtraFx(fxDelta: number): void {
+    this.spray.update(fxDelta);
+    this.hud.update(fxDelta);
   }
 
   /** Vẽ/tắt aim guide (hook protected cho T4 demo sweet-zone). */
@@ -342,6 +358,14 @@ export class PlayScene extends Phaser.Scene {
   hitstopScaleForTest(): number {
     return this.hitstopScale;
   }
+  /** FUN2-C3 — mirror spray (test đếm hạt visible qua testid skim-spray). */
+  sprayForTest(): SprayFx {
+    return this.spray;
+  }
+  /** FUN2-C3 — mirror HUD (test đọc pop scale + score text). */
+  hudForTest(): Hud {
+    return this.hud;
+  }
   /** Trôi thời gian render (ms) mà không qua update thật — tiến tuổi thọ FX/cửa sổ hitstop
    * + render 1 frame đá theo đúng renderFrame (spin tích lũy) trong test deterministic. */
   advanceSkimTimeScaleForTest(ms: number): void {
@@ -352,6 +376,7 @@ export class PlayScene extends Phaser.Scene {
     this.simMs += ms;
     this.wake.update(ms);
     this.foam.update(ms);
+    this.updateExtraFx(ms); // FUN2-C3 — spray + pop cùng đường tiến tuổi deterministic
     const s = this.engine.stone;
     if (s && !this.engine.finished) {
       this.stoneRenderer.renderStone(s, this.simMs, ms); // cùng đường renderFrame — spin theo delta

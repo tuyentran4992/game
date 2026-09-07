@@ -30,63 +30,6 @@ const SWEET_MAX_PX = Math.round(AIM.aimMinPx + (AIM.aimMaxPx - AIM.aimMinPx) * M
 const SWEET_ALPHA = 0.28;
 const SWEET_RIP_PX = 14;
 
-/** Khi nào bắt đầu spray quanh điểm nảy (nảy mạnh mới bắn — pool tiết kiệm). */
-const SPRAY_IMPACT_MIN = 0.72;
-
-interface SprayParticle {
-  img: Phaser.GameObjects.Arc;
-  vx: number;
-  vy: number;
-  life: number; // 0..1
-  active: boolean;
-}
-
-/** Pool spray nước — object pool tái dùng, không new/destroy mỗi frame (ROLE-RULES perf). */
-class SprayFx {
-  private pool: SprayParticle[] = [];
-
-  constructor(scene: Phaser.Scene, size = 16) {
-    for (let i = 0; i < size; i++) {
-      const img = scene.add.circle(-100, -100, 3, 0xbfe4ff, 0.9).setDepth(7).setVisible(false).setActive(false);
-      this.pool.push({ img, vx: 0, vy: 0, life: 1, active: false });
-    }
-  }
-
-  burst(screenX: number, screenY: number, strength: number): void {
-    let n = 0;
-    const count = 4 + Math.round(strength * 4); // 4..8 hạt/burst
-    for (const p of this.pool) {
-      if (n >= count) break;
-      if (p.active) continue;
-      p.active = true;
-      p.life = 1;
-      const ang = Math.PI * (0.6 + Math.random() * 0.8); // vòm nước — juice, không phải luật
-      const spd = 60 + strength * 90;
-      p.vx = Math.cos(ang) * spd * (Math.random() < 0.5 ? -1 : 1);
-      p.vy = -Math.sin(ang) * spd;
-      p.img.setPosition(screenX, screenY).setVisible(true).setActive(true).setAlpha(0.9);
-      n++;
-    }
-  }
-
-  update(deltaMs: number): void {
-    const dt = deltaMs / 1000;
-    for (const p of this.pool) {
-      if (!p.active) continue;
-      p.life -= dt / 0.5; // hạt sống ~0.5s — [PLACEHOLDER] feel-tune
-      if (p.life <= 0) {
-        p.active = false;
-        p.img.setVisible(false).setActive(false);
-        continue;
-      }
-      p.vy += 420 * dt; // trọng lực rơi hạt — juice
-      p.img.x += p.vx * dt;
-      p.img.y += p.vy * dt;
-      p.img.setAlpha(0.9 * p.life);
-    }
-  }
-}
-
 export class OnboardingPlayScene extends PlayScene {
   private demoProvider!: ScriptedFlickProvider;
   private director!: OnboardingDirector;
@@ -95,7 +38,6 @@ export class OnboardingPlayScene extends PlayScene {
   private plop!: PlopSynth;
   /** Mute button FUN2-C1 — persist sk_muted, setMuted áp NGAY vào plopSynth. */
   private muteBtn!: MuteButton;
-  private spray!: SprayFx;
   private sweetZone = false;
   private soundOffShown = false;
   /** Sound-off ripple boost chờ bounce kế (đặt khi latch — review r2 điểm 2). */
@@ -124,7 +66,6 @@ export class OnboardingPlayScene extends PlayScene {
     this.director = new OnboardingDirector(this.demoProvider, this.storage);
     this.combo = new ComboBanner(this, this.scale.width / 2, this.scale.height * 0.38);
     this.demoText = new DemoBanner(this, this.scale.width / 2, this.scale.height * 0.22);
-    this.spray = new SprayFx(this);
     this.plop = new PlopSynth();
     // Mute button FUN2-C1 — khôi phục mute từ phiên trước (sk_muted) + nút SOUND ON/OFF
     // góc phải-dưới ≥44px. Storage chung localStorage scene (đường chính, fallback memory).
@@ -208,9 +149,6 @@ export class OnboardingPlayScene extends PlayScene {
           this.ripple.spawn(x, y, (0.5 + ev.impact) * 1.35);
           this.soundOffBoostNext = false;
         }
-        if (ev.impact >= SPRAY_IMPACT_MIN) {
-          this.spray.burst(x, y, ev.impact);
-        }
         if (this.engine.judgedPerfect && !this.comboShownThisRun) {
           this.comboShownThisRun = true;
           this.showCombo(); // banner "PERFECT FLICK! / ×2" + camera punch (×2 điểm cú thả — tầng A)
@@ -220,7 +158,6 @@ export class OnboardingPlayScene extends PlayScene {
         this.plop.play(
           plopParams({ bounces: this.engine.bounces, impact: ev.stoneZ > 0 ? 0.5 : 0.2, hit: false }),
         );
-        this.spray.burst(this.proj.xToScreenX(ev.stoneX, ev.stoneZ), this.proj.zToY(ev.stoneZ), 1);
         this.comboShownThisRun = false;
         this.clearSlowmoForTest(); // run kết thúc — nhịp thường cho cú tiếp theo
       }

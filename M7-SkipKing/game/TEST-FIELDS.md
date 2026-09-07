@@ -103,3 +103,29 @@ Hành vi mới QA cần biết:
 - Bằng chứng unit: `src/scenes/__tests__/Fun2Audio.wiring.test.ts` (whoosh + mute),
   `src/audio/__tests__/plopSynth.test.ts` (slap path + whoosh + muted 0 node),
   `src/audio/__tests__/audioMapper.test.ts` (số mapper mới), `src/logic/__tests__/hitstop.test.ts`.
+
+## Bổ sung FUN2-C3 (t_babfbe42 — juice/HUD: spray impact + splash crown + HUD pop)
+
+Testid mới:
+
+| testid | Đối tượng / cách đọc | Ý nghĩa | Visible khi nào |
+|---|---|---|---|
+| `skim-spray` | Arc trong OnboardingPlayScene — `children.list.find(o => o.getData('testid') === 'skim-spray')` | Hạt spray nước bung tại điểm nảy. Số hạt/bounce = `SKIM.sprayCountMin + round(impact × (sprayCountMax − sprayCountMin))` (2..8) — MỌI bounce bung (không còn ngưỡng cứng 0.72). | ~500ms sau mỗi bounce |
+| `skim-foam` | Image trong PlayScene — `children.list.find(o => o.getData('testid') === 'skim-foam')` | Foam trắng điểm chạm C2 + (MỚI) vòm cung crown tại điểm chìm: `SKIM.crownPuffs` (5) cụm trên cung bán kính `SKIM.crownRadiusPx` quanh điểm splash. | ~850ms sau bounce/splash |
+
+Hành vi mới QA cần biết:
+
+- **Spray theo impact (bỏ gate cứng)**: trước đây chỉ impact ≥ 0.72 mới bung spray; giờ MỌI
+  bounce bung — cú micro vẫn có `sprayCountMin` (2) hạt, cú mạnh tới `sprayCountMax` (8).
+  Công thức + biên khóa trong `Fun2Juice.wiring.test.ts`.
+- **Splash crown**: khi đá chìm (splash — run kết thúc) ngoài foam chìm trung tâm còn vòm cung
+  foam TRẮNG 5 cụm quanh điểm chìm — tái dùng đúng pool foam C2 (không object mới ngoài pool).
+- **HUD pop**: mỗi bounce, text `hud-score` nhảy scale lên ×1.25 rồi về ×1 sau ~120ms —
+  SCALE-ONLY: chữ/alpha/vị trí không đổi (contrast AA T6 giữ nguyên). Spam bounce → pop reset
+  (không cộng dồn vỡ layout).
+- **Mirror mới** (đọc như `getEndCardForTest`): `PlayScene.sprayForTest()`, `PlayScene.hudForTest()`,
+  `Hud.popScaleForTest()`, `SprayFx.poolSizeForTest()/visibleCountForTest()`.
+- **Fix kèm card**: `spray.update()` trước đây KHÔNG được gọi (hạt đứng hình đến khi pool 16
+  recycled) — giờ tiến tuổi qua hook `updateExtraFx` mỗi frame (đồng bộ hitstop: delta 0 → đứng hình).
+- Bằng chứng unit: `src/scenes/__tests__/Fun2Juice.wiring.test.ts` (10 test: spray công thức/biên/
+  pool-cap, crown pool-tái-dụng + dải alpha, HUD pop scale-only + spam-safe, grep-cap wiring).
