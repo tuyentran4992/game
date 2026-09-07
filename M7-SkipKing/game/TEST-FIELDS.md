@@ -49,3 +49,19 @@ __game.scene.getScene('OnboardingPlayScene').getEndCardForTest() // .shown / .he
 - Testid cũ KHÔNG đổi/xoá (N3): 9 testid T1–T4 giữ nguyên — diff T5 chỉ thêm `end-card`.
 - Mirror EndCard (`getEndCardForTest`) là surface đọc dùng chung — không lộ logic mới.
 - Text in-game 100% EN (PB-5): wording sống trong `MECHANICS.endCard` (nguồn duy nhất).
+
+## Bổ sung BUG-GOM-02 (t_077be174 — demo không ghi sk_best)
+
+Mirror mới (đọc như `getEndCardForTest`):
+
+- `OnboardingPlayScene.demoHandoffForTest()` → `{ pendingFlicks, handoffPending, demoRunFlying }` —
+  trạng thái trao tay demo→local. Sau flip xong: `handoffPending=false`, `pendingFlicks=0`.
+- `EndCard.gapTextForTest()` → dòng gap nguyên văn ('' khi edge lần đầu — scenario 4).
+
+Hành vi mới QA cần biết (deferred handoff):
+
+- Skip-on-touch KHI run demo đang bay → run demo được chốt Ở STAGE DEMO trước (không ghi
+  `sk_best`), local trao tay frame kế — `sk_done` vẫn ghi ĐÚNG 1 LẦN, chỉ LÙI vài frame.
+- Cú demo còn chờ trong hàng đợi lúc thoát demo bị XẢ SẠCH — không bao giờ được thả ở local.
+- Kịch bản 6 kiểm chứng mở rộng: cả đường hết 12s tự nhiên (B3 nổ t=8, slow-mo) lẫn đường
+  skip — `sk_best` phải giữ nguyên giá trị trước demo.
