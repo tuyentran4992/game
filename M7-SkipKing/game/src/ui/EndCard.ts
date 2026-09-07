@@ -149,6 +149,11 @@ export class EndCard {
     return Math.min(this.btnBg.width, this.btnBg.height);
   }
 
+  /** Mirror test (BUG-GOM-02 — chỉ đọc dòng gap, không lộ logic mới): NEW BEST! / K AWAY. */
+  gapTextForTest(): string {
+    return this.gap.text;
+  }
+
   /** Tâm nút theo trục Y (px) — ràng buộc nửa dưới màn (thumb reach). */
   get buttonCenterY(): number {
     return this.btnBg.y;

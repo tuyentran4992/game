@@ -100,6 +100,8 @@ export class OnboardingPlayScene extends PlayScene {
   private usedDemoFlick = false;
   private comboShownThisRun = false;
   private storage!: KvStorage;
+  /** Trao tay HOÃN (BUG-GOM-02): run demo còn bay lúc flip — chốt ở stage demo rồi trao local. */
+  private handoffPending = false;
 
   constructor(sceneKey = 'OnboardingPlayScene') {
     super(sceneKey);
@@ -132,10 +134,20 @@ export class OnboardingPlayScene extends PlayScene {
     }
   }
 
-  /** Director mỗi frame — diễn banner/flick/sweet-zone theo beat (scene chỉ DIỄN). */
+  /** Director mỗi frame — diễn banner/flick/sweet-zone theo beat (scene chỉ DIỄN).
+   * BUG-GOM-02: trao tay hoãn chạy TRƯỚC director — demo chốt xong hết mới trao local,
+   * zero frame trống với cú người chơi. Guard stage (review round 1) đứng TRƯỚC
+   * director.update(): sau flip, director ĐÓNG BĂNG ở local — đường skip-sớm (engine rảnh,
+   * trước B1@2.0s) không thể bắn cú demo ở local → sk_best không bị demo ghi (mục 6). */
   public override update(time: number, delta: number): void {
     super.update(time, delta);
-    if (this.stage !== 'demo') return;
+    if (this.stage !== 'demo') return; // local: director đóng băng vĩnh viễn (main @8af3c40)
+    if (this.handoffPending && this.engine.finished) {
+      // Run mượn stage demo đã chốt ở cuối super.update() (applyRun trên lifecycle demo
+      // — không đụng best); local chưa tồn tại → trao tay NGAY (zero frame trống).
+      this.finishHandoff();
+      if (this.stage !== 'demo') return; // vừa trao tay — frame này hết việc demo
+    }
     // storage demo-once nằm trong director (constructor) — ĐÚNG 1 nguồn.
     const u = this.director.update(time / 1000);
     if (u.flick) {
@@ -211,9 +223,22 @@ export class OnboardingPlayScene extends PlayScene {
     this.camFx.punch(0.03);
   }
 
-  /** Hết demo (hết 12s / skip-on-touch) — flip demo→local + banner sạch + slow-mo thả + trao tay. */
+  /** Hết demo (hết 12s / skip-on-touch) — flip demo→local + banner sạch + slow-mo thả + trao tay.
+   * BUG-GOM-02 (sk_best không bị demo ghi — TEST-FIELDS mục 6): trao tay CHỈ khi run demo
+   * KHÔNG còn đang bay. Run còn bay lúc flip → hoãn trao tay (handoffPending): run được
+   * "mượn" chốt ở stage demo 1 thời gian ngắn (applyRun trên lifecycle demo — stage demo
+   * KHÔNG ghi best theo tầng A), trao tay local chạy đầu frame kế (update). Cú demo còn
+   * chờ trong hàng đợi bị XẢ SẠCH — không bao giờ được thả ở stage local. */
   private finishDemo(): void {
     if (this.stage === 'local') return;
+    // XẢ SẠCH hàng đợi cú demo (skip giữa demo — chúng không được thả ở local):
+    this.pendingFlicks.length = 0;
+    if (this.engine.stone && !this.engine.finished) {
+      // Run demo đang bay — flip chờ run chốt (hoãn trao tay, không trao giữa run).
+      // (stone null + finished=false = engine chưa từng ném — flip NGAY, không chờ.)
+      this.handoffPending = true;
+      return;
+    }
     this.stage = 'local';
     this.sweetZone = false;
     this.aim.clearSweetZone();
@@ -226,6 +251,13 @@ export class OnboardingPlayScene extends PlayScene {
     // Demo-once ĐÚNG 1 LẦN (T5 guard double-write): natural end director ĐÃ markDone qua
     // update() (public interface tầng A) — scene chỉ ghi khi chưa có marker (đường skip-on-touch).
     if (!isDemoDone(this.storage)) this.storage.setItem(DEMO_DONE_KEY, '1');
+  }
+
+  /** Trao tay hoãn (BUG-GOM-02): run demo đã chốt ở stage demo → flip local NGAY (path gốc). */
+  private finishHandoff(): void {
+    if (!this.handoffPending) return;
+    this.handoffPending = false;
+    this.finishDemo(); // demoQueued=0 + demoRunFlying=false → path trao tay chính
   }
 
   /** Vẽ vùng ngọt (U2) — gọi trong renderAim khi stage demo VÀ highlight đang bật. */
@@ -264,6 +296,14 @@ export class OnboardingPlayScene extends PlayScene {
   /** Skip-on-touch mirror (CONTRACT 3.1) — dùng bởi wiring test (finishDemo private). */
   skipDemoForTest(): void {
     this.finishDemo();
+  }
+  /** Mirror BUG-GOM-02 — QA/test soi trạng thái trao tay demo (không lộ logic mới). */
+  demoHandoffForTest(): { pendingFlicks: number; handoffPending: boolean; demoRunFlying: boolean } {
+    return {
+      pendingFlicks: this.pendingFlicks.length,
+      handoffPending: this.handoffPending,
+      demoRunFlying: !!this.engine.stone && !this.engine.finished,
+    };
   }
   // ---- mirror test round-2 (review điểm 1+2 — không lộ logic mới) ----
   plopSynthForTest(): PlopSynth {

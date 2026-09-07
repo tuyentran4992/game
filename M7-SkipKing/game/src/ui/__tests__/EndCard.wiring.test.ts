@@ -302,12 +302,17 @@ describe('T5 — demo-once sk_done guard double-write (scene qua public interfac
     }
   });
 
-  it('skip-on-touch → sk_done vẫn ghi ĐÚNG 1 LẦN (finishDemo là chủ ghi đường skip)', async () => {
+  it('skip-on-touch → sk_done vẫn ghi ĐÚNG 1 LẦN (finishDemo là chủ ghi đường skip; trao tay HOÃN khi run demo đang bay — BUG-GOM-02)', async () => {
     const s = await bootFresh({ best: null, demoDone: false });
     expect(s.getStageForTest()).toBe('demo');
     const { calls, restore } = spySetItem();
     try {
       s.skipDemoForTest(); // chạm bất kỳ — cắt demo NGAY (CONTRACT 3.1)
+      // BUG-GOM-02: cú demo đang bay lúc skip → trao tay (kèm ghi sk_done đường skip) HOÃN
+      // tới khi run chốt ở stage demo — diễn tiếp vài frame tới trao tay rồi mới soi.
+      for (let i = 0; i < 7200 && s.getStageForTest() !== 'local'; i++) {
+        s.updateForTest(1000 + i * 16, 16);
+      }
       expect(s.getStageForTest()).toBe('local');
       expect(window.localStorage.getItem('sk_done')).toBe('1');
       expect(calls.filter((k) => k === 'sk_done')).toHaveLength(1);

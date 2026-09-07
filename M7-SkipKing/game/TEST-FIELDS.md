@@ -40,7 +40,13 @@ __game.scene.getScene('OnboardingPlayScene').getEndCardForTest() // .shown / .he
    vùng chạm toàn màn pull-back: **kéo-thả từ nút = cú mới** (verb pull-back duy nhất — tap đơn
    không ném, anti-misfire `AIM.minDragPx`); card ẨN ngay khi cú mới vào engine.
 6. **Demo KHÔNG end-card**: lần đầu session (xoá `sk_done`) → demo B1/B2 hụt chìm → KHÔNG card
-   (demo = không gian an toàn — CONTRACT 3.1 Đ3); `sk_best` không bị demo ghi.
+   (demo = không gian an toàn — CONTRACT 3.1 Đ3); `sk_best` không bị demo ghi — invariant áp
+   ĐỦNG 3 thời điểm skip-on-touch: **(a)** trước cú demo đầu B1 (engine rảnh, skip t < 2s —
+   flip ngay, director đóng băng ở local), **(b)** khi run demo đang bay (flip hoãn —
+   `handoffPending`, run chốt ở stage demo rồi mới trao local), **(c)** giữa 2 run demo
+   (engine rảnh cửa sổ ngắn — như (a)); sau MỌI đường thoát: `sk_best` giữ nguyên giá trị
+   trước demo (trống khi phiên đầu), cú demo không tạo end-card, không banner 'YOUR TURN'
+   oan ở local.
 7. **Demo-once**: `sk_done` ghi ĐÚNG 1 LẦN mỗi đường kết thúc demo (hết 12s tự nhiên / skip-on-touch);
    lần 2 vào thẳng chơi (không demo, không auto-flick).
 
@@ -49,3 +55,24 @@ __game.scene.getScene('OnboardingPlayScene').getEndCardForTest() // .shown / .he
 - Testid cũ KHÔNG đổi/xoá (N3): 9 testid T1–T4 giữ nguyên — diff T5 chỉ thêm `end-card`.
 - Mirror EndCard (`getEndCardForTest`) là surface đọc dùng chung — không lộ logic mới.
 - Text in-game 100% EN (PB-5): wording sống trong `MECHANICS.endCard` (nguồn duy nhất).
+
+## Bổ sung BUG-GOM-02 (t_077be174 — demo không ghi sk_best)
+
+Mirror mới (đọc như `getEndCardForTest`):
+
+- `OnboardingPlayScene.demoHandoffForTest()` → `{ pendingFlicks, handoffPending, demoRunFlying }` —
+  trạng thái trao tay demo→local. Sau flip xong: `handoffPending=false`, `pendingFlicks=0`.
+- `EndCard.gapTextForTest()` → dòng gap nguyên văn ('' khi edge lần đầu — scenario 4).
+
+Hành vi mới QA cần biết (deferred handoff):
+
+- Skip-on-touch KHI run demo đang bay → run demo được chốt Ở STAGE DEMO trước (không ghi
+  `sk_best`), local trao tay frame kế — `sk_done` vẫn ghi ĐÚNG 1 LẦN, chỉ LÙI vài frame.
+- Cú demo còn chờ trong hàng đợi lúc thoát demo bị XẢ SẠCH — không bao giờ được thả ở local.
+- Kịch bản 6 kiểm chứng mở rộng: cả đường hết 12s tự nhiên (B3 nổ t=8, slow-mo) lẫn đường
+  skip — `sk_best` phải giữ nguyên giá trị trước demo.
+- Skip-sớm (round 2 — review t_077be174): skip khi engine RẢNH trước cú demo đầu (t < 2s) →
+  flip ngay → director ĐÓNG BĂNG ở local (guard stage trước `director.update()`). Bằng chứng
+  unit: `OnboardingPlayScene.demoLeak.test.ts` test "Đ4" — skip t≈300ms → pump tới 14.1s →
+  `sk_best` null + pending 0 + 0 end-card + banner rỗng. QA retest ô C6 đủ 3 thời điểm
+  skip (a)/(b)/(c) nêu ở mục 6.
