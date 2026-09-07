@@ -8,6 +8,7 @@
 //   M4  L10-12 forbidden segments   (no-go zone — release-and-continue decision)
 
 import type { Vec } from '../geom/path';
+import { FLAVOR_MAX_CHARS, FLAVOR_MAX_WORDS, LEVEL_FLAVOR } from '../config/level-flavor';
 
 export interface Theme {
   bg: number;
@@ -49,6 +50,8 @@ export interface SliceLevel {
   /** M3 scoring twist: wobble penalty multiplier (steady-hand matters). */
   wobbleWeight?: number;
   theme: Theme;
+  /** Display-only flavor text (EN, <=48 chars, <=3 words) — never used by scoring. */
+  flavor: string;
 }
 
 const THEMES: Record<1 | 2 | 3 | 4, Theme> = {
@@ -123,7 +126,7 @@ function lv(
   noGo: [number, number] | null,
   wobbleWeight?: number,
 ): SliceLevel {
-  return { id, name, milestone, path, shape, core, noGo, thresholds: milestone === 2 ? STAR3_REVEAL : PLAIN, wobbleWeight, theme: THEMES[milestone] };
+  return { id, name, milestone, path, shape, core, noGo, thresholds: milestone === 2 ? STAR3_REVEAL : PLAIN, wobbleWeight, theme: THEMES[milestone], flavor: LEVEL_FLAVOR[id] };
 }
 
 // ---------- the 12 levels ----------
@@ -170,6 +173,15 @@ export function validateLevels(levels: readonly SliceLevel[] = LEVELS): string[]
       if (a <= 1 || b >= 94) errs.push(`level ${l.id}: no-go must not cover start/end of path`);
     }
     if (l.milestone === 2 && l.core.kind === 'none') errs.push(`level ${l.id}: reveal milestone needs a core`);
+    if (typeof l.flavor !== 'string' || l.flavor.length === 0 || l.flavor.length > FLAVOR_MAX_CHARS) {
+      errs.push(`level ${l.id}: flavor must be a non-empty string <=${FLAVOR_MAX_CHARS} chars`);
+    } else {
+      if (!/^[A-Za-z0-9'\-— ]+$/.test(l.flavor)) errs.push(`level ${l.id}: flavor must be plain EN text`);
+      if (/ {2}/.test(l.flavor)) errs.push(`level ${l.id}: flavor must not contain double spaces`);
+      if ((l.flavor.split(' — ').length - 1) > 1) errs.push(`level ${l.id}: flavor has more than one em-dash separator`);
+      const tooMany = l.flavor.split(' — ').some((seg) => seg.split(' ').filter((w) => /[A-Za-z0-9]/.test(w)).length > FLAVOR_MAX_WORDS);
+      if (tooMany) errs.push(`level ${l.id}: flavor must be <=${FLAVOR_MAX_WORDS} words per segment`);
+    }
   });
   return errs;
 }
