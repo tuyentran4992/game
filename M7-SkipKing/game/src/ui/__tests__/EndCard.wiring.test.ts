@@ -58,8 +58,14 @@ const NATIVE_CAF = globalThis.cancelAnimationFrame;
 
 beforeAll(() => {
   document.body.appendChild(CANVAS);
+  // Flake demo-timing (t_abbb5275): RAF wrapper cũ bắn performance.now() (epoch thật) vào
+  // scene.update() → TimeStep.step gọi scene.update(epoch, delta) giữa các updateForTest
+  // → OnboardingDirector.update(tNow) ratchet t=max(t,tNow) ăn uptime process: máy/CI chậm
+  // chạm 12s ngay trong await boot → demo flip local + ghi sk_done OAN trước khi test diễn.
+  // Fix: loop nội bộ Phaser bắn hằng số 0 → delta=max(0,0-lastTime)=0 MỌI tick → 0 bước
+  // engine, director ratchet max(t,0)=t — thời gian scene thuộc 100% về updateForTest.
   (globalThis as Record<string, unknown>).requestAnimationFrame = (cb: (t: number) => void) =>
-    setTimeout(() => cb(performance.now()), 16);
+    setTimeout(() => cb(0), 16);
   (globalThis as Record<string, unknown>).cancelAnimationFrame = (id: number) => clearTimeout(id);
 });
 afterAll(() => {
@@ -294,7 +300,12 @@ describe('T5 — demo-once sk_done guard double-write (scene qua public interfac
     expect(s.getStageForTest()).toBe('demo');
     const { calls, restore } = spySetItem();
     try {
-      for (let t = 16; t / 1000 <= 12.5; t += 16) s.updateForTest(t, 16);
+      // Flake t_abbb5275 (án lệ t_30a36bb9 — nới cửa pump, assert/invariant GIỮ NGUYÊN):
+      // B1 demo là cú PERFECT (window 0.7–0.9 rộng) → slow-mo 0.4× từ nảy đầu → run B1 chốt
+      // ~12.3–12.6s (rng Date.now() dao động ±vài trăm ms) → cửa 12.5s chỉ dư ~0.1–0.3s.
+      // Pump tới 20s: flip + trao tay chắc chắn nằm trong cửa; nghĩa test (demo kết thúc
+      // TỰ NHIÊN 12s → sk_done ĐÚNG 1 LẦN) không đổi — director vẫn markDone đúng 1 lần.
+      for (let t = 16; t / 1000 <= 20; t += 16) s.updateForTest(t, 16);
       expect(s.getStageForTest()).toBe('local'); // đã trao tay
       expect(calls.filter((k) => k === 'sk_done')).toHaveLength(1);
     } finally {

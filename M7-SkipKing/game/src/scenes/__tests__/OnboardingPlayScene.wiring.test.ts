@@ -56,8 +56,12 @@ const NATIVE_CAF = globalThis.cancelAnimationFrame;
 beforeAll(() => {
   document.body.appendChild(CANVAS);
   // (sk_done QUẢN LÝ trong beforeAll boot bên dưới — boot DEMO là kịch bản chính)
+  // Flake demo-timing (t_abbb5275): bắn hằng 0 thay performance.now() — loop nội bộ Phaser
+  // (TimeStep.step → scene.update(time, delta=max(0,time-lastTime))) thành no-op thời gian;
+  // nếu bắn epoch thật, director.update(tNow) ratchet max(t,tNow) ăn uptime process trong
+  // await waitBooted → demo flip oan + ghi sk_done trước test (máy/CI chậm ≥12s uptime).
   (globalThis as Record<string, unknown>).requestAnimationFrame = (cb: (t: number) => void) =>
-    setTimeout(() => cb(performance.now()), 16);
+    setTimeout(() => cb(0), 16);
   (globalThis as Record<string, unknown>).cancelAnimationFrame = (id: number) => clearTimeout(id);
 });
 afterAll(() => {
