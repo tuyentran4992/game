@@ -131,6 +131,13 @@ dist/
 - **Status:** typecheck ✅ · build ✅ · 1 source → 3 platforms ✅
 - **Cần:** gen asset WAN thật, QA browser, đóng gói.
 
+### M8 — "Slice Studio" (`M8-SliceStudio/`) — trace-cut 🚧 PROTOTYPE XẤU XONG, CHỜ FUN GATE BOSS PB-2 (07/09)
+- Gameplay: silhouette + đường mờ → ngón trace theo đường → nhả tay = tách đôi → % sai số trace-vs-path → 1-3 sao. Khác biệt hóa vs Perfect Half: trace-path quanh hình + đo % sai số + lõi ẩn reveal + no-go zone (catalog GO 07/09, `docs/SUBMISSIONS.md`).
+- **Bảng biến đổi 4 mốc (PB-3b):** L1-2 thẳng học verb (chấm % nền) → L3-5 lõi ẩn reveal (3★ threshold +5, theme tím) → L6-9 cong + phạt wobble ×1.5-2 (cách CHẤM đổi) → L10-12 forbidden segment đỏ (cách CHỌN đổi: nhả trước vùng cấm → chạm tiếp sau — engine phase `mid`; chạm đỏ = chunk lost 0★).
+- **Code theo CONTRACT:** tầng A pure-TS `geom/path|slice.ts`, `level/levels.ts` (12 level + validate), `core/scoring.ts` (GHOST CUT ≥95% streak), `core/engine.ts` (state machine) — 0 import Phaser; tầng B mỏng `scenes/TraceScene|EndScene`, `render/fx.ts` (split = pre-baked half-mask từ path extends qua ellipse, 0 clipper/greiner-hormann), `audio/synth.ts` (WebAudio 5 voice, 0 file MP3), juice: hitstop + flash ADD + shake + 2 mảnh rơi + spark burst. Onboarding: start pulse + demo dot + magnet 48px + nhả sớm không bao giờ fail (chỉ trần 1★). Skip-level debug chỉ bản standalone.
+- **Gate (main `b7ace8e`):** vitest **22/22** · tsc 0 · `verify_game.sh M8-SliceStudio` **5/5** (bundle 386KB ≤1.6MB) · boot check headless Chrome **0 console error** · E2E: L1 trace mô phỏng 99% GHOST CUT → tự lên L2; L10 nhả tại mép đỏ → hold → tiếp sau → GHOST CUT 99%, đỏ/hint render đúng (screenshot).
+- **CHỜ: Fun Gate PB-2** — anh Tuyền chơi tay (trình theo PB-4: preview tĩnh Netlify + 30s mô tả + câu hỏi "chơi có vui không"). Boss GO → mới cắt chain production; FAIL → kill ghi REJECT-LESSONS. Không polish trước duyệt.
+
 ---
 
 ## 4. CÁCH CHẠY/TEST
