@@ -49,6 +49,32 @@ export const FX = {
   squashMs: 80,
   /** objects — trần pool ripple (perf ROLE-RULES: pool, không new/destroy mỗi frame). */
   ripplePool: 12,
+  /** objects — trần pool wake trail (FUN2-C2 — pool tái dùng, perf ROLE-RULES). */
+  wakePool: 26,
+  /** objects — trần pool foam bounce/splash (FUN2-C2 — pool tái dùng). */
+  foamPool: 12,
+} as const;
+
+/**
+ * Nhóm hằng skim-feel (FUN2-C2 — card t_1bbaecac): vệt lướt liên tục + foam điểm chạm +
+ * spin quang học theo tốc độ thật. Đơn vị + rationale từng số — số feel là [PLACEHOLDER]
+ * tới boss playtest (FUN2 vòng sau). Màu: TRẮNG duy nhất (kỷ luật palette ux-ui — 0 màu mới).
+ */
+export const SKIM = {
+  /** rad/ms trên (m/s) — tốc ngang đá → tốc xoay quang học (14 m/s ≈ 2.4 vòng/s; đọc Stone tầng A). [PLACEHOLDER] boss playtest */
+  spinRadPerMsPerSpeed: 0.0011,
+  /** ms — tuổi thọ 1 hạt wake (vệt lướt mờ dần rồi ẩn, tái dùng pool). [PLACEHOLDER] feel-tune */
+  wakeLifeMs: 900,
+  /** px — bán kính hạt wake tại waterline (co theo zScale theo sâu — phối cảnh). */
+  wakeRadiusPx: 16,
+  /** ms — bước tối thiểu giữa 2 lần spawn wake (60fps=16.7ms; chặn spawn trùng khi đứng hình hitstop). */
+  wakeSpawnEveryMs: 14,
+  /** ms — tuổi thọ 1 cụm foam tại điểm chạm. [PLACEHOLDER] feel-tune */
+  foamLifeMs: 850,
+  /** px — bán kính foam NẢY tại waterline, nhân hệ số impact 0.7–1.3 (cú mạnh bung to hơn). */
+  foamRadiusPx: 34,
+  /** px — bán kính foam SPLASH (chìm — to hơn nảy nhẹ). */
+  splashFoamRadiusPx: 52,
 } as const;
 
 export interface Projection {
