@@ -8,6 +8,7 @@ import { resampleUniform, type Vec } from '../geom/path';
 import { bakeHalves, fillPoly, flashAlongCut, sparkBurst, starPoints } from '../render/fx';
 import { Synth } from '../audio/synth';
 import { Hud } from '../ui/hud';
+import { cutInputFromResult, gameSave } from '../sdk/save';
 
 export class TraceScene extends Phaser.Scene {
   private engine = new TraceEngine();
@@ -29,6 +30,9 @@ export class TraceScene extends Phaser.Scene {
 
   create(): void {
     this.levelIdx = 0;
+    // muted state from the save (schema field read at boot; mute button lives in hud)
+    const savedMuted = this.registry.get('saveMuted') as boolean | undefined;
+    if (savedMuted !== undefined) this.synth.muted = savedMuted;
     this.hud = new Hud(this, LEVELS[0].theme, LEVELS[0], this.synth, () => this.retry(), () => this.nextLevel());
     this.loadLevel(0);
 
@@ -91,6 +95,9 @@ export class TraceScene extends Phaser.Scene {
     this.levelRoot.add(startRing);
     const startDot = this.add.circle(path[0].x, path[0].y, 12, t.accent).setDepth(20);
     this.levelRoot.add(startDot);
+
+    // chapter ambience (S3/S4): one quiet pad per chapter, swapped on loadLevel
+    this.synth.ambience(this.level.milestone);
 
     // live trace layer
     this.traceG = this.add.graphics().setDepth(30);
@@ -207,6 +214,7 @@ export class TraceScene extends Phaser.Scene {
       if (before === 'drawing' && this.engine.currentPhase === 'mid') {
         this.hud.flashHint('LIFTED AT THE RED LINE — touch after it to continue');
         this.synth.blip();
+        this.synth.resumeCue(); // S4 call-site: "release the edge, keep going" ping
       }
       return;
     }
@@ -221,6 +229,11 @@ export class TraceScene extends Phaser.Scene {
     const runAwards = (this.registry.get('awards') as { stars: number }[] | undefined) ?? [];
     this.registry.set('awards', [...runAwards, { stars: award.stars }]);
 
+    // SAVE after EVERY cut (DATA-MODEL §2 — not waiting for end-session): atomic
+    // whole-object write; a failed save keeps play going and retries next cut.
+    gameSave.recordCut(cutInputFromResult(this.level, { stars: award.stars, pct: score.pct }, this.engine.ghostStreak));
+    void gameSave.flush();
+
     // JUICE (fun gate): hitstop + flash + shake + falling halves + sound.
     this.cameras.main.shake(160, 0.006);
     this.time.delayedCall(120, () => this.splitAndShow(score, award)); // 0.2s hitstop approx
@@ -230,8 +243,12 @@ export class TraceScene extends Phaser.Scene {
       this.hud.setStreak(0);
     }
 
-    if (score.noGoHitAt) this.synth.chunkLost();
-    else this.synth.slice(score.pct);
+    if (score.noGoHitAt) {
+      this.synth.chunkLost();
+    } else {
+      this.synth.slice(score.pct);
+      this.synth.strum(score.pct); // S4 call-site: split strum follows the accuracy
+    }
     if (this.level.core.kind !== 'none' && award.stars > 0) {
       this.time.delayedCall(220, () => this.synth.reveal());
     }
