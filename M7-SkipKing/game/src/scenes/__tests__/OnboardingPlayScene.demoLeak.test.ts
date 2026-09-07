@@ -65,8 +65,14 @@ let fakeNow = 0;
 
 beforeAll(() => {
   document.body.appendChild(CANVAS);
+  // Flake demo-timing (t_abbb5275): RAF wrapper cũ bắn fakeNow hiện hành — callback của loop
+  // nội bộ Phaser (TimeStep.step → scene.update(time, delta=max(0,time-lastTime))) có thể bắn
+  // GIỮA các khối sync của test với fakeNow cũ/mới lệch pha (CPU starvation làm tick trễ/dồn):
+  // time tuyệt đối rác → director.update(tNow) ratchet t=max(t,tNow) nhảy ngoài kịch bản beat
+  // (flip oan/đóng băng) + delta khổng lồ cho engine. Fix: loop bắn hằng số 0 → delta=0,
+  // ratchet max(t,0)=t — loop nội bộ thành no-op thời gian, pump/updateForTest SỞ HỮU 100% đồng hồ.
   (globalThis as Record<string, unknown>).requestAnimationFrame = (cb: (t: number) => void) =>
-    setTimeout(() => cb(fakeNow), 16);
+    setTimeout(() => cb(0), 16);
   (globalThis as Record<string, unknown>).cancelAnimationFrame = (id: number) => clearTimeout(id);
 });
 afterAll(() => {
@@ -223,7 +229,11 @@ describe('BUG-GOM-02 — sk_best không bị demo ghi (TEST-FIELDS mục 6)', ()
     // nếu lọt qua stage local → consumePending ném + markPerfect → sk_best=18 (bug lộ rõ).
     (scene as unknown as { pendingFlicks: { dirX: number; dirZ: number; power: number }[] }).pendingFlicks.push({ dirX: 0, dirZ: -1, power: 0.8 });
     scene.skipDemoForTest(); // skip-on-touch giữa demo
-    t = pump(scene, t, 12100); // đủ xa: run B1 chốt → trao tay; pending (nếu còn) sẽ bị consume ở local
+    // Flake t_abbb5275 (án lệ t_30a36bb9 — nới cửa pump, assert/invariant GIỮ NGUYÊN):
+    // run B1 demo là cú PERFECT → slow-mo 0.4× → chốt ~12.3–12.6s (rng Date.now() dao động);
+    // cửa 12.1s chỉ dư ~0.1–0.3s so với flip. Pump tới 20s — nghĩa test không đổi:
+    // run demo chốt ở stage demo → trao tay; pending demo bị flush, KHÔNG thả ở local.
+    t = pump(scene, t, 20000); // đủ xa: run B1 chốt → trao tay; pending (nếu còn) sẽ bị consume ở local
     expect(scene.getStageForTest()).toBe('local');
     expect(scene.pendingCountForTest()).toBe(0); // XẢ SẠCH ở flip — không cú demo nào sót
     expect(window.localStorage.getItem('sk_best')).toBeNull(); // cú demo PERFECT kẹt queue KHÔNG ghi best
