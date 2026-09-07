@@ -200,19 +200,25 @@ export class PlayScene extends Phaser.Scene {
 
   /** Tiêu thụ hàng đợi qua HumanFlickProvider (tầng A) — 1 đường sim duy nhất.
    * Mỗi lần chỉ tiêu thụ ĐÚNG 1 cú (shift) — cú sau chờ run hiện tại xong,
-   * không mất cú khi người chơi spam (REVIEW round 1 điểm 1). */
+   * không mất cú khi người chơi spam (REVIEW round 1 điểm 1).
+   * FUN2-C1: whoosh ném đá hook — onWhoosh(flick.power) TRƯỚC throwFlick
+   * (base không-op; OnboardingPlayScene override nối synth audio — phủ demo + người chơi). */
   protected consumePending(): void {
     if (this.pendingFlicks.length === 0) return;
     if (!this.engine.finished && this.engine.stone) return; // đang bay — chờ run xong
     const provider = new HumanFlickProvider([this.pendingFlicks[0]]);
     const flick = provider.nextFlick();
     this.pendingFlicks.shift();
+    this.onWhoosh(flick.power); // FUN2-C1 — trước throwFlick (tiếng vút bắt đầu NGAY lúc thả)
     this.engine.throwFlick(flick);
     if (judgePerfect(flick, this.cfg)) this.engine.markPerfect();
     this.runClosed = false;
     this.endCard.hide(); // thả cú mới → end-card tắt ngay (CONTRACT 3.5 THROW AGAIN)
     this.renderAim(null); // tắt guide ngay khi bắn
   }
+
+  /** FUN2-C1 whoosh hook — base no-op (PlayScene thuần không audio), override ở OnboardingPlayScene. */
+  protected onWhoosh(_power: number): void {}
 
   /** U2 — nhãn "DRAG & RELEASE" mờ dần sau cú đầu (T4 demo giữ nhãn riêng). */
   private fadeHintLabel(): void {

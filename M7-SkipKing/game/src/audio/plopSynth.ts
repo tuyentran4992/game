@@ -1,24 +1,31 @@
 /**
- * M7 Skip King — plopSynth (TẦNG B audio — CONTRACT mục 5 + 3.6):
- * WebAudio oscillator 3 lớp theo audioMapper (tầng A map params — tầng B chỉ phát):
- * lực→trầm/cao, tiến độ→pitch +1 semitone wrap quãng 8, trúng/hụt khác âm; ~80–120ms;
- * reverb nhẹ (feedback delay) + DynamicsCompressor chặn clip.
+ * M7 Skip King — plopSynth (TẦNG B audio — FUN2-C1 theo bản tổng hợp quyết định
+ * comment 267 card t_af145f89): oscillator 3 lớp TONAL + 1 lớp SLAP CHỦ ĐẠO theo audioMapper
+ * (tầng A map params — tầng B chỉ phát):
+ * - Slap (1.5–4kHz, transient ≤80ms) đi đường BANDPASS RIÊNG nối thẳng compressor — KHÔNG qua
+ *   lowpass tonal (lowpass cũ 2200Hz giết slap; nới lowpass tonal ~3.2kHz giữ đuôi sáng).
+ * - playWhoosh(power): noise-burst bandpass sweep lúc ném — dùng oscillator có sẵn trong
+ *   IAudioContextLike (0 surface stub mới).
+ * - setMuted(): mute button state — play/playWhoosh no-op 0 node; persist do scene giữ
+ *   (localStorage qua KV storage inject — tầng B không đụng DOM storage).
  * AudioContext.resume() chạy ngay pointerdown ĐẦU — once-per-page (installResumeHook).
- * Câm (resume fail / state ≠ running) → play() im lặng 0 node — scene hiện "SOUND OFF".
+ * Câm (resume fail / state ≠ running / muted) → play() im lặng 0 node.
  * Node chơi xong ngắt kết nối qua onended — không rò node.
  */
 import {
   plopParams,
+  whooshParams,
   type PlopParams,
   type PlopLayer,
+  type WhooshParams,
 } from '../logic/audioMapper';
 
-export type { PlopParams, PlopLayer } from '../logic/audioMapper';
+export type { PlopParams, PlopLayer, WhooshParams } from '../logic/audioMapper';
 
 /** Ctor AudioContext inject — unit test fake được (jsdom không có WebAudio). */
 export type AudioContextCtor = new () => IAudioContextLike;
 
-/** Surface tối thiểu plopSynth đụng tới (tieu chuẩn hoá cho inject + stub). */
+/** Surface tối thiểu plopSynth đụng tới (tiêu chuẩn hoá cho inject + stub). */
 export interface IAudioContextLike {
   state: string;
   currentTime: number;
@@ -56,6 +63,7 @@ export interface IDelayLike extends IAudioNodeLike {
 export interface IBiquadLike extends IAudioNodeLike {
   type: string;
   frequency: IAudioParamLike;
+  Q: IAudioParamLike;
 }
 
 export interface ICompressorLike extends IAudioNodeLike {
@@ -70,18 +78,20 @@ export interface IAudioParamLike {
   cancelScheduledValues(t?: number): IAudioParamLike;
 }
 
-/** Hằng tổng đồ nghe (đơn vị + rationale — không phải luật chơi, juice audio). */
+/** Hằng tổng đồ nghe (đơn vị + rationale — không phải luật chơi, juice audio). [PLACEHOLDER] tới boss playtest. */
 const SYNTH = {
   reverbDelayS: 0.14, // s — feedback delay ngắn (~plop) cho vang nhẹ mặt nước
-  reverbFeedback: 0.35, // 0..1 — 1-2 lần dội rồi tắt, "reverb nhẹ" CONTRACT
+  reverbFeedback: 0.35, // 0..1 — 1-2 lần dội rồi tắt, "reverb nhẹ"
   reverbWet: 0.22, // 0..1 — trộn vang mỏng, tiếng gốc vẫn nổi
-  lowpassHz: 2200, // Hz — cắt sắc square của lớp hụt, plop nước nghe đục ấm
-  compThresholdDb: -18, // dB — ngưỡng nén; chặn clip khi 3 lớp chồng đỉnh
-  attackS: 0.006, // s — đầu tiếng gần tức thì (feedback <100ms là của visual, âm phải không trễ)
-  releaseS: 0.05, // s — đuôi envelope master; tổng ≤ 120ms CONTRACT
+  lowpassHz: 3200, // Hz — NỚI từ 2200: giữ đuôi tonal sáng (slap chính đi đường bandpass riêng)
+  compThresholdDb: -18, // dB — ngưỡng nén; chặn clip khi 4 lớp chồng đỉnh
+  attackS: 0.006, // s — đầu tiếng gần tức thì (âm phải không trễ)
+  releaseS: 0.06, // s — đuôi envelope master; tổng khớp envelope mapper 150–250ms
+  slapQ: 1.2, // — Q bandpass slap: gọn, "thíp" chứ không huýt [PLACEHOLDER]
+  whooshQ: 2.5, // — Q bandpass whoosh: hơi hẹp, nghe "gió vút" [PLACEHOLDER]
 } as const;
 
-/** Lớp 0 pitch là nguồn; lớp 1/2 đã map sẵn tần số trong audioMapper — cắm thẳng. */
+/** Lớp tonal pitch là nguồn; lớp 1/2 đã map sẵn tần số trong audioMapper — cắm thẳng. */
 function playLayer(ctx: IAudioContextLike, layer: PlopLayer, t0: number, out: IGainLike): void {
   const osc = ctx.createOscillator();
   const env = ctx.createGain();
@@ -102,8 +112,74 @@ function playLayer(ctx: IAudioContextLike, layer: PlopLayer, t0: number, out: IG
   };
 }
 
-/** Dựng graph 1 lần/ctx: [lớp→dry+reverb] → master → lowpass → compressor → destination. */
-function buildGraph(ctx: IAudioContextLike): IGainLike {
+/**
+ * Lớp slap CHỦ ĐẠO — đường RIÊNG: osc → env → bandpass(freq slap) → compressor.
+ * Tách khỏi lowpass/reverb wet (loop cộng dồn lệch — rủi ro card): slap phải ra NGAY,
+ * không bị lowpass giữ lại.
+ */
+function playSlap(
+  ctx: IAudioContextLike,
+  freqHz: number,
+  durationS: number,
+  level: number,
+  t0: number,
+  out: ICompressorLike,
+): void {
+  const osc = ctx.createOscillator();
+  const env = ctx.createGain();
+  const bandpass = ctx.createBiquadFilter();
+  bandpass.type = 'bandpass';
+  bandpass.frequency.setValueAtTime(freqHz, t0);
+  bandpass.Q.setValueAtTime(SYNTH.slapQ, t0);
+  osc.type = 'square'; // sóng vuông qua bandpass hẹp = transient sắc như "thíp" nước
+  osc.frequency.setValueAtTime(freqHz, t0);
+  env.gain.setValueAtTime(0.0001, t0);
+  env.gain.exponentialRampToValueAtTime(level, t0 + 0.004); // attack cực ngắn — transient
+  env.gain.exponentialRampToValueAtTime(0.0001, t0 + durationS);
+  osc.connect(env);
+  env.connect(bandpass);
+  bandpass.connect(out);
+  osc.start(t0);
+  osc.stop(t0 + durationS);
+  osc.onended = () => {
+    env.disconnect();
+    bandpass.disconnect();
+    osc.disconnect();
+  };
+}
+
+/**
+ * Whoosh lúc ném — noise-burst ước lượng bằng oscillator có sẵn: sawtooth pitch sweep nhanh
+ * qua bandpass sweep đi lên (start→end theo whooshParams tầng A). [PLACEHOLDER] feel-tune.
+ */
+function playWhooshLayer(ctx: IAudioContextLike, w: WhooshParams, t0: number, out: ICompressorLike): void {
+  const osc = ctx.createOscillator();
+  const env = ctx.createGain();
+  const bandpass = ctx.createBiquadFilter();
+  bandpass.type = 'bandpass';
+  bandpass.Q.setValueAtTime(SYNTH.whooshQ, t0);
+  bandpass.frequency.setValueAtTime(w.bandStartHz, t0);
+  bandpass.frequency.exponentialRampToValueAtTime(w.bandEndHz, t0 + w.durationS);
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(w.bandStartHz, t0);
+  osc.frequency.exponentialRampToValueAtTime(w.bandEndHz * 0.85, t0 + w.durationS);
+  env.gain.setValueAtTime(0.0001, t0);
+  env.gain.linearRampToValueAtTime(w.level, t0 + w.durationS * 0.3); // swell — hơi thở tay ném
+  env.gain.exponentialRampToValueAtTime(0.0001, t0 + w.durationS);
+  osc.connect(env);
+  env.connect(bandpass);
+  bandpass.connect(out);
+  osc.start(t0);
+  osc.stop(t0 + w.durationS);
+  osc.onended = () => {
+    env.disconnect();
+    bandpass.disconnect();
+    osc.disconnect();
+  };
+}
+
+/** Dựng graph 1 lần/ctx → { master, comp }: [tonal→dry+reverb] → master → lowpass → comp → destination. */
+function buildGraph(ctx: IAudioContextLike): { master: IGainLike; comp: ICompressorLike } {
   const master = ctx.createGain();
   const lowpass = ctx.createBiquadFilter();
   lowpass.type = 'lowpass';
@@ -128,14 +204,16 @@ function buildGraph(ctx: IAudioContextLike): IGainLike {
 
   master.connect(comp); // compressor trên đường ra — chặn clip trước destination
   comp.connect(ctx.destination);
-  return master;
+  return { master, comp };
 }
 
 /** PlopSynth 1 instance — inject ctx (unit test) hoặc tự tạo qua ctor cho sẵn. */
 export class PlopSynth {
   private ctx: IAudioContextLike | null = null;
   private master: IGainLike | null = null;
+  private comp: ICompressorLike | null = null;
   private soundOff = false;
+  private muted = false;
   private resumeInFlight: Promise<void> | null = null;
   private resumeCalled = false;
 
@@ -178,13 +256,35 @@ export class PlopSynth {
     return this.soundOff;
   }
 
-  /** Phát plop 3 lớp theo params audioMapper — state ≠ running thì im lặng (0 node). */
+  /** Mute button state (FUN2-C1) — true → play/playWhoosh no-op 0 node. Persist do scene giữ. */
+  setMuted(muted: boolean): void {
+    this.muted = muted;
+  }
+
+  isMuted(): boolean {
+    return this.muted;
+  }
+
+  /** Đảm bảo graph đã dựng (ctx running) — trả comp đích cho đường slap/whoosh. */
+  private ensureGraph(): ICompressorLike | null {
+    const ctx = this.ctx;
+    if (!ctx) return null;
+    if (!this.master || !this.comp) {
+      const g = buildGraph(ctx);
+      this.master = g.master;
+      this.comp = g.comp;
+    }
+    return this.comp;
+  }
+
+  /** Phát plop (3 lớp tonal + slap chủ đạo) theo params audioMapper — câm/muted thì im lặng (0 node). */
   play(params: PlopParams): void {
     const ctx = this.ctx;
-    if (!ctx || this.soundOff || ctx.state !== 'running') return;
-    if (!this.master) this.master = buildGraph(ctx);
+    if (!ctx || this.soundOff || this.muted || ctx.state !== 'running') return;
+    const comp = this.ensureGraph();
+    if (!comp) return;
     const t0 = ctx.currentTime;
-    const master = this.master;
+    const master = this.master!;
     // Envelope master theo lực — anchor attack + anchor release (2 setValue) rồi ramp.
     master.gain.cancelScheduledValues(t0);
     master.gain.setValueAtTime(0.0001, t0); // anchor attack
@@ -192,6 +292,17 @@ export class PlopSynth {
     master.gain.setValueAtTime(params.masterGain, t0 + params.totalDurationS); // anchor release
     master.gain.linearRampToValueAtTime(0.0001, t0 + params.totalDurationS + SYNTH.releaseS);
     for (const layer of params.layers) playLayer(ctx, layer, t0, master);
+    // Slap CHỦ ĐẠO — đường bandpass riêng nối thẳng compressor (tách khỏi lowpass/reverb wet).
+    playSlap(ctx, params.slap.freqHz, params.slap.durationS, params.slap.level, t0, comp);
+  }
+
+  /** Whoosh lúc ném — bandpass sweep ∝ power; câm/muted → 0 node. */
+  playWhoosh(power: number): void {
+    const ctx = this.ctx;
+    if (!ctx || this.soundOff || this.muted || ctx.state !== 'running') return;
+    const comp = this.ensureGraph();
+    if (!comp) return;
+    playWhooshLayer(ctx, whooshParams(power), ctx.currentTime, comp);
   }
 
   // ---- mirror test (TDD-B wiring — không lộ logic mới) ----
