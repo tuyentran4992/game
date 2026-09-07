@@ -13,6 +13,7 @@ import { ScriptedFlickProvider } from '../logic/flickProvider';
 import { OnboardingDirector, isDemoDone, DEMO_DONE_KEY } from '../logic/onboarding';
 import { plopParams } from '../logic/audioMapper';
 import { PlopSynth, installResumeHook } from '../audio/plopSynth';
+import { MuteButton } from '../ui/MuteButton';
 import { ComboBanner } from '../ui/ComboBanner';
 import { DemoBanner } from '../ui/DemoBanner';
 import { memoryStorage, RunLifecycle } from '../logic/runLifecycle';
@@ -92,6 +93,8 @@ export class OnboardingPlayScene extends PlayScene {
   private combo!: ComboBanner;
   private demoText!: DemoBanner;
   private plop!: PlopSynth;
+  /** Mute button FUN2-C1 — persist sk_muted, setMuted áp NGAY vào plopSynth. */
+  private muteBtn!: MuteButton;
   private spray!: SprayFx;
   private sweetZone = false;
   private soundOffShown = false;
@@ -123,6 +126,9 @@ export class OnboardingPlayScene extends PlayScene {
     this.demoText = new DemoBanner(this, this.scale.width / 2, this.scale.height * 0.22);
     this.spray = new SprayFx(this);
     this.plop = new PlopSynth();
+    // Mute button FUN2-C1 — khôi phục mute từ phiên trước (sk_muted) + nút SOUND ON/OFF
+    // góc phải-dưới ≥44px. Storage chung localStorage scene (đường chính, fallback memory).
+    this.muteBtn = new MuteButton(this, this.plop, this.storage);
 
     // AudioContext.resume() chạy ngay pointerdown ĐẦU — bắt buộc (CONTRACT mục 5).
     installResumeHook(this.plop);
@@ -227,6 +233,12 @@ export class OnboardingPlayScene extends PlayScene {
     this.camFx.punch(0.03);
   }
 
+  /** FUN2-C1 whoosh lúc ném — consumePending gọi TRƯỚC throwFlick (phủ demo + người chơi).
+   * 0 đổi signature applyEvents/consumePending (vùng từng chét BUG-GOM-01/02). */
+  protected override onWhoosh(power: number): void {
+    this.plop.playWhoosh(power);
+  }
+
   /** Hết demo (hết 12s / skip-on-touch) — flip demo→local + banner sạch + slow-mo thả + trao tay.
    * BUG-GOM-02 (sk_best không bị demo ghi — TEST-FIELDS mục 6): trao tay CHỈ khi run demo
    * KHÔNG còn đang bay. Run còn bay lúc flip → hoãn trao tay (handoffPending): run được
@@ -312,6 +324,13 @@ export class OnboardingPlayScene extends PlayScene {
   // ---- mirror test round-2 (review điểm 1+2 — không lộ logic mới) ----
   plopSynthForTest(): PlopSynth {
     return this.plop;
+  }
+  /** FUN2-C1 mirror mute button (test toggle + persist — không lộ logic mới). */
+  toggleMuteForTest(): void {
+    this.muteBtn.toggle();
+  }
+  muteButtonForTest(): MuteButton {
+    return this.muteBtn;
   }
   rippleForTest(): RippleFx {
     return this.ripple;
