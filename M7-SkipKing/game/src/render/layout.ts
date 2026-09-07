@@ -53,6 +53,12 @@ export const FX = {
   wakePool: 26,
   /** objects — trần pool foam bounce/splash (FUN2-C2 — pool tái dùng). */
   foamPool: 12,
+  /**
+   * objects — trần pool spray (FUN2-C3 — burst theo impact 2–8 hạt/bounce; 24 = trần
+   * chịu nhịp bounce dày nhất của run thật không cạn pool giữa burst — ROLE-RULES perf).
+   * [PLACEHOLDER] feel-tune
+   */
+  sprayPool: 24,
 } as const;
 
 /**
@@ -75,6 +81,25 @@ export const SKIM = {
   foamRadiusPx: 34,
   /** px — bán kính foam SPLASH (chìm — to hơn nảy nhẹ). */
   splashFoamRadiusPx: 52,
+  /**
+   * FUN2-C3 juice — spray/crown/HUD pop (C3 card t_babfbe42; số feel [PLACEHOLDER] tới boss playtest):
+   * spray bung ở MỌI bounce theo scale impact (bỏ ngưỡng cứng SPRAY_IMPACT_MIN 0.72 —
+   * feedback boss: "phản hồi mỗi bounce đều đặn"), count = min + round(impact × (max−min)).
+   */
+  /** objects/burst — số hạt spray ở impact 0 (bounce micro vẫn có phản hồi, không lanh lãnh). [PLACEHOLDER] feel-tune */
+  sprayCountMin: 2,
+  /** objects/burst — số hạt spray ở impact 1. [PLACEHOLDER] feel-tune */
+  sprayCountMax: 8,
+  /** objects — số cụm foam vòm cung crown tại điểm chìm (splash crown — run kết thúc). [PLACEHOLDER] feel-tune */
+  crownPuffs: 5,
+  /** px — bán kính vòm crown tại waterline (tọa độ puff = điểm chìm + cos/sin trên cung). [PLACEHOLDER] feel-tune */
+  crownRadiusPx: 46,
+  /** × — bán kính 1 puff crown = splashFoamRadiusPx × ratio (puff nhỏ hơn foam chìm trung tâm). [PLACEHOLDER] feel-tune */
+  crownPuffScaleRatio: 0.45,
+  /** × — scale đỉnh pop HUD score (1 = nguyên bản; trần 1.3 chống vỡ layout — scale-only, 0 đổi alpha/chữ). [PLACEHOLDER] feel-tune */
+  hudPopScaleMax: 1.25,
+  /** ms — cửa sổ decay pop HUD về 1 (≤150ms trần card; mục tiêu feedback <100ms ROLE-RULES). [PLACEHOLDER] feel-tune */
+  hudPopMs: 120,
 } as const;
 
 export interface Projection {
