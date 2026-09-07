@@ -222,4 +222,35 @@ describe('BUG-GOM-02 — sk_best không bị demo ghi (TEST-FIELDS mục 6)', ()
     expect(scene.getEndCardForTest().shown).toBe(false); // run demo/kẹt không tạo end-card
     void t;
   });
+
+  it('Đ4 RED: skip khi engine RẢNH TRƯỚC cú demo đầu (t≈300ms) — director đóng băng ở local → sk_best null + pending 0 + 0 end-card', async () => {
+    // Cửa skip-sớm (review round 1 — probe A/B): banner "FLICK TO SKIP" mời chạm từ t=0;
+    // skip trước B1@2.0s → engine rảnh (stone null) → finishDemo flip NGAY. Nếu director
+    // còn tick ở stage local → B1/B2/B3 bắn thẳng ở local → applyRun ghi sk_best (bệnh card,
+    // tái phát đường mới) + banner 'YOUR TURN' hiện oan ở local (B4).
+    window.localStorage.removeItem('sk_done');
+    window.localStorage.removeItem('sk_best');
+    fakeNow = 0; // timeline RIÊNG từ 0 — fakeNow là đồng hồ dùng chung, scene trước để lại 12.1s+
+    const s4 = addScene(true);
+    scene.scene.pause();
+    scene = s4;
+    await waitBooted(scene);
+    expect(scene.getStageForTest()).toBe('demo');
+    let t = pump(scene, 0, 300);
+    expect(scene.getEngineForTest().stone).toBeNull(); // engine RẢNH — chưa từng ném
+    scene.skipDemoForTest(); // skip-on-touch sớm (stone null + finished=false → flip NGAY)
+    expect(scene.getStageForTest()).toBe('local');
+    t = pump(scene, t, 14100); // pump QUA hết mốc demo: nếu director còn tick → B1@2.0 bắn ở local
+    expect(scene.getStageForTest()).toBe('local');
+    expect(scene.pendingCountForTest()).toBe(0); // không cú demo nào được thả ở local
+    expect(window.localStorage.getItem('sk_best')).toBeNull(); // INVARIANT TEST-FIELDS mục 6
+    expect(scene.getLifecycleForTest().best).toBe(0);
+    expect(scene.getEndCardForTest().shown).toBe(false); // cú demo không tạo end-card ở local
+    // Director đóng băng ở local → không banner 'YOUR TURN' oan (B4 bắn khi director còn tick).
+    // Mirror trả container Text (clear() xoá text+alpha, không huỷ object) — soi nội dung.
+    const bannerMain = (scene.demoBannerForTest()?.list[0] as Phaser.GameObjects.Text | undefined)?.text ?? '';
+    expect(bannerMain).toBe(''); // đã clear ở flip và KHÔNG được viết lại
+    expect(scene.demoHandoffForTest()).toEqual({ pendingFlicks: 0, handoffPending: false, demoRunFlying: false });
+    void t;
+  });
 });

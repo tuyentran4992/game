@@ -135,16 +135,17 @@ export class OnboardingPlayScene extends PlayScene {
   }
 
   /** Director mỗi frame — diễn banner/flick/sweet-zone theo beat (scene chỉ DIỄN).
-   * BUG-GOM-02: trao tay hoãn chạy TRƯỚC director (frame kế flip) — demo chốt xong hết
-   * mới trao local, zero frame trống với cú người chơi. */
+   * BUG-GOM-02: trao tay hoãn chạy TRƯỚC director — demo chốt xong hết mới trao local,
+   * zero frame trống với cú người chơi. Guard stage (review round 1) đứng TRƯỚC
+   * director.update(): sau flip, director ĐÓNG BĂNG ở local — đường skip-sớm (engine rảnh,
+   * trước B1@2.0s) không thể bắn cú demo ở local → sk_best không bị demo ghi (mục 6). */
   public override update(time: number, delta: number): void {
     super.update(time, delta);
-    if (this.stage === 'demo') {
-      if (this.handoffPending && this.engine.finished) {
-        // Run mượn stage demo đã chốt ở cuối super.update() (applyRun trên lifecycle demo
-        // — không đụng best); local chưa tồn tại → trao tay NGAY (zero frame trống).
-        this.finishHandoff();
-      }
+    if (this.stage !== 'demo') return; // local: director đóng băng vĩnh viễn (main @8af3c40)
+    if (this.handoffPending && this.engine.finished) {
+      // Run mượn stage demo đã chốt ở cuối super.update() (applyRun trên lifecycle demo
+      // — không đụng best); local chưa tồn tại → trao tay NGAY (zero frame trống).
+      this.finishHandoff();
       if (this.stage !== 'demo') return; // vừa trao tay — frame này hết việc demo
     }
     // storage demo-once nằm trong director (constructor) — ĐÚNG 1 nguồn.
