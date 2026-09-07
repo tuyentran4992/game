@@ -29,12 +29,14 @@ export class TraceScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.levelIdx = 0;
+    // S5/lead: REPLAY LEVEL ghé qua data-param {startLevel} (EndScene) — clamp 0..11, mặc định L1.
+    const startLevel = (this.scene.settings.data as { startLevel?: number } | undefined)?.startLevel;
+    this.levelIdx = typeof startLevel === 'number' && startLevel >= 0 ? Math.min(11, Math.floor(startLevel)) : 0;
     // muted state from the save (schema field read at boot; mute button lives in hud)
     const savedMuted = this.registry.get('saveMuted') as boolean | undefined;
     if (savedMuted !== undefined) this.synth.muted = savedMuted;
     this.hud = new Hud(this, LEVELS[0].theme, LEVELS[0], this.synth, () => this.retry(), () => this.nextLevel());
-    this.loadLevel(0);
+    this.loadLevel(this.levelIdx);
 
     // pointer input (single touch only — engine ignores extra strokes)
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
