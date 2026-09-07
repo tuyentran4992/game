@@ -181,3 +181,28 @@ describe('S5 re-check sau art (không sửa logic — chỉ verify còn nguyên)
     expect(h).toBeLessThanOrEqual(2 * w);
   });
 });
+
+// S5F anchor (fix-forward stale startLevel): Phaser scene.start() KHÔNG data
+// KHÔNG ghi đè data cũ (ScenePlugin: "If no value is given it will not overwrite
+// any previous data") → PLAY AGAIN/closePopup sau 1 lượt REPLAY LEVEL giữ lại
+// { startLevel } cũ của lượt REPLAY trước. PLAY AGAIN = restart the whole run
+// (copy-en.ts) + closePopup phải về L1: cả 2 call-site phải truyền tường minh
+// { startLevel: 0 } (0 đi qua clamp 0..11 của TraceScene.create → levelIdx 0).
+describe('S5F anchor: navigation về L1 — playAgain + closePopup truyền { startLevel: 0 }', () => {
+  const end = readSrc('scenes/EndScene.ts');
+
+  function methodBody(name: 'playAgain' | 'closePopup'): string {
+    return end.match(new RegExp(`private ${name}\\(\\): void \\{[\\s\\S]*?\\n  \\}`))?.[0] ?? '';
+  }
+
+  it('cả 2 call-site scene.start(TraceScene) đều có data-param tường minh { startLevel: 0 }', () => {
+    expect(
+      methodBody('playAgain'),
+      'playAgain(): scene.start TraceScene thiếu data-param { startLevel: 0 } — Phaser giữ startLevel cũ (stale leak)',
+    ).toContain("this.scene.start('TraceScene', { startLevel: 0 })");
+    expect(
+      methodBody('closePopup'),
+      'closePopup(): scene.start TraceScene thiếu data-param { startLevel: 0 } — Phaser giữ startLevel cũ (stale leak)',
+    ).toContain("this.scene.start('TraceScene', { startLevel: 0 })");
+  });
+});

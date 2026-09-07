@@ -133,7 +133,9 @@ export class EndScene extends Phaser.Scene {
 
   private playAgain(): void {
     this.registry.set('awards', []);
-    this.scene.start('TraceScene');
+    // S5F: truyền tường minh { startLevel: 0 } — scene.start() KHÔNG data thì
+    // Phaser giữ data cũ ({ startLevel } của lượt REPLAY trước) → stale leak.
+    this.scene.start('TraceScene', { startLevel: 0 });
   }
 
   private replayLevel(): void {
@@ -145,6 +147,8 @@ export class EndScene extends Phaser.Scene {
 
   private closePopup(): void {
     this.registry.set('awards', []);
-    this.scene.start('TraceScene');
+    // S5F: truyền tường minh { startLevel: 0 } — scene.start() KHÔNG data thì
+    // Phaser giữ data cũ ({ startLevel } của lượt REPLAY trước) → stale leak.
+    this.scene.start('TraceScene', { startLevel: 0 });
   }
 }
