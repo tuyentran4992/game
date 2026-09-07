@@ -1,5 +1,13 @@
-// Slice Studio — audio/synth.ts (Tier B, WebAudio only — no audio files)
+// Slice Studio - audio/synth.ts (Tier B, WebAudio only - no audio files)
 // 2 synth voices required by the fun gate: slice whoosh + reveal chime.
+//
+// S3 polish (card t_e5b58098): ADDED voices strum / resumeCue / ambience and
+// enriched chunkLost content. Existing signatures slice/reveal/ghost/chunkLost/
+// blip are UNCHANGED (S3-T2 anchors byte-identical regions); frozen numbers
+// stay literal so the anchors hold - see src/config/audio-config.ts for the
+// tunable mirror + the "used" groups that ARE read from config.
+
+import { AUDIO } from '../config/audio-config';
 
 export class Synth {
   private ctx: AudioContext | null = null;
@@ -16,7 +24,7 @@ export class Synth {
     if (!Ctor) return;
     this.ctx = new Ctor();
     this.master = this.ctx.createGain();
-    this.master.gain.value = 0.5;
+    this.master.gain.value = AUDIO.master.gain;
     this.master.connect(this.ctx.destination);
   }
 
@@ -78,12 +86,78 @@ export class Synth {
 
   /** Chunk lost buzz (no-go touch). */
   chunkLost(): void {
-    this.tone(140, 0.22, 0.3, 'sawtooth', 0, 70);
-    this.noiseBurst(0.12, 300, 120, 0.3);
+    // Enriched content (S3): proto buzz kept as layer 1 + 2nd buzz layer +
+    // low thud - "loss with weight" (DESIGN-SPEC S4, pillar 3).
+    this.tone(AUDIO.chunkLost.buzzF, AUDIO.chunkLost.buzzDur, AUDIO.chunkLost.buzzVol, 'sawtooth', 0, AUDIO.chunkLost.buzzSlideTo);
+    this.noiseBurst(AUDIO.chunkLost.noiseDur, AUDIO.chunkLost.noiseF0, AUDIO.chunkLost.noiseF1, AUDIO.chunkLost.noiseVol);
+    this.tone(AUDIO.chunkLost.buzz2F, AUDIO.chunkLost.buzz2Dur, AUDIO.chunkLost.buzz2Vol, 'square', 0);
+    this.tone(AUDIO.chunkLost.thudF, AUDIO.chunkLost.thudDur, AUDIO.chunkLost.thudVol, 'sine', AUDIO.chunkLost.thudAt, AUDIO.chunkLost.thudSlideTo);
   }
 
   /** UI blip. */
   blip(): void {
     this.tone(520, 0.06, 0.15, 'square');
+  }
+
+  /** Split strum (S3): 4 rising notes, higher pct = higher pitch (pillar 1). */
+  strum(pct: number): void {
+    if (!this.ctx || !this.master || this.muted) return;
+    const c = AUDIO.strum;
+    const p = Math.min(100, Math.max(0, pct));
+    const root = c.base * Math.pow(2, (p / 100) * c.octave);
+    const ratios = [c.r1, c.r2, c.r3, c.r4];
+    for (let i = 0; i < c.notes; i++) {
+      this.tone(root * ratios[i], c.noteDur, c.vol, 'triangle', i * c.step);
+    }
+  }
+
+  /** Resume cue (S3): two soft 880 Hz pings - "release the edge, keep going". */
+  resumeCue(): void {
+    if (!this.ctx || !this.master || this.muted) return;
+    const c = AUDIO.resumeCue;
+    this.tone(c.f, c.d, c.v1, 'sine', 0);
+    this.tone(c.f, c.d, c.v2, 'sine', c.gap);
+  }
+
+  /** Chapter ambience (S3): 2-osc sine pad, very quiet, mood per chapter. */
+  ambience(chapter: number): void {
+    if (!this.ctx || !this.master || this.muted) return;
+    const c = AUDIO.ambience;
+    const pads = [c.pad1, c.pad2, c.pad3, c.pad4];
+    const ch = Math.min(4, Math.max(1, Math.floor(chapter)));
+    const root = pads[ch - 1];
+    this.stopAmbience();
+    const t = this.ctx.currentTime;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(c.gain, t + c.attack);
+    const o1 = this.ctx.createOscillator();
+    o1.type = 'sine';
+    o1.frequency.setValueAtTime(root, t);
+    const o2 = this.ctx.createOscillator();
+    o2.type = 'sine';
+    o2.frequency.setValueAtTime(root * c.f2Mul * c.detune, t);
+    o1.connect(g);
+    o2.connect(g);
+    g.connect(this.master);
+    o1.start(t);
+    o2.start(t);
+    this.pad = { o1, o2, gain: g };
+  }
+
+  private pad: { o1: OscillatorNode; o2: OscillatorNode; gain: GainNode } | null = null;
+
+  /** Fade the current ambience pad out and stop it (safe if none). */
+  private stopAmbience(): void {
+    if (!this.ctx || !this.pad) return;
+    const c = AUDIO.ambience;
+    const t = this.ctx.currentTime;
+    const { o1, o2, gain } = this.pad;
+    this.pad = null;
+    gain.gain.cancelScheduledValues(t);
+    gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), t);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + c.release);
+    o1.stop(t + c.release + 0.05);
+    o2.stop(t + c.release + 0.05);
   }
 }
