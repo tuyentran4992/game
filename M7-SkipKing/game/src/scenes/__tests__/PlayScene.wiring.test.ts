@@ -54,6 +54,7 @@ import { PlayScene } from '../PlayScene';
 import { Hud } from '../../ui/Hud';
 import { LAYOUT } from '../../render/layout';
 import { MECHANICS } from '../../config/mechanics';
+import type { EngineEvent } from '../../logic/types';
 
 const CANVAS = document.createElement('canvas');
 const NATIVE_RAF = globalThis.requestAnimationFrame;
@@ -256,6 +257,69 @@ describe('Hud — testid + text EN + cỡ chữ ≥24px trên canvas 720 (PB-5, 
     for (const s of labels) {
       expect(s).not.toMatch(/[ăâđêôơưàáảãạằẳẵặấầẩẫậèéẻẽẹềếểễệìíỉĩịòóỏõọồốổỗộờớởỡợùúủũụừứửữựỳýỷỹỵ]/i);
       expect(s).not.toMatch(/đ/i);
+    }
+  });
+});
+
+describe('REGRESSION BUG-GOM-01 (P0): update() phải chuyển events engine tới applyEvents', () => {
+  // Bệnh án QA-GOM t_570777d1/FIX-ROUND-1.md BUG-01: PlayScene.update() vứt return
+  // engine.step() trong khi PhysicsEngine.step() TỰ drainEvents() ở mọi nhánh push
+  // → applyEvents(drainEvents()) sau loop luôn nhận rỗng → 0 juice (banner/plop/ripple).
+  // Test spy applyEvents CẤP INSTANCE (protected — cast qua unknown, KHÔNG đụng
+  // Phaser.Scene.prototype) và đếm event đi qua trên run thật điều khiển bằng updateForTest.
+  it('run nảy thật (power 0.8) → applyEvents nhận ĐỦ bounce event = số nảy engine (trước fix ĐỎ: 0)', () => {
+    const engine = scene.getEngineForTest()!;
+    const received: EngineEvent[] = [];
+    const hook = scene as unknown as { applyEvents: (evs: EngineEvent[]) => void };
+    const orig = hook.applyEvents.bind(scene);
+    hook.applyEvents = (evs: EngineEvent[]) => {
+      received.push(...evs);
+      orig(evs); // vẫn diễn juice thật — scene không biết bị spy
+    };
+    try {
+      // Chờ queue sạch (test trước có thể còn pending) rồi ném cú nảy thật.
+      let frames = 0;
+      while ((scene.pendingCountForTest() > 0 || !engine.finished) && frames < 7200) {
+        scene.updateForTest(40000 + frames * 16, 16);
+        frames++;
+      }
+      scene.dispatchFlickForTest({ dirX: 0, dirZ: -1, power: 0.8 }); // 12.1 m/s ≥ minSkipSpeed 5.2
+      frames = 0;
+      while (!engine.finished && frames < 3600) {
+        scene.updateForTest(50000 + frames * 16, 16);
+        frames++;
+      }
+      expect(engine.finished).toBe(true);
+      expect(engine.bounces).toBeGreaterThanOrEqual(1); // engine nảy thật (bằng chứng QA: bounces=2)
+      const bounceEvents = received.filter((e) => e.type === 'bounce');
+      // ĐỦ + KHÔNG THIẾU KHÔNG THỪA: 1 event bounce / lần chạm nước (trước fix: 0).
+      expect(bounceEvents.length).toBe(engine.bounces);
+    } finally {
+      hook.applyEvents = orig; // trả nguyên bản — không nhiễm test khác
+    }
+  });
+
+  it('run chìm ngay (power 0 → 4.5 m/s < minSkipSpeed 5.2+jitter) → applyEvents nhận splash event', () => {
+    const engine = scene.getEngineForTest()!;
+    const received: EngineEvent[] = [];
+    const hook = scene as unknown as { applyEvents: (evs: EngineEvent[]) => void };
+    const orig = hook.applyEvents.bind(scene);
+    hook.applyEvents = (evs: EngineEvent[]) => {
+      received.push(...evs);
+      orig(evs);
+    };
+    try {
+      scene.dispatchFlickForTest({ dirX: 0, dirZ: -1, power: 0 }); // deterministic chìm (config ghi rõ)
+      let frames = 0;
+      while (!engine.finished && frames < 3600) {
+        scene.updateForTest(60000 + frames * 16, 16);
+        frames++;
+      }
+      expect(engine.finished).toBe(true);
+      expect(engine.terminalReason).toBe('splash');
+      expect(received.some((e) => e.type === 'splash')).toBe(true); // trước fix ĐỎ: false
+    } finally {
+      hook.applyEvents = orig;
     }
   });
 });
