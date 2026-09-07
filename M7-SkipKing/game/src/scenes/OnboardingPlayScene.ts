@@ -148,6 +148,10 @@ export class OnboardingPlayScene extends PlayScene {
       this.finishHandoff();
       if (this.stage !== 'demo') return; // vừa trao tay — frame này hết việc demo
     }
+    // Merge t_30a36bb9 (semantic conflict BUG-01×BUG-02): khi hoãn trao tay, ĐÓNG BĂNG
+    // director — nếu không, beat B2/B3 re-fill pendingFlicks + B3 bật slow-mo 0.4× →
+    // run chain kéo dài, trao tay không bao giờ bắn (player chờ skip 15s+; test Đ1 đỏ).
+    if (this.handoffPending) return;
     // storage demo-once nằm trong director (constructor) — ĐÚNG 1 nguồn.
     const u = this.director.update(time / 1000);
     if (u.flick) {

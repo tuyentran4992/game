@@ -170,7 +170,10 @@ describe('BUG-GOM-02 — sk_best không bị demo ghi (TEST-FIELDS mục 6)', ()
     // run nảy/điểm dao động theo rng Date.now (bất định) — invariant: best ghi là của NGƯỜI CHƠI.
     scene.dispatchFlickForTest({ dirX: 0, dirZ: -1, power: 0.8 });
     expect(scene.getEngineForTest().stone).not.toBeNull();
-    pump(scene, 20250, 26000);
+    // Merge t_30a36bb9: BUG-01 fix làm event chảy lại → bounce đầu PERFECT bật slow-mo 0.4×
+    // (nhánh 077be174 viết test khi BUG-01 chưa merge — slow-mo không bao giờ bật → pump 5.75s đủ).
+    // Nới cửa pump đủ cho run chốt TRONG slow-mo (~12-13s test); assert/invariant giữ nguyên.
+    pump(scene, 20250, 36000);
     expect(scene.getEndCardForTest().shown).toBe(true);
     expect(scene.getEngineForTest().judgedPerfect).toBe(true); // run PERFECT thật (tầng A)
     // sk_best = điểm run người chơi (lifecycle local là chủ storage — tầng A)
@@ -190,7 +193,9 @@ describe('BUG-GOM-02 — sk_best không bị demo ghi (TEST-FIELDS mục 6)', ()
     expect(scene.getStageForTest()).toBe('local');
     scene.updateForTest(500, 16);
     scene.dispatchFlickForTest({ dirX: 0, dirZ: -1, power: 0.8 });
-    pump(scene, 550, 7000);
+    // Merge t_30a36bb9: nới cửa pump cho slow-mo 0.4× (BUG-01 fix làm event chảy lại —
+    // test viết trên nhánh 077be174 khi slow-mo chưa bao giờ bật); assert giữ nguyên.
+    pump(scene, 550, 20000);
     expect(scene.getEndCardForTest().shown).toBe(true);
     expect(scene.getEngineForTest().judgedPerfect).toBe(true);
     // PERFECT ⇒ ≥ perfectMinBounces nảy ⇒ score ≥ 14 > best cũ 10 → NEW BEST, "was" = best cũ 10
@@ -202,6 +207,9 @@ describe('BUG-GOM-02 — sk_best không bị demo ghi (TEST-FIELDS mục 6)', ()
   it('Đ1: skip-on-touch giữa demo — cú demo còn pending (kẹt hàng đợi) KHÔNG được thả ở local', async () => {
     window.localStorage.removeItem('sk_done'); // lần demo mới cho scene kế
     window.localStorage.removeItem('sk_best');
+    // Merge t_30a36bb9: reset đồng hồ giả TRƯỚC khi boot (fakeNow dùng chung — scene trước
+    // (tie-B) để lại 20s; director boot ở t≥12s sẽ coi demo done ngay → flip oan từ boot).
+    fakeNow = 0; // timeline RIÊNG từ 0 — pattern test Đ4
     const s2 = addScene(true);
     scene.scene.pause(); // dừng scene cũ — update() không tự diễn nữa
     scene = s2;
