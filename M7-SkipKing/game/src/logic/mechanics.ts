@@ -37,6 +37,23 @@ export function judgePerfect(input: FlickInput, cfg: MechanicsConfig): boolean {
   );
 }
 
+/** Ngưỡng impact bật hitstop + dải thời gian — [PLACEHOLDER] tới boss playtest (FUN2-C1). */
+const HITSTOP_THRESHOLD = 0.6; // 0..1 — nảy từ lực này mới hitstop
+const HITSTOP_MIN_MS = 33; // ms — sàn hitstop (1 nửa frame 60fps)
+const HITSTOP_MAX_MS = 66; // ms — trần hitstop (~4 frame 60fps, không kẹt tay)
+
+/**
+ * Hitstop tầng A (FUN2-C1): impact ≥ ~0.6 → freeze 33–66ms ∝ lực — scene card C2 DIỄN
+ * (card này chỉ xuất hàm + test). KHÔNG thêm field vào EngineEvent (anchor khóa event shape).
+ * Nảy thường (< ngưỡng) → 0ms.
+ */
+export function hitstopMsFor(impact: number): number {
+  const i = Math.min(1, Math.max(0, impact));
+  if (i < HITSTOP_THRESHOLD) return 0;
+  const t = (i - HITSTOP_THRESHOLD) / (1 - HITSTOP_THRESHOLD); // 0..1 trong vùng hitstop
+  return Math.round(HITSTOP_MIN_MS + t * (HITSTOP_MAX_MS - HITSTOP_MIN_MS));
+}
+
 /**
  * FlickInput → Stone khởi đầu + tốc độ phóng (engine ghi lại để tính impact ratio).
  * dirX/dirZ đơn vị tự do (góc qua atan2); góc KHÔNG kẹp — góc rộng bị skip-gate loại tự nhiên.
