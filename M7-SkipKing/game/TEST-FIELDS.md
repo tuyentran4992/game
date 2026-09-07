@@ -1,4 +1,4 @@
-# TEST-FIELDS — Skip King (M7-SkipKing/game) · card t_90fcf0b4 (T5)
+# TEST-FIELDS — Skip King (M7-SkipKing/game) · card t_90fcf0b4 (T5) + FUN2-C1 (t_22349993)
 
 QA bấm/soi bằng testid gắn qua `setData('testid', ...)` trong scene (canvas QA bấm qua
 `window.__game`, canvas có attribute `data-testid="game-canvas"`).
@@ -76,3 +76,30 @@ Hành vi mới QA cần biết (deferred handoff):
   unit: `OnboardingPlayScene.demoLeak.test.ts` test "Đ4" — skip t≈300ms → pump tới 14.1s →
   `sk_best` null + pending 0 + 0 end-card + banner rỗng. QA retest ô C6 đủ 3 thời điểm
   skip (a)/(b)/(c) nêu ở mục 6.
+
+## Bổ sung FUN2-C1 (t_22349993 — audio nghe thấy mobile + mute)
+
+Testid mới:
+
+| testid | Đối tượng / cách đọc | Ý nghĩa | Visible khi nào |
+|---|---|---|---|
+| `mute-btn` | Text trong OnboardingPlayScene — `children.list.find(o => o.getData('testid') === 'mute-btn')` | Nhãn nút âm thanh: `SOUND ON` (đang có tiếng) / `SOUND OFF` (đang câm). 100% EN (PB-5). | Luôn trong scene chơi |
+| `mute-btn-bg` | Rectangle — đọc như trên với `'mute-btn-bg'` | Nền bấm nút ≥44px (`MECHANICS.touchTargetPx`), góc phải-dưới màn (thumb reach — không đè HUD). | Luôn trong scene chơi |
+
+Hành vi mới QA cần biết:
+
+- **Nút mute**: bấm nền `mute-btn-bg` (pointerdown) → đảo mute NGAY: `plopSynth.setMuted()` →
+  play/playWhoosh no-op 0 node (không phát gì, kể cả plop nảy + whoosh ném). Label đổi
+  `SOUND ON` ↔ `SOUND OFF` cùng frame.
+- **Persist**: `localStorage.sk_muted` = `'1'` khi mute, `'0'` khi mở. Boot lại scene/page với
+  `sk_muted=1` → plopSynth khởi động ở trạng thái muted (đúng label `SOUND OFF`).
+- **Whoosh ném đá**: mỗi cú thả (demo B1–B3 LẪN cú người chơi) phát 1 tiếng vút ngắn
+  `playWhoosh(power)` ngay trước khi đá vào engine — power nguyên bản của cú.
+- **Slap chủ đạo**: plop nảy giờ có lớp slap 1.5–4kHz to nhất (nghe "thíp" trên loa mobile) +
+  fundamental tonal 180–320Hz, envelope tổng 150–250ms, masterGain 0.5–0.9 (số [PLACEHOLDER]
+  tới boss playtest).
+- **Hitstop** (`src/logic/mechanics.ts` `hitstopMsFor(impact)`): chỉ xuất hàm tầng A
+  (33–66ms khi impact ≥ 0.6) — scene CHƯA diễn (card C2). QA không thấy thay đổi visual card này.
+- Bằng chứng unit: `src/scenes/__tests__/Fun2Audio.wiring.test.ts` (whoosh + mute),
+  `src/audio/__tests__/plopSynth.test.ts` (slap path + whoosh + muted 0 node),
+  `src/audio/__tests__/audioMapper.test.ts` (số mapper mới), `src/logic/__tests__/hitstop.test.ts`.

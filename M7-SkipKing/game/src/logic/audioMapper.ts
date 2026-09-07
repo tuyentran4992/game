@@ -119,11 +119,11 @@ export function plopParams(ev: {
   const slap: SlapParams = {
     freqHz: slapFreqHz(ev.impact, ev.hit),
     durationS: 0.055 + Math.min(1, Math.max(0, ev.impact)) * 0.02, // 55..75ms — transient [PLACEHOLDER]
-    level: ev.hit ? 0.95 : 0.85, // trúng hơi to hơn hụt — [PLACEHOLDER]
+    level: ev.hit ? 0.9 : 0.85, // trúng hơi to hơn hụt — [PLACEHOLDER] (probe: chặn clip >0dBFS)
   };
 
   const i = Math.min(1, Math.max(0, ev.impact));
-  const masterGain = 0.55 + i * 0.35; // 0.55..0.9 — ∝ lực, trần 0.9 [PLACEHOLDER]
+  const masterGain = 0.55 + i * 0.25; // 0.55..0.8 — ∝ lực [PLACEHOLDER] (probe: laptop strong không lốp 0dBFS)
   // Envelope tổng 150–250ms ∝ lực: cú mạnh vang đuôi dài hơn [PLACEHOLDER].
   const totalDurationS = 0.15 + i * 0.1;
   return { layers, slap, masterGain, totalDurationS };
