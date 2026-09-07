@@ -205,11 +205,15 @@ export class SaveStore {
     if (this.installed || typeof window === 'undefined' || typeof window.addEventListener !== 'function') return;
     this.installed = true;
     const onHide = () => void this.flush();
-    window.addEventListener('visibilitychange', onHide);
+    // visibilitychange fires AT the document with bubbles=false (MDN: "fired at
+    // the document") — a window listener never hears it (review F1, C-24).
+    // orientationchange & pagehide fire at window, so they stay registered there.
+    const docReady = typeof document !== 'undefined' && typeof document.addEventListener === 'function';
+    if (docReady) document.addEventListener('visibilitychange', onHide);
     window.addEventListener('orientationchange', onHide);
     window.addEventListener('pagehide', onHide);
     this.removeListeners = () => {
-      window.removeEventListener('visibilitychange', onHide);
+      if (docReady) document.removeEventListener('visibilitychange', onHide);
       window.removeEventListener('orientationchange', onHide);
       window.removeEventListener('pagehide', onHide);
       this.installed = false;
