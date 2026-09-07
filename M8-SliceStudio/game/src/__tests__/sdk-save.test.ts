@@ -121,23 +121,66 @@ describe('S4 save store (atomic write via SDK)', () => {
     await expect(store.restore()).resolves.toBeUndefined(); // idempotent
   });
 
-  it('S4-T8: visibilitychange dispatch → saveData called exactly once per event (spy)', async () => {
-    let fireVisibility: () => void = () => {};
-    vi.stubGlobal('window', {
-      addEventListener: (_t: string, cb: (ev?: unknown) => void) => {
-        fireVisibility = cb;
-      },
-      removeEventListener: () => {},
-    });
+  it('S4-T8: visibilitychange dispatched at DOCUMENT reaches the saver — saveData exactly once per event', async () => {
+    // visibilitychange fires AT the document, bubbles=false — a window listener
+    // never hears it (review round 1, F1). This test measures the real DOM
+    // contract: a real Event dispatched at a real document EventTarget.
+    const listeners: Array<{ target: EventTarget; t: string; cb: EventListener }> = [];
+    const track = (target: EventTarget): EventTarget => {
+      const realAdd = target.addEventListener.bind(target);
+      target.addEventListener = (t: string, cb: EventListener, opts?: boolean | AddEventListenerOptions) => {
+        listeners.push({ target, t, cb });
+        return realAdd(t, cb, opts);
+      };
+      return target;
+    };
+    const win = track(new EventTarget());
+    const doc = track(new EventTarget());
+    (doc as unknown as { title: string }).title = 'test-doc';
+    vi.stubGlobal('window', win);
+    vi.stubGlobal('document', doc);
     const backend = new MockBackend();
     const spy = vi.spyOn(backend, 'saveData');
     const store = new SaveStore(backend);
     store.setLoaded(baseSave());
     store.installLifecycleSavers();
-    fireVisibility();
+    // The saver must have registered visibilitychange on the FIRING target
+    // (document), not only on window — probing registrations is fair game as
+    // long as the assertion below exercises the real dispatch path too.
+    expect(listeners.some((l) => l.target === doc && l.t === 'visibilitychange')).toBe(true);
+    doc.dispatchEvent(new Event('visibilitychange'));
     await vi.waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
-    fireVisibility();
+    doc.dispatchEvent(new Event('visibilitychange'));
     await vi.waitFor(() => expect(spy).toHaveBeenCalledTimes(2));
+    // window-only dispatches must NOT trigger saves (event does not fire there)
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+
+  it('S4-T8c: window receives no visibilitychange save — event fires at document (regression anchor)', async () => {
+    // Anchors the DOM contract both ways: after the fix, registering on
+    // document means a naive window-only listener regression would fail S4-T8;
+    // this cell documents that the OLD code (window listener) never fires on
+    // document dispatches — i.e. the defect itself — by running the real
+    // dispatch against a store whose saver was installed with window-only
+    // globals available.
+    const win = new EventTarget();
+    const doc = new EventTarget();
+    (doc as unknown as { title: string }).title = 'test-doc';
+    vi.stubGlobal('window', win);
+    vi.stubGlobal('document', doc);
+    const backend = new MockBackend();
+    const spy = vi.spyOn(backend, 'saveData');
+    const store = new SaveStore(backend);
+    store.setLoaded(baseSave());
+    store.installLifecycleSavers();
+    doc.dispatchEvent(new Event('visibilitychange'));
+    await new Promise((r) => setTimeout(r, 5));
+    // GREEN with the fix: document listener heard it. (On the pre-fix window
+    // listener this was 0 — that is the RED the fix-forward closes.)
+    await vi.waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    win.dispatchEvent(new Event('visibilitychange'));
+    await new Promise((r) => setTimeout(r, 5));
+    expect(spy).toHaveBeenCalledTimes(1); // window dispatch is inert for this event
   });
 
   it('S4-T8b: recordCut merges a result then persists — max-only end to end', async () => {
