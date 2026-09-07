@@ -6,6 +6,7 @@
 import * as Phaser from 'phaser';
 import type { Stone } from '../logic/types';
 import type { Projection } from './layout';
+import { SKIM } from './layout';
 import { SquashFx } from './SquashFx';
 
 export const STONE_TEX = 'stone';
@@ -15,6 +16,8 @@ const STONE_FB_PX = 44;
 export class StoneRenderer {
   private sprite: Phaser.GameObjects.Image;
   private squash: SquashFx;
+  /** Góc xoay TÍCH LŨY (rad) — FUN2-C2: spin theo tốc độ bay thật, không theo wall-clock. */
+  private rot = 0;
 
   constructor(scene: Phaser.Scene, private proj: Projection) {
     if (!scene.textures.exists(STONE_TEX)) {
@@ -49,17 +52,22 @@ export class StoneRenderer {
     this.squash = new SquashFx();
   }
 
-  /** Đá đang bay: đặt theo Stone 2.5D (y = cao độ trên mặt nước). */
-  renderStone(s: Stone, timeMs: number): void {
+  /** Đá đang bay: đặt theo Stone 2.5D (y = cao độ trên mặt nước).
+   * FUN2-C2: spin theo tốc độ bay THẬT (đọc Stone tầng A — khối quang học xoay nhanh lúc
+   * vắt mạnh, chậm khi rơi) — rotation TÍCH LŨY ∝ hypot(vx,vz) × SKIM.spinRadPerMsPerSpeed,
+   * không còn rotation cứng 0.004 rad/ms theo wall-clock. */
+  renderStone(s: Stone, _timeMs: number, deltaMs = 16.7): void {
     const x = this.proj.xToScreenX(s.x, s.z);
     const y = this.proj.zToY(s.z) - s.y * this.proj.pxPerM(s.z);
     const scale = this.proj.zScale(s.z);
     this.sprite.setPosition(x, y).setScale(scale).setVisible(true);
-    this.sprite.rotation = (timeMs * 0.004) % (Math.PI * 2); // đá xoay khi bay — cảm giác vật lý
+    this.rot += Math.hypot(s.vx, s.vz) * SKIM.spinRadPerMsPerSpeed * deltaMs;
+    this.sprite.rotation = this.rot % (Math.PI * 2); // đá xoay theo tốc thật — cảm giác vật lý
   }
 
-  /** Đá đợi ở điểm xuất phát (chưa ném) — neo aim guide. */
+  /** Đá đợi ở điểm xuất phát (chưa ném) — neo aim guide. FUN2-C2: rotation về 0 như cũ. */
   renderIdle(): void {
+    this.rot = 0;
     this.sprite.setPosition(this.proj.xToScreenX(0, 0), this.proj.waterlineY - 10);
     this.sprite.setScale(1).setRotation(0).setVisible(true);
   }
