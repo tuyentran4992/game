@@ -185,3 +185,4 @@ python -m pipeline package  --game-dir games/<name>
 - **Vitest có thể hang trên môi trường này** — chạy từng file test riêng lẻ.
 - **Multi-platform build:** Vite build --mode <platform> để build 1 platform riêng.
 - **SDK:** Handler singleton khởi tạo ngay khi import → trong test environment, detect đúng `local`.
+- **07/09 ~12:1x UTC — SKIP KING (M7) boss KILL tại Fun Gate PB-2:** chơi tay bản ce52fd7 (audio+feel+juice FUN2) phán "nhàm chán quá". Dây FUN2 closeout đã done, 0 card live. Nguyên nhân gốc: vòng lặp core 0 biến đổi theo mốc (cột 3 BIEN-DOI-VONG-LAP trống) — đã hợp thức 1 dòng vào docs/REJECT-LESSONS.md mục 4.6. Không resubmit, không vòng kế cho M7. Site netlify skip-king-playables giữ nguyên (chưa xóa).

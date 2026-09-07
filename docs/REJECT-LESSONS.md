@@ -47,3 +47,5 @@ Email từ **Sofiya — Business Development Manager, YouTube Playables @ MediaC
 4. **QA không debug bot vô hạn** (boss lệnh 12/09 qua supervisor, comment 42 card t_68477b0d): 4 vòng/2h sửa bot → "độ vui/độ khó = boss chơi tay phán (PB-2), bot chỉ là smoke báo-động-sớm ≤10 phút, không phải gate". Đã chép cứng vào PROJECT-RULES PB-3b.
 
 5. **Nợ kiến trúc E — Gameplay.ts god-file 2233 dòng** (PERF3 04/09, card t_e49b5119): round perf chỉ patch render/allocation đúng phạm vi A-D (pre-render doodads, FxPool, dirty-flag, in-place prune), CẤM tách file trong round này vì rủi ro regression cao — refactor tách scenes/systems làm round riêng sau khi M1 ổn.
+
+6. **Skip King (M7) — boss KILL tại Fun Gate 07/09** (1 dòng, PB-2a): feel đủ đã (audio/juice/skim đạt số verify) nhưng **vòng lặp core nhàm — 0 biến đổi theo mốc, cột (3) bảng BIEN-DOI-VONG-LAP trống ngay từ đầu**; bài học: BẢNG BIẾN ĐỔI phải có cột (3) ĐÃ ĐIỀN (ít nhất 1 mốc mở quyết định mới) TRƯỚC khi chain production chạy, feel không cứu được loop rỗng.

@@ -50,6 +50,7 @@
 | 2026-09-06 | Gem cut/polish | gem cutting | Playgama | 1 kề: Gem Stack `/game/gem-stack` + clicker-adjacent | ❌ KILL (verb mỏng) |
 | 2026-09-06 | Laser route/toggle | beam ricochet | Playgama | 1–2: Laser Bounce Miner `/game/laser-bounce-miner` · Turn Off the Light | ❌ GẠT (audience hẹp) |
 | 2026-09-06 | (ghi nhận hàng tồn) M5 "Peel!" | peel-ribbon | Playgama | ⚠ MỚI: Sticker Jam: Peel Off & Match `/game/sticker-jam-peel-off--match` (peel-sticker+match) — M5 peel-fruit vẫn khác cơ chế chính nhưng TRƯỚC KHI đầu tư lại M5 phải re-check catalog toàn bộ (PB-3b cửa 3) | ⏸ re-check trước khi dùng lại |
+| 2026-09-07 | Slice Studio (re-check trước prototype — PB-3b cửa 3) | trace-cut / precision slice theo đường mờ | Playgama | **2 bản kề**: (1) Perfect Half `/game/perfect-half` — kéo ĐƯỜNG THẲNG cắt đôi 50/50 (verb + cấu trúc khác: trace-path quanh silhouette + % sai số + no-go zone); (2) Soap Cutting ASMR `/game/soap-cutting-asmr` — có mode "follow outlined path" nhưng carve tự do, không đo sai số/tách hình theo path; tên "Slice Studio" 0 trùng (search `playgama "slice studio"` chỉ trả Slice & Destroy / Slice & Soar — khác mechanic) | GO (đúng điều kiện khác biệt hóa từ 06/09; <3 bản cùng mechanic) |
 
 ## Nhật ký nộp
 
