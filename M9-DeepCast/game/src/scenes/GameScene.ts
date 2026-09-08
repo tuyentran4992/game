@@ -3,7 +3,7 @@ import Phaser from 'phaser';
 import { createGame, startDive, applyContinue } from '../core/rules.ts';
 import { applyDiveTick } from '../core/tick.ts';
 import type { GameState } from '../core/types.ts';
-import { WORLD_H, SURFACE_Y } from '../data/world.ts';
+import { WORLD_H, SURFACE_Y, FUEL_COST } from '../data/world.ts';
 import { loadBest, saveBest, PlaygamaBridge } from '../bridge/playgama.ts';
 import { WorldLayer } from '../render/worldRender.ts';
 import { FishLayer } from '../render/fishRender.ts';
@@ -55,8 +55,14 @@ export class GameScene extends Phaser.Scene {
 
     this.cameras.main.setBounds(0, 0, 480, WORLD_TALL);
 
-    // one-finger input (SPEC §3)
-    this.input.on('pointerdown', () => {
+    // one-finger input (SPEC §3); UI buttons routed by position BEFORE gameplay hold
+    this.input.on('pointerdown', (pt: Phaser.Input.Pointer) => {
+      const act = this.overlays.routeTap(pt.position.x, pt.position.y, this.state.phase, this.state.usedContinue);
+      if (act === 'start') { this.overlays.onStart?.(); return; }
+      if (act === 'retry') { this.overlays.onRetry?.(); return; }
+      if (act === 'continue') { this.overlays.onContinue?.(); return; }
+      if (this.state.phase !== 'dive') return;
+      if (this.hud.sonarHit(pt.position.x, pt.position.y)) { this.hud.onSonarPress?.(); return; }
       this.holding = true;
       sfx.play('reel');
     });

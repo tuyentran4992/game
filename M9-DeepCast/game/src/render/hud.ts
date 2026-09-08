@@ -77,9 +77,12 @@ export class Hud {
     this.sonarChargesText = this.scene.add.text(0, 14, '', { fontFamily: 'sans-serif', fontSize: '14px', color: '#FFE66D' }).setOrigin(0.5);
     c.add([bg, label, this.sonarChargesText]);
     c.setSize(72, 72);
-    c.setInteractive(new Phaser.Geom.Rectangle(-36, -36, 72, 72), Phaser.Geom.Rectangle.Contains);
-    c.on('pointerdown', () => this.onSonarPress?.());
     this.sonarBtn = c;
+  }
+
+  /** Tap-router zone for the sonar button (screen coords, padded for thumbs). */
+  sonarHit(x: number, y: number): boolean {
+    return Math.abs(x - 436) <= 50 && Math.abs(y - 782) <= 50;
   }
 
   update(state: GameState): void {

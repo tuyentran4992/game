@@ -31,6 +31,7 @@ export class Overlays {
   }
 
   private makeButton(x: number, y: number, label: string, cb: () => void, color = 0xffd166): Phaser.GameObjects.Container {
+    void cb; // callbacks now routed via routeTap
     const c = this.scene.add.container(x, y);
     const bg = this.scene.add.rectangle(0, 0, 220, 64, color).setStrokeStyle(4, 0x1b2a41);
     const t = this.scene.add
@@ -38,9 +39,20 @@ export class Overlays {
       .setOrigin(0.5);
     c.add([bg, t]);
     c.setSize(220, 64);
-    c.setInteractive(new Phaser.Geom.Rectangle(-110, -32, 220, 64), Phaser.Geom.Rectangle.Contains);
-    c.on('pointerdown', () => cb());
+    // tap routed via scene-level routeTap (container hitArea proved unreliable)
     return c;
+  }
+
+  /** Scene-level tap router: returns action or null. Zones padded 260x90 for thumbs. */
+  routeTap(x: number, y: number, phase: string, usedContinue: boolean): 'start' | 'retry' | 'continue' | null {
+    const hit = (cx: number, cy: number) => Math.abs(x - cx) <= 130 && Math.abs(y - cy) <= 45;
+    if (phase === 'title' && hit(240, 457)) return 'start';
+    if (phase === 'win' && hit(240, 547)) return 'retry';
+    if (phase === 'lose') {
+      if (!usedContinue && hit(240, 467)) return 'continue';
+      if (hit(240, 557)) return 'retry';
+    }
+    return null;
   }
 
   private buildTitle(best: number): void {
