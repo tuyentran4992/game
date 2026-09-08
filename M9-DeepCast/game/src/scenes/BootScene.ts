@@ -8,6 +8,7 @@ const ASSET_KEYS = [
   'whale', 'shark', 'chest', 'treasure',
   'splash', 'sparkle', 'bubble', 'sonar',
   'bg_reef', 'bg_wreck', 'bg_vents', 'bg_trench',
+  'water_veil', // gradient nuoc man — tri dai vents den + seam lien dai
 ] as const;
 
 export class BootScene extends Phaser.Scene {

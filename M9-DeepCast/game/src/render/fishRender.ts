@@ -32,7 +32,8 @@ export class FishLayer {
 
   createShark(): void {
     this.shark = this.scene.add.image(240, 1146, 'shark').setDepth(8);
-    this.shark.setDisplaySize(160, 54); // DESIGN-SPEC §3
+    // spec width 160px, aspect kept (source art is 632x390, not the spec's flat 160x54)
+    this.shark.setDisplaySize(160, Math.round((160 * this.shark.height) / this.shark.width));
   }
 
   // keep sprite pool in sync with live fish
@@ -43,8 +44,8 @@ export class FishLayer {
       if (!this.sprites.has(f.uid)) {
         const idx = f.defId === 'whale' ? 9 : Number(f.defId.slice(1)) - 1;
         const w = f.defId === 'whale' ? 240 : FISH_W[idx] ?? 64;
-        // whale source art is vertical (681x916) -> keep its aspect ratio at 240 wide
-        const h = f.defId === 'whale' ? Math.round(240 * (916 / 681)) : Math.round(w * 0.5);
+        // whale source art is vertical (681x788) -> keep its aspect ratio at 240 wide
+        const h = f.defId === 'whale' ? Math.round(240 * (788 / 681)) : Math.round(w * 0.5);
         const img = this.scene.add.image(f.x, f.y, fishTexture(f.defId)).setDepth(6);
         img.setDisplaySize(w, h);
         if (f.defId === 'whale') img.setDepth(7);

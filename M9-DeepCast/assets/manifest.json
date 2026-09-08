@@ -140,8 +140,8 @@
   },
   "bg_vents": {
    "file": "assets/bg_vents.png",
-   "sha": "5d3f46e33e72",
-   "bytes": 140341,
+   "sha": "de6af115b70f",
+   "bytes": 41506,
    "vision": "bg-pass"
   },
   "bg_trench": {
@@ -149,6 +149,11 @@
    "sha": "f241efdab67d",
    "bytes": 151061,
    "vision": "bg-pass"
+  },
+  "water_veil": {
+   "file": "assets/water_veil.png",
+   "sha": "ae275b7389ab",
+   "bytes": 5482
   }
  },
  "generated_at": "2026-09-08T09:03:12Z",

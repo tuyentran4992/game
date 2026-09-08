@@ -94,8 +94,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private resetGame(): void {
+    // boat belongs to WorldLayer and must survive retries — destroying it here
+    // left the surface empty (and FishLayer holding a dead ref) after "TRY AGAIN"
     this.fishLayer.destroy();
-    this.world.boat.destroy();
     this.state = createGame(1);
     this.fishLayer = new FishLayer(this);
     this.fishLayer.setBoat(this.world.boat);

@@ -11,12 +11,20 @@ interface BandSpec {
   tint: number;
 }
 
+// Tints darken with depth but stay light enough to keep texture detail visible
+// (multiplying an already-dark texture at 0.99aacc turned the trench pure black).
 const BANDS_PX: BandSpec[] = [
   { key: 'bg_reef', topPx: SEA_TOP, botPx: SEA_TOP + 254, tint: 0xffffff },
-  { key: 'bg_vents', topPx: SEA_TOP + 254, botPx: SEA_TOP + 604, tint: 0xddeeff },
-  { key: 'bg_wreck', topPx: SEA_TOP + 604, botPx: SEA_TOP + 954, tint: 0xb8cce8 },
-  { key: 'bg_trench', topPx: SEA_TOP + 954, botPx: 1300, tint: 0x99aacc },
+  { key: 'bg_vents', topPx: SEA_TOP + 254, botPx: SEA_TOP + 604, tint: 0xe8f4ff },
+  { key: 'bg_wreck', topPx: SEA_TOP + 604, botPx: SEA_TOP + 954, tint: 0xd6e4f8 },
+  { key: 'bg_trench', topPx: SEA_TOP + 954, botPx: 1300, tint: 0xc6d8f2 },
 ];
+
+// Shrink a sprite to `w` display width, keeping the source art's aspect ratio.
+// Production PNGs ship far larger than their DESIGN-SPEC §3 display size.
+function fitToWidth(img: Phaser.GameObjects.Image, w: number): void {
+  img.setDisplaySize(w, Math.round((w * img.height) / img.width));
+}
 
 export class WorldLayer {
   private scene: Phaser.Scene;
@@ -43,11 +51,16 @@ export class WorldLayer {
   }
 
   private buildBands(): void {
-    for (const b of BANDS_PX) {
-      const h = b.botPx - b.topPx;
+    for (let i = 0; i < BANDS_PX.length; i++) {
+      const b = BANDS_PX[i]!;
+      // 1px overlap into each neighbour (+2px at the world floor) so rounding
+      // never exposes a black hairline seam or a strip of clear color
+      const top = b.topPx - (i > 0 ? 1 : 0);
+      const bot = b.botPx + (i < BANDS_PX.length - 1 ? 1 : 2);
+      const h = bot - top;
       // layer 1: far parallax (0.3x), faded
       this.scene
-        .add.image(240, b.topPx + h / 2, b.key)
+        .add.image(240, top + h / 2, b.key)
         .setDisplaySize(480, h)
         .setAlpha(0.35)
         .setScrollFactor(0.3)
@@ -55,15 +68,20 @@ export class WorldLayer {
         .setTint(b.tint);
       // layer 2: near (1x)
       this.scene
-        .add.image(240, b.topPx + h / 2, b.key)
+        .add.image(240, top + h / 2, b.key)
         .setDisplaySize(480, h)
         .setDepth(2)
         .setTint(b.tint);
     }
+    // Water veil: translucent depth-gradient over the whole column — turns the
+    // vents band's black bubble-field art into deep navy, fades its white
+    // specks, and blends hard seams between bands into one ocean.
+    this.scene.add.image(240, 650, 'water_veil').setDisplaySize(480, 1300 - 0).setDepth(2.5);
   }
 
   private buildTreasure(): void {
     this.treasure = this.scene.add.image(240, 1252, 'treasure').setDepth(3);
+    fitToWidth(this.treasure, 200); // DESIGN-SPEC §3: 200px wide (source 800x497)
     this.scene.tweens.add({
       targets: this.treasure,
       alpha: { from: 0.85, to: 1 },
@@ -74,11 +92,17 @@ export class WorldLayer {
   }
 
   private buildBoat(): void {
-    this.boat = this.scene.add.image(240, SEA_TOP - 42, 'boat').setDepth(10);
+    // Source art is 736x692 (near-square: tall fisherman + rod) while the sky
+    // strip above the waterline is only SEA_TOP=96px — displaying it at natural
+    // size clipped the fisherman's head off the top of the canvas. 140px wide
+    // is the largest aspect-true fit that keeps the hat on screen through the
+    // whole bob tween with the hull sitting ~25px below the waterline.
+    this.boat = this.scene.add.image(240, SEA_TOP - 40, 'boat').setDepth(10);
+    fitToWidth(this.boat, 140);
     // idle bob 2f
     this.scene.tweens.add({
       targets: this.boat,
-      y: SEA_TOP - 46,
+      y: SEA_TOP - 44,
       duration: 1300,
       yoyo: true,
       repeat: -1,
@@ -91,11 +115,15 @@ export class WorldLayer {
   }
 
   private buildHook(): void {
+    // DESIGN-SPEC §3 display caps: hook 40x56 (≤48px), hook-double ≤64px.
+    // Source art is 139x140 / 400x413 — natural size dwarfed the 480px world.
     this.hookSprite = this.scene.add.image(240, SEA_TOP + 10, 'hook').setDepth(12);
+    fitToWidth(this.hookSprite, 48);
     this.hookDoubleSprite = this.scene.add
       .image(240, SEA_TOP + 10, 'hook_double')
       .setDepth(12)
       .setVisible(false);
+    fitToWidth(this.hookDoubleSprite, 64);
   }
 
   syncPickups(state: GameState): void {
@@ -110,7 +138,13 @@ export class WorldLayer {
       }
       if (!this.pickupSprites.has(p.uid)) {
         const key = p.defId === 'up-double' ? 'hook_double' : p.defId === 'up-sonar' ? 'sonar' : 'chest';
-        const img = this.scene.add.image(p.x, p.y, key).setDepth(4).setScale(0.9);
+        const img = this.scene.add.image(p.x, p.y, key).setDepth(4);
+        // Per-key display size (DESIGN-SPEC §3). The sonar icon ships at 900x901
+        // — at its old natural-ish scale it covered the whole deep-water band
+        // with its black center and speckled rim, reading as a starry void.
+        if (key === 'chest') fitToWidth(img, 56);
+        else if (key === 'sonar') img.setDisplaySize(64, 64);
+        else fitToWidth(img, 64); // hook_double pickup
         this.pickupSprites.set(p.uid, img);
       }
     }
