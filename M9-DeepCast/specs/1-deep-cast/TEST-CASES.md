@@ -28,6 +28,7 @@
 | TB-02 | `pnpm build` (vite) | exit 0, dist/index.html single-file tương thích Playables |
 | TB-03 | `assets/manifest.json` (supervisor gen, 25 asset) | 100% file tồn tại + sha khớp; tổng < 4MB |
 | TB-04 | `grep -r "Math.random" game/src/core` | 0 kết quả (core deterministic; FX được phép ngoài core) |
+| TB-05 | `find game/src -name '*.ts' -exec wc -l {} + \| sort -rn \| head -5` | file dài nhất **≤ 300 dòng**; không có class "God/GameManager" ôm hết logic — mỗi hệ là 1 module riêng (`core/rules.ts`, `systems/tension.ts`, `systems/spawner.ts`, `systems/economy.ts`, `scenes/GameScene.ts` mỏng chỉ nối input+render). Scene file ≤ 250 dòng. |
 
 ## C. HARNESS SIM 40 SEED (file `game/scripts/sim.ts`, chạy `pnpm sim`) — SỐ CHO BOSS
 Policy 40 seeds (1..40): "reel liên tục khi tension<55; HOLD khi ≥55; lên khi air<15% hoặc mang cá ≥1; dive mục tiêu band = band(f4), sau đó band(f7), cuối band(whale) theo khả năng tiền".

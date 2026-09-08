@@ -6,9 +6,15 @@
 Bạn là chuyên gia Phaser 3 + TypeScript game dev. Xây MVP game **"Deep Cast"** hoàn chỉnh trong `/data/youtube-playables/M9-DeepCast/game/` theo 4 file spec đã chốt — TÔN TRỌNG TUYỆT ĐỐI, không tự ý đổi số:
 
 - `specs/1-deep-cast/SPEC.md` — luật chơi, win/lose, vòng lặp
-- `specs/1-deep-cast/DESIGN-SPEC.md` — art production (SVG→PNG atlas, không prototype xấu)
+- `specs/1-deep-cast/DESIGN-SPEC.md` — danh mục assets production (ĐÃ gen sẵn, chỉ tích hợp)
 - `specs/1-deep-cast/DATA-MODEL.md` — MỌI con số (cá, tension, air, fuel, pickups)
-- `specs/1-deep-cast/TEST-CASES.md` — GC-01..16, TB-01..04, sim harness C
+- `specs/1-deep-cast/TEST-CASES.md` — GC-01..16, TB-01..05, sim harness C
+
+## KIẾN TRÚC CHỐNG GOD CLASS (gate TB-05, đo bằng `wc -l`, vi phạm = chưa xong)
+- **Không file .ts nào > 300 dòng; file scene > 250 dòng.** Phình là tách module NGAY, không để tới cuối.
+- Rules thuần đặt `src/core/rules.ts`; mỗi hệ một file riêng: `src/systems/tension.ts`, `src/systems/spawner.ts`, `src/systems/economy.ts`, `src/systems/oxygen.ts`, `src/systems/whale.ts`.
+- CẤM class kiểu `GameManager`/`GameScene` ôm hết: scene chỉ nối input + render + gọi system, không chứa công thức luật. Data nằm `src/data/*.ts` (đã nêu trong DATA-MODEL).
+- Trước khi báo cáo cuối, chạy `find game/src -name '*.ts' -exec wc -l {} + | sort -rn | head -5` và DÁN output vào báo cáo.
 
 ## Trình tự bắt buộc (mỗi bước verify bằng SỐ thật, in ra, trước khi bước sau)
 1. Scaffold Vite+Phaser3+TS strict (`game/` standalone, pnpm, port 5199, tsconfig riêng). `tsc --noEmit` = 0.
