@@ -23,6 +23,10 @@
 **Kỹ thuật (ytgame):** title ≤50 ký tự · desc ≤150 · thumbnails 1:1/5:7/16:9 không branding · preview 16:9
 **Chung:** grep `dist/` sạch từ khóa/theme bản cũ bị reject · QA browser+vision pass · `bash scripts/verify_game.sh <game>` pass
 
+### 2026-09-07 — F2 DECISION (Slice Studio, QA PB-3b t_39dc35bc / fix card t_3011ee93): DESKTOP = PORTRAIT-ONLY (phương án a)
+
+`#game-container` giữ cap 720×1280 giữa màn hình rộng — canvas 9:16 FIT không méo, viền trơn 2 bên trên desktop là hành vi đã nghiệm thu của game portrait. Khai báo **orientation = portrait** khi nộp Playgama (B6 t_231c7422: mục 4 "orientation khai báo nếu chỉ hỗ trợ 1"; checklist dòng "responsive 9:16→32:9" của Slice Studio thỏa bằng khai báo portrait-only, không phải hỗ trợ 32:9). Phương án (b) thêm background chơi-được 2 bên KHÔNG chọn — cần card art/scene riêng (ngoài ranh giới card fix), chỉ làm nếu boss/dev-lead yêu cầu sau fun gate. Fix F1 cùng card: ambience pad dừng khi tab ẩn + resume đúng mood chương (`synth.ts` @branch `card/t_3011ee93`, RED-first 7 test + probe chrome headless 0 console error).
+
 ## Trạng thái theo kênh
 
 | Kênh | Vai trò | Ràng buộc chính | Ghi chú |
