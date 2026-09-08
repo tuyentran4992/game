@@ -34,6 +34,7 @@ export class WorldLayer {
   private pickupSprites = new Map<number, Phaser.GameObjects.Image>();
   private treasure!: Phaser.GameObjects.Image;
   private wave!: Phaser.GameObjects.Graphics;
+  private ambientTimer = 0;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -77,6 +78,23 @@ export class WorldLayer {
     // vents band's black bubble-field art into deep navy, fades its white
     // specks, and blends hard seams between bands into one ocean.
     this.scene.add.image(240, 650, 'water_veil').setDisplaySize(480, 1300 - 0).setDepth(2.5);
+    this.buildSeamShadows();
+  }
+
+  // Thermocline shadows: a stepped alpha ramp centred on every band boundary reads
+  // as a natural dark depth transition instead of a hard tile seam (no shader needed).
+  private buildSeamShadows(): void {
+    const STEP_H = 12;
+    const STEPS = 9; // steps on each side of the seam
+    const SPAN = STEPS * STEP_H;
+    for (let i = 1; i < BANDS_PX.length; i++) {
+      const seamY = BANDS_PX[i]!.topPx;
+      for (let s = -STEPS; s < STEPS; s++) {
+        const cy = seamY + s * STEP_H + STEP_H / 2;
+        const fade = 1 - Math.abs(cy - seamY) / SPAN; // 1 at the seam -> 0 at the edges
+        this.scene.add.rectangle(240, cy, 480, STEP_H, 0x081827, 0.03 + fade * 0.3).setDepth(2.6);
+      }
+    }
   }
 
   private buildTreasure(): void {
@@ -165,6 +183,28 @@ export class WorldLayer {
     this.hookDoubleSprite.setPosition(state.hookX, state.hookY).setRotation(sway);
     this.hookSprite.setVisible(!doubleHook);
     this.hookDoubleSprite.setVisible(doubleHook);
+  }
+
+  // Ambient bubbles rising through the camera view (the committed bubble.png was
+  // never used ambiently). Deterministic pseudo-random column via a sine hash —
+  // house style keeps Math.random out of render too.
+  updateAmbient(state: GameState, timeS: number): void {
+    this.ambientTimer -= 1 / 60;
+    if (this.ambientTimer > 0) return;
+    this.ambientTimer = 0.55;
+    const h = Math.abs(Math.sin(timeS * 12.9898) * 43758.5453) % 1;
+    const y = state.hookY + 480; // near the bottom of the view (camera keeps hook ~340 from top)
+    if (y < SEA_TOP + 60) return;
+    const x = 30 + h * 420;
+    const b = this.scene.add.image(x, y, 'bubble').setDepth(3).setScale(0.2 + h * 0.3).setAlpha(0.5);
+    this.scene.tweens.add({
+      targets: b,
+      y: y - 240,
+      x: x + (h - 0.5) * 36,
+      alpha: 0,
+      duration: 5000,
+      onComplete: () => b.destroy(),
+    });
   }
 
   drawWaves(timeS: number): void {

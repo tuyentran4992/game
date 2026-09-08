@@ -62,6 +62,7 @@ export interface GameState {
   diveCount: number;
   diveTime: number; // s, current dive
   diveStartCooldown: number; // s remaining before descent begins
+  awaitingDive: boolean; // surfaced between dives: next hold must start a PAID dive via startDive
 
   hookX: number;
   hookY: number;

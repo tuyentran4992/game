@@ -78,7 +78,8 @@ export class FishLayer {
       img.setPosition(f.x, f.y);
       img.setRotation(Math.sin(timeS * 4 + f.phase) * 0.08);
       img.setFlipX(f.vx < 0);
-      const wig = Math.sin(timeS * 9 + f.phase) > 0 ? 1.0 : 0.92;
+      // smooth swim pulse (the old binary 1.0/0.92 flip read as a flicker)
+      const wig = 0.96 + 0.04 * Math.sin(timeS * 9 + f.phase);
       img.setDisplaySize(w * wig, h);
     }
     if (this.shark) {

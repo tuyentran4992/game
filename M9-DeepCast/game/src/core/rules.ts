@@ -17,7 +17,7 @@ export const createGame = (seed: number): GameState => {
   const state: GameState = {
     seed, rngState, phase: 'title', money: 600, hearts: HEARTS, breaks: 0, combo: 0,
     usedContinue: false, loseReason: null, rank: null, sessionTime: 0, deepestM: 0,
-    diveCount: 0, diveTime: 0, diveStartCooldown: 0,
+    diveCount: 0, diveTime: 0, diveStartCooldown: 0, awaitingDive: false,
     hookX: WORLD_W / 2, hookY: SURFACE_Y + 2, hookMode: 'idle', tapBuffer: 0, holdTime: 0,
     air: 45, tension: 0, strain: 0, hooked: [], attachLock: 0,
     doubleHook: false, sonarCharges: 0, sonarTimer: 0,
@@ -50,6 +50,7 @@ export const startDive = (state: GameState): GameState => {
   state.diveCount += 1;
   state.diveTime = 0;
   state.diveStartCooldown = DIVE_COOLDOWN;
+  state.awaitingDive = false;
   state.hookY = SURFACE_Y + 2;
   state.hookX = WORLD_W / 2;
   state.hookMode = 'idle';
@@ -109,6 +110,7 @@ export const applyContinue = (state: GameState): GameState => {
   state.phase = 'dive';
   state.hookMode = 'idle';
   state.hookY = SURFACE_Y + 2;
+  state.awaitingDive = true; // revived at the surface: next hold starts a paid dive
   return state;
 };
 
@@ -143,6 +145,8 @@ export const resolveSurface = (state: GameState): void => {
   if (state.hearts <= 0) loseNow(state, 'LINES BROKEN');
   // heart regen (+1 on coming home) only applies when the trip didn't end in loss
   if (state.phase !== 'lose') state.hearts = resetHearts(state.hearts);
+  // still in the run: the next hold starts a PAID dive (limbo fix — see stepMode 'idle')
+  if (state.phase === 'dive') state.awaitingDive = true;
 };
 
 export interface DiveInput {
@@ -154,6 +158,15 @@ export const stepMode = (state: GameState, dt: number, holding: boolean): void =
   if (m === 'idle') {
     if (state.diveStartCooldown > 0) state.diveStartCooldown -= dt;
     if (holding && state.diveStartCooldown <= 0) {
+      if (state.awaitingDive) {
+        // LIMBO FIX: after a surface resolution the hook used to descend for free
+        // (no FUEL_COST, no air refill, diveCount frozen) -> sessions could never end.
+        // Every descent now goes through startDive — the single source of truth that
+        // charges fuel, refills air and counts the dive. startDive refuses when the
+        // next dive is unaffordable; the hold simply retries until lose fires elsewhere.
+        startDive(state);
+        return; // DIVE_COOLDOWN restarts; descent begins once it elapses (same as dive 1)
+      }
       state.hookMode = 'descend';
       if (!state.hintControl) {
         state.hintControl = true;

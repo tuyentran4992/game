@@ -122,7 +122,6 @@ const runSeed = (seed: number): RunStats => {
         moneyAtWhaleTouch = state.money;
       }
       const holding = botInput(state, bot);
-      const before = state.events.length;
       if (process.env.SIM_DEBUG && state.seed === 1 && Math.floor(state.sessionTime * 2) % 10 === 0 && Math.abs(state.sessionTime * 2 - Math.round(state.sessionTime * 2)) < DT) {
         const near = state.fish
           .map((f) => ({ id: f.defId, d: Math.hypot(f.x - state.hookX, f.y - state.hookY) }))
@@ -134,7 +133,8 @@ const runSeed = (seed: number): RunStats => {
       if (process.env.SIM_DEBUG && state.seed === 1 && state.hooked.length !== hookedBefore) {
         console.log(`  HOOKED ${hookedBefore}->${state.hooked.length} t=${state.sessionTime.toFixed(2)} mode=${state.hookMode} depth=${(state.hookY - 96).toFixed(0)} tension=${state.tension.toFixed(1)} strain=${state.strain.toFixed(1)} air=${state.air.toFixed(1)}`);
       }
-      for (const e of state.events.slice(before)) {
+      // applyDiveTick resets state.events on entry — the array is exactly this tick's
+      for (const e of state.events) {
         if (e.type === 'break') breakEvents++;
         if (e.type === 'shark-hit') sharkHits++;
         if (process.env.SIM_DEBUG && state.seed === 1) console.log(`  ev ${e.type} ${e.text ?? ''} t=${state.sessionTime.toFixed(1)} depth=${(state.hookY - 96).toFixed(0)}`);

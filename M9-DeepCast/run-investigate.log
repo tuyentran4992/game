@@ -1,0 +1,4 @@
+[claude-code:unrecognized_model] {"model":"deepseek-v4-flash[1m]","query_source":"generate_session_title"}
+[claude-code:unrecognized_model] {"model":"zai-org/glm-5.3-flash","query_source":"sdk"}
+Background tasks still running after 600s; terminating. Set CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 to wait indefinitely.
+Còn đợi code-reviewer trả kết quả. Khi có finding tôi sẽ xử lý rồi chạy lại gate (nếu cần) và gửi báo cáo cuối đủ 4 số + lựa chọn render.

@@ -30,20 +30,27 @@ export class Overlays {
     this.buildResult();
   }
 
-  private makeButton(x: number, y: number, label: string, cb: () => void, color = 0xffd166): Phaser.GameObjects.Container {
-    void cb; // callbacks now routed via routeTap
+  // Buttons are visual only — taps are routed by Overlays.routeTap from the scene-level
+  // pointer handler (container hitArea proved unreliable for negative-coord rects).
+  private makeButton(x: number, y: number, label: string, color = 0xffd166): Phaser.GameObjects.Container {
     const c = this.scene.add.container(x, y);
     const bg = this.scene.add.rectangle(0, 0, 220, 64, color).setStrokeStyle(4, 0x1b2a41);
     const t = this.scene.add
       .text(0, 0, label, { fontFamily: UI.font, fontSize: '26px', color: '#1B2A41' })
       .setOrigin(0.5);
     c.add([bg, t]);
-    c.setSize(220, 64);
-    // tap routed via scene-level routeTap (container hitArea proved unreliable)
     return c;
   }
 
-  /** Scene-level tap router: returns action or null. Zones padded 260x90 for thumbs. */
+  /**
+   * Scene-level tap router (screen coords = pt.position, not camera-scrolled world).
+   * Zones are 260x90 (>= the 260x80 thumb minimum) centered on the REAL button rects
+   * (220x64) derived from the builders below — keep in sync when moving buttons:
+   *   PLAY        titleC(240,427) + local(0, 30)  -> (240, 457)
+   *   PLAY AGAIN  winC(240,427)   + local(0, 120) -> (240, 547)
+   *   REVIVE      loseC(240,427)  + local(0, 40)  -> (240, 467)
+   *   TRY AGAIN   loseC(240,427)  + local(0, 130) -> (240, 557)
+   */
   routeTap(x: number, y: number, phase: string, usedContinue: boolean): 'start' | 'retry' | 'continue' | null {
     const hit = (cx: number, cy: number) => Math.abs(x - cx) <= 130 && Math.abs(y - cy) <= 45;
     if (phase === 'title' && hit(240, 457)) return 'start';
@@ -64,7 +71,7 @@ export class Overlays {
     const sub = s.add
       .text(0, -70, 'Catch the Blue Whale. Come back rich.', { fontFamily: UI.font, fontSize: '16px', color: '#ffffff', stroke: UI.stroke, strokeThickness: 4 })
       .setOrigin(0.5);
-    const play = this.makeButton(0, 30, 'PLAY', () => this.onStart?.());
+    const play = this.makeButton(0, 30, 'PLAY');
     const bestT = s.add
       .text(0, 110, `BEST: $${best}`, { fontFamily: UI.font, fontSize: '16px', color: '#FFE66D', stroke: UI.stroke, strokeThickness: 3 })
       .setOrigin(0.5);
@@ -85,7 +92,7 @@ export class Overlays {
     this.winStats = s.add
       .text(0, -10, '', { fontFamily: UI.font, fontSize: '18px', color: '#ffffff', stroke: UI.stroke, strokeThickness: 3, align: 'center' })
       .setOrigin(0.5);
-    const retry = this.makeButton(0, 120, 'PLAY AGAIN', () => this.onRetry?.());
+    const retry = this.makeButton(0, 120, 'PLAY AGAIN');
     this.winC.add([bg, headline, this.rankText, this.winStats, retry]);
   }
 
@@ -99,8 +106,8 @@ export class Overlays {
     this.loseText = s.add
       .text(0, -100, '', { fontFamily: UI.font, fontSize: '18px', color: '#ffffff', stroke: UI.stroke, strokeThickness: 3, align: 'center' })
       .setOrigin(0.5);
-    this.continueBtn = this.makeButton(0, 40, 'WATCH AD: REVIVE', () => this.onContinue?.(), 0x4ecdc4);
-    const retry = this.makeButton(0, 130, 'TRY AGAIN', () => this.onRetry?.());
+    this.continueBtn = this.makeButton(0, 40, 'WATCH AD: REVIVE', 0x4ecdc4);
+    const retry = this.makeButton(0, 130, 'TRY AGAIN');
     this.loseC.add([bg, headline, this.loseText, this.continueBtn, retry]);
   }
 

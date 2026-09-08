@@ -69,6 +69,10 @@ export class GameScene extends Phaser.Scene {
     this.input.on('pointerup', () => {
       this.holding = false;
     });
+    // released off-canvas (finger slides out) — never leave holding stuck true
+    this.input.on('pointerupoutside', () => {
+      this.holding = false;
+    });
 
     // UI wiring
     this.overlays.onStart = () => this.beginDive();
@@ -93,7 +97,7 @@ export class GameScene extends Phaser.Scene {
 
   private beginDive(): void {
     if (this.state.hookMode !== 'idle' || this.state.diveCount > 0) {
-      if (this.state.money < 150 && this.state.diveCount > 0) return;
+      if (this.state.money < FUEL_COST && this.state.diveCount > 0) return;
     }
     startDive(this.state);
     this.bridge.gameplayStart();
@@ -108,6 +112,8 @@ export class GameScene extends Phaser.Scene {
     this.fishLayer.setBoat(this.world.boat);
     this.fishLayer.createShark();
     this.holding = false;
+    // TRY AGAIN goes straight into a fresh paid dive (no dead-end back at the title)
+    this.beginDive();
   }
 
   override update(_time: number, deltaMs: number): void {
@@ -118,9 +124,10 @@ export class GameScene extends Phaser.Scene {
     // fixed-step logic
     this.accumulator += dt;
     while (this.accumulator >= FIXED_DT && s.phase === 'dive') {
-      const before = s.events.length;
+      // applyDiveTick resets state.events on entry, so after the call it holds exactly
+      // this tick's events — slicing with the previous array's length drops rows
       applyDiveTick(s, FIXED_DT, { holding: this.holding });
-      this.consumeEvents(s.events.slice(before));
+      this.consumeEvents(s.events);
       this.accumulator -= FIXED_DT;
     }
     if (s.phase !== 'dive') this.accumulator = 0;
@@ -131,6 +138,7 @@ export class GameScene extends Phaser.Scene {
     this.fishLayer.update(s, timeS + this.accumulator);
     this.world.updateBoat(s, timeS + this.accumulator);
     this.world.updateHook(s, timeS + this.accumulator, s.doubleHook);
+    this.world.updateAmbient(s, timeS + this.accumulator);
     const rod = this.world.hookAnchor;
     this.lineR.update(s, rod.x, rod.y, timeS + this.accumulator);
     this.world.drawWaves(timeS + this.accumulator);
