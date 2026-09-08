@@ -178,11 +178,14 @@ export class Synth {
 
   /** Chapter ambience (S3): 2-osc sine pad, very quiet, mood per chapter. */
   ambience(chapter: number): void {
-    if (!this.ctx || !this.master || this.muted || this.isHidden()) return;
+    if (!this.ctx || !this.master || this.isHidden()) return;
     const c = AUDIO.ambience;
     const pads = [c.pad1, c.pad2, c.pad3, c.pad4];
     const ch = Math.min(4, Math.max(1, Math.floor(chapter)));
+    // Remember the request even when muted (F1-T7): a muted boot must resume
+    // the CURRENT chapter mood on the first unmute, not chapter 1.
     this.lastChapter = ch;
+    if (this.muted) return;
     const root = pads[ch - 1];
     this.stopAmbience();
     const t = this.ctx.currentTime;

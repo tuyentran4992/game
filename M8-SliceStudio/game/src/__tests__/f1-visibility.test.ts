@@ -177,4 +177,25 @@ describe('F1 ambience pad follows tab visibility (C-24)', () => {
     expect(doc.listenerCount('visibilitychange')).toBe(1);
     expect(t.count('gain')).toBe(1); // master only
   });
+
+  it('F1-T7: muted-at-boot records the requested chapter — first unmute resumes the RIGHT mood', () => {
+    // TraceScene boots muted from the save, then loadLevel calls ambience(ch):
+    // the request is blocked but the chapter must still be remembered.
+    const t = installCtx();
+    const doc = new FakeDocument();
+    vi.stubGlobal('document', doc as unknown as Document);
+    const s = new Synth();
+    s.ensure();
+    s.muted = true;
+    s.ambience(3); // blocked by mute — but chapter 3 must be remembered
+    expect(t.count('osc')).toBe(0);
+    doc.hidden = true;
+    doc.dispatch('visibilitychange');
+    doc.hidden = false;
+    doc.dispatch('visibilitychange'); // still muted → quiet
+    expect(t.count('osc')).toBe(0);
+    s.muted = false; // first unmute → pad with the REQUESTED chapter mood
+    const freqs = t.of('osc').map((o) => o.params.frequency.value);
+    expect(freqs[0]).toBe(AUDIO.ambience.pad3);
+  });
 });
