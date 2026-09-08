@@ -6,18 +6,49 @@
 // blip are UNCHANGED (S3-T2 anchors byte-identical regions); frozen numbers
 // stay literal so the anchors hold - see src/config/audio-config.ts for the
 // tunable mirror + the "used" groups that ARE read from config.
+//
+// F1 fix (card t_3011ee93, Playgama C-24 "mute + stop audio when minimized"):
+// the ambience pad now follows tab visibility - hidden stops it, visible
+// resumes the current chapter mood. `muted` became an accessor (same property
+// syntax for hud/TraceScene): muting kills a running pad immediately, unmuting
+// restores it when it should be audible. The guard listens AT the document
+// (visibilitychange fires there, bubbles=false - same lesson as save.ts S4F).
 
 import { AUDIO } from '../config/audio-config';
 
 export class Synth {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
-  muted = false;
+  private mutedState = false;
+  /** Chapter of the most recent ambience() request - resume keeps this mood. */
+  private lastChapter = 1;
+  /** Removal fn for the visibility guard; non-null = installed exactly once. */
+  private visGuard: (() => void) | null = null;
+
+  /**
+   * Mute accessor (was a plain flag): muting must be audible at once - a
+   * running pad dies immediately (F1 sibling defect: the flag never reached
+   * the already-started pad). Unmuting restores the pad when it should play.
+   */
+  get muted(): boolean {
+    return this.mutedState;
+  }
+
+  set muted(v: boolean) {
+    const was = this.mutedState;
+    this.mutedState = v;
+    if (v && !was) {
+      this.stopAmbience();
+    } else if (!v && was) {
+      this.restoreAmbience();
+    }
+  }
 
   /** Must be called from a user gesture (pointerdown) to unlock audio. */
   ensure(): void {
     if (this.ctx) {
       if (this.ctx.state === 'suspended') void this.ctx.resume();
+      this.installVisGuard();
       return;
     }
     const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -26,6 +57,32 @@ export class Synth {
     this.master = this.ctx.createGain();
     this.master.gain.value = AUDIO.master.gain;
     this.master.connect(this.ctx.destination);
+    this.installVisGuard();
+  }
+
+  /**
+   * F1 (C-24): hide the tab → stop the pad; come back → resume the current
+   * chapter mood. visibilitychange fires AT the document (bubbles=false), so
+   * the listener goes on document - a window listener would never hear it
+   * (same wiring lesson as installLifecycleSavers S4F). Installs exactly once.
+   */
+  private installVisGuard(): void {
+    if (this.visGuard) return;
+    if (typeof document === 'undefined' || typeof document.addEventListener !== 'function') return;
+    const onVis = () => {
+      if (this.isHidden()) {
+        this.stopAmbience();
+      } else {
+        this.restoreAmbience();
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    this.visGuard = () => document.removeEventListener('visibilitychange', onVis);
+  }
+
+  /** Tab hidden? Node/no-document environments read as visible (never blocks). */
+  private isHidden(): boolean {
+    return typeof document !== 'undefined' && document.hidden === true;
   }
 
   private noiseBurst(dur: number, f0: number, f1: number, vol: number, when = 0): void {
@@ -121,10 +178,11 @@ export class Synth {
 
   /** Chapter ambience (S3): 2-osc sine pad, very quiet, mood per chapter. */
   ambience(chapter: number): void {
-    if (!this.ctx || !this.master || this.muted) return;
+    if (!this.ctx || !this.master || this.muted || this.isHidden()) return;
     const c = AUDIO.ambience;
     const pads = [c.pad1, c.pad2, c.pad3, c.pad4];
     const ch = Math.min(4, Math.max(1, Math.floor(chapter)));
+    this.lastChapter = ch;
     const root = pads[ch - 1];
     this.stopAmbience();
     const t = this.ctx.currentTime;
@@ -159,5 +217,15 @@ export class Synth {
     gain.gain.exponentialRampToValueAtTime(0.0001, t + c.release);
     o1.stop(t + c.release + 0.05);
     o2.stop(t + c.release + 0.05);
+  }
+
+  /**
+   * F1: bring the pad back for the current chapter mood (visibility restored
+   * or unmuted). No-op when muted, hidden, already playing, or voiceless.
+   */
+  private restoreAmbience(): void {
+    if (this.mutedState || this.isHidden()) return;
+    if (this.pad || !this.ctx || !this.master) return;
+    this.ambience(this.lastChapter);
   }
 }
