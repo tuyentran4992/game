@@ -2,50 +2,50 @@
  "files": {
   "cust_1": {
    "file": "assets/cust_1.png",
-   "sha": "5ddb907c270e",
-   "bytes": 104675,
+   "sha": "f4c0983b76fe",
+   "bytes": 104831,
    "vision": "KH\u00d4NG OK. L\u1ed7i: N\u1ec1n \u1ea3nh m\u00e0u \u0111en (y\u00eau c\u1ea7u n\u1ec1n tr\u1eafng)."
   },
   "cust_2": {
    "file": "assets/cust_2.png",
-   "sha": "c27a0b02cd7f",
-   "bytes": 105319,
+   "sha": "ca8e67453402",
+   "bytes": 105296,
    "vision": "Kh\u00f4ng OK. L\u1ed7i:\n1. N\u1ec1n m\u00e0u \u0111en (kh\u00f4ng ph\u1ea3i tr\u1eafng s\u1ea1ch).\n2. Vi\u1ec1n xung quanh nh\u00e2n v\u1eadt b\u1ecb lem/hao (c\u00f3 vi\u1ec1n tr\u1eafng nhi\u1ec5u), kh\u00f4"
   },
   "cust_3": {
    "file": "assets/cust_3.png",
-   "sha": "91ba3f43e37a",
-   "bytes": 123389,
+   "sha": "c13cc24c5705",
+   "bytes": 123391,
    "vision": "Kh\u00f4ng OK.\n\nC\u00e1c l\u1ed7i:\n1.  **N\u1ec1n:** N\u1ec1n m\u00e0u \u0111en, kh\u00f4ng ph\u1ea3i tr\u1eafng s\u1ea1ch.\n2.  **C\u1eaft x\u00e9n:** Ch\u1ee7 th\u1ec3 b\u1ecb c\u1eaft ngang \u1edf gi\u1eefa b\u1ee5ng/t"
   },
   "cust_4": {
    "file": "assets/cust_4.png",
-   "sha": "bc0827f52db9",
-   "bytes": 109560,
+   "sha": "97862a130c9e",
+   "bytes": 109439,
    "vision": "Kh\u00f4ng OK. L\u1ed7i: N\u1ec1n xung quanh l\u00e0 m\u00e0u \u0111en (kh\u00f4ng ph\u1ea3i tr\u1eafng)."
   },
   "cust_5": {
    "file": "assets/cust_5.png",
-   "sha": "188239411879",
-   "bytes": 80986,
+   "sha": "e01b86068c0b",
+   "bytes": 81151,
    "vision": "Kh\u00f4ng OK. L\u1ed7i: N\u1ec1n m\u00e0u \u0111en (y\u00eau c\u1ea7u n\u1ec1n tr\u1eafng s\u1ea1ch)."
   },
   "cust_6": {
    "file": "assets/cust_6.png",
-   "sha": "d4db91fb8038",
-   "bytes": 81050,
+   "sha": "350e4e296aef",
+   "bytes": 81031,
    "vision": "OK"
   },
   "cust_7": {
    "file": "assets/cust_7.png",
-   "sha": "cbf1efc2f17d",
-   "bytes": 108632,
+   "sha": "15d698990521",
+   "bytes": 109362,
    "vision": "KH\u00d4NG OK.\n\n**L\u1ed7i:**\n1.  **N\u1ec1n \u0111en:** Y\u00eau c\u1ea7u l\u00e0 n\u1ec1n tr\u1eafng s\u1ea1ch, nh\u01b0ng h\u00ecnh n\u00e0y c\u00f3 n\u1ec1n \u0111en.\n2.  **Vi\u1ec1n tr\u1eafng (Halo):** C\u00f3"
   },
   "cust_8": {
    "file": "assets/cust_8.png",
-   "sha": "e318f54bb3cd",
-   "bytes": 71778,
+   "sha": "3cd3ac3c4183",
+   "bytes": 71842,
    "vision": "Kh\u00f4ng OK. L\u1ed7i ch\u00ednh l\u00e0 **(2) n\u1ec1n xung quanh m\u00e0u \u0111en**, kh\u00f4ng ph\u1ea3i tr\u1eafng s\u1ea1ch nh\u01b0 y\u00eau c\u1ea7u. Ngo\u00e0i ra, vi\u1ec1n ngo\u00e0i c\u1ee7a nh\u00e2n "
   },
   "icon_pate": {
@@ -62,8 +62,8 @@
   },
   "icon_chili": {
    "file": "assets/icon_chili.png",
-   "sha": "f16620457aed",
-   "bytes": 17458,
+   "sha": "9bc4b0916772",
+   "bytes": 17445,
    "vision": "Kh\u00f4ng OK. L\u1ed7i: N\u1ec1n l\u00e0 m\u00e0u \u0111en, kh\u00f4ng ph\u1ea3i m\u00e0u tr\u1eafng."
   },
   "icon_pork": {
@@ -95,12 +95,6 @@
    "sha": "58c50e1da06f",
    "bytes": 18102,
    "vision": "KH\u00d4NG OK.\n\nL\u1ed7i: N\u1ec1n xung quanh l\u00e0 m\u00e0u **\u0111en** (ti\u00eau ch\u00ed s\u1ed1 2 y\u00eau c\u1ea7u n\u1ec1n tr\u1eafng s\u1ea1ch)."
-  },
-  "icon_chilif": {
-   "file": "assets/icon_chilif.png",
-   "sha": "05bac74d8eda",
-   "bytes": 16612,
-   "vision": "Kh\u00f4ng OK.\n\n**L\u1ed7i:**\n1.  **N\u1ec1n kh\u00f4ng tr\u1eafng s\u1ea1ch:** N\u1ec1n b\u00ean ngo\u00e0i l\u00e0 m\u00e0u \u0111en/kh\u00e1c m\u00e0u, kh\u00f4ng ph\u1ea3i tr\u1eafng.\n2.  **C\u00f3 l\u1ed7i AI/M"
   },
   "layer_pate": {
    "file": "assets/layer_pate.png",
@@ -156,12 +150,6 @@
    "bytes": 46439,
    "vision": "Kh\u00f4ng OK. C\u00e1c l\u1ed7i c\u1ee5 th\u1ec3:\n1.  **N\u1ec1n sai:** N\u1ec1n h\u00ecnh \u1ea3nh l\u00e0 m\u00e0u \u0111en (\u0111i\u1ec3m ki\u1ec3m tra \u0111\u1ed9 trong su\u1ed1t) ch\u1ee9 kh\u00f4ng ph\u1ea3i n\u1ec1n tr\u1eafn"
   },
-  "layer_chilif": {
-   "file": "assets/layer_chilif.png",
-   "sha": "7482bd319406",
-   "bytes": 32610,
-   "vision": "Kh\u00f4ng OK.\n\nL\u1ed7i: N\u1ec1n \u1ea3nh l\u00e0 m\u00e0u \u0111en (y\u00eau c\u1ea7u n\u1ec1n tr\u1eafng s\u1ea1ch)."
-  },
   "bread_bottom": {
    "file": "assets/bread_bottom.png",
    "sha": "7525ad36222e",
@@ -188,7 +176,7 @@
   },
   "fx_star": {
    "file": "assets/fx_star.png",
-   "sha": "6260d2479bd3",
+   "sha": "15f075e629fd",
    "bytes": 11677,
    "vision": "Kh\u00f4ng OK.\n\nL\u1ed7i vi ph\u1ea1m:\n1. **N\u1ec1n kh\u00f4ng tr\u1eafng:** N\u1ec1n h\u00ecnh \u1ea3nh l\u00e0 m\u00e0u \u0111en, kh\u00f4ng ph\u1ea3i n\u1ec1n tr\u1eafng s\u1ea1ch nh\u01b0 y\u00eau c\u1ea7u.\n2. **Qu\u00e1"
   },
@@ -200,29 +188,41 @@
   },
   "hero_sandwich": {
    "file": "assets/hero_sandwich.png",
-   "sha": "3c10eb29b009",
-   "bytes": 187089,
+   "sha": "101819f521da",
+   "bytes": 186573,
    "vision": "OK"
   },
   "stall_closed": {
    "file": "assets/stall_closed.png",
-   "sha": "5635c5dc0091",
-   "bytes": 115326,
+   "sha": "80cdd4cc4121",
+   "bytes": 115774,
    "vision": "Kh\u00f4ng OK. L\u1ed7i: N\u1ec1n \u1ea3nh m\u00e0u \u0111en (y\u00eau c\u1ea7u l\u00e0 n\u1ec1n tr\u1eafng s\u1ea1ch)."
   },
   "bg_street": {
    "file": "assets/bg_street.png",
-   "sha": "6886d2064a75",
-   "bytes": 252574,
+   "sha": "9dd4de38fcb6",
+   "bytes": 186685,
    "vision": "bg-pass"
+  },
+  "icon_chilif": {
+   "file": "assets/icon_chilif.png",
+   "sha": "4002d0dbd545",
+   "bytes": 11889,
+   "vision": "NOT OK. C\u00e1c l\u1ed7i c\u1ee5 th\u1ec3:\n1.  **N\u1ec1n sai:** N\u1ec1n \u0111ang l\u00e0 m\u00e0u \u0111en, y\u00eau c\u1ea7u l\u00e0 n\u1ec1n tr\u1eafng.\n2.  **L\u1ed7i AI/Render:** Vi\u1ec1n xung qua"
+  },
+  "layer_chilif": {
+   "file": "assets/layer_chilif.png",
+   "sha": "97478044cdc5",
+   "bytes": 29040,
+   "vision": "KH\u00d4NG OK.\n\nC\u00e1c l\u1ed7i g\u1eb7p ph\u1ea3i:\n1.  **N\u1ec1n sai:** N\u1ec1n m\u00e0u \u0111en (trong su\u1ed1t), kh\u00f4ng ph\u1ea3i n\u1ec1n tr\u1eafng s\u1ea1ch.\n2.  **Ch\u1ee7 th\u1ec3:** H\u00ecnh"
   },
   "icon_pickle": {
    "file": "assets/icon_pickle.png",
-   "sha": "c4c93f91f6cc",
-   "bytes": 15770,
-   "vision": "Kh\u00f4ng OK. L\u1ed7i: **(2) N\u1ec1n m\u00e0u \u0111en**, kh\u00f4ng ph\u1ea3i n\u1ec1n tr\u1eafng. Ngo\u00e0i ra, n\u1ed9i dung h\u00ecnh \u1ea3nh gi\u1ed1ng khoai t\u00e2y chi\u00ean (fries) h\u01a1n "
+   "sha": "431b1e955572",
+   "bytes": 16593,
+   "vision": "NOK. L\u1ed7i: N\u1ec1n \u1ea3nh m\u00e0u \u0111en (y\u00eau c\u1ea7u n\u1ec1n tr\u1eafng s\u1ea1ch). Ngo\u00e0i ra, n\u1ed9i dung l\u00e0 khoai t\u00e2y chi\u00ean (fries) ch\u1ee9 kh\u00f4ng ph\u1ea3i d\u01b0a chu"
   }
  },
- "generated_at": "2026-09-09T04:55:02Z",
+ "generated_at": "2026-09-09T06:56:15Z",
  "style": "wan2.7-image-pro candy-volumetric flat-2d; kill_white cutout; resized+quantized 256-color (boss approved style 09/09)"
 }

@@ -57,7 +57,7 @@ SPRITES = {
                  "pale white daikon radish, wet glossy brine look, tangled small heap, NOT french fries, "
                  "NOT fried potato, thin translucent vegetable strips, ", 200),
  "icon_herb": ("Fresh cilantro coriander leaves sprig, vibrant green, ", 200),
- "icon_chilif": ("Fresh red chili pepper slices rings, glossy, ", 200),
+ "icon_chilif": ("Sliced fresh red chili pepper rings with pale seeds inside plus one small whole curved red chili with green stem, glossy cartoon, NOT a tomato, no bowl, ", 200),
  # 10 layer form (rộng, dẹt — xếp lên bánh)
  "layer_pate": ("A wide flat glossy pink-brown pâté spread layer, rectangular strip seen from the side, ", 300),
  "layer_mayo": ("A wide flat creamy white mayonnaise drizzle layer strip, wavy top edge, ", 300),
@@ -68,7 +68,7 @@ SPRITES = {
  "layer_cuke": ("A wide flat row of overlapping green cucumber slices, ", 300),
  "layer_pickle": ("A wide flat tangle of orange and white pickled vegetable julienne strips, ", 300),
  "layer_herb": ("A wide flat row of fresh cilantro leaves, vibrant green, ", 300),
- "layer_chilif": ("A wide flat row of red chili pepper rings, ", 300),
+ "layer_chilif": ("A wide flat row of red chili pepper rings with seeds, sliced chilies, NOT tomatoes, ", 300),
  # bánh mì
  "bread_bottom": ("The bottom half of a Vietnamese baguette (banh mi bread), crispy golden crust with diagonal "
                   "slashes, soft white interior visible on the cut top face, side view, ", 420),
