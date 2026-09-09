@@ -1,71 +1,106 @@
-// HUD: 3 gauges (air/tension/money) + hearts + depth meter + sonar button (DESIGN-SPEC §1, §4).
+// HUD (Stage C goal legibility): AIR + TENSION gauges with labels, MONEY progress
+// bar $0 -> $2,000 with the whale goal icon ("bar full = whale up"), hearts, a
+// visible combo chip, the depth ruler, and the sonar button (DESIGN-SPEC §1/§4).
 import Phaser from 'phaser';
 import type { GameState } from '../core/types.ts';
-import { AIR_MAX, LINE_LIMIT, depthPxToM } from '../data/world.ts';
+import { AIR_MAX, LINE_LIMIT, GOAL_MONEY } from '../data/world.ts';
+import { comboMult } from '../data/upgrades.ts';
+import { DepthRuler } from './depthRuler.ts';
 
 const AIR_COLOR = 0x4ecdc4;
 const tensionColor = (t: number): number => (t > 80 ? 0xe71d36 : t > 55 ? 0xff9f1c : 0xffd166);
+const BAR_X = 4; // gauge left edge (fills grow rightward from here)
+const BAR_W = 150;
+const TRACK_X = 170; // money bar geometry (right of the gauges, left of the ruler)
+const TRACK_W = 258;
 
 export class Hud {
   private scene: Phaser.Scene;
+  private ruler: DepthRuler;
   private airFill!: Phaser.GameObjects.Rectangle;
   private tenFill!: Phaser.GameObjects.Rectangle;
+  private moneyFill!: Phaser.GameObjects.Rectangle;
   private moneyText!: Phaser.GameObjects.Text;
-  private depthText!: Phaser.GameObjects.Text;
+  private whaleIcon!: Phaser.GameObjects.Image;
+  private whaleReady!: Phaser.GameObjects.Text;
+  private comboText!: Phaser.GameObjects.Text;
   private heartsText!: Phaser.GameObjects.Text;
   private sonarBtn!: Phaser.GameObjects.Container;
   private sonarChargesText!: Phaser.GameObjects.Text;
+  private whaleLit = false;
+  private whaleBaseScale = 1;
+  private whalePulse: Phaser.Tweens.Tween | null = null;
   onSonarPress: (() => void) | null = null;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
-    const cam = scene.cameras.main;
-    // scrollFactor 0 = fixed to the 480x854 viewport
     this.buildAirBar();
     this.buildTensionBar();
-    this.buildRightSide();
+    this.buildMoneyGoal();
+    this.buildCombo();
     this.buildSonarButton();
-    void cam;
+    this.ruler = new DepthRuler(scene);
   }
 
-  private gaugeRect(x: number, y: number, w: number, h: number): void {
-    this.scene.add.rectangle(x, y, w + 4, h + 4, 0x1b2a41).setScrollFactor(0).setDepth(20);
+  private gaugeLabel(x: number, y: number, str: string): void {
+    this.scene.add
+      .text(x, y, str, { fontFamily: 'sans-serif', fontSize: '11px', color: '#ffffff', stroke: '#1B2A41', strokeThickness: 3 })
+      .setScrollFactor(0)
+      .setDepth(23);
   }
 
   private buildAirBar(): void {
-    this.gaugeRect(74, 26, 150, 16);
-    this.scene.add.rectangle(74, 26, 150, 16, 0xffffff).setScrollFactor(0).setDepth(21);
-    this.airFill = this.scene.add.rectangle(4, 26, 0, 12, AIR_COLOR).setOrigin(0, 0.5).setScrollFactor(0).setDepth(22);
-    this.scene.add
-      .text(4, 18, 'AIR', { fontFamily: 'sans-serif', fontSize: '11px', color: '#ffffff', stroke: '#1B2A41', strokeThickness: 3 })
-      .setScrollFactor(0)
-      .setDepth(23);
+    this.scene.add.rectangle(BAR_X + 74, 26, BAR_W + 4, 16, 0x1b2a41).setScrollFactor(0).setDepth(20);
+    this.scene.add.rectangle(BAR_X + 74, 26, BAR_W, 16, 0xffffff).setScrollFactor(0).setDepth(21);
+    this.airFill = this.scene.add.rectangle(BAR_X, 26, 0, 12, AIR_COLOR).setOrigin(0, 0.5).setScrollFactor(0).setDepth(22);
+    this.gaugeLabel(BAR_X, 18, 'AIR');
   }
 
   private buildTensionBar(): void {
-    this.gaugeRect(74, 52, 150, 16);
-    this.scene.add.rectangle(74, 52, 150, 16, 0xffffff).setScrollFactor(0).setDepth(21);
-    this.tenFill = this.scene.add.rectangle(4, 52, 0, 12, 0xffd166).setOrigin(0, 0.5).setScrollFactor(0).setDepth(22);
-    this.scene.add
-      .text(4, 44, 'LINE', { fontFamily: 'sans-serif', fontSize: '11px', color: '#ffffff', stroke: '#1B2A41', strokeThickness: 3 })
+    this.scene.add.rectangle(BAR_X + 74, 52, BAR_W + 4, 16, 0x1b2a41).setScrollFactor(0).setDepth(20);
+    this.scene.add.rectangle(BAR_X + 74, 52, BAR_W, 16, 0xffffff).setScrollFactor(0).setDepth(21);
+    this.tenFill = this.scene.add.rectangle(BAR_X, 52, 0, 12, 0xffd166).setOrigin(0, 0.5).setScrollFactor(0).setDepth(22);
+    this.gaugeLabel(BAR_X, 44, 'TENSION');
+    // hearts sit right of the tension bar, inside the bar row
+    this.heartsText = this.scene.add
+      .text(162, 52, '♥♥♥', { fontFamily: 'sans-serif', fontSize: '18px', color: '#E71D36', stroke: '#1B2A41', strokeThickness: 3 })
+      .setOrigin(0, 0.5)
       .setScrollFactor(0)
       .setDepth(23);
   }
 
-  private buildRightSide(): void {
+  // money progress bar: fill = money / GOAL_MONEY, whale icon lights up when full
+  private buildMoneyGoal(): void {
+    this.scene.add.rectangle(TRACK_X + TRACK_W / 2, 17, TRACK_W + 4, 16, 0x1b2a41).setScrollFactor(0).setDepth(20);
+    this.moneyFill = this.scene.add
+      .rectangle(TRACK_X + 2, 17, 0, 10, 0xffe66d)
+      .setOrigin(0, 0.5)
+      .setScrollFactor(0)
+      .setDepth(22);
     this.moneyText = this.scene.add
-      .text(476, 8, '$600', { fontFamily: 'sans-serif', fontSize: '20px', color: '#FFE66D', stroke: '#1B2A41', strokeThickness: 4 })
-      .setOrigin(1, 0)
+      .text(TRACK_X + TRACK_W / 2, 17, `$0 / $${GOAL_MONEY.toLocaleString('en-US')}`, {
+        fontFamily: 'sans-serif', fontSize: '11px', color: '#ffffff', stroke: '#1B2A41', strokeThickness: 3,
+      })
+      .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(23);
-    this.heartsText = this.scene.add
-      .text(476, 34, '♥♥♥', { fontFamily: 'sans-serif', fontSize: '18px', color: '#E71D36', stroke: '#1B2A41', strokeThickness: 3 })
-      .setOrigin(1, 0)
+    this.whaleIcon = this.scene.add.image(TRACK_X + TRACK_W + 24, 17, 'whale').setScrollFactor(0).setDepth(22);
+    this.whaleIcon.setDisplaySize(30, Math.round((30 * this.whaleIcon.height) / this.whaleIcon.width));
+    this.whaleIcon.setTint(0x51606f); // dimmed until the goal is reached
+    this.whaleBaseScale = this.whaleIcon.scale;
+    this.whaleReady = this.scene.add
+      .text(TRACK_X + TRACK_W + 24, 33, 'GOAL!', {
+        fontFamily: 'sans-serif', fontSize: '9px', color: '#FFD166', stroke: '#1B2A41', strokeThickness: 3,
+      })
+      .setOrigin(0.5, 0)
       .setScrollFactor(0)
-      .setDepth(23);
-    this.depthText = this.scene.add
-      .text(472, 427, '0m', { fontFamily: 'sans-serif', fontSize: '16px', color: '#ffffff', stroke: '#1B2A41', strokeThickness: 4 })
-      .setOrigin(1, 1)
+      .setDepth(23)
+      .setVisible(false);
+  }
+
+  private buildCombo(): void {
+    this.comboText = this.scene.add
+      .text(BAR_X, 68, '', { fontFamily: 'sans-serif', fontSize: '12px', color: '#4ECDC4', stroke: '#1B2A41', strokeThickness: 3 })
       .setScrollFactor(0)
       .setDepth(23);
   }
@@ -85,16 +120,56 @@ export class Hud {
     return Math.abs(x - 436) <= 50 && Math.abs(y - 782) <= 50;
   }
 
+  private updateWhaleGoal(money: number): void {
+    const reached = money >= GOAL_MONEY;
+    if (reached && !this.whaleLit) {
+      this.whaleLit = true;
+      this.whaleIcon.clearTint();
+      this.whaleReady.setVisible(true);
+      // target from the stored base scale — reading the live scale here would
+      // ratchet the icon bigger on every lit/unlit crossing (tween remove keeps it)
+      this.whalePulse = this.scene.tweens.add({
+        targets: this.whaleIcon,
+        scale: this.whaleBaseScale * 1.18,
+        duration: 450,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.inOut',
+      });
+    } else if (!reached && this.whaleLit) {
+      this.whaleLit = false;
+      this.whaleIcon.setTint(0x51606f);
+      this.whaleReady.setVisible(false);
+      this.whalePulse?.remove();
+      this.whalePulse = null;
+      this.whaleIcon.setScale(this.whaleBaseScale);
+    }
+  }
+
   update(state: GameState): void {
     const airFrac = Math.max(0, Math.min(1, state.air / AIR_MAX));
-    this.airFill.width = 150 * airFrac;
+    this.airFill.width = BAR_W * airFrac;
     this.airFill.fillColor = AIR_COLOR;
     const tenFrac = Math.max(0, Math.min(1, state.tension / LINE_LIMIT));
-    this.tenFill.width = 150 * tenFrac;
+    this.tenFill.width = BAR_W * tenFrac;
     this.tenFill.fillColor = tensionColor(state.tension);
-    this.moneyText.setText(`$${Math.max(0, Math.floor(state.money))}`);
+    // near-snap feedback: the TENSION bar itself rattles >80 and blinks >95
+    this.tenFill.x = BAR_X + (state.tension > 80 ? Math.sin(state.sessionTime * 40) * 1.5 : 0);
+    this.tenFill.alpha = state.tension > 95 ? 0.7 + 0.3 * Math.sin(state.sessionTime * 25) : 1;
+
+    const money = Math.max(0, Math.floor(state.money));
+    this.moneyFill.width = TRACK_W * Math.max(0, Math.min(1, money / GOAL_MONEY));
+    this.moneyText.setText(`$${money} / $${GOAL_MONEY.toLocaleString('en-US')}`);
+    this.updateWhaleGoal(money);
+
+    if (state.combo >= 1) {
+      this.comboText.setText(`COMBO x${comboMult(state.combo).toFixed(2)}`).setVisible(true);
+    } else {
+      this.comboText.setVisible(false);
+    }
     this.heartsText.setText('♥'.repeat(Math.max(0, state.hearts)) + '·'.repeat(Math.max(0, 3 - state.hearts)));
-    this.depthText.setText(`${Math.floor(depthPxToM(state.hookY))}m`); // current depth (deepest goes on the lose screen)
+    this.ruler.update(state); // live depth marker on the right-edge rail
+
     const charges = state.sonarCharges;
     this.sonarBtn.setVisible(charges > 0);
     this.sonarChargesText.setText(charges > 0 ? 'x' + charges : '');
@@ -105,7 +180,7 @@ export class Hud {
       'hud-air': String(this.airFill.width),
       'hud-tension': String(this.tenFill.width),
       'hud-money': this.moneyText.text,
-      'hud-depth': this.depthText.text,
+      'hud-depth': this.ruler.depthLabel,
       'hud-hearts': this.heartsText.text,
       'btn-sonar': this.sonarBtn.visible ? '1' : '0',
     };

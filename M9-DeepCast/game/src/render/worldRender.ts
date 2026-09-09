@@ -185,6 +185,12 @@ export class WorldLayer {
     this.hookDoubleSprite.setVisible(doubleHook);
   }
 
+  // on the title screen the demo owns the hook visuals (Stage C) — hide the real one
+  setHookVisible(v: boolean): void {
+    this.hookSprite.setVisible(v);
+    this.hookDoubleSprite.setVisible(v);
+  }
+
   // Ambient bubbles rising through the camera view (the committed bubble.png was
   // never used ambiently). Deterministic pseudo-random column via a sine hash —
   // house style keeps Math.random out of render too.

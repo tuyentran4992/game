@@ -26,6 +26,21 @@ interface SpawnCell {
   state: number;
 }
 
+// Dive-1 greeter (Stage C early reward): the FIRST band-0 fish starts just off the
+// descent corridor at 250m, so a rookie's first stop anywhere in the upper reef gets a
+// visible approach + '!' telegraph + bite within ~2-5s of NIN. ONE fish only: the dive-1
+// sale count then matches the pre-Stage-C game, so the respawn RNG stream (and with it
+// the 40-seed balance the sim gates protect) stays put (GC-13 §C must stay green).
+// Later dives keep the fully random respawn.
+const GREETER = { x: 215, depthM: 250, vx: 30 } as const;
+const placeGreeter = (fish: FishInstance[]): void => {
+  const f = fish[0];
+  if (!f) return;
+  f.x = GREETER.x;
+  f.y = depthMToPx(GREETER.depthM);
+  f.vx = GREETER.vx;
+};
+
 // Full initial population, deterministic from seed (GC-01: same seed -> identical array).
 // RNG order: (1) shuffle species/positions, (2) pulse phase per fish.
 export const spawnAll = (seed: number): { fish: FishInstance[]; rngState: number } => {
@@ -59,6 +74,7 @@ export const spawnAll = (seed: number): { fish: FishInstance[]; rngState: number
       });
     }
   }
+  placeGreeter(fish);
   return { fish, rngState: cell.state };
 };
 

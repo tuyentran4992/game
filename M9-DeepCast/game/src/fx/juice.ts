@@ -1,7 +1,17 @@
 // Juice: break flash/shake, splash, money float, sonar ring (DESIGN-SPEC §5 numbers).
 import Phaser from 'phaser';
 import type { GameState } from '../core/types.ts';
+import { comboMult } from '../data/upgrades.ts';
 import { sfx } from './audio.ts';
+
+// Tier color by value (Stage C): bigger catch = hotter float, readable at a glance.
+export const tierColor = (value: number): string =>
+  value >= 120 ? '#E71D36' : value >= 60 ? '#FF9F1C' : value >= 25 ? '#FFE66D' : '#FFFFFF';
+
+export interface FloatOpts {
+  small?: boolean; // attach ping at the fish (vs the big surface-sell float)
+  comboX?: number; // append the visible streak multiplier
+}
 
 export class Juice {
   private scene: Phaser.Scene;
@@ -24,7 +34,11 @@ export class Juice {
       if (e.type === 'attach') sfx.play('pop');
       if (e.type === 'surface' && (e.value ?? 0) > 0) {
         sfx.play('splash');
-        this.moneyFloat(hookX, hookY, e.value ?? 0);
+        // sellHooked already advanced state.combo — the multiplier actually APPLIED
+        // to this sale was the previous chain step (combo-1; exact for 1-fish sales,
+        // which is the common case). The HUD chip shows the NEXT-sale multiplier.
+        const bankedX = comboMult(Math.max(0, state.combo - 1));
+        this.moneyFloat(hookX, hookY, e.value ?? 0, { comboX: bankedX });
       }
       if (e.type === 'whale-hook') this.scene.cameras.main.shake(400, 0.006);
     }
@@ -38,24 +52,34 @@ export class Juice {
     }
   }
 
-  moneyFloat(x: number, y: number, value: number): void {
+  moneyFloat(x: number, y: number, value: number, opts: FloatOpts = {}): void {
+    const color = tierColor(value);
+    const combo = opts.comboX !== undefined && opts.comboX > 1 ? `  x${opts.comboX.toFixed(2)}` : '';
     const text = this.scene.add
-      .text(x, y, `+$${Math.round(value)}`, {
-        fontFamily: 'sans-serif', fontSize: '18px', color: '#FFE66D', stroke: '#1B2A41', strokeThickness: 4,
+      .text(x, y, `+$${Math.round(value)}${combo}`, {
+        fontFamily: 'sans-serif',
+        fontSize: opts.small ? '15px' : '22px',
+        color,
+        stroke: '#1B2A41',
+        strokeThickness: 4,
       })
+      .setOrigin(0.5)
       .setDepth(30);
     this.scene.tweens.add({
       targets: text,
-      y: y - 140,
+      // the small attach ping lingers longer (1.4s) and rises less — a new player
+      // needs the value to be READABLE, not a 0.9s flash (Stage C early reward)
+      y: y - (opts.small ? 90 : 140),
       alpha: 0,
-      duration: 900,
+      duration: opts.small ? 1400 : 900,
       ease: 'Cubic.out',
       onComplete: () => text.destroy(),
     });
-    // 6 gold sparkles flying toward the HUD (DESIGN-SPEC §5)
-    for (let i = 0; i < 6; i++) {
+    // gold sparkles flying toward the HUD (DESIGN-SPEC §5); richer catch = more sparks
+    const sparks = value >= 60 ? 10 : 6;
+    for (let i = 0; i < sparks; i++) {
       const spark = this.scene.add.image(x, y, 'sparkle').setDepth(30).setScale(0.8);
-      const angle = (Math.PI * 2 * i) / 6;
+      const angle = (Math.PI * 2 * i) / sparks;
       this.scene.tweens.add({
         targets: spark,
         x: x + Math.cos(angle) * 40,

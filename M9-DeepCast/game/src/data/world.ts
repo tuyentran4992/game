@@ -27,6 +27,10 @@ export const AIR_RATE = {
 export const START_MONEY = 600;
 export const FUEL_COST = 150;
 export const HEARTS = 3;
+// Stage C goal legibility: the HUD money bar tracks savings toward the whale hunt —
+// a display GOAL the player can see filling up (the whale spawn gate itself lives in
+// systems/whale.ts and is intentionally untouched).
+export const GOAL_MONEY = 2000;
 
 export const DIVE_COOLDOWN = 0.3; // s
 export const TAP_BUFFER = 0.25; // s

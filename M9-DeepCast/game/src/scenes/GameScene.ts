@@ -9,10 +9,12 @@ import { WorldLayer } from '../render/worldRender.ts';
 import { FishLayer } from '../render/fishRender.ts';
 import { LineRenderer } from '../render/lineRender.ts';
 import { Hud } from '../render/hud.ts';
+import { Telegraph } from '../render/telegraph.ts';
 import { Overlays } from '../ui/overlays.ts';
 import { Juice } from '../fx/juice.ts';
 import { sfx } from '../fx/audio.ts';
 import { publishTestIds } from '../ui/testids.ts';
+import { fishById } from '../data/fishData.ts';
 
 const WORLD_TALL = 1300;
 const FIXED_DT = 1 / 60;
@@ -24,6 +26,7 @@ export class GameScene extends Phaser.Scene {
   private fishLayer!: FishLayer;
   private lineR!: LineRenderer;
   private hud!: Hud;
+  private telegraph!: Telegraph;
   private overlays!: Overlays;
   private juice!: Juice;
   private holding = false;
@@ -46,7 +49,8 @@ export class GameScene extends Phaser.Scene {
     this.fishLayer.createShark();
     this.lineR = new LineRenderer(this);
     this.hud = new Hud(this);
-    this.overlays = new Overlays(this, this.bestScore);
+    this.overlays = new Overlays(this, this.bestScore, () => this.world.hookAnchor);
+    this.telegraph = new Telegraph(this);
     this.juice = new Juice(this);
     this.debugSeed = this.add
       .text(4, WORLD_H - 16, '', { fontFamily: 'sans-serif', fontSize: '10px', color: '#8fd3ff' })
@@ -137,10 +141,16 @@ export class GameScene extends Phaser.Scene {
     this.world.syncPickups(s);
     this.fishLayer.update(s, timeS + this.accumulator);
     this.world.updateBoat(s, timeS + this.accumulator);
-    this.world.updateHook(s, timeS + this.accumulator, s.doubleHook);
+    if (s.phase === 'title') {
+      // the title demo owns the hook visuals until the first dive (Stage C)
+      this.world.setHookVisible(false);
+    } else {
+      this.world.updateHook(s, timeS + this.accumulator, s.doubleHook);
+    }
     this.world.updateAmbient(s, timeS + this.accumulator);
     const rod = this.world.hookAnchor;
     this.lineR.update(s, rod.x, rod.y, timeS + this.accumulator);
+    this.telegraph.update(s, timeS + this.accumulator); // '!' before each bite
     this.world.drawWaves(timeS + this.accumulator);
     this.hud.update(s);
     this.overlays.update(s, dt, this.bestScore, s.sessionTime);
@@ -164,6 +174,13 @@ export class GameScene extends Phaser.Scene {
       if (e.type === 'hint-control') this.overlays.showHint(0);
       if (e.type === 'hint-tension') this.overlays.showHint(1);
       if (e.type === 'hint-air') this.overlays.showHint(2);
+      if (e.type === 'attach') {
+        // instant value read: the catch's worth floats off the fish, tier-colored
+        const uid = s.hooked[s.hooked.length - 1];
+        const f = uid !== undefined ? s.fish.find((fi) => fi.uid === uid) : undefined;
+        const def = f ? fishById(f.defId) : undefined;
+        if (f && def) this.juice.moneyFloat(f.x, f.y - 10, def.value, { small: true });
+      }
       if (e.type === 'surface' && (e.value ?? 0) > 0) this.overlays.showResult(e.value ?? 0);
       if (e.type === 'win') this.finishGame(true);
       if (e.type === 'lose') this.finishGame(false);

@@ -1,11 +1,14 @@
-// Overlays: title / win / lose / result popup / onboarding hints (DESIGN-SPEC §4, SPEC §7).
+// Overlays: title (+ interactive demo) / win / lose / result popup / onboarding
+// hints (DESIGN-SPEC §4, SPEC §7, Stage C "3-second self-teaching opening").
 import Phaser from 'phaser';
 import type { GameState } from '../core/types.ts';
+import { TitleDemo } from './titleDemo.ts';
 
 const UI = { font: 'sans-serif', stroke: '#1B2A41' } as const;
 
 export class Overlays {
   private scene: Phaser.Scene;
+  private demo: TitleDemo;
   titleC!: Phaser.GameObjects.Container;
   winC!: Phaser.GameObjects.Container;
   loseC!: Phaser.GameObjects.Container;
@@ -22,8 +25,9 @@ export class Overlays {
   onRetry: (() => void) | null = null;
   onContinue: (() => void) | null = null;
 
-  constructor(scene: Phaser.Scene, best: number) {
+  constructor(scene: Phaser.Scene, best: number, hookAnchor: () => { x: number; y: number }) {
     this.scene = scene;
+    this.demo = new TitleDemo(scene, hookAnchor);
     this.buildTitle(best);
     this.buildWin();
     this.buildLose();
@@ -32,11 +36,11 @@ export class Overlays {
 
   // Buttons are visual only — taps are routed by Overlays.routeTap from the scene-level
   // pointer handler (container hitArea proved unreliable for negative-coord rects).
-  private makeButton(x: number, y: number, label: string, color = 0xffd166): Phaser.GameObjects.Container {
+  private makeButton(x: number, y: number, label: string, color = 0xffd166, fontSize = 26): Phaser.GameObjects.Container {
     const c = this.scene.add.container(x, y);
     const bg = this.scene.add.rectangle(0, 0, 220, 64, color).setStrokeStyle(4, 0x1b2a41);
     const t = this.scene.add
-      .text(0, 0, label, { fontFamily: UI.font, fontSize: '26px', color: '#1B2A41' })
+      .text(0, 0, label, { fontFamily: UI.font, fontSize: `${fontSize}px`, color: '#1B2A41' })
       .setOrigin(0.5);
     c.add([bg, t]);
     return c;
@@ -71,7 +75,8 @@ export class Overlays {
     const sub = s.add
       .text(0, -70, 'Catch the Blue Whale. Come back rich.', { fontFamily: UI.font, fontSize: '16px', color: '#ffffff', stroke: UI.stroke, strokeThickness: 4 })
       .setOrigin(0.5);
-    const play = this.makeButton(0, 30, 'PLAY');
+    // Stage C: the label teaches the verb pair the demo is acting out below
+    const play = this.makeButton(0, 30, 'HOLD & RELEASE', 0xffd166, 20);
     const bestT = s.add
       .text(0, 110, `BEST: $${best}`, { fontFamily: UI.font, fontSize: '16px', color: '#FFE66D', stroke: UI.stroke, strokeThickness: 3 })
       .setOrigin(0.5);
@@ -131,7 +136,7 @@ export class Overlays {
     if (this.hints[index] && this.hints[index]!.alpha > 0) return;
     const texts = [
       'Hold to descend, release to reel up',
-      'Fish thrashing! HOLD to NIN and wait it out',
+      'Fish thrashing! HOLD to give line — wait it out!',
       'Low air — head up now!',
     ];
     const ys = [620, 560, 620];
@@ -150,7 +155,12 @@ export class Overlays {
   }
 
   update(state: GameState, dt: number, sessionBestScore: number, sessionTimeS: number): void {
-    this.titleC.setVisible(state.phase === 'title');
+    const onTitle = state.phase === 'title';
+    this.titleC.setVisible(onTitle);
+    // update() runs every frame: its !shown branch hides the demo objects when the
+    // dive starts (setVisible alone would leave the ghost hand/caption on screen)
+    this.demo.setVisible(onTitle);
+    this.demo.update(dt);
     this.winC.setVisible(state.phase === 'win');
     this.loseC.setVisible(state.phase === 'lose');
     this.continueBtn.setVisible(!state.usedContinue && state.phase === 'lose');
