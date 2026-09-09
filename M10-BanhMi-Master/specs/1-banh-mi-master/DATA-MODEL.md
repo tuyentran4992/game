@@ -108,7 +108,7 @@ hiển thị: thanh vòng cung trên đầu khách, màu theo DESIGN-SYSTEM sema
 ```
 
 ## 9. ASSET MANIFEST (`M10-BanhMi-Master/assets/manifest.json`)
-Supervisor gen bằng WAN 2.7 (skill `aibox-image-generation`) → 33 file (DESIGN-SPEC §3): mỗi entry `{file, sha256, size}`. Code KHÔNG gen/đổi asset. Tổng < 4MB (gate TB-03).
+Supervisor gen bằng WAN 2.7 (script `scripts/gen_assets_m10.py`) → 37 file (DESIGN-SPEC §3): mỗi entry `{file, sha, bytes, vision}`. Code KHÔNG gen/đổi asset. Tổng < 4MB (gate TB-03).
 
 ## 10. DESIGN DECISIONS (trade-offs)
 1. **12 ô khay cố định, không cuộn** — memory game cần thấy TOÀN BỘ lựa chọn cùng lúc (nếu cuộn thì load trí nhớ nằm ở UI chứ không ở order — sai hook). 12 = đủ độ khó đọc-trước nhưng 1 màn mobile chứa hết (ô 150×150px ≥ 44px chạm).

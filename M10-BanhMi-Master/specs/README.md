@@ -16,8 +16,8 @@ Quán bánh mì đường phố Việt: **order flash 1 lần rồi biến mất
 ## Trạng thái PHASE 0 (gate trước khi code — luật boss 08/09)
 - [x] Research market + anti-clone (09/09)
 - [x] 5 file spec + catalog-check + PROMPT (09/09)
-- [ ] **Boss duyệt spec** (đọc SPEC §5 bảng biến đổi + §11 tiêu chí — fun gate nằm ở đây)
-- [ ] Hermes gen 33 assets production WAN 2.7 + manifest sha256
-- [ ] Giao coding agent chạy PROMPT 1 mạch
-- [ ] Verify bằng số (GC/TB/sim) → QA browser+vision E2E → preview Netlify
-- [ ] Boss chơi tay = FUN GATE (PB-2)
+- [x] Boss duyệt + lệnh bổ sung 09/09: **không browser test (code test thôi) · TDD · anti god class · Claude Code model qwen3.8-flash**
+- [ ] Hermes gen 37 assets production WAN 2.7 + manifest sha256 (`scripts/gen_assets_m10.py`)
+- [ ] Giao coding agent (qwen3.8-flash) chạy PROMPT 1 mạch — TDD RED→GREEN
+- [ ] Verify bằng số (GC 14/14 + TB 6/6 + sim 40 seed 2 bot) — gate CHÍNH, không browser
+- [ ] Deploy preview Netlify → **boss chơi tay = FUN GATE (PB-2)**

@@ -59,7 +59,8 @@ Interstitial: giữa khách #4 và #5 (nghỉ tự nhiên). Rewarded continue: s
 ## 8. ART HOÀN CHỈNH NGAY MVP (lệnh boss 08/09)
 - Style PREMIUM CASUAL theo `docs/DESIGN-SYSTEM.md` §4 (candy volumetric, thumbnail-first, juice bắt buộc).
 - Theme: **đường phố Việt buổi sớm** — nắng vàng ấm, bạt xanh dương, xe đẩy gỗ, đèn lồng nhỏ; khách đa dạng (áo dài cách tân, đồng phục văn phòng, balo học sinh).
-- **Supervisor (Hermes) TỰ gen assets production bằng WAN 2.7 + manifest sha256 TRƯỚC khi giao code — CẤM coding agent vẽ art** (luật boss 08/09; recipe skill `aibox-image-generation` §Sprite game). Danh mục: DESIGN-SPEC §3.
+- **Supervisor (Hermes) TỰ gen assets production bằng WAN 2.7 + manifest sha256 TRƯỚC khi giao code — CẤM coding agent vẽ art** (luật boss 08/09; script `scripts/gen_assets_m10.py`, recipe skill `aibox-image-generation` §Sprite game). Danh mục: DESIGN-SPEC §3 (37 file).
+- **Coding model: qwen3.8-flash qua Claude Code (lệnh boss 09/09).** TEST BẰNG CODE (vitest+sim) — KHÔNG browser test; TDD RED→GREEN bắt buộc; anti god class TB-05.
 - Game KHÔNG nhúng font riêng (bundle) — hệ thống bold sans theo DESIGN-SYSTEM §1.2.
 
 ## 9. KỸ THUẬT (giữ nguyên stack đã chứng minh M3/M9)
@@ -69,7 +70,7 @@ Phaser 3.80 + TS strict · Vite · Vitest (logic pure-TS 0 Phaser) · Mulberry32
 **IN:** 1 ca 8 khách, 12 nguyên liệu, 12-bin khay, flash-order memory, patience/strike/star/tip, hint rewarded, khách đổi ý (#7), win/lose + rank, onboarding #1, sim harness.
 **OUT:** nhiều chapter/quán, shop, meta progression (luật boss), daily challenge, achievement/skin, nhạc nền, story, multiplayer, leaderboard online, thêm món (phở/cơm tấm = M11+ nếu M10 đạt fun gate).
 
-## 11. TIÊU CHÍ HOÀN THÀNH (verify bằng SỐ trước khi trình boss chơi tay)
+## 11. TIÊU CHÍ HOÀN THÀNH (verify bằng SỐ — lệnh boss 09/09: **test bằng code thôi, KHÔNG browser test**; trước khi trình boss chơi tay)
 1. `tsc --noEmit` = 0 · `vitest run` pass GC-01…GC-14 (TEST-CASES) · `vite build` sạch · assets manifest 100% khớp sha · tổng assets < 4MB.
 2. **Sim 40 seed** (harness 2 policy — TEST-CASES §C): bot hoàn hảo thắng 40/40, median shift 70–140s, patience-util max ≤70%; bot hay quên (25%/layer) win ≥60% NHƯNG median stars ≤20/24 → chứng minh **kỹ năng nhớ quy ra sao/tip**, không chỉ pass-fail.
 3. Boss chơi tay preview: hiểu game không đọc help trong 30s đầu; **cảm giác "chết tiệt quên mất rồi" ít nhất 1 lần/ca** (đây là fun hypothesis cần xác nhận); thắng được ca đầu trong ≤3 phút.

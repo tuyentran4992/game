@@ -25,7 +25,7 @@
 |---|---|---|
 | TB-01 | `pnpm tsc --noEmit` | 0 lỗi |
 | TB-02 | `pnpm build` (vite) | exit 0, dist/index.html boot được (0 console error) |
-| TB-03 | script so sha | `assets/manifest.json` (supervisor gen, 33 file): 100% tồn tại + sha256 khớp; tổng < 4MB |
+| TB-03 | script so sha | `assets/manifest.json` (supervisor gen, 37 file): 100% tồn tại + sha256 khớp; tổng < 4MB |
 | TB-04 | `grep -r "Math.random" game/src/core game/src/data` | 0 kết quả (core deterministic; FX ngoài core được phép) |
 | TB-05 | `find game/src -name '*.ts' -exec wc -l {} + \| sort -rn \| head -5` | file dài nhất **≤300 dòng**; scene ≤250 dòng; không class GameManager ôm hết (mỗi hệ 1 module: `systems/order.ts`, `systems/patience.ts`, `systems/scoring.ts`, `systems/customer.ts`) |
 | TB-06 | `pnpm vitest run` | 14/14 GC pass |

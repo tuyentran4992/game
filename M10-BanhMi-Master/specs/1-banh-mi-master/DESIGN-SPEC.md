@@ -40,26 +40,23 @@
 - Patience: vòng cung quanh đầu khách (r=64, stroke 10) — KHÔNG thanh chữ nhật (khác Cooking Mania về mặt hình, đúng art-direction memory-centric).
 - Khi FLASH: toàn UI dưới mờ 20% (focus bong bóng); khay dimmed nhưng VẪN NHÌN THẤY (người chơi liếc trước vị trí ô — kỹ năng đọc-trước §5 SPEC).
 
-## 3. DANH MỤC ASSET PRODUCTION (supervisor gen WAN 2.7 — 33 file)
-> Kích thước px tại scale 1, PNG transparent (nền riêng JPG-look PNG). Prompt chuẩn skill `aibox-image-generation` §Sprite game; mỗi file vào `game/public/assets/`, sha256 ghi `assets/manifest.json`.
+## 3. DANH MỤC ASSET PRODUCTION (supervisor gen WAN 2.7 — **37 file**, script `scripts/gen_assets_m10.py`)
+> Kích thước px tại scale 1, PNG transparent (nền riêng full-canvas). Prompt chuẩn skill `aibox-image-generation` §Sprite game; mỗi file vào `game/public/assets/`, sha256 ghi `assets/manifest.json`.
+> **Phần còn lại KHÔNG dùng ảnh AI** — vẽ programmatic bằng Phaser Graphics theo component design-system: bong bóng order, nút UNDO/SERVE/HINT (btn-primary §3.1), HUD, patience arc, overlay win/lose (nền overlay + text + asset hero ghép), title logo (text gỗ + hero_sandwich), fx_sparkle/confetti (particle Graphics), đồng hồ flash. Đúng pattern M4: chrome UI không phụ thuộc art AI.
 
 | ID | Nội dung | Size | Anim |
 |---|---|---|---|
-| bg_street | Nền phố sáng + xe đẩy + bạt (parallax 2 lớp: phố xa 0.3×, quầy 1×) | 720×1280 | hơi nước loop 2f |
-| cust_1..8 | 8 persona (§DATA-MODEL 3), mỗi con 3 biểu cảm (wait/angry/happy) | 220×300 ×8 | idle bob 2f |
-| ing_pate, ing_mayo, ing_chili | 3 sốt — lớp sóng sánh trong khay + bản đã-trải trên bánh | 96×96 / 200×36 ×3 | — |
-| ing_pork, ing_chicken, ing_ham | 3 thịt | 96×96 / 200×48 ×3 | — |
-| ing_cuke, ing_pickle, ing_herb, ing_chili_f | 4 rau | 96×96 / 200×40 ×4 | — |
-| bread_bottom, bread_top | Ổ dưới + nắp (nắp có rạch chéo, vừng) | 280×90 / 280×110 | nắp úp squash |
-| bubble_order | Bong bóng thoại (đuôi nhọn) + viền | 420×280 | pop scale |
-| tray_bg | Khay gỗ 4×3 | 680×440 | — |
-| fx_star, fx_coin, fx_sparkle, fx_angry | Juice: sao 3 cỡ, coin ₫/💰, tia sáng, 💢 | nhỏ | particle |
-| ui_hint, ui_undo, ui_serve | Icon nút (SERVE nền cam gradient theo btn-primary design-system) | 80/80/280×96 | pulse |
-| overlay_win | Bàn tiệc bánh mì + pháo giấy + hạng S/A/B khung gỗ | fullscreen | 3f |
-| overlay_lose | Quầy đóng bạt, ghế úp, đèn tắt | fullscreen | — |
-| title_logo | "BANH MI MASTER" chữ gỗ + ổ bánh mì hero + nắng | 600×260 | bob |
+| bg_street | Nền phố sáng + xe đẩy bạt xanh (giữa/trên thoáng cho UI) | 720×1280 | hơi nước loop 2f (particle) |
+| cust_1..cust_8 | 8 persona Việt (§DATA-MODEL 3), upper body front | ~420px | idle bob 2f (tween); biểu cảm chờ/giận/vui = code tint + fx overlay |
+| icon_pate/mayo/chili/pork/chicken/ham/cuke/pickle/herb/chilif | 10 icon khay nguyên liệu | 96×96 (gen 200) | scale pop khi tap |
+| layer_pate/mayo/chili/pork/chicken/ham/cuke/pickle/herb/chilif | 10 layer form (rộng dẹt xếp lên bánh) | 200×h (gen 300) | squash khi đáp |
+| bread_bottom / bread_top | Ổ dưới + nắp (vừng, rạch chéo) | 280×h | nắp úp squash |
+| tray_bg | Khay gỗ 4×3 | 680×h | — |
+| fx_coin, fx_star, fx_angry | Juice: coin, sao, 💢 | ≤128 | particle/tween |
+| hero_sandwich | Bánh mì hoàn chỉnh hero (win + title) | 640 | rotate nhẹ + tia |
+| stall_closed | Quầy đóng bạt (lose overlay) | 640 | — |
 
-Tổng atlas/ảnh ≤ 4MB (gate TB-03). Thiếu 1 file = coding agent BÁO, không tự chế thay thế.
+Tổng ≤ 4MB (gate TB-03, verify bằng manifest). Thiếu file = coding agent BÁO, không tự chế thay thế.
 
 ## 4. SCREEN-BY-SCREEN
 - **Title:** logo giữa y=360, nút PLAY (btn-primary design-system, 280×96) y=760, best-tips nhỏ dưới ("BEST: 💰260"), khách persona đi bộ trang trí dưới nền.

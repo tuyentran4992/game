@@ -1,6 +1,7 @@
 # PROMPT — M10 Banh Mi Master MVP (chạy 1 mạch, spec-driven §PB-2b)
-> ⚠️ ĐIỀU KIỆN TIÊN QUYẾT (luật boss 08/09): **chạy prompt này CHỈ SAU KHI supervisor (Hermes) đã gen xong 33 asset production bằng WAN 2.7** + `assets/manifest.json` đủ sha256 (DESIGN-SPEC §3). Coding agent CẤM tự vẽ art.
-> Cách dùng (pattern M9): `cd /data/youtube-playables/M10-BanhMi-Master && source /data/scripts/claude-code-env.sh && ANTHROPIC_MODEL="zai-org/glm-5.3-flash" claude -p "$(cat specs/1-banh-mi-master/PROMPT.md)" --max-turns 200 --output-format json`
+> ⚠️ ĐIỀU KIỆN TIÊN QUYẾT (luật boss 08/09): **chạy prompt này CHỈ SAU KHI supervisor (Hermes) đã gen xong 30 asset production bằng WAN 2.7** + `assets/manifest.json` đủ sha256 (DESIGN-SPEC §3). Coding agent CẤM tự vẽ art.
+> Cách dùng (model chốt 09/09 boss: **qwen3.8-flash**): `cd /data/youtube-playables/M10-BanhMi-Master && source /data/scripts/claude-code-env.sh && ANTHROPIC_MODEL="qwen3.8-flash" claude -p "$(cat specs/1-banh-mi-master/PROMPT.md)" --max-turns 200 --output-format json`
+> Luật boss 09/09: **TEST BẰNG CODE THÔI (vitest + sim harness), KHÔNG browser test. TDD bắt buộc (RED trước GREEN sau). Anti god class (TB-05).**
 
 ---
 
@@ -19,20 +20,21 @@ Bạn là chuyên gia Phaser 3 + TypeScript game dev. Xây MVP game **"Banh Mi M
 
 ## Trình tự bắt buộc (mỗi bước verify bằng SỐ thật, in ra, trước khi bước sau)
 1. Scaffold Vite+Phaser3+TS strict (`game/` standalone, pnpm, port 5210, tsconfig riêng). `tsc --noEmit` = 0.
-2. `src/data/` + `src/core/` — viết vitest GC-01..GC-10 TRƯỚC cho core (TDD RED→GREEN), `pnpm vitest run` pass hết.
-3. **KHÔNG tự vẽ art.** Assets production đã gen sẵn: `game/public/assets/*.png` + `M10-BanhMi-Master/assets/manifest.json` (33 file, sha256/size theo DESIGN-SPEC §3). Chạy script ngắn so sha manifest với file thật; thiếu file nào BÁO trong báo cáo cuối, không chế asset thay thế. Nối sprite bằng loader PNG từng file (không cần texture packer).
-4. Scene Phaser: bg parallax, khách walk-in 8 persona × 3 biểu cảm, bong bóng order + flash timer vòng tròn, ghost bubble, stack zone + layer snap/squash, khay 4×3, patience arc 3 màu + nhấp nháy <30%, HUD tips/stars/strikes, scoring cross-section reveal (✅/❌ từng layer 500ms), WAIT! event khách #7, hint replay 1.5s, combo/FAST popup, screen shake + vignette strike, interstitial mock sau khách #4, win/lose overlay + rank, rewarded continue 1 lần/ca. Input TAP-ONLY đúng SPEC §3 (không drag). UI tiếng Anh. Mobile-first 720×1280 Scale.FIT + pause/mute obey (visibilitychange tại document — án lệ M8 C-24).
-5. GC-11..GC-14 + `scripts/sim.ts` harness 40 seed 2 bot (TEST-CASES §C) — chạy, in bảng số. Không đạt ngưỡng → chỉnh ±20% số DATA-MODEL (ghi rõ trước→sau) sim lại tới khi đạt.
+2. **TDD RED→GREEN BẮT BUỘC (lệnh boss 09/09):** viết vitest GC-01..GC-14 TRƯỚC khi viết code — chạy `pnpm vitest run` DÁN output **FAIL (RED) thật** vào log, rồi mới viết `src/data/` + `src/core/` đến khi GREEN 14/14. Test-only-code: KHÔNG browser, KHÔNG headless Chrome, KHÔNG playwright ở bất kỳ bước nào.
+3. **KHÔNG tự vẽ art.** Assets production đã gen sẵn: `game/public/assets/*.png` + `M10-BanhMi-Master/assets/manifest.json` (37 file, sha/bytes theo DESIGN-SPEC §3). Chạy script ngắn so sha manifest với file thật; thiếu file nào BÁO trong báo cáo cuối, không chế asset thay thế. Nối sprite bằng loader PNG từng file (không cần texture packer).
+4. Scene Phaser: bg, khách walk-in 8 persona, bong bóng order + flash timer vòng tròn, ghost bubble, stack zone + layer snap/squash, khay 4×3, patience arc 3 màu + nhấp nháy <30%, HUD tips/stars/strikes, scoring cross-section reveal (✅/❌ từng layer 500ms), WAIT! event khách #7, hint replay 1.5s, combo/FAST popup, screen shake + vignette strike, interstitial mock sau khách #4, win/lose overlay + rank, rewarded continue 1 lần/ca. UI chrome (bong bóng, nút, HUD, overlay, arc) vẽ PROGRAMMATIC bằng Graphics theo design-system — chỉ sprite/nền/icon mới là asset (DESIGN-SPEC §3). Input TAP-ONLY đúng SPEC §3 (không drag). UI tiếng Anh. Mobile-first 720×1280 Scale.FIT + pause/mute obey (visibilitychange tại document — án lệ M8 C-24). Logic scene PHẢI gọi thẳng vào `core/rules.ts` + systems (không nhân bản công thức trong scene).
+5. Sim harness `scripts/sim.ts` 40 seed 2 bot (TEST-CASES §C) — chạy `pnpm sim`, in bảng số. Không đạt ngưỡng → chỉnh ±20% số DATA-MODEL (ghi rõ trước→sau) sim lại tới khi đạt.
 6. Bridge stub theo `@game/sdk` pattern M3 (sendScore=tips, saveData `banhmi.best`) + `playgama-bridge-config.json` copy cấu trúc M8 final. `pnpm build` = TB-02. Chạy một lượt cuối `pnpm tsc --noEmit && pnpm vitest run && pnpm sim && pnpm build`, dán output.
 
 ## CẤM
 - Không Math.random trong `src/core`/`src/data` (TB-04). Không đổi number spec mà không ghi chú trước→sau. Không commit/push git. Không tạo file ngoài `M10-BanhMi-Master/`. Không mạng ngoài (không npm package mới — deps đã có ở workspace node_modules gốc; cần thì copy M3 game/package.json).
+- **Không browser test / playwright / headless Chrome / puppeteer ở bất kỳ bước nào (lệnh boss 09/09)** — mọi verify bằng vitest + sim + tsc + build.
 - Không cắt ngắn art: thiếu 1 asset DESIGN-SPEC §3 = chưa xong (BÁO, không thay thế).
 - Không thêm meta progression/shop/chapter (luật boss — OUT SCOPE SPEC §10).
 
 ## BÁO CÁO CUỐI (bắt buộc, bằng số)
-- vitest: X passed / 14 GC
+- TDD evidence: dán output vitest **RED lần đầu** (fail count) + **GREEN cuối**: X passed / 14 GC
 - sim 40 seed: bảng 2 bot (win rate, median shift s, median stars /24, median tips, strikes median) + các lần chỉnh số (trước→sau)
-- build: size dist, tổng assets size, manifest khớp 33/33?
-- `wc -l` top 5 file (gate TB-05)
+- build: size dist, tổng assets size, manifest khớp 37/37?
+- `wc -l` top 5 file (gate TB-05 — file dài nhất ≤300, scene ≤250)
 - Danh sách file tạo ra + cách chạy dev (port 5210)

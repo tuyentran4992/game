@@ -1,5 +1,5 @@
-# M10 Banh Mi Master — E2E TESTS (Hermes QA, SAU build)
-> UI/visual test do **Hermes verify** bằng Playwright/agent-browser + vision — agent dev KHÔNG viết E2E (bài học M3v2: agent viết test ảo, chạy không nổi).
+# M10 Banh Mi Master — E2E-TESTS (Hermes QA, SAU build)
+> ⚠️ **LỆNH BOSS 09/09: KHÔNG BROWSER TEST — test bằng code thôi (vitest GC/TB + sim harness là gate chính).** File này giữ lại làm **checklist QA THỦ CÔNG NHẸ khi anh Tuyền chơi preview Netlify** (fun gate PB-2) — KHÔNG phải gate tự động, KHÔNG chặn pipeline.
 > Nguồn: SPEC §2/§7 + DESIGN-SPEC §2/§4/§6.
 
 ## 0. Quy ước chạy
