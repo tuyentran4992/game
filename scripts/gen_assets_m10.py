@@ -53,7 +53,9 @@ SPRITES = {
  "icon_chicken": ("Shredded yellow poached chicken pieces, tender looking, ", 200),
  "icon_ham": ("Slices of Vietnamese pork sausage (cha lua), pale pink rounds with visible texture, ", 200),
  "icon_cuke": ("Fresh green cucumber slices, crisp with visible seeds, ", 200),
- "icon_pickle": ("Vietnamese pickled carrot and daikon strips (do chua), orange and white julienne, ", 200),
+ "icon_pickle": ("Vietnamese pickled vegetables do chua: thin shredded julienned strips of orange carrot and "
+                 "pale white daikon radish, wet glossy brine look, tangled small heap, NOT french fries, "
+                 "NOT fried potato, thin translucent vegetable strips, ", 200),
  "icon_herb": ("Fresh cilantro coriander leaves sprig, vibrant green, ", 200),
  "icon_chilif": ("Fresh red chili pepper slices rings, glossy, ", 200),
  # 10 layer form (rộng, dẹt — xếp lên bánh)
