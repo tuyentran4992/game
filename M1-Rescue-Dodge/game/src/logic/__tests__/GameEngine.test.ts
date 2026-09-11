@@ -637,7 +637,9 @@ describe('GameEngine — Stage-based Progression (Separate Stages)', () => {
     expect(engine.stageScore).toBe(0);
     expect(engine.stageFish).toBe(0);
     expect(engine.score).toBe(20); // Điểm Stage 1 được giữ nguyên
-
+    // Không bị reset speed về mức bắt đầu (210) mà giữ nguyên tốc độ Stage 2
+    expect(engine.elapsed).toBeGreaterThanOrEqual(120);
+    expect(engine.difficulty().speed).toBeGreaterThan(280);
   });
 
   it('endGame báo cáo đúng stage hiện tại và bestStage', () => {

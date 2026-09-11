@@ -423,7 +423,7 @@ export class GameplayScene extends Phaser.Scene {
       ctx.engine.startNewGame();
     }
 
-    this.elapsed = isResume ? ctx.engine.elapsed : 0;
+    this.elapsed = (isResume || isRetryStage) ? ctx.engine.elapsed : 0;
     this.lastTick = 0;
     this.lastItemSpawn = 0;
     // T1c: cadence spawn + swarm dời về SpawnDirector (mirror create cũ:
@@ -665,9 +665,8 @@ export class GameplayScene extends Phaser.Scene {
       // Phím tắt Debug: Chỉ hoạt động trong môi trường phát triển (DEV), tự động loại bỏ trong bản build chính thức (Production)
       if (import.meta.env.DEV) {
         if (e.code === 'Digit1') {
-          ctx.engine.stage = 1;
-          ctx.engine.stageLevel = 1;
           this.elapsed = 0;
+          ctx.engine.recordStageStart(1, 0);
           this.spawnDirector?.startSession(this.elapsed);
           this.drawLevelBg();
           this.showFloatingText(width / 2, height / 2, 'DEBUG: STAGE 1 (DAY)', color.primary);
@@ -677,9 +676,8 @@ export class GameplayScene extends Phaser.Scene {
           return;
         }
         if (e.code === 'Digit2') {
-          ctx.engine.stage = 2;
-          ctx.engine.stageLevel = 1;
-          this.elapsed = Math.max(this.elapsed, 60);
+          this.elapsed = Math.max(this.elapsed, 120);
+          ctx.engine.recordStageStart(2, this.elapsed);
           this.spawnDirector?.startSession(this.elapsed);
           this.drawLevelBg();
           this.showFloatingText(width / 2, height / 2, 'DEBUG: STAGE 2 (SUNSET + ZIGZAG)', color.warning);
@@ -689,9 +687,8 @@ export class GameplayScene extends Phaser.Scene {
           return;
         }
         if (e.code === 'Digit3') {
-          ctx.engine.stage = 3;
-          ctx.engine.stageLevel = 1;
-          this.elapsed = Math.max(this.elapsed, 120);
+          this.elapsed = Math.max(this.elapsed, 240);
+          ctx.engine.recordStageStart(3, this.elapsed);
           this.spawnDirector?.startSession(this.elapsed);
           this.drawLevelBg();
           this.showFloatingText(width / 2, height / 2, 'DEBUG: STAGE 3 (NIGHT + STALKER 🎯)', '#FF1744');
@@ -2361,6 +2358,8 @@ export class GameplayScene extends Phaser.Scene {
     if (result.isStageComplete) {
       ctx.engine.advanceToNextStage();
       // Giữ nguyên this.elapsed để tốc độ bay duy trì đà tăng tiến mượt mà, không bị hãm phanh khi qua Stage mới
+      ctx.engine.elapsed = this.elapsed;
+      ctx.engine.stageStartElapsed = this.elapsed;
       this.spawnDirector?.startSession(this.elapsed);
       this.fatBeeActive = false;
       this.fatBeePending = false;

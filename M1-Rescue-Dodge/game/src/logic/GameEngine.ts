@@ -60,6 +60,7 @@ export class GameEngine {
   stageMaxCombo = 0;
   stageShieldLost = false;
   stageCleared = false;
+  stageStartElapsed = 0;
 
   // power-ups & fever
   shieldActive = false;
@@ -105,6 +106,7 @@ export class GameEngine {
     this.score = 0;
     this.streak = 0;
     this.elapsed = 0;
+    this.stageStartElapsed = 0;
     this.fish = 0;
     this.stage = 1;
     this.stageLevel = 1;
@@ -302,6 +304,7 @@ export class GameEngine {
       this.stageMaxCombo = 0;
       this.stageShieldLost = false;
       this.stageCleared = false;
+      this.stageStartElapsed = this.elapsed;
       return;
     }
     this.stage += 1;
@@ -313,9 +316,23 @@ export class GameEngine {
     this.stageMaxCombo = 0;
     this.stageShieldLost = false;
     this.stageCleared = false;
+    this.stageStartElapsed = this.elapsed;
     if (this.stage > this.bestStage) {
       this.bestStage = this.stage;
     }
+  }
+
+  getStageBaseElapsed(stage = this.stage): number {
+    if (stage === 1) return 0;
+    if (stage === 2) return Math.max(this.stageStartElapsed, 120);
+    if (stage >= 3) return Math.max(this.stageStartElapsed, 240);
+    return Math.max(this.stageStartElapsed, 0);
+  }
+
+  recordStageStart(stage: number, elapsed: number): void {
+    this.stage = stage;
+    this.stageStartElapsed = elapsed;
+    this.elapsed = elapsed;
   }
 
   retryCurrentLevel(): void {
@@ -336,7 +353,8 @@ export class GameEngine {
     // Vẫn giữ stage hiện tại, chỉ reset level về 1
     this.stageLevel = 1;
     this.retryCurrentLevel();
-    this.elapsed = 0;
+    // Giữ nguyên tốc độ mốc của Stage hiện tại (không bị hãm về tốc độ 0 của màn đầu)
+    this.elapsed = this.getStageBaseElapsed();
     this.fever = 0;
     this.feverActive = false;
     this.feverTimeRemaining = 0;
