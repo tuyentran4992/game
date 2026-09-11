@@ -56,9 +56,9 @@ describe('Stage Clear Wiring — Static Contract & Testids', () => {
     expect(srcGameplay).toContain('handleMenuAfterVictory');
   });
 
-  it('Gameplay.ts reset elapsed = 0 và sử dụng stageLevel để mật độ ong chuyển từ DỄ -> KHÓ ở mỗi Stage', () => {
+  it('Gameplay.ts duy trì tốc độ bay liên tục và sử dụng stageLevel để mật độ ong chuyển từ DỄ -> KHÓ ở mỗi Stage', () => {
     const src = readFileSync('src/scenes/Gameplay.ts', 'utf8');
-    expect(src).toMatch(/this\.elapsed\s*=\s*0;\s*this\.spawnDirector\?\.startSession\(this\.elapsed\)/);
+    expect(src).toContain('this.spawnDirector?.startSession(this.elapsed)');
     expect(src).toContain('stageLevelClamped = Math.min(9, Math.max(1, ctx.engine.stageLevel ?? 1))');
   });
 });

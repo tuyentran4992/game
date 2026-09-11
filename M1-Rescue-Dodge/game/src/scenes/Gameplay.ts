@@ -679,7 +679,7 @@ export class GameplayScene extends Phaser.Scene {
         if (e.code === 'Digit2') {
           ctx.engine.stage = 2;
           ctx.engine.stageLevel = 1;
-          this.elapsed = 0;
+          this.elapsed = Math.max(this.elapsed, 60);
           this.spawnDirector?.startSession(this.elapsed);
           this.drawLevelBg();
           this.showFloatingText(width / 2, height / 2, 'DEBUG: STAGE 2 (SUNSET + ZIGZAG)', color.warning);
@@ -691,7 +691,7 @@ export class GameplayScene extends Phaser.Scene {
         if (e.code === 'Digit3') {
           ctx.engine.stage = 3;
           ctx.engine.stageLevel = 1;
-          this.elapsed = 0;
+          this.elapsed = Math.max(this.elapsed, 120);
           this.spawnDirector?.startSession(this.elapsed);
           this.drawLevelBg();
           this.showFloatingText(width / 2, height / 2, 'DEBUG: STAGE 3 (NIGHT + STALKER 🎯)', '#FF1744');
@@ -2360,7 +2360,7 @@ export class GameplayScene extends Phaser.Scene {
     }
     if (result.isStageComplete) {
       ctx.engine.advanceToNextStage();
-      this.elapsed = 0;
+      // Giữ nguyên this.elapsed để tốc độ bay duy trì đà tăng tiến mượt mà, không bị hãm phanh khi qua Stage mới
       this.spawnDirector?.startSession(this.elapsed);
       this.fatBeeActive = false;
       this.fatBeePending = false;
