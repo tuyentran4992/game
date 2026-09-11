@@ -138,7 +138,12 @@ ID dạng `GL-<n>`. Kiểm bằng browser manual trên build `game/` (touch/mous
 | GL-35 | 30s đầu tốc độ thấp (BR-17 D-A2) | Vào Gameplay, đo tốc độ ong trong 30s đầu | 30s đầu ong bay GIỮ NGUYÊN mức thấp (giữ chân người mới); ong thường (normal) spawn ngay từ đầu, không gate theo level. | ☐ |
 | GL-36 | Tốc độ tăng 2 khúc + nhảy bậc level (BR-17 D-A2) | Sim >90s + qua các mốc level | 30→90s ramp nhẹ; sau 90s ramp nhanh hơn; softcap gần max; +nhảy bậc rõ ở mỗi milestone Level (UT `GameEngine.test.ts` BR-17). | ☐ |
 | GL-37 | Không interstitial level đầu (BR-17 + BR-09) | Chơi level đầu / warmup đầu | KHÔNG có interstitial ad ở level đầu / thời gian warmup đầu (khớp BR-09); ad chỉ khi game over lần 2+. | ☐ |
-| GL-38 | data-testid Progression (BR-14/15/16) | Inspect `level-label`, `level-popup`, `combo-popup`, `record-popup` | Cả 4 testid tồn tại, hiển thị đúng thời điểm theo SPEC 4.2. | ☐ |
+| GL-38 | Kích hoạt Stage Clear khi đạt chỉ tiêu điểm (Feedback YouTube) | Đạt 20 điểm ở Stage 1 (qua né ong/bão ong) | Dọn sạch ong trên màn hình bằng hiệu ứng nổ an toàn, mèo nhảy cẫng ăn mừng, âm thanh fanfare chiến thắng. | ✅ |
+| GL-39 | Modal Stage Clear hiển thị đủ thông tin & sao | Hoàn thành Stage | Modal `stage-clear-modal` hiện 1–3 sao động `stage-stars`, điểm stage, cá vàng, combo, nút `next-stage-btn`. | ✅ |
+| GL-40 | Nút Next Level chuyển Stage mượt mà | Bấm `next-stage-btn` | Chuyển sang Stage 2, reset tiến độ con, target lên 25đ, HUD cập nhật "Stage 2", hiện banner "STAGE 2 — READY!". | ✅ |
+| GL-41 | Game Over hiển thị Stage & Retry Stage | Chết ở Stage N | Màn GameOver hiển thị `final-stage`, bấm `retry-btn` gọi `retryCurrentStage()` giữ nguyên điểm các Stage đã hoàn thành trước đó. | ✅ |
+| GL-42 | Lưu và tải Best Stage | Đạt Stage cao hơn | Lưu `best_stage` vào SDK `saveData` và nạp lại khi mở game. | ✅ |
+| GL-43 | data-testid Progression (BR-14/15/16) | Inspect `level-label`, `level-popup`, `combo-popup`, `record-popup` | Cả 4 testid tồn tại, hiển thị đúng thời điểm theo SPEC 4.2. | ☐ |
 
 ---
 

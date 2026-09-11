@@ -81,13 +81,18 @@ Player mở game (pre-roll ad tự chạy)
 → Màn hình Start: nút "Chơi" (data-testid bắt buộc)
 → Tutorial 1 dòng: "Giữ để tránh ong, thả để né" (3 giây, không ad)
 → Chơi chính: thú mèo chạy trên track, ong bay tới, tap/giữ để đổi lane / lật tránh
-→ Điểm tăng dần theo thời gian + mỗi lần né thành công
+→ Điểm tăng dần theo thời gian + mỗi lần né thành công + nhặt cá vàng
 → [Mỗi 10 điểm: Level-up — đổi cảnh + nhảy khó + popup "LEVEL {n}!" 2s (kèm tên cảnh)]
 → [Né liên tiếp ≥5 không chạm: combo bonus +5]
 → [Nếu vượt best-score: popup "KỶ LỤC MỚI!"]
+→ [Hoàn thành chỉ tiêu điểm Stage (Stage 1: 20 pts, mỗi stage tăng +5 pts):
+     • Dọn sạch ong trên màn hình với hiệu ứng nổ hạt an toàn
+     • Mèo nhảy mừng chiến thắng, pháo hoa ăn mừng (confetti fanfare)
+     • Hiện Stage Clear Modal: đánh giá 1–3 sao, điểm stage, cá nhặt được, nút "NEXT LEVEL"
+     • Bấm "NEXT LEVEL" chuyển sang Stage tiếp theo với banner "STAGE {n} — READY!"]
 → Chạm ong → Game Over:
-     • Hiện score + điểm cao (sendScore)
-     • Nút "Chơi lại" (có thể mở rewarded ad để "tiếp tục" 1 lần)
+     • Hiện score + điểm cao + STAGE đạt được (sendScore + saveData)
+     • Nút "Chơi lại" (Retry Stage hiện tại hoặc chơi lại từ đầu)
      • interstitial ad xuất hiện vào màn Game Over (đặt sau 1-2 lần chơi)
 → Player đóng / đổi tab → game tự save score qua saveData, pause đúng
 ```
@@ -116,7 +121,17 @@ Player mở game (pre-roll ad tự chạy)
 - **Nhân vật**: 1 chú mèo (sprite tĩnh, hoạt ảnh lật/xoay bằng tween — KHÔNG sprite-sheet nhiều khung).
 - **Cơ chế & điều khiển**: track **3 lane dọc** — ong bay tới, player **chạm/click về phía lane muốn né** → mèo di chuyển **tới lane gần vị trí chạm/click nhất** (đi theo từng lane, tween mượt ~120ms; trùng lane hiện tại → không di chuyển khỏi giật). Hỗ trợ **bàn phím ↑/↓ hoặc W/S** để chuyển lane (desktop). Né thành công → +1 điểm; trúng ong → game over.
 - **Difficulty curve (BẮT BUỘC — D-A2):** 30 giây đầu tốc độ ong giữ NGUYÊN mức thấp (warmup, giữ chân người mới không bỏ sớm); 30→90s ramp nhẹ ~2.5px/giây; sau 90s ramp nhanh ~5px/giây, softcap ~440px/s; cộng **nhảy bậc +18px/s** ở mỗi milestone Level (BR-17). Xem `config/mechanics.ts` (MECHANICS) — source of truth, doc không hardcode số.
-- **Progression / Level-up (BR-14):** cứ mỗi **10 điểm** → lên 1 Level (KHÔNG reset). Ở mỗi Level: đổi art-palette nền (cảnh mới) + tốc độ/spawn ong tăng bậc + popup **2s**: "LEVEL {n}!" + phụ đề tên cảnh (MORNING GARDEN / SUNSET SPRINT / NIGHT GARDEN); tại mốc chương (level 10/20) hiện chapter card "CHAPTER {n} · {tên cảnh}" (không chặn gameplay, không ad). HUD có **level-progress bar** "NEXT LEVEL: {vào}/{milestone}". Ít nhất **3 palette nền** (level 1–3+ vòng lại) — asset trong DATA-MODEL.
+- **Progression / Stage 1 thiết kế chi tiết (Feedback YouTube Playables & Studio Design):**
+  - **Cấu trúc Stage 1 (10 Levels)**: Gồm `Level 1` đến `Level 10`.
+  - **Thời gian qua màn**: Mỗi level diễn ra trong **30 giây** (`levelDurationSec = 30`). Thanh tiến độ `level-progress` trên HUD đếm ngược `⏱️ {remaining}s LEFT`.
+  - **Qua Level**: Sống sót trọn vẹn 30 giây của Level hiện tại -> Chúc mừng hoàn thành Level (`LEVEL {n} CLEAR!`), chuyển sang Level tiếp theo (`Level {n+1}`) với banner `LEVEL {n+1} — READY! 🚀`.
+  - **Hoàn thành Stage 1 (Stage Clear)**: Sống sót qua Level 10 -> Kích hoạt `STAGE 1 MASTER CLEAR! 🏆`, dọn sạch ong bằng pháo hoa an toàn, hiện `StageClearModal` 3D Candy UI với đánh giá 1–3 sao và nút "NEXT STAGE".
+  - **Kẻ thù trong Stage 1**: **Chỉ xuất hiện ong vàng (`normal`) và ong đỏ (`speedy`)**. Tuyệt đối không có ong béo (`fat`), không có ong tím (`zigzag`), không có bão ong dồn ép. Tỉ lệ ong đỏ tăng dần theo Level (Level 1 ~10% ong đỏ, Level 10 ~40% ong đỏ).
+  - **Độ khó (Tốc độ ong)**: Chỉ sửa tốc độ ong. Level 1 tốc độ tăng rất chậm (warmup 30s + ramp nhẹ 0.85px/s). Càng lên level cao thì tốc độ ban đầu và tốc độ bay của ong đỏ tăng nhanh hơn rõ rệt.
+  - **Tiêu chí tính sao**:
+    - ⭐ (1 sao): Sống sót trọn vẹn thời gian màn chơi.
+    - ⭐⭐ (2 sao): Nhặt ít nhất 1 cá vàng HOẶC đạt streak combo ≥ 5.
+    - ⭐⭐⭐ (3 sao): Đạt combo ≥ 10 VÀ không bị vỡ khiên trong suốt màn.
 - **Combo streak (BR-15):** né liên tiếp không chạm — mỗi 5 lần né liên tiếp cộng thưởng +5 (popup hiệu ứng). Reset combo khi chạm ong.
 - **Kỷ lục (BR-16):** khi vượt best-score đã lưu → popup "KỶ LỤC MỚI!" 1 lần/phiên + cập nhật best (saveData/sendScore).
 - **Hình**: nền gradient tối thiểu + animation physics; asset size thấp để < 5MB.
@@ -128,13 +143,17 @@ Player mở game (pre-roll ad tự chạy)
 | Tutorial | Text hướng dẫn (3s) | `tutorial-text` |
 | Gameplay | Vùng chạm chính / lane | `game-canvas` |
 | Gameplay | Điểm hiện tại | `score-label` |
-| Gameplay | Level hiện tại | `level-label` |
+| Gameplay | Stage & Level hiện tại | `level-label` |
 | Gameplay | Popup Level-up | `level-popup` |
 | Gameplay | Popup combo bonus | `combo-popup` |
 | Gameplay | Popup kỷ lục mới | `record-popup` |
+| Gameplay | Modal hoàn thành Stage | `stage-clear-modal` |
+| Gameplay | Nút qua màn kế tiếp | `next-stage-btn` |
+| Gameplay | Đánh giá sao Stage | `stage-stars` |
 | Game Over | Text score | `final-score` |
 | Game Over | Text điểm cao | `best-score` |
-| Game Over | Nút Chơi lại | `retry-btn` |
+| Game Over | Text Stage đạt được | `final-stage` |
+| Game Over | Nút Chơi lại (Retry Stage) | `retry-btn` |
 | Game Over | Nút Tiếp tục (rewarded ad) | `continue-btn` |
 | Toàn game | (setting auto) pause theo platform | — |
 

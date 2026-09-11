@@ -20,18 +20,18 @@ describe('UPG2-B1 — curve tuning khung #78-Y2 (newbie bot 300ms, BR-17)', () =
     // khung D-A2 giữ nguyên: warmup + tốc độ muộn + softcap + ramp muộn không đụng
     expect(MECHANICS.earlyRampUntilSec).toBe(90);
     expect(MECHANICS.warmupSeconds).toBe(30);
-    expect(MECHANICS.speedIncreasePerSec).toBe(5.0);
-    expect(MECHANICS.maxSpeed).toBe(440);
+    expect(MECHANICS.speedIncreasePerSec).toBe(1.0);
+    expect(MECHANICS.maxSpeed).toBe(630);
   });
 
   it('khóa curve-chung (giá trị dẫn xuất, không phải số gốc — không đụng test cũ GameEngine D-A2)', () => {
-    // speed tại 90s = startSpeed + earlyRampPerSec * (90-30) = 160 + 0.85*60 = 211 —
-    // công thức D-A2 giữ nguyên, chỉ hệ số đầu vào đổi theo config B1
+    // speed tại 90s = startSpeed + earlyRampPerSec * (90-30) = 150 + 0.85*60 = 201
     const e = new GameEngine(MECHANICS, { rng: () => 0.5 });
     e.startNewGame();
-    expect(e.difficulty(90).speed).toBe(160 + 0.85 * 60);
+    expect(e.difficulty(90).speed).toBe(MECHANICS.startSpeed + 0.85 * 60);
     expect(e.difficulty(90.001).speed).toBeCloseTo(e.difficulty(90).speed, 1); // liên tục tại mốc
   });
+
 
   it(`BLOCK(2): 30→90s sống ≥40% @N=${N} seed`, () => {
     const w = simulateWindow(N, 30, 90);

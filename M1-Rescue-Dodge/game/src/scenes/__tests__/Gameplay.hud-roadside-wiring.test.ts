@@ -155,6 +155,7 @@ describe('T1e runtime — renderer sống qua regression 0/30/60s (update loop t
     vi.spyOn(sceneAny.spawnDirector, 'update').mockReturnValue({
       spawnInterval: 1.35, spawned: [], doubleSpawn: null, lastSpawnReset: false, swarmTriggered: false,
     });
+    vi.spyOn(scene as any, 'onStageClear').mockImplementation(() => {});
   }
 
   it('0s: HUD text khớp state engine ngay sau boot', () => {

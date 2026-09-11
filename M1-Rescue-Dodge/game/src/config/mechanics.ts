@@ -8,6 +8,10 @@ export const MECHANICS: MechanicsConfig = {
   // BALANCE-M1 (t_2e94b3be, 04/09): newbie sim 300ms — mi 10→22, er 2.5→1.2,
   // step 18→10, r 5→4 sống 30→60s: 0%→60%. Khung D-A2 giữ nguyên (CEO duyệt).
   milestoneInterval: 22,
+  stageBaseTarget: 20,
+  stageTargetStep: 5,
+  levelDurationSec: 30,
+  stageMaxLevels: 10,
   comboPer: 5,
   comboBonus: 5,
   pointsPerDodge: 1,
@@ -23,9 +27,9 @@ export const MECHANICS: MechanicsConfig = {
   swarmIntervalSec: 44, // UPG2-B1: 22→44 — bot không còn lane thoát khi swarm dồn (diag N=100)
   swarmBonus: 10,
   feverPerSwarm: 30,
-  startSpeed: 160,
-  maxSpeed: 440,
-  speedIncreasePerSec: 5.0,
+  startSpeed: 630,
+  maxSpeed: 630,
+  speedIncreasePerSec: 1.0,
   // UPG2-B1 (t_a990dc20, khung CEO #78-Y2): re-sim khóa curve sau P1b debut beat.
   // earlyRampPerSec 1.2→0.85 (knob i của card) + 2 nút MẬT ĐỘ (evidence diag N=100):
   // 99% ca chết khi ≥4 ong đồng thời, 64% chết khi bot không còn lane thoát an toàn,
@@ -37,6 +41,10 @@ export const MECHANICS: MechanicsConfig = {
   levelSpeedStep: 10,
   spawnIncrease: 0.04,
   spawnRateMax: 2, // UPG2-B1: 4→2 — 99% ca chết khi ≥4 ong đồng thời (diag N=100), cap mật độ
+  // --- Giới hạn số ong tối đa theo Level ---
+  maxBeesBase: 4,            // Level 1: tối đa 4 con (rải đều 1280px, không bị trống)
+  maxBeesPerLevel: 0.5,      // Cứ 2 level tăng thêm 1 con tối đa trên màn hình
+  maxBeesCap: 8,             // Kịch kim 8 con ở level cao nhất
   warmupSeconds: 30,
   continueMaxPerGameOver: 1,
   interstitialDelayGames: 2,
@@ -50,7 +58,7 @@ export const MECHANICS: MechanicsConfig = {
   laneMoveSettleMs: 80,   // [PLACEHOLDER] — tween dựng dậy sau khi tới làn
   inputBufferMs: 0,       // [PLACEHOLDER] — 0 = phản hồi tức thì (nguyên trạng)
 
-  spawnIntervalBase: 1.35,
+  spawnIntervalBase: 0.9,
   spawnIntervalFloor: 0.38,
   spawnSpeedFactor: 0.0035,
   spawnLevelFactor: 0.10,
@@ -65,9 +73,20 @@ export const MECHANICS: MechanicsConfig = {
   punchDeathZoom: 0.07,   // biên zoom punch khi chết (mạnh hơn va chạm)
   punchHoldMs: 70,        // giữ điểm đáy zoom trước khi hồi
 
-  speedyMult: 1.18,
+  // --- Tốc độ ong đỏ (speedy) ---
+  speedyMult: 1.18,          // Hệ số tốc độ gốc của ong đỏ (so với ong thường = 1.0)
+  speedyBaseBonus: 1.15,     // Hệ số khởi điểm của ong đỏ ở Level 1 (VD: 1.15 = nhanh hơn 15%)
+  speedyLevelStep: 0.035,    // Tốc độ tăng thêm của ong đỏ sau mỗi Level (VD: 0.035/level)
   normalMult: 1.0,
   fatSpeedMult: 0.72,
+
+  // --- Stalker Bee (Stage 3) ---
+  stalkerTelegraphSec: 0.8,  // Thời gian laser ngắm trước khi lao
+  stalkerSpeedMult: 1.80,    // Tốc độ bổ nhào (nhanh hơn speedy)
+  stalkerRatioStage3: 0.1,  // Tỉ lệ xuất hiện ở Stage 3 (25%)
+
+  // --- Khoảng cách an toàn giữa 2 làn kề ---
+  minAdjacentBeeDistY: 180,  // Khoảng cách Y tối thiểu giữa 2 ong ở 2 làn kề nhau (pixels, tránh dính chùm chéo làn)
 
   // --- UPG2-P1a (t_6035fb14): debut beat — cửa sổ cụm thưa + sàn telegraph (giây).
   // [PLACEHOLDER] chưa playtest — QA BLOCK yêu cầu ≥1.2s dữ liệu telegraph (ô M4 plan P1'').

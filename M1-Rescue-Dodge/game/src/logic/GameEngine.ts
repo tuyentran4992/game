@@ -18,6 +18,8 @@ import type {
   GameEngineOptions,
   DebutType,
   DebutWindow,
+  StageStats,
+  StageClearResult,
 } from './types';
 import { CAT_SKINS, INITIAL_QUESTS } from '../config';
 import { DebutBeat } from './DebutBeat';
@@ -33,6 +35,8 @@ export {
   type CatSkin,
   type Quest,
   type GameEngineOptions,
+  type StageStats,
+  type StageClearResult,
   CAT_SKINS,
   INITIAL_QUESTS,
 };
@@ -46,6 +50,17 @@ export class GameEngine {
   elapsed = 0;
   fish = 0;
 
+  // --- Stage & Level progression (Stage 1: Level 1 -> 10, mỗi level 60s) ---
+  stage = 1;
+  stageLevel = 1;
+  levelElapsed = 0;
+  stageScore = 0;
+  stageFish = 0;
+  stageDodges = 0;
+  stageMaxCombo = 0;
+  stageShieldLost = false;
+  stageCleared = false;
+
   // power-ups & fever
   shieldActive = false;
   magnetTimeRemaining = 0;
@@ -55,6 +70,7 @@ export class GameEngine {
 
   // state bền vững (qua phiên)
   bestScore: number;
+  bestStage: number;
   totalFish: number;
   totalGamesPlayed: number;
   unlockedSkins: string[];
@@ -77,6 +93,7 @@ export class GameEngine {
     this.rngFn = opts.rng ?? Math.random;
     this.debut = new DebutBeat(cfg);
     this.bestScore = opts.bestScore ?? 0;
+    this.bestStage = opts.bestStage ?? 1;
     this.totalFish = opts.totalFish ?? 0;
     this.totalGamesPlayed = opts.totalGamesPlayed ?? 0;
     this.unlockedSkins = opts.unlockedSkins && opts.unlockedSkins.length > 0 ? opts.unlockedSkins : ['ginger'];
@@ -89,6 +106,15 @@ export class GameEngine {
     this.streak = 0;
     this.elapsed = 0;
     this.fish = 0;
+    this.stage = 1;
+    this.stageLevel = 1;
+    this.levelElapsed = 0;
+    this.stageScore = 0;
+    this.stageFish = 0;
+    this.stageDodges = 0;
+    this.stageMaxCombo = 0;
+    this.stageShieldLost = false;
+    this.stageCleared = false;
     this.shieldActive = false;
     this.magnetTimeRemaining = 0;
     this.fever = 0;
@@ -115,7 +141,12 @@ export class GameEngine {
     return 20 + 15 * k + 5 * k * k;
   }
 
-  shouldTriggerFatBeeBreather(level = this.getLevel()): boolean {
+  getProgressionLevel(): number {
+    const maxLvs = this.cfg.stageMaxLevels ?? 10;
+    return (this.stage - 1) * maxLvs + (this.stageLevel ?? 1);
+  }
+
+  shouldTriggerFatBeeBreather(level = this.getProgressionLevel()): boolean {
     const target = this.getNextFatBeeTargetLevel();
     return level >= target;
   }
@@ -136,14 +167,191 @@ export class GameEngine {
     return Math.floor(score / this.cfg.milestoneInterval) + 1;
   }
 
-  getPaletteIndex(level: number = this.getLevel()): number {
-    if (level < 10) return 0; // Ban ngày (Level 1..9)
-    if (level < 20) return 1; // Hoàng hôn (Level 10..19)
-    return 2;                 // Đêm (Level 20+)
+  getPaletteIndex(level?: number): number {
+    if (level !== undefined) {
+      if (level < 10) return 0; // Ban ngày (Level 1..9)
+      if (level < 20) return 1; // Hoàng hôn (Level 10..19)
+      return 2;                 // Đêm (Level 20+)
+    }
+    if (this.stage === 1) return 0; // Stage 1: Ban ngày
+    if (this.stage === 2) return 1; // Stage 2: Hoàng hôn
+    if (this.stage >= 3) return 2;  // Stage 3+: Đêm
+    return 0;
   }
+
 
   get paletteIndex(): number {
     return this.getPaletteIndex(this.getLevel());
+  }
+
+  // --- Stage & Level progression (Stage 1: Level 1 -> 10, mỗi level 60s) ---
+  getStageTarget(stage: number = this.stage): number {
+    const base = this.cfg.stageBaseTarget ?? 20;
+    const step = this.cfg.stageTargetStep ?? 5;
+    return base + (stage - 1) * step;
+  }
+
+  isLevelComplete(): boolean {
+    const duration = this.cfg.levelDurationSec ?? 60;
+    return this.levelElapsed >= duration;
+  }
+
+  isStageComplete(): boolean {
+    const maxLvs = this.cfg.stageMaxLevels ?? 10;
+    return this.stageLevel >= maxLvs && this.isLevelComplete();
+  }
+
+  getStageStars(): number {
+    let stars = 1;
+    // Sống sót 60s: 1 sao cơ bản
+    if (this.stageMaxCombo >= (this.cfg.comboPer ?? 5) || this.stageFish >= 1) {
+      stars = 2; // Nhặt ít nhất 1 cá hoặc combo >= 5
+    }
+    if (this.stageMaxCombo >= (this.cfg.comboPer ?? 5) * 2 && !this.stageShieldLost) {
+      stars = 3; // Combo >= 10 và không vỡ khiên
+    }
+    return stars;
+  }
+
+  completeLevel(): StageClearResult {
+    const maxLvs = this.cfg.stageMaxLevels ?? 10;
+    if (this.stageLevel >= maxLvs) {
+      return this.completeStage();
+    }
+    this.stageCleared = true;
+    const stars = this.getStageStars();
+    const stats: StageStats = {
+      stage: this.stage,
+      level: this.stageLevel,
+      stageScore: this.stageScore,
+      stageFish: this.stageFish,
+      stageDodges: this.stageDodges,
+      maxCombo: this.stageMaxCombo,
+      shieldLost: this.stageShieldLost,
+      stars,
+      levelElapsed: this.levelElapsed,
+    };
+    return {
+      stage: this.stage,
+      level: this.stageLevel,
+      nextLevel: this.stageLevel + 1,
+      isStageComplete: false,
+      nextStage: this.stage,
+      stats,
+      totalScore: this.score,
+      paletteIndex: this.stage === 1 ? 0 : this.getPaletteIndex(this.stageLevel),
+    };
+  }
+
+  completeStage(): StageClearResult {
+    this.stageCleared = true;
+    const stars = this.getStageStars();
+    const stats: StageStats = {
+      stage: this.stage,
+      level: this.stageLevel,
+      stageScore: this.stageScore,
+      stageFish: this.stageFish,
+      stageDodges: this.stageDodges,
+      maxCombo: this.stageMaxCombo,
+      shieldLost: this.stageShieldLost,
+      stars,
+      levelElapsed: this.levelElapsed,
+    };
+    const isVictory = this.stage >= 3;
+    const nextStage = isVictory ? 3 : this.stage + 1;
+    if (nextStage > this.bestStage) {
+      this.bestStage = nextStage;
+    }
+    return {
+      stage: this.stage,
+      level: this.stageLevel,
+      nextLevel: 1,
+      isStageComplete: true,
+      isVictory,
+      nextStage,
+      stats,
+      totalScore: this.score,
+      paletteIndex: this.stage === 1 ? 0 : this.getPaletteIndex(this.stageLevel),
+    };
+  }
+
+  advanceToNextLevel(): void {
+    const maxLvs = this.cfg.stageMaxLevels ?? 10;
+    if (this.stageLevel >= maxLvs) {
+      this.advanceToNextStage();
+    } else {
+      this.stageLevel += 1;
+      this.levelElapsed = 0;
+      this.stageScore = 0;
+      this.stageFish = 0;
+      this.stageDodges = 0;
+      this.stageMaxCombo = 0;
+      this.stageShieldLost = false;
+      this.stageCleared = false;
+    }
+  }
+
+  advanceToNextStage(): void {
+    if (this.stage >= 3) {
+      // Đã hoàn thành Stage 3 (Victory) — không tăng lên Stage 4 mà giữ nguyên Stage 3
+      this.stageLevel = 1;
+      this.levelElapsed = 0;
+      this.stageScore = 0;
+      this.stageFish = 0;
+      this.stageDodges = 0;
+      this.stageMaxCombo = 0;
+      this.stageShieldLost = false;
+      this.stageCleared = false;
+      return;
+    }
+    this.stage += 1;
+    this.stageLevel = 1;
+    this.levelElapsed = 0;
+    this.stageScore = 0;
+    this.stageFish = 0;
+    this.stageDodges = 0;
+    this.stageMaxCombo = 0;
+    this.stageShieldLost = false;
+    this.stageCleared = false;
+    if (this.stage > this.bestStage) {
+      this.bestStage = this.stage;
+    }
+  }
+
+  retryCurrentLevel(): void {
+    this.score = Math.max(0, this.score - this.stageScore);
+    this.fish = Math.max(0, this.fish - this.stageFish);
+    this.totalFish = Math.max(0, this.totalFish - this.stageFish);
+    this.levelElapsed = 0;
+    this.stageScore = 0;
+    this.stageFish = 0;
+    this.stageDodges = 0;
+    this.stageMaxCombo = 0;
+    this.stageShieldLost = false;
+    this.stageCleared = false;
+    this.streak = 0;
+  }
+
+  retryCurrentStage(): void {
+    // Vẫn giữ stage hiện tại, chỉ reset level về 1
+    this.stageLevel = 1;
+    this.retryCurrentLevel();
+    this.elapsed = 0;
+    this.fever = 0;
+    this.feverActive = false;
+    this.feverTimeRemaining = 0;
+    this.shieldActive = false;
+    this.magnetTimeRemaining = 0;
+    this.continueUsed = false;
+    this.recordShownThisSession = false;
+    this.fatBeeSpawnCount = 0;
+    this.debut.clear();
+    this.totalGamesPlayed += 1;
+  }
+
+
+  private checkStageProgress(): { stageClear: boolean; stageClearResult?: StageClearResult } {
+    return { stageClear: false };
   }
 
   // --- Score: né ong ---
@@ -153,13 +361,19 @@ export class GameEngine {
 
     const basePoints = this.isFeverActive() ? this.cfg.pointsPerDodge * 2 : this.cfg.pointsPerDodge;
     this.score += basePoints;
+    this.stageScore += basePoints;
     this.streak += 1;
+    this.stageDodges += 1;
+    if (this.streak > this.stageMaxCombo) {
+      this.stageMaxCombo = this.streak;
+    }
     this.incrementQuest('dodge_30', 1);
 
     if (this.streak > 0 && this.streak % this.cfg.comboPer === 0) {
       comboBonus = this.isFeverActive() ? this.cfg.comboBonus * 2 : this.cfg.comboBonus;
       comboTriggered = true;
       this.score += comboBonus;
+      this.stageScore += comboBonus;
     }
 
     const feverTriggered = this.addFever(this.cfg.feverPerDodge);
@@ -177,6 +391,7 @@ export class GameEngine {
       levelUp,
       newLevel,
       paletteIndex: this.getPaletteIndex(newLevel),
+      stageClear: false,
     };
   }
 
@@ -188,10 +403,12 @@ export class GameEngine {
   collectFish(): FishResult {
     this.fish += 1;
     this.totalFish += 1;
+    this.stageFish += 1;
     this.incrementQuest('collect_8_fish', 1);
 
     const basePoints = this.isFeverActive() ? this.cfg.pointsPerFish * 2 : this.cfg.pointsPerFish;
     this.score += basePoints;
+    this.stageScore += basePoints;
 
     const feverTriggered = this.addFever(this.cfg.feverPerFish);
 
@@ -208,6 +425,7 @@ export class GameEngine {
       levelUp,
       newLevel,
       paletteIndex: this.getPaletteIndex(newLevel),
+      stageClear: false,
     };
   }
 
@@ -215,11 +433,13 @@ export class GameEngine {
   registerNearMiss(): NearMissResult {
     const baseBonus = this.isFeverActive() ? this.cfg.nearMissBonus * 2 : this.cfg.nearMissBonus;
     this.score += baseBonus;
+    this.stageScore += baseBonus;
     const feverTriggered = this.addFever(this.cfg.feverPerNearMiss);
 
     return {
       scoreDelta: baseBonus,
       feverTriggered,
+      stageClear: false,
     };
   }
 
@@ -231,6 +451,7 @@ export class GameEngine {
   tryUseShield(): boolean {
     if (this.shieldActive) {
       this.shieldActive = false;
+      this.stageShieldLost = true;
       return true; // Đã bảo vệ thành công
     }
     return false;
@@ -263,6 +484,7 @@ export class GameEngine {
 
   destroyBeeInFever(): { scoreDelta: number } {
     this.score += this.cfg.feverKillBonus;
+    this.stageScore += this.cfg.feverKillBonus;
     return { scoreDelta: this.cfg.feverKillBonus };
   }
 
@@ -270,6 +492,7 @@ export class GameEngine {
   registerSwarmSurvive(): SwarmSurviveResult {
     const baseBonus = this.isFeverActive() ? this.cfg.swarmBonus * 2 : this.cfg.swarmBonus;
     this.score += baseBonus;
+    this.stageScore += baseBonus;
     const feverTriggered = this.addFever(this.cfg.feverPerSwarm);
     this.incrementQuest('survive_swarm', 1);
 
@@ -284,26 +507,39 @@ export class GameEngine {
       levelUp,
       newLevel,
       paletteIndex: this.getPaletteIndex(newLevel),
+      stageClear: false,
     };
   }
 
-  // --- Enemy Variety (Phân phối loại ong thường/nhanh/zigzag theo tiến trình) ---
-  // D-A2: gate CHỈ theo elapsed — hết warmup (30s) là bắt đầu đa dạng hóa (bỏ `level === 1`).
+  // --- Enemy Variety (Stage 1: normal + speedy; Stage 2: + zigzag; Stage 3: + stalker) ---
   rollBeeType(elapsedSec = this.elapsed, level = this.getLevel()): BeeType {
-    if (elapsedSec < this.cfg.warmupSeconds) {
+    // Warmup 30s chỉ áp dụng cho người mới chơi ở Stage 1; Stage 2 & 3 xuất hiện đầy đủ các loại ong ngay từ Level 1
+    if (this.stage === 1 && elapsedSec < this.cfg.warmupSeconds) {
       return 'normal';
     }
 
     const roll = this.rngFn();
-    if (level < 10) {
-      // Level 1-9 (Ban ngày): 75% thường, 25% nhanh
-      return roll < 0.25 ? 'speedy' : 'normal';
-    } else {
-      // Level 10+ (Hoàng hôn & Đêm): 50% thường, 30% nhanh, 20% zigzag
+
+    // Stage 3+: Ban đêm (Night Garden) — Thêm Stalker Bee
+    if (this.stage >= 3 || level >= 20) {
+      const stalkerRatio = this.cfg.stalkerRatioStage3 ?? 0.25;
+      if (roll < 0.25) return 'speedy';
+      if (roll < 0.45) return 'zigzag';
+      if (roll < 0.45 + stalkerRatio) return 'stalker';
+      return 'normal';
+    }
+
+    // Stage 2: Hoàng hôn (Sunset Sprint) hoặc Level 10+ legacy — Thêm Zigzag Bee
+    if (this.stage === 2 || level >= 10) {
       if (roll < 0.30) return 'speedy';
       if (roll < 0.50) return 'zigzag';
       return 'normal';
     }
+
+    // Stage 1: Ban ngày (Morning Garden) — Chỉ có ong vàng và ong đỏ
+    const currentLv = this.stageLevel ?? level;
+    const speedyRatio = currentLv <= 2 ? 0.20 : currentLv <= 5 ? 0.28 : 0.35;
+    return roll < speedyRatio ? 'speedy' : 'normal';
   }
 
   // --- Debut beat (UPG2-P1a, t_6035fb14) — ủy quyền DebutBeat, CONTRACT §3.3 ---
@@ -338,25 +574,38 @@ export class GameEngine {
     return { feverEnded };
   }
 
-  // --- Score: thời gian ---
+  // --- Score & 60s Level Progression: thời gian ---
   tickSecond(): TickResult {
     const points = this.isFeverActive() ? this.cfg.pointsPerSecond * 2 : this.cfg.pointsPerSecond;
     const prevLevel = this.getLevel();
     this.score += points;
+    this.stageScore += points;
     this.elapsed += 1;
+    this.levelElapsed += 1;
     const newLevel = this.getLevel();
+
+    const duration = this.cfg.levelDurationSec ?? 60;
+    let levelClear = false;
+    let stageClearResult: StageClearResult | undefined;
+
+    if (this.levelElapsed >= duration && !this.stageCleared) {
+      levelClear = true;
+      stageClearResult = this.completeLevel();
+    }
+
     return {
       scoreDelta: points,
       levelUp: newLevel > prevLevel,
       newLevel,
+      stageClear: levelClear,
+      stageClearResult,
+      levelClear,
+      levelElapsed: this.levelElapsed,
+      levelDurationSec: duration,
     };
   }
 
-  // --- Difficulty curve (BR-17, D-A2: ramp 2 khúc) ---
-  // elapsed < warmup          → startSpeed (flat, giữ chân người mới)
-  // warmup ≤ elapsed ≤ 90s    → ramp sớm mượt earlyRampPerSec (2.5px/s)
-  // elapsed > 90s             → phần vượt tính theo speedIncreasePerSec (5.0px/s)
-  // Late-game shape (softcap sqrt K=1.5 tại maxSpeed) giữ nguyên.
+  // --- Difficulty curve (D-A2 + Stage 1 level tuning) ---
   difficulty(elapsedSec = this.elapsed, level = this.getLevel()): DifficultyResult {
     const warm = this.cfg.warmupSeconds;
     let ramp = 0;
@@ -370,7 +619,6 @@ export class GameEngine {
     const levelBonus = this.cfg.levelSpeedStep * (level - 1);
     const rawSpeed = this.cfg.startSpeed + ramp + levelBonus;
 
-    // Phương án 2: Dưới mốc 440 px/s giữ nguyên; trên 440 px/s tăng siêu chậm theo hàm căn bậc hai (K = 1.5)
     const softCap = this.cfg.maxSpeed;
     let speed = rawSpeed;
     if (rawSpeed > softCap) {
@@ -404,11 +652,16 @@ export class GameEngine {
       this.bestScore = this.score;
       this.recordShownThisSession = true;
     }
+    if (this.stage > this.bestStage) {
+      this.bestStage = this.stage;
+    }
     this.updateQuestMax('score_100', this.score);
     return {
       score: this.score,
       bestScore: this.bestScore,
       level: this.getLevel(),
+      stage: this.stage,
+      bestStage: this.bestStage,
       fish: this.fish,
       totalFish: this.totalFish,
       isNewRecord,

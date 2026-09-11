@@ -63,14 +63,15 @@ export class HudRenderer {
       .setShadow(0, 3, 'rgba(0,0,0,0.45)', 4, false, true);
     this.scoreLabel.setData('testid', 'score-label');
 
-    // 4. Level & Fish Labels (Top-Right inside playfield column)
-    this.levelLabel = this.scene.add.text(pf.right - 44, hudY - 2, 'Level ' + this.engine.getLevel(), fontStyle(type.small, '#FFFFFF'))
-      .setOrigin(0.5, 0.7).setDepth(z.hud)
+    // 4. Level & Fish Labels (Top-Right inside playfield column, right-aligned to avoid clipping)
+    const initStageText = 'Stage ' + (this.engine.stage ?? 1) + ' · Lv ' + (this.engine.stageLevel ?? 1);
+    this.levelLabel = this.scene.add.text(pf.right - 18, hudY - 2, initStageText, fontStyle(type.small, '#FFFFFF'))
+      .setOrigin(1, 0.7).setDepth(z.hud)
       .setStroke('#1E0E02', 4);
     this.levelLabel.setData('testid', 'level-label');
 
-    this.fishLabel = this.scene.add.text(pf.right - 44, hudY + 20, `🐟 ×${this.engine.fish}`, fontStyle(type.small, '#FFD700'))
-      .setOrigin(0.5, 0.7).setDepth(z.hud)
+    this.fishLabel = this.scene.add.text(pf.right - 18, hudY + 20, `🐟 ×${this.engine.fish}`, fontStyle(type.small, '#FFD700'))
+      .setOrigin(1, 0.7).setDepth(z.hud)
       .setStroke('#1E0E02', 4);
 
     // Fever Bar Graphics & Label (Pill 28px height, Graphics vector flame icon)
@@ -80,29 +81,38 @@ export class HudRenderer {
       .setStroke('#1E0E02', 3.5)
       .setAlpha(0.95);
 
-    // Level Progress Pill (D-A2: cảm giác tiến bộ nhìn thấy được — testid level-progress)
+    // Level Progress Pill
     this.levelProgressG = this.scene.add.graphics().setDepth(z.hud);
-    this.levelProgressLabel = this.scene.add.text(pf.center, hudY + 81, `CH${this.engine.paletteIndex + 1} · NEXT 0/${MECHANICS.milestoneInterval}`, fontStyle({ size: '13px', weight: '900', lh: 1 }, '#FFFFFF'))
+    const duration = MECHANICS.levelDurationSec ?? 30;
+    this.levelProgressLabel = this.scene.add.text(pf.center, hudY + 81, `⏱️ ${duration}s LEFT`, fontStyle({ size: '13px', weight: '900', lh: 1 }, '#FFFFFF'))
       .setOrigin(0.5).setDepth(z.hud + 1)
       .setStroke('#1E0E02', 3.5)
       .setAlpha(0.95);
     this.levelProgressLabel.setData('testid', 'level-progress');
+
+
   }
 
   /** Cập nhật score/fish + pulse — mirror updateHud cũ (gọi khi score/fish đổi). */
   update() {
     this.scoreLabel.setText(String(this.engine.score));
     this.fishLabel.setText(`🐟 ×${this.engine.fish}`);
+    this.levelLabel.setText('Stage ' + (this.engine.stage ?? 1) + ' · Lv ' + (this.engine.stageLevel ?? 1));
     this.scene.tweens.add({ targets: this.scoreLabel, scale: 1.35, duration: 150, yoyo: true, ease: 'back.out' });
   }
 
-  /** Level label + tween — tách từ onLevelUp cũ (chỉ phần text, popup/confetti vẫn ở scene). */
+  /** Level/Stage label + tween — cập nhật stage hiện tại */
   setLevel(level: number) {
-    this.levelLabel.setText('Level ' + level);
+    this.levelLabel.setText('Stage ' + (this.engine.stage ?? 1) + ' · Lv ' + (this.engine.stageLevel ?? 1));
     this.scene.tweens.add({ targets: this.levelLabel, scale: 1.3, duration: dur.tn, yoyo: true, ease: 'back.out' });
   }
 
-  /** Pill tiến độ lên level tiếp theo — mirror drawLevelProgress cũ (same pattern fever bar). */
+  setStage(stage: number) {
+    this.levelLabel.setText('Stage ' + (this.engine.stage ?? 1) + ' · Lv ' + (this.engine.stageLevel ?? 1));
+    this.scene.tweens.add({ targets: this.levelLabel, scale: 1.3, duration: dur.tn, yoyo: true, ease: 'back.out' });
+  }
+
+  /** Pill tiến độ sống sót 60s theo từng Level (0s -> 60s) */
   drawLevelProgress() {
     const { width, height } = this.scene.scale;
     const pf = this.playfield();
@@ -110,12 +120,12 @@ export class HudRenderer {
     const barW = Math.min(180, Math.max(140, pf.width * 0.38));
     const barH = 12;
     const barX = pf.center - barW / 2;
-    const barY = hudY + 62; // ngay dưới fever pill (fever bottom = hudY+52)
+    const barY = hudY + 62;
 
-    const interval = MECHANICS.milestoneInterval;
-    const score = this.engine.score;
-    const into = score % interval;
-    const ratio = Phaser.Math.Clamp(into / interval, 0, 1);
+    const duration = MECHANICS.levelDurationSec ?? 60;
+    const elapsed = Math.min(duration, this.engine.levelElapsed);
+    const remain = Math.max(0, duration - elapsed);
+    const ratio = Phaser.Math.Clamp(elapsed / duration, 0, 1);
 
     const g = this.levelProgressG;
     g.clear();
@@ -126,22 +136,26 @@ export class HudRenderer {
     g.lineStyle(1.5, 0xFFFFFF, 0.22);
     g.strokeRoundedRect(barX, barY, barW, barH, barH / 2);
 
-    // Fill — xanh success (khác nhiệt gradient cam đỏ của Fever để đọc nhanh)
+    // Fill — xanh success, khi <10s chuyển cam đỏ kịch tính
     if (ratio > 0) {
-      g.fillGradientStyle(0x5ED07A, 0x2ECC71, 0x5ED07A, 0x2ECC71, 1, 1, 1, 1);
+      if (remain <= 10) {
+        g.fillGradientStyle(0xFF7675, 0xD63031, 0xFF7675, 0xD63031, 1, 1, 1, 1);
+      } else {
+        g.fillGradientStyle(0x5ED07A, 0x2ECC71, 0x5ED07A, 0x2ECC71, 1, 1, 1, 1);
+      }
       g.fillRoundedRect(barX, barY, Math.max(barH, barW * ratio), barH, barH / 2);
     }
 
-    // Pulsing glow khi sắp lên level (>=80%)
-    if (ratio >= 0.8) {
-      const glowAlpha = 0.35 + 0.3 * Math.sin(this.getElapsed() * 8);
-      g.lineStyle(2.5, 0x2ECC71, glowAlpha);
+    // Pulsing glow khi sắp hết 60s (remain <= 10s)
+    if (remain <= 10 && remain > 0) {
+      const glowAlpha = 0.4 + 0.35 * Math.sin(this.getElapsed() * 12);
+      g.lineStyle(2.5, 0xFF7675, glowAlpha);
       g.strokeRoundedRect(barX - 2, barY - 2, barW + 4, barH + 4, (barH + 4) / 2);
     }
 
+    const pal = this.engine.paletteIndex;
     this.levelProgressLabel.setPosition(pf.center, barY + barH / 2 + 14);
-    // UPG2-CH: chip chương — CH{paletteIndex+1} đọc qua interface tầng A (CONTRACT §2)
-    this.levelProgressLabel.setText(`CH${this.engine.paletteIndex + 1} · NEXT ${into}/${interval}`);
+    this.levelProgressLabel.setText(`⏱️ ${remain}s LEFT`);
   }
 
   /** Fever pill + label + flame icon — mirror drawFeverBar cũ (dirty-flag PERF-FIX A/C giữ nguyên). */
@@ -219,8 +233,8 @@ export class HudRenderer {
   /** Reposition khi màn hình đổi kích thước — tách từ onResize cũ (phần HUD label). */
   relayout(pf: { left: number; right: number; width: number; center: number }, hudY: number) {
     if (this.scoreLabel) this.scoreLabel.setPosition(pf.center, hudY - 4);
-    if (this.levelLabel) this.levelLabel.setPosition(pf.right - 44, hudY - 2);
-    if (this.fishLabel) this.fishLabel.setPosition(pf.right - 44, hudY + 20);
+    if (this.levelLabel) this.levelLabel.setPosition(pf.right - 18, hudY - 2);
+    if (this.fishLabel) this.fishLabel.setPosition(pf.right - 18, hudY + 20);
   }
 
   /** Dọn game object khi scene shutdown (destroy theo chủ sở hữu — scene gọi 1 lần). */

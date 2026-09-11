@@ -7,7 +7,7 @@
 
 import { GameEngine } from '../GameEngine';
 import { MECHANICS } from '../../config/mechanics';
-import type { MechanicsConfig } from '../types';
+import type { MechanicsConfig, BeeType } from '../types';
 
 export function mulberry32(seed: number): () => number {
   let a = seed | 0;
@@ -27,8 +27,9 @@ interface SimBee {
   speedMult: number;
   dodged: boolean;
   isSwarm?: boolean;
-  type: 'normal' | 'speedy' | 'zigzag' | 'fat';
+  type: BeeType;
 }
+
 
 interface SimItem {
   y: number;

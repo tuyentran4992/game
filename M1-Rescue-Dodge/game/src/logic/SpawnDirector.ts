@@ -38,8 +38,12 @@ export interface SpawnWorldSnapshot {
   /** Làn qua willBlockAllLanes chấm speedMult 1.18 cho ứng viên speedy (mirror OLD spawnBee
    * L1522-1523: roll type XONG mới lọc validLanes theo 1.18). Rỗng = hủy spawn speedy. */
   safeLanesFast: number[];
+  /** Làn qua willBlockAllLanes tính cho ứng viên stalker (delay 0.8s + speedMult 1.8x). */
+  safeLanesStalker?: number[];
   /** bees.length sau pruneBees(). */
   beeCount: number;
+  /** Vị trí làn hiện tại của mèo (0, 1, 2) để director điều phối áp lực né liên tục. */
+  catLane?: number;
 }
 
 export interface SpawnDecision {
@@ -96,9 +100,9 @@ export class SpawnDirector {
     this.lastSpawn = 0;
   }
 
-  update(input: { dt: number; elapsed: number; engine: GameEngine; world: SpawnWorldSnapshot }): SpawnDirectorResult {
+  update(input: { dt: number; elapsed: number; engine: GameEngine; world: SpawnWorldSnapshot; level?: number }): SpawnDirectorResult {
     const { dt, elapsed, engine, world } = input;
-    const level = engine.getLevel();
+    const level = input.level !== undefined ? input.level : engine.getLevel();
     const diff = engine.difficulty(elapsed, level);
     const spawnInterval = Math.max(
       this.cfg.spawnIntervalFloor,
@@ -138,7 +142,10 @@ export class SpawnDirector {
     if (swarmActiveNow || world.fatBeeActive || this.lastSpawn < spawnInterval) {
       return result;
     }
-    if (world.beeCount >= diff.spawnCount + 2) {
+    const maxBees = this.cfg.maxBeesBase !== undefined
+      ? Math.min(this.cfg.maxBeesCap ?? 8, Math.floor(this.cfg.maxBeesBase + (level - 1) * (this.cfg.maxBeesPerLevel ?? 0.5)))
+      : (diff.spawnCount + 2);
+    if (world.beeCount >= maxBees) {
       return result; // refusal mật độ — KHÔNG reset lastSpawn
     }
 
@@ -194,7 +201,7 @@ export class SpawnDirector {
   rollSecondBeeType(elapsedSec: number, engine: GameEngine, level = engine.getLevel()): BeeType | null {
     const t = engine.rollBeeType(elapsedSec, level);
     if (t === 'fat') return null;
-    const mapped: BeeType = t === 'zigzag' ? 'normal' : t;
+    const mapped: BeeType = (t === 'zigzag' || t === 'stalker') ? 'normal' : t;
     if (mapped !== 'normal') {
       const seenAt = this.firstSeen.get(mapped);
       if (seenAt !== undefined) {
@@ -221,19 +228,48 @@ export class SpawnDirector {
     if (occupiedSize >= 2) return null;
     // (3) mirror L1516: loại ong do engine quyết (warmup normal-only, D-A2).
     const type = engine.rollBeeType(elapsed, level);
-    // (4) mirror L1520-1523: roll type XONG mới chấm làn THEO speedMult của type —
-    // speedy 1.18 (safeLanesFast), còn lại 1.0 (safeLanes). Geography do scene chấm,
-    // director chỉ pick bằng rng. NGUYÊN TẮC VÀNG L1531: list rỗng → hủy spawn giữ đường sống
-    // (refusal KHÔNG reset lastSpawn — mirror OLD return false).
-    const validLanes = type === 'speedy' ? world.safeLanesFast : world.safeLanes;
+    // (4) mirror L1520-1523: roll type XONG mới chấm làn THEO speedMult của type:
+    // stalker -> safeLanesStalker (nếu có, fallback safeLanesFast / safeLanes)
+    // speedy -> safeLanesFast
+    // normal/zigzag -> safeLanes. NGUYÊN TẮC VÀNG L1531: list rỗng → hủy spawn giữ đường sống
+    const validLanes = type === 'stalker'
+      ? (world.safeLanesStalker ?? world.safeLanesFast ?? world.safeLanes)
+      : type === 'speedy' ? world.safeLanesFast : world.safeLanes;
     if (validLanes.length === 0) return null; // NGUYÊN TẮC VÀNG L1531: hủy spawn giữ đường sống
-    const lane = validLanes[Math.floor(this.rngFn() * validLanes.length)];
+
+    let lane: number;
+    if (type === 'stalker') {
+      // Stalker Bee: 100% nhắm vào làn của mèo nếu làn đó nằm trong validLanes an toàn
+      if (world.catLane !== undefined && validLanes.includes(world.catLane)) {
+        lane = world.catLane;
+      } else {
+        lane = validLanes[Math.floor(this.rngFn() * validLanes.length)];
+      }
+    } else if (world.catLane !== undefined && validLanes.includes(world.catLane)) {
+      // Ưu tiên cao nhắm vào làn của mèo (60% nhắm thẳng mèo để buộc người chơi né liên tục, không thể đứng yên)
+      const targetCatRoll = this.rngFn();
+      if (targetCatRoll < 0.60) {
+        lane = world.catLane;
+      } else {
+        const otherLanes = validLanes.filter((l) => l !== world.catLane);
+        lane = otherLanes.length > 0
+          ? otherLanes[Math.floor(this.rngFn() * otherLanes.length)]
+          : world.catLane;
+      }
+    } else {
+      lane = validLanes[Math.floor(this.rngFn() * validLanes.length)];
+    }
     return { type, lane, occupiedSize, validLanes, mult: this.cfg };
   }
 }
 
 function decisionToSpawn(d: { type: BeeType; lane: number; mult: MechanicsConfig }): SpawnDecision {
-  // mirror L1546: speedy bay nhanh theo BEES.speedyMult (UPG2-N1: đọc MechanicsConfig),
-  // còn lại normalMult. Default giữ nguyên 1.18/1.0 — không đổi cảm giác.
-  return { type: d.type, lane: d.lane, speedMult: d.type === 'speedy' ? d.mult.speedyMult : d.mult.normalMult };
+  // speedy: speedyMult; stalker: stalkerSpeedMult; còn lại normalMult.
+  const speedMult = d.type === 'stalker'
+    ? (d.mult.stalkerSpeedMult ?? 1.80)
+    : d.type === 'speedy'
+      ? d.mult.speedyMult
+      : d.mult.normalMult;
+  return { type: d.type, lane: d.lane, speedMult };
 }
+

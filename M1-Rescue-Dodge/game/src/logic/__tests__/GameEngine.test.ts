@@ -131,38 +131,35 @@ describe('GameEngine — difficulty curve D-A2 (BR-17)', () => {
     // công thức D-A2 giữ nguyên; khóa giá trị mới ở balanceB1.test.ts)
     expect(MECHANICS.earlyRampPerSec).toBe(0.85);
     expect(MECHANICS.earlyRampUntilSec).toBe(90);
-    expect(engine.difficulty(40).speed).toBe(160 + 0.85 * 10);   // 168.5
-    expect(engine.difficulty(90).speed).toBe(160 + 0.85 * 60);   // 211
+    expect(engine.difficulty(40).speed).toBe(MECHANICS.startSpeed + 0.85 * 10);
+    expect(engine.difficulty(90).speed).toBe(MECHANICS.startSpeed + 0.85 * 60);
     // liền mạch tại ranh giới 90s
     expect(engine.difficulty(90.001).speed).toBeCloseTo(engine.difficulty(90).speed, 1);
   });
 
-  it('sau 90s: phần vượt ramp tính theo 5.0px/s', () => {
-    // difficulty(100) = 160 + 0.85*60 + 5.0*10 = 261
-    expect(engine.difficulty(100).speed).toBe(160 + 51 + 5.0 * 10);
-    // difficulty(110) = 160 + 51 + 5.0*20 = 311 (<440, chưa softcap)
-    expect(engine.difficulty(110).speed).toBe(160 + 51 + 5.0 * 20);
-    // 150s raw = 511 > 440 → softcap sqrt: 440 + 1.5*sqrt(71)
-    expect(engine.difficulty(150).speed).toBeCloseTo(440 + 1.5 * Math.sqrt(71), 5);
+  it('sau 90s: phần vượt ramp tính theo speedIncreasePerSec', () => {
+    // difficulty(100) = startSpeed + 0.85*60 + speedIncreasePerSec*10
+    expect(engine.difficulty(100).speed).toBe(MECHANICS.startSpeed + 51 + MECHANICS.speedIncreasePerSec * 10);
+    expect(engine.difficulty(110).speed).toBe(MECHANICS.startSpeed + 51 + MECHANICS.speedIncreasePerSec * 20);
+    expect(engine.difficulty(150).speed).toBe(MECHANICS.startSpeed + 51 + MECHANICS.speedIncreasePerSec * 60);
   });
 
   it('levelSpeedStep = 10: levelBonus = 10*(level-1)', () => {
     expect(MECHANICS.levelSpeedStep).toBe(10);
-    // elapsed 60s (ramp 0.85*30=25.5), level 5: 160+25.5+10*4 = 225.5 (<440, chưa softcap)
-    expect(engine.difficulty(60, 5).speed).toBe(160 + 0.85 * 30 + 10 * 4);
+    expect(engine.difficulty(60, 5).speed).toBe(MECHANICS.startSpeed + 0.85 * 30 + 10 * 4);
   });
 
-  it('tốc độ sau mốc 440 tăng siêu chậm (soft cap K=1.5) thay vì bị chặn cứng', () => {
-    // Level 40 @ 300s: raw = 160 + 72 + 5.0*210 + 10*39 = 1462 >> 440 → softcap
+  it('tốc độ sau mốc maxSpeed tăng siêu chậm (soft cap K=1.5) thay vì bị chặn cứng', () => {
     const diff = engine.difficulty(300, 40);
-    expect(diff.speed).toBeGreaterThan(440);
-    expect(diff.speed).toBeLessThan(560);
+    expect(diff.speed).toBeGreaterThan(MECHANICS.maxSpeed);
+    expect(diff.speed).toBeLessThan(750);
 
     // Thời gian chơi cực lâu hoặc level cực cao vẫn tăng chậm, không phát nổ
     const crazyDiff = engine.difficulty(1000, 20);
-    expect(crazyDiff.speed).toBeGreaterThan(440);
-    expect(crazyDiff.speed).toBeLessThan(560);
+    expect(crazyDiff.speed).toBeGreaterThan(MECHANICS.maxSpeed);
+    expect(crazyDiff.speed).toBeLessThan(750);
   });
+
 
   it('monotonic: difficulty(180s,lv) > difficulty(60s,lv) mọi level', () => {
     for (const lv of [1, 5, 10, 20]) {
@@ -344,6 +341,41 @@ describe('GameEngine — Phase 4: Enemy Variety & Swarm Events', () => {
     expect(types.has('zigzag')).toBe(true);
   });
 
+  it('rollBeeType tại Stage 3 (hoặc level 20+) ra thêm ong stalker', () => {
+    const stage3Engine = new GameEngine(MECHANICS);
+    stage3Engine.stage = 3;
+    const types = new Set<BeeType>();
+    for (let i = 0; i < 200; i++) {
+      types.add(stage3Engine.rollBeeType(35, 1));
+    }
+    expect(types.has('normal')).toBe(true);
+    expect(types.has('speedy')).toBe(true);
+    expect(types.has('zigzag')).toBe(true);
+    expect(types.has('stalker')).toBe(true);
+  });
+
+  it('Stage 2 và Stage 3 cho phép ra đủ loại ong ngay từ Level 1 (elapsed < 30s)', () => {
+    const stage2 = new GameEngine(MECHANICS);
+    stage2.stage = 2;
+    const s2Types = new Set<BeeType>();
+    for (let i = 0; i < 50; i++) {
+      s2Types.add(stage2.rollBeeType(5, 1));
+    }
+    expect(s2Types.has('zigzag')).toBe(true);
+    expect(s2Types.has('speedy')).toBe(true);
+
+    const stage3 = new GameEngine(MECHANICS);
+    stage3.stage = 3;
+    const s3Types = new Set<BeeType>();
+    for (let i = 0; i < 100; i++) {
+      s3Types.add(stage3.rollBeeType(5, 1));
+    }
+    expect(s3Types.has('stalker')).toBe(true);
+    expect(s3Types.has('zigzag')).toBe(true);
+    expect(s3Types.has('speedy')).toBe(true);
+  });
+
+
   // D-A2 deterministic sim 90s: rng injectable, không Math.random thô.
   it('sim 90s deterministic: t<30s speed < 300px/s và 0 speedy bee; speed tăng đơn điệu', () => {
     let seedState = 0xC0FFEE;
@@ -492,6 +524,156 @@ describe('GameEngine — Quests & Achievements', () => {
     expect(engine.totalFish).toBe(25);
     expect(q?.claimed).toBe(true);
     expect(engine.hasUnclaimedQuests()).toBe(false);
+  });
+});
+
+describe('GameEngine — Stage-based Progression (Separate Stages)', () => {
+  let engine: GameEngine;
+  beforeEach(() => {
+    engine = new GameEngine(MECHANICS);
+    engine.startNewGame();
+  });
+
+  it('khởi tạo stage ban đầu là Stage 1 với target 20 điểm', () => {
+    expect(engine.stage).toBe(1);
+    expect(engine.stageScore).toBe(0);
+    expect(engine.getStageTarget(1)).toBe(20);
+    expect(engine.getStageTarget(2)).toBe(25);
+    expect(engine.getStageTarget(3)).toBe(30);
+    expect(engine.isStageComplete()).toBe(false);
+  });
+
+  it('hoàn thành level khi sống sót đủ 30 giây (Stage 1: Level 1..10)', () => {
+    // Trong 29s đầu: né ong tích điểm thoải mái, KHÔNG kích hoạt stageClear giữa chừng
+    for (let i = 0; i < 9; i++) {
+      const res = engine.registerDodge();
+      expect(res.stageClear).toBe(false);
+    }
+    for (let i = 0; i < 29; i++) {
+      const res = engine.tickSecond();
+      expect(res.stageClear).toBe(false);
+      expect(res.levelClear).toBe(false);
+    }
+    expect(engine.isLevelComplete()).toBe(false);
+
+    // Giây thứ 30: sống sót đủ 30s -> Hoàn thành Level 1!
+    const finalRes = engine.tickSecond();
+    expect(engine.isLevelComplete()).toBe(true);
+    expect(finalRes.stageClear).toBe(true);
+    expect(finalRes.levelClear).toBe(true);
+    expect(finalRes.stageClearResult).toBeDefined();
+    expect(finalRes.stageClearResult?.level).toBe(1);
+    expect(finalRes.stageClearResult?.nextLevel).toBe(2);
+    expect(finalRes.stageClearResult?.isStageComplete).toBe(false);
+  });
+
+  it('tính số sao chính xác theo thành tích stage', () => {
+    // Case 1: 1 sao cơ bản khi vừa đủ điểm không combo / không cá
+    engine.stageScore = 20;
+    expect(engine.getStageStars()).toBe(1);
+
+    // Case 2: 2 sao khi có nhặt cá hoặc combo >= 5
+    engine.stageFish = 1;
+    expect(engine.getStageStars()).toBe(2);
+
+    // Case 3: 3 sao khi combo >= 10 và khiên không bị vỡ (stageShieldLost = false)
+    engine.stageMaxCombo = 10;
+    expect(engine.getStageStars()).toBe(3);
+
+    // Nếu bị mất khiên trong stage, rớt về tối đa 2 sao
+    engine.stageShieldLost = true;
+    expect(engine.getStageStars()).toBe(2);
+  });
+
+  it('advanceToNextStage chuyển sang Stage 2 và reset tiến độ stage con', () => {
+    engine.stageScore = 22;
+    engine.stageFish = 3;
+    engine.stageMaxCombo = 8;
+    const clearRes = engine.completeStage();
+    expect(clearRes.nextStage).toBe(2);
+    expect(engine.bestStage).toBe(2);
+
+    engine.advanceToNextStage();
+    expect(engine.stage).toBe(2);
+    expect(engine.stageScore).toBe(0);
+    expect(engine.stageFish).toBe(0);
+    expect(engine.stageMaxCombo).toBe(0);
+    expect(engine.stageCleared).toBe(false);
+    expect(engine.getStageTarget()).toBe(25);
+  });
+
+  it('completeStage tại Stage 3 đánh dấu isVictory = true và không vượt quá Stage 3', () => {
+    engine.stage = 3;
+    engine.stageLevel = 10;
+    const res = engine.completeStage();
+    expect(res.isVictory).toBe(true);
+    expect(res.isStageComplete).toBe(true);
+    expect(res.nextStage).toBe(3);
+
+    engine.advanceToNextStage();
+    expect(engine.stage).toBe(3);
+    expect(engine.stageLevel).toBe(1);
+  });
+
+  it('retryCurrentStage bảo toàn điểm của stage trước và reset stage hiện tại', () => {
+    // Giả sử hoàn thành Stage 1 với 20 điểm
+    engine.score = 20;
+    engine.advanceToNextStage(); // sang Stage 2
+
+    // Chơi Stage 2 được 10 điểm và nhặt 2 cá
+    engine.score += 10;
+    engine.stageScore = 10;
+    engine.fish += 2;
+    engine.totalFish += 2;
+    engine.stageFish = 2;
+
+    // Đang chơi ở Level 4 của Stage 2
+    engine.stageLevel = 4;
+
+    // Retry Stage 2
+    engine.retryCurrentStage();
+    expect(engine.stage).toBe(2);
+    expect(engine.stageLevel).toBe(1); // Vẫn giữ Stage 2, reset level về 1
+    expect(engine.stageScore).toBe(0);
+    expect(engine.stageFish).toBe(0);
+    expect(engine.score).toBe(20); // Điểm Stage 1 được giữ nguyên
+
+  });
+
+  it('endGame báo cáo đúng stage hiện tại và bestStage', () => {
+    engine.advanceToNextStage(); // Stage 2
+    engine.advanceToNextStage(); // Stage 3
+    const result = engine.endGame();
+    expect(result.stage).toBe(3);
+    expect(result.bestStage).toBe(3);
+  });
+
+  it('getProgressionLevel tính toán đúng cấp độ lũy tiến theo Stage và Level', () => {
+    engine.startNewGame(); // Stage 1, Level 1
+    expect(engine.getProgressionLevel()).toBe(1);
+
+    engine.stageLevel = 10;
+    expect(engine.getProgressionLevel()).toBe(10);
+
+    engine.advanceToNextStage(); // Stage 2, Level 1
+    expect(engine.stage).toBe(2);
+    expect(engine.stageLevel).toBe(1);
+    expect(engine.getProgressionLevel()).toBe(11);
+
+    // Điểm cao tích lũy từ Stage 1 không làm nhảy vọt cấp độ Stage 2
+    engine.score = 1669;
+    expect(engine.getProgressionLevel()).toBe(11);
+
+    // Không được kích hoạt Ong Chúa ở Stage 2 Level 1
+    expect(engine.shouldTriggerFatBeeBreather()).toBe(false);
+
+    // Ong Chúa mốc đầu tiên (target 20) chỉ xuất hiện ở Level 20 (Stage 2 Level 10)
+    engine.stageLevel = 10;
+    expect(engine.getProgressionLevel()).toBe(20);
+    expect(engine.shouldTriggerFatBeeBreather()).toBe(true);
+
+    engine.advanceToNextStage(); // Stage 3, Level 1
+    expect(engine.getProgressionLevel()).toBe(21);
   });
 });
 

@@ -3,6 +3,7 @@ import { color, type, radius, shadow, z, dur, fontStyle, toColor } from '../toke
 import { drawButton } from '../ui';
 import { ctx } from '../context';
 import { sdk } from '@game/sdk';
+import { MECHANICS } from '../config/mechanics';
 
 export class GameOverScene extends Phaser.Scene {
   private root!: Phaser.GameObjects.Container;
@@ -10,10 +11,11 @@ export class GameOverScene extends Phaser.Scene {
 
   constructor() { super({ key: 'GameOverScene' }); }
 
-  async create(data: { score: number; bestScore: number; fish?: number; totalFish?: number; isNewRecord: boolean }) {
+  async create(data: { score: number; bestScore: number; stage?: number; bestStage?: number; fish?: number; totalFish?: number; isNewRecord: boolean }) {
     const { width, height } = this.scale;
     const score = data?.score ?? 0;
     const best = data?.bestScore ?? 0;
+    const stage = data?.stage ?? ctx.engine.stage;
     const fish = data?.fish ?? 0;
     const isNewRecord = data?.isNewRecord ?? false;
 
@@ -64,11 +66,21 @@ export class GameOverScene extends Phaser.Scene {
     let curY = -ph / 2 + (isShort ? 24 : 30);
 
     // 5. Header: "GAME OVER"
-    const title = this.add.text(0, curY, 'GAME OVER', fontStyle({ size: isShort ? '24px' : '26px', weight: '900', lh: 1 }, color.danger))
+    const title = this.add.text(0, curY, 'GAME OVER', fontStyle({ size: isShort ? '22px' : '24px', weight: '900', lh: 1 }, color.danger))
       .setOrigin(0.5);
     title.setShadow(0, 2, 'rgba(231, 76, 60, 0.35)', 4, false, true);
     this.root.add(title);
-    curY += isShort ? 36 : 42;
+    curY += isShort ? 22 : 26;
+
+    const currentLv = ctx.engine.stageLevel ?? 1;
+    const duration = MECHANICS.levelDurationSec ?? 30;
+    const lvElapsed = Math.min(duration, Math.floor(ctx.engine.levelElapsed));
+    const stageLabel = this.add.text(0, curY, `STAGE ${stage} · LEVEL ${currentLv} (${lvElapsed}s / ${duration}s)`, fontStyle({ size: '13px', weight: '800', lh: 1 }, color.textSecondary))
+      .setOrigin(0.5);
+    stageLabel.setData('testid', 'final-stage');
+    this.root.add(stageLabel);
+    curY += isShort ? 20 : 24;
+
 
     // 6. Mascot Avatar Sub-Container (Cat reaction with soft badge)
     const catBadgeRadius = isShort ? 28 : 34;
@@ -200,10 +212,10 @@ export class GameOverScene extends Phaser.Scene {
     curY += pillH + (isShort ? 16 : 20);
 
     // 10. Action Buttons
-    const btnWidth = Math.min(250, pw - 48);
+    const btnWidth = Math.min(266, pw - 40);
 
     // Nút Primary: "🔁 Play Again" — R5 (t_a562b030): CTA chính nổi nhất màn (glow + pulse)
-    const retryBtnH = isShort ? 48 : 54;
+    const retryBtnH = isShort ? 50 : 54;
     const retryBtn = drawButton(this, 0, curY + retryBtnH / 2, '🔁 Play Again', {
       width: btnWidth,
       height: retryBtnH,
@@ -223,23 +235,40 @@ export class GameOverScene extends Phaser.Scene {
     g.__gameoverCta = { taps: 0, x: this.root.x + retryBtn.container.x, y: this.root.y + retryBtn.container.y };
     this.scene.get('GameplayScene')?.events.once('create', () => { g.__gameplaySpawned = true; });
     const cta = g.__gameoverCta;
-    retryBtn.container.on('pointerdown', () => { cta.taps = 1; });
-    retryBtn.container.on('pointerdown', async () => {
+
+    let actionTaken = false;
+    const triggerRetry = async () => {
+      if (actionTaken) return;
+      actionTaken = true;
+      cta.taps = 1;
       retryBtn.container.disableInteractive();
       if (ctx.engine.shouldShowInterstitial()) {
-        try { await sdk.requestInterstitialAd(); } catch { /* ignore */ }
+        try {
+          await Promise.race([
+            sdk.requestInterstitialAd(),
+            new Promise((resolve) => setTimeout(resolve, 350)),
+          ]);
+        } catch { /* ignore */ }
       }
       this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
       this.time.delayedCall(dur.scene, () => {
-        this.scene.start('GameplayScene', { resume: false });
+        ctx.engine.retryCurrentStage();
+        this.scene.start('GameplayScene', { resume: false, retryStage: true });
       });
-    });
+    };
+
+    retryBtn.container.on('pointerdown', () => { cta.taps = 1; });
+    retryBtn.container.on('pointerdown', triggerRetry);
+    retryBtn.container.on('pointerup', triggerRetry);
+    this.input.keyboard?.once('keydown-SPACE', triggerRetry);
+    this.input.keyboard?.once('keydown-ENTER', triggerRetry);
+
     curY += retryBtnH + (isShort ? 10 : 12);
 
-    // Nút Secondary (Rewarded): "🎬 Revive (+1 Life)"
+    // Nút Secondary (Rewarded): "🎬 Continue"
     if (canCont) {
-      const contBtnH = isShort ? 42 : 46;
-      const continueBtn = drawButton(this, 0, curY + contBtnH / 2, '🎬 Revive (+1 Life)', {
+      const contBtnH = isShort ? 44 : 48;
+      const continueBtn = drawButton(this, 0, curY + contBtnH / 2, '🎬 Continue', {
         variant: 'ghost',
         width: btnWidth,
         height: contBtnH,
@@ -248,7 +277,9 @@ export class GameOverScene extends Phaser.Scene {
       });
       this.root.add(continueBtn.container);
 
-      continueBtn.container.on('pointerdown', async () => {
+      const triggerContinue = async () => {
+        if (actionTaken) return;
+        actionTaken = true;
         continueBtn.textObj.setText('Loading…');
         continueBtn.container.setAlpha(0.6).disableInteractive();
         const earned = await sdk.requestRewardedAd('continue');
@@ -259,15 +290,19 @@ export class GameOverScene extends Phaser.Scene {
             this.scene.start('GameplayScene', { resume: true });
           });
         } else {
-          continueBtn.textObj.setText('🎬 Revive (+1 Life)');
+          actionTaken = false;
+          continueBtn.textObj.setText('🎬 Continue');
           continueBtn.container.setAlpha(1).setInteractive({ useHandCursor: true });
         }
-      });
+      };
+
+      continueBtn.container.on('pointerdown', triggerContinue);
+      continueBtn.container.on('pointerup', triggerContinue);
       curY += contBtnH + (isShort ? 10 : 12);
     }
 
     // Nút Ghost: "🏠 Main Menu"
-    const menuBtnH = isShort ? 38 : 42;
+    const menuBtnH = isShort ? 42 : 46;
     const menuBtn = drawButton(this, 0, curY + menuBtnH / 2, '🏠 Main Menu', {
       variant: 'ghost',
       width: btnWidth,
@@ -276,13 +311,20 @@ export class GameOverScene extends Phaser.Scene {
       testid: 'menu-btn',
     });
     this.root.add(menuBtn.container);
-    menuBtn.container.on('pointerdown', () => {
+
+    const triggerMenu = () => {
+      if (actionTaken) return;
+      actionTaken = true;
       menuBtn.container.disableInteractive();
       this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
       this.time.delayedCall(dur.scene, () => {
         this.scene.start('StartScene');
       });
-    });
+    };
+
+    menuBtn.container.on('pointerdown', triggerMenu);
+    menuBtn.container.on('pointerup', triggerMenu);
+    this.input.keyboard?.once('keydown-ESC', triggerMenu);
 
     // 11. Card Entrance Animation (Back.out pop)
     this.tweens.add({

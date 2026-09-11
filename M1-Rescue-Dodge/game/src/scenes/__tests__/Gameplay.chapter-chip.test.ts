@@ -108,30 +108,25 @@ describe('UPG2-CH runtime — HUD level-progress hiển thị chip chương', ()
     return scene.getEngineForTest();
   }
 
-  it('Score 0 → `CH1 · NEXT 0/{interval}` (chapter = paletteIndex+1, engine bước 1)', () => {
+  it('Đầu màn (0s) → `⏱️ 30s LEFT`', () => {
     const engine = engineOf();
     engine.startNewGame();
     expect(engine.paletteIndex).toBe(0);
     scene.hud.drawLevelProgress();
-    expect(levelProgressText()).toBe(`CH1 · NEXT 0/${MECHANICS.milestoneInterval}`);
+    expect(levelProgressText()).toBe('⏱️ 30s LEFT');
   });
 
-  it('Score 42 (level 2, paletteIndex 0) → `CH1`; score 202 (level 10, paletteIndex 1) → `CH2`', () => {
+  it('Sau 10s sống sót → `⏱️ 20s LEFT`', () => {
     const engine = engineOf();
-    const s = engine as unknown as { score: number };
-    s.score = MECHANICS.milestoneInterval + 20; // 42 → level 2, paletteIndex 0
+    engine.levelElapsed = 10;
     scene.hud.drawLevelProgress();
-    expect(levelProgressText()).toBe(`CH1 · NEXT 20/${MECHANICS.milestoneInterval}`);
-    s.score = 9 * MECHANICS.milestoneInterval + 4; // 202 → level 10 → paletteIndex 1
-    scene.hud.drawLevelProgress();
-    expect(levelProgressText()).toBe(`CH2 · NEXT 4/${MECHANICS.milestoneInterval}`);
+    expect(levelProgressText()).toBe('⏱️ 20s LEFT');
   });
 
-  it('Score 382 (level 20, paletteIndex 2) → `CH3 · NEXT 2/{interval}`', () => {
+  it('Gần hết 30s (25s) → `⏱️ 5s LEFT`', () => {
     const engine = engineOf();
-    const s = engine as unknown as { score: number };
-    s.score = 19 * MECHANICS.milestoneInterval + 2; // 382 → level 20 → paletteIndex 2
+    engine.levelElapsed = 25;
     scene.hud.drawLevelProgress();
-    expect(levelProgressText()).toBe(`CH3 · NEXT 2/${MECHANICS.milestoneInterval}`);
+    expect(levelProgressText()).toBe('⏱️ 5s LEFT');
   });
 });

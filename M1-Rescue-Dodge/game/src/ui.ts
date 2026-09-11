@@ -75,7 +75,23 @@ export function drawButton(
     t.setData('testid', opts.testid);
     container.setData('testid', opts.testid);
   }
-  container.setInteractive({ useHandCursor: true });
+  const padX = 12;
+  const padY = 10;
+  const hitRect = new Phaser.Geom.Rectangle(
+    -padX,
+    -padY,
+    width + padX * 2,
+    height + padY * 2
+  );
+
+  container.setInteractive({
+    hitArea: hitRect,
+    hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+    useHandCursor: true,
+  });
+  if (container.input) {
+    container.input.cursor = 'pointer';
+  }
 
   // R5 (t_a562b030): CTA glow ring + pulse — nút hành động chính nổi nhất màn.
   // Glow là con của container (index 0) nên đi theo panel khi scale/resize; token-only màu.
@@ -124,7 +140,7 @@ export function drawButton(
     playClick();
     drawState('active');
     t.setY(2);
-    scene.tweens.add({ targets: container, scale: 0.96, duration: dur.fast, ease: 'quad.in' });
+    scene.tweens.add({ targets: container, scale: 0.98, duration: dur.fast, ease: 'quad.in' });
   });
   container.on('pointerup', () => {
     drawState('hover');

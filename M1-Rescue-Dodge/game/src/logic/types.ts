@@ -11,7 +11,7 @@ export interface Palette {
   accent: string;
 }
 
-export type BeeType = 'normal' | 'speedy' | 'fat' | 'zigzag';
+export type BeeType = 'normal' | 'speedy' | 'fat' | 'zigzag' | 'stalker';
 
 export type ItemType = 'fish' | 'shield' | 'magnet';
 
@@ -30,6 +30,10 @@ export interface DebutWindow {
 export interface MechanicsConfig {
   laneCount: number;
   milestoneInterval: number;     // points per level increase (BR-14)
+  stageBaseTarget?: number;      // Mục tiêu điểm của Stage 1 (mặc định 20)
+  stageTargetStep?: number;      // Mức tăng điểm mỗi stage (mặc định 5: Stage 1 = 20, Stage 2 = 25, Stage 3 = 30...)
+  levelDurationSec?: number;     // Duration per level in seconds (e.g. 60s)
+  stageMaxLevels?: number;       // Max levels per stage
   comboPer: number;              // consecutive dodges required for combo bonus (BR-15)
   comboBonus: number;            // combo bonus points (BR-15)
   pointsPerDodge: number;        // +1 point per dodge
@@ -53,6 +57,9 @@ export interface MechanicsConfig {
   levelSpeedStep: number;        // Speed boost per level
   spawnIncrease: number;         // Spawn rate acceleration
   spawnRateMax: number;          // Maximum concurrent bees on screen
+  maxBeesBase?: number;          // Số lượng ong tối đa trên màn hình ở Level 1 (mặc định: 4)
+  maxBeesPerLevel?: number;      // Tăng thêm số ong tối đa mỗi level (mặc định: 0.5)
+  maxBeesCap?: number;           // Trần tối đa số ong trên màn hình (mặc định: 8)
   warmupSeconds: number;         // Initial gentle onboarding duration (30s, D-A2)
   continueMaxPerGameOver: number;// Maximum rewarded continues per game over (1)
   interstitialDelayGames: number;// Interstitial delay count
@@ -83,8 +90,14 @@ export interface MechanicsConfig {
 
   // --- SpeedMult loại ong (SCOPE+ round 2: hợp nhất WIRING/BEES vào MechanicsConfig) ---
   speedyMult: number;            // Ong speedy bay nhanh hơn (cũ BEES.speedyMult = 1.18)
+  speedyBaseBonus?: number;      // Hệ số khởi điểm của ong đỏ ở Level 1 (mặc định 1.15)
+  speedyLevelStep?: number;      // Mức tăng tốc độ ong đỏ sau mỗi Level (mặc định 0.035)
   normalMult: number;            // Ong thường (cũ BEES.normalMult = 1.0)
   fatSpeedMult: number;          // Ong to bay chậm (cũ BEES.fatSpeedMult = 0.72)
+  stalkerTelegraphSec?: number;  // Thời gian laser ngắm trước khi lao (mặc định: 0.8s)
+  stalkerSpeedMult?: number;     // Hệ số tốc độ bổ nhào (mặc định: 1.80)
+  stalkerRatioStage3?: number;   // Tỉ lệ xuất hiện ở Stage 3 (mặc định: 0.25)
+  minAdjacentBeeDistY?: number;  // Khoảng cách Y tối thiểu giữa 2 ong ở 2 làn kề nhau (pixels, mặc định 180)
 
   // --- Debut beat (UPG2-P1a, t_6035fb14): cụm thưa + telegraph lần đầu mỗi loại ong
   // xuất hiện — [PLACEHOLDER] chưa playtest. KHÔNG đổi số bot tổng (KT#74(b)). ---
@@ -92,6 +105,30 @@ export interface MechanicsConfig {
   debutTelegraphMinSec: number;  // Sàn telegraph tầng B phải vẽ ≥ (QA BLOCK: ≥1.2s dữ liệu)
 
   palettes: Palette[];
+}
+
+export interface StageStats {
+  stage: number;
+  level?: number;
+  stageScore: number;
+  stageFish: number;
+  stageDodges: number;
+  maxCombo: number;
+  shieldLost: boolean;
+  stars: number; // 1-3 sao
+  levelElapsed?: number;
+}
+
+export interface StageClearResult {
+  stage: number;
+  level?: number;
+  nextLevel?: number;
+  isStageComplete?: boolean;
+  isVictory?: boolean;
+  nextStage: number;
+  stats: StageStats;
+  totalScore: number;
+  paletteIndex: number;
 }
 
 export interface DodgeResult {
@@ -102,6 +139,8 @@ export interface DodgeResult {
   levelUp: boolean;
   newLevel: number;
   paletteIndex: number;
+  stageClear?: boolean;
+  stageClearResult?: StageClearResult;
 }
 
 export interface FishResult {
@@ -112,11 +151,15 @@ export interface FishResult {
   levelUp: boolean;
   newLevel: number;
   paletteIndex: number;
+  stageClear?: boolean;
+  stageClearResult?: StageClearResult;
 }
 
 export interface NearMissResult {
   scoreDelta: number;
   feverTriggered: boolean;
+  stageClear?: boolean;
+  stageClearResult?: StageClearResult;
 }
 
 export interface SwarmSurviveResult {
@@ -125,12 +168,19 @@ export interface SwarmSurviveResult {
   levelUp: boolean;
   newLevel: number;
   paletteIndex: number;
+  stageClear?: boolean;
+  stageClearResult?: StageClearResult;
 }
 
 export interface TickResult {
   scoreDelta: number;
   levelUp?: boolean;
   newLevel?: number;
+  stageClear?: boolean;
+  stageClearResult?: StageClearResult;
+  levelElapsed?: number;
+  levelDurationSec?: number;
+  levelClear?: boolean;
 }
 
 export interface DifficultyResult {
@@ -142,6 +192,8 @@ export interface EndGameResult {
   score: number;
   bestScore: number;
   level: number;
+  stage?: number;
+  bestStage?: number;
   fish: number;
   totalFish: number;
   isNewRecord: boolean;
@@ -167,6 +219,7 @@ export interface Quest {
 
 export interface GameEngineOptions {
   bestScore?: number;
+  bestStage?: number;
   totalFish?: number;
   totalGamesPlayed?: number;
   unlockedSkins?: string[];

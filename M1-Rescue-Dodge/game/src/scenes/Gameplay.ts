@@ -15,9 +15,9 @@ import {
 } from '../logic/CollisionSystem';
 import { WIRING, BEES } from '../logic/wiring';
 import type { GameEngine } from '../logic/GameEngine';
-import type { MechanicsConfig } from '../logic/types';
-import type { DebutWindow } from '../logic/types';
+import type { MechanicsConfig, DebutWindow, StageClearResult } from '../logic/types';
 import { PauseModal } from '../ui/PauseModal';
+import { StageClearModal } from '../ui/StageClearModal';
 import { FxPool, Pool } from '../systems/FxPool';
 import { HudRenderer } from './render/HudRenderer';
 import { RoadsideRenderer } from './render/RoadsideRenderer';
@@ -49,6 +49,9 @@ interface Bee {
   dodged: boolean;
   swerved?: boolean;
   isSwarm?: boolean;
+  stalkerDelayLeft?: number;
+  stalkerLaser?: Phaser.GameObjects.Graphics;
+  stalkerDiving?: boolean;
 }
 
 type ItemType = 'fish' | 'shield' | 'magnet';
@@ -78,6 +81,9 @@ export class GameplayScene extends Phaser.Scene {
   private audioBtnText!: Phaser.GameObjects.Text;
   private pauseModal?: PauseModal;
   private isPaused = false;
+  private stageClearModal?: StageClearModal;
+  private isStageClearing = false;
+  private isRetryStageMode = false;
   // UPG2-J1 (t_cc6c390d): hit-stop — ms còn lại world đóng băng (đếm bằng dt REAL trong
   // update()); camera punch suy từ hitStopLeft (deterministic, không tween timing — UX#63).
   private hitStopLeft = 0;
@@ -102,7 +108,7 @@ export class GameplayScene extends Phaser.Scene {
   private nearMissPopup!: Phaser.GameObjects.Text;
   private powerupPopup!: Phaser.GameObjects.Text;
   private swarmWarningPopup!: Phaser.GameObjects.Container;
-  private swarmSurvivePopup!: Phaser.GameObjects.Text;
+  private swarmSurvivePopup!: Phaser.GameObjects.Container;
   // UPG2-P1b: telegraph debut — text chờ text, vẽ khi DebutWindow mở (đọc engine.debutAt)
   private debutTelegraph!: Phaser.GameObjects.Text;
 
@@ -135,6 +141,7 @@ export class GameplayScene extends Phaser.Scene {
   private bees: Bee[] = [];
   private items: Item[] = [];
   private fatBeeActive = false;
+  private fatBeePending = false;
   // T1c: quyết định spawn dời về tầng A (logic/SpawnDirector) — scene chỉ orchestrate + vẽ
   private spawnDirector: SpawnDirector | null = null;
   // T1d: hệ tọa độ va chạm (tầng A) — quyết "chạm/near-miss/pickup/né";
@@ -374,28 +381,44 @@ export class GameplayScene extends Phaser.Scene {
 
   private isResumeMode = false;
 
-  init(data?: { resume?: boolean }) {
+  init(data?: { resume?: boolean; retryStage?: boolean }) {
     this.isResumeMode = data?.resume === true;
+    this.isRetryStageMode = data?.retryStage === true;
     this.bgImage = undefined;
     this.bgG = undefined as any;
+    for (const b of this.bees) {
+      if (b.stalkerLaser && b.stalkerLaser.active) b.stalkerLaser.destroy();
+    }
     this.bees = [];
     this.items = [];
     this.fatBeeActive = false;
+    this.fatBeePending = false;
     this.isMovingLane = false;
     this.pendingLaneDir = null;
     this.runningPuffTimer = 0;
+    this.isStageClearing = false;
+    this.stageClearModal?.destroy();
+    this.stageClearModal = undefined;
   }
 
-  async create(data?: { resume?: boolean }) {
+  async create(data?: { resume?: boolean; retryStage?: boolean }) {
     const { width, height } = this.scale;
     this.fatBeeActive = false;
+    this.fatBeePending = false;
     const isResume = data?.resume === true || this.isResumeMode === true;
+    const isRetryStage = data?.retryStage === true || this.isRetryStageMode === true;
     this.isResumeMode = false;
+    this.isRetryStageMode = false;
+    this.isStageClearing = false;
+    this.stageClearModal?.destroy();
+    this.stageClearModal = undefined;
     this.bgImage = undefined;
     this.bgG = undefined as any;
 
     if (isResume) {
       ctx.engine.resumeGame();
+    } else if (isRetryStage) {
+      ctx.engine.retryCurrentStage();
     } else {
       ctx.engine.startNewGame();
     }
@@ -429,7 +452,7 @@ export class GameplayScene extends Phaser.Scene {
     // UPG2-P1b: telegraph của ván cũ không trôi sang ván mới (mirror resetJuiceState).
     if (this.debutTelegraph) this.debutTelegraph.setVisible(false);
 
-    this.drawLevelBg(ctx.engine.getLevel());
+    this.drawLevelBg(ctx.engine.stageLevel ?? 1);
     this.lanes = this.computeLanes(width, height);
 
     const pf = this.getPlayfieldBounds(width, height);
@@ -512,14 +535,20 @@ export class GameplayScene extends Phaser.Scene {
     this.levelSubPopup.setData('testid', 'level-popup-sub');
 
     this.comboPopup = this.add.text(width / 2, height * 0.48, '', fontStyle(type.display, color.success))
-      .setOrigin(0.5).setDepth(z.tutorial).setAlpha(0);
+      .setOrigin(0.5).setDepth(z.tutorial).setAlpha(0)
+      .setStroke('#1E0E02', 4)
+      .setShadow(0, 2, 'rgba(0,0,0,0.45)', 4, false, true);
     this.comboPopup.setData('testid', 'combo-popup');
 
     this.nearMissPopup = this.add.text(width / 2, height * 0.55, '', fontStyle(type.h2, color.warning))
-      .setOrigin(0.5).setDepth(z.tutorial).setAlpha(0);
+      .setOrigin(0.5).setDepth(z.tutorial).setAlpha(0)
+      .setStroke('#1E0E02', 4)
+      .setShadow(0, 2, 'rgba(0,0,0,0.45)', 4, false, true);
 
     this.powerupPopup = this.add.text(width / 2, height * 0.42, '', fontStyle(type.h2, color.primary))
-      .setOrigin(0.5).setDepth(z.tutorial).setAlpha(0);
+      .setOrigin(0.5).setDepth(z.tutorial).setAlpha(0)
+      .setStroke('#1E0E02', 4)
+      .setShadow(0, 2, 'rgba(0,0,0,0.45)', 4, false, true);
 
     this.recordPopup = this.add.container(width / 2, height * 0.26).setDepth(z.tutorial).setAlpha(0);
     this.recordPopup.setData('testid', 'record-popup');
@@ -534,8 +563,19 @@ export class GameplayScene extends Phaser.Scene {
     swTxt.setData('testid', 'swarm-warning-text');
     this.swarmWarningPopup.add([swBg, swTxt]);
 
-    this.swarmSurvivePopup = this.add.text(width / 2, height * 0.45, '🎉 SWARM SURVIVED! +10', fontStyle(type.h1, color.warning))
-      .setOrigin(0.5).setDepth(z.tutorial).setAlpha(0);
+    // Swarm Survive Container (Băng thông báo vượt bão ong thành công — Option A: high-contrast victory banner)
+    this.swarmSurvivePopup = this.add.container(width / 2, height * 0.45).setDepth(z.tutorial).setAlpha(0);
+    const survBg = this.add.graphics();
+    survBg.fillStyle(0x059669, 0.94);
+    survBg.fillRoundedRect(-170, -30, 340, 60, 16);
+    survBg.lineStyle(3, 0xFFD700, 1);
+    survBg.strokeRoundedRect(-170, -30, 340, 60, 16);
+    const survTxt = this.add.text(0, 0, '🎉 SWARM SURVIVED! +10', fontStyle(type.h2, '#FFFFFF'))
+      .setOrigin(0.5)
+      .setStroke('#064E3B', 3.5)
+      .setShadow(0, 2, 'rgba(0,0,0,0.4)', 3, false, true);
+    survTxt.setData('testid', 'swarm-survive-text');
+    this.swarmSurvivePopup.add([survBg, survTxt]);
 
     // UPG2-P1b (t_ec2e1a6c): telegraph debut — khung cảnh báo "loại ong mới lần đầu xuất hiện".
     // Dữ liệu = DebutWindow typed từ tầng A (engine.debutAt, P1a); scene chỉ VẼ, không tự tính
@@ -621,6 +661,53 @@ export class GameplayScene extends Phaser.Scene {
         e.preventDefault();
         this.togglePause();
         return;
+      }
+      // Phím tắt Debug: Chỉ hoạt động trong môi trường phát triển (DEV), tự động loại bỏ trong bản build chính thức (Production)
+      if (import.meta.env.DEV) {
+        if (e.code === 'Digit1') {
+          ctx.engine.stage = 1;
+          ctx.engine.stageLevel = 1;
+          this.elapsed = 0;
+          this.spawnDirector?.startSession(this.elapsed);
+          this.drawLevelBg();
+          this.showFloatingText(width / 2, height / 2, 'DEBUG: STAGE 1 (DAY)', color.primary);
+          this.cameras.main.flash(180, 255, 255, 255);
+          this.hud?.setStage(1);
+          this.hud?.update();
+          return;
+        }
+        if (e.code === 'Digit2') {
+          ctx.engine.stage = 2;
+          ctx.engine.stageLevel = 1;
+          this.elapsed = 0;
+          this.spawnDirector?.startSession(this.elapsed);
+          this.drawLevelBg();
+          this.showFloatingText(width / 2, height / 2, 'DEBUG: STAGE 2 (SUNSET + ZIGZAG)', color.warning);
+          this.cameras.main.flash(180, 255, 255, 255);
+          this.hud?.setStage(2);
+          this.hud?.update();
+          return;
+        }
+        if (e.code === 'Digit3') {
+          ctx.engine.stage = 3;
+          ctx.engine.stageLevel = 1;
+          this.elapsed = 0;
+          this.spawnDirector?.startSession(this.elapsed);
+          this.drawLevelBg();
+          this.showFloatingText(width / 2, height / 2, 'DEBUG: STAGE 3 (NIGHT + STALKER 🎯)', '#FF1744');
+          this.cameras.main.flash(180, 255, 23, 68);
+          this.hud?.setStage(3);
+          this.hud?.update();
+          return;
+        }
+        if (e.code === 'KeyV') {
+          // Debug: Kích hoạt màn hình VICTORY Stage 3 ngay lập tức
+          ctx.engine.stage = 3;
+          ctx.engine.stageLevel = 10;
+          const res = ctx.engine.completeStage();
+          this.onStageClear(res);
+          return;
+        }
       }
       if (!this.running || this.isPaused) return;
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
@@ -763,12 +850,14 @@ export class GameplayScene extends Phaser.Scene {
   // T1f: 5 hàm spawn hạt dời về FxRenderer (scenes/render/FxRenderer.ts) — tham số giữ
   // nguyên từng số (life/radius/alpha/ease/màu/cap). Scene gọi qua this.fx.*.
 
-  private drawLevelBg(level: number) {
+  private drawLevelBg(level: number = 1) {
     const { width, height } = this.scale;
     const bgKeys = ['bg_day', 'bg_sunset', 'bg_night'];
-    const bgIndex = Math.floor(Math.max(0, level - 1) / 10) % bgKeys.length;
+    // Stage 1 chỉ 1 background buổi sáng ('bg_day') duy nhất
+    const stage = ctx.engine?.stage ?? 1;
+    const bgIndex = stage === 1 ? 0 : (Math.max(0, stage - 1) % bgKeys.length);
     const bgKey = bgKeys[bgIndex];
-    const pal = paletteForLevel(level);
+    const pal = paletteForLevel(bgIndex * 10 + 1);
 
     const { bgScale, leftEdge, laneWidth } = this.getStraightRoadMetrics(width, height, bgKey);
 
@@ -940,23 +1029,26 @@ export class GameplayScene extends Phaser.Scene {
     if (this.lastTick >= 1) {
       this.lastTick -= 1;
       const res = ctx.engine.tickSecond();
-      if (res.levelUp && res.newLevel) {
+      if (res.stageClear && res.stageClearResult) {
+        this.onStageClear(res.stageClearResult);
+      } else if (res.levelUp && res.newLevel) {
         this.onLevelUp(res.newLevel);
       }
       this.hud.update();
     }
 
-    const currentLevel = ctx.engine.getLevel();
+    const currentLevel = ctx.engine.getProgressionLevel();
+    const stageLevel = Math.min(9, Math.max(1, ctx.engine.stageLevel ?? 1));
 
-    // Kiểm tra kích hoạt Sự kiện "Ong Béo Thư Giãn" theo mốc lũy tiến (Level 20 -> 45 -> 80...)
-    if (!this.fatBeeActive && !this.swarmActive && ctx.engine.shouldTriggerFatBeeBreather(currentLevel)) {
+    // Kiểm tra kích hoạt Sự kiện "Ong Béo Thư Giãn" theo mốc lũy tiến (Level 20 -> 45 -> 80...) — Chỉ từ Stage 2
+    if (ctx.engine.stage > 1 && !this.fatBeeActive && !this.fatBeePending && !this.swarmActive && ctx.engine.shouldTriggerFatBeeBreather(currentLevel)) {
       ctx.engine.consumeFatBeeBreather();
       this.triggerFatBeeBreather();
     }
 
     // Kiểm tra kích hoạt Sự kiện Bão Ong (Swarm Wave) + spawn ong — T1c: quyết định
     // (swarm gate/cadence/refusal/lane) thuộc SpawnDirector, scene chỉ orchestrate + vẽ.
-    const diff = ctx.engine.difficulty(this.elapsed, currentLevel);
+    const diff = ctx.engine.difficulty(this.elapsed, stageLevel);
     const roadMetrics = this.getStraightRoadMetrics(this.scale.width, this.scale.height);
     this.stepSpawn(dt, this.elapsed, ctx.engine, diff);
 
@@ -1008,6 +1100,46 @@ export class GameplayScene extends Phaser.Scene {
     // Di chuyển và xử lý các loại ong
     for (const b of this.bees) {
       if (!b.container || !b.container.active) continue;
+
+      // Stalker Bee: Xử lý pha Telegraph rọi laser ngắm làn mèo trước khi lao
+      if (b.type === 'stalker' && b.stalkerDelayLeft !== undefined && b.stalkerDelayLeft > 0) {
+        b.stalkerDelayLeft -= dt;
+        // Rung nhẹ tại đỉnh màn hình tạo cảm giác rình rập / tụ lực
+        b.container.x = this.lanes[b.lane] + (Math.random() - 0.5) * 6;
+        b.container.y = 80;
+
+        // Vẽ tia laser đỏ cảnh báo nhấp nháy dọc làn
+        if (b.stalkerLaser && b.stalkerLaser.active) {
+          b.stalkerLaser.clear();
+          const pulseAlpha = 0.20 + 0.35 * Math.abs(Math.sin(this.time.now * 0.018));
+          const laneX = this.lanes[b.lane];
+          // Dải sáng cảnh báo
+          b.stalkerLaser.fillStyle(0xFF1744, pulseAlpha);
+          b.stalkerLaser.fillRect(laneX - 35, 0, 70, this.scale.height);
+          // Đường kẻ laser mảnh ở giữa
+          b.stalkerLaser.lineStyle(2.5, 0xFFFFFF, pulseAlpha * 1.8);
+          b.stalkerLaser.lineBetween(laneX, 0, laneX, this.scale.height);
+          // Chấm ngắm ở vị trí mèo
+          b.stalkerLaser.fillStyle(0xFF1744, 0.8);
+          b.stalkerLaser.fillCircle(laneX, catY, 14);
+          b.stalkerLaser.lineStyle(2, 0xFFFFFF, 0.9);
+          b.stalkerLaser.strokeCircle(laneX, catY, 18);
+        }
+
+        if (b.stalkerDelayLeft <= 0) {
+          // Hết thời gian ngắm: Khóa làn, tắt laser và bắt đầu bổ nhào cực nhanh!
+          if (b.stalkerLaser && b.stalkerLaser.active) {
+            b.stalkerLaser.destroy();
+            b.stalkerLaser = undefined;
+          }
+          b.container.x = this.lanes[b.lane];
+          b.stalkerDiving = true;
+          this.playSfx('sfx_hit', 0.25, 1.8); // SFX vút bổ nhào
+          this.cameras.main.shake(80, 0.005);
+        }
+        continue; // Trong lúc ngắm, không di chuyển xuống và không gây va chạm
+      }
+
       b.container.y += diff.speed * b.speedMult * dt;
       const isFat = b.type === 'fat';
 
@@ -1098,7 +1230,7 @@ export class GameplayScene extends Phaser.Scene {
       }
     }
     this.pruneBees();
-    if (this.fatBeeActive && !this.bees.some(b => b.type === 'fat')) {
+    if (this.fatBeeActive && !this.fatBeePending && !this.bees.some(b => b.type === 'fat')) {
       this.fatBeeActive = false;
     }
 
@@ -1237,35 +1369,89 @@ export class GameplayScene extends Phaser.Scene {
 
   // ---------- T1c: orchestration spawn (quyết định thuộc SpawnDirector — tầng A) ----------
 
-  /** Góc nhìn thuần cho director: làn tự do qua geography thật (willBlockAllLanes).
-   * speedMult hoá: chấm 1.18 cho ứng viên speedy (safeLanesFast), 1.0 cho còn lại (safeLanes)
-   * — mirror OLD spawnBee L1522-1523. */
-  private getSafeLanes(baseSpeed: number, speedMult = 1.0): number[] {
+  /** Kiểm tra xem làn `lane` có bất kỳ con ong nào ở làn liền kề đang ở cự ly dọc < minAdjacentBeeDistY không */
+  private isAdjacentBeeTooClose(lane: number, spawnY: number, baseSpeed: number, speedMult = 1.0, delaySec = 0): boolean {
+    const minAdjDist = MECHANICS.minAdjacentBeeDistY ?? 180;
+    if (minAdjDist <= 0) return false;
+
+    const catY = this.cat ? this.cat.y : this.scale.height * 0.78;
+    const tNew = delaySec + (catY - spawnY) / (baseSpeed * speedMult);
+
+    for (const b of this.bees) {
+      if (!b.container || !b.container.active) continue;
+      const isAdj = Math.abs(b.lane - lane) === 1 || (b.secondaryLane !== undefined && Math.abs(b.secondaryLane - lane) === 1);
+      if (!isAdj) continue;
+
+      // 1. Khoảng cách Y trực tiếp ở khu vực spawn/đầu màn hình
+      const distY = b.container.y - spawnY;
+      if (distY >= -100 && distY < minAdjDist) {
+        return true;
+      }
+
+      // 2. Khoảng cách dọc khi trôi tới tầm mèo (tránh trường hợp ong sau bay nhanh đuổi kịp sát ong ở làn kề)
+      const delayB = (b.type === 'stalker' && b.stalkerDelayLeft && b.stalkerDelayLeft > 0) ? b.stalkerDelayLeft : 0;
+      const tB = delayB + (catY - b.container.y) / (baseSpeed * b.speedMult);
+      if (tB > 0 && Math.abs(tNew - tB) * baseSpeed < minAdjDist) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Góc nhìn thuần cho director: làn tự do qua geography thật (willBlockAllLanes + minAdjacentBeeDistY).
+   * speedMult hoá: chấm 1.18 cho speedy, stalkerSpeedMult cho stalker, 1.0 cho còn lại (safeLanes) */
+  private getSafeLanes(baseSpeed: number, speedMult = 1.0, delaySec = 0): number[] {
     const occupied = this.getOccupiedLanesAtTop(200);
     if (occupied.size >= 2) return [];
     const beeSize = this.getBeeSize(this.scale.width, this.scale.height);
-    return [0, 1, 2].filter((l) => !occupied.has(l) && !this.willBlockAllLanes(l, undefined, speedMult, -beeSize, baseSpeed));
+    const spawnY = -beeSize;
+
+    return [0, 1, 2].filter((l) => {
+      if (occupied.has(l)) return false;
+      if (this.isAdjacentBeeTooClose(l, spawnY, baseSpeed, speedMult, delaySec)) return false;
+      return !this.willBlockAllLanes(l, undefined, speedMult, spawnY, baseSpeed, delaySec);
+    });
   }
 
   /** Snapshot thế giới pure-data — input duy nhất của director (0 tham chiếu Phaser). */
   private buildSpawnWorld(baseSpeed: number) {
+    const currentLv = ctx.engine.stageLevel ?? 1;
+    const baseBonus = MECHANICS.speedyBaseBonus ?? 1.15;
+    const levelStep = MECHANICS.speedyLevelStep ?? 0.035;
+    const speedyActualMult = (MECHANICS.speedyMult ?? BEES.speedyMult) * (baseBonus + (currentLv - 1) * levelStep);
+    const stalkerActualMult = MECHANICS.stalkerSpeedMult ?? 1.80;
+    const stalkerDelaySec = MECHANICS.stalkerTelegraphSec ?? 0.8;
+
     return {
       swarmActive: this.swarmActive,
-      fatBeeActive: this.fatBeeActive,
+      fatBeeActive: this.fatBeeActive || this.fatBeePending,
       fatOnScreen: this.bees.some((b) => b.type === 'fat'),
       occupiedLanes: Array.from(this.getOccupiedLanesAtTop(200)),
       safeLanes: this.getSafeLanes(baseSpeed),
-      safeLanesFast: this.getSafeLanes(baseSpeed, BEES.speedyMult),
+      safeLanesFast: this.getSafeLanes(baseSpeed, speedyActualMult),
+      safeLanesStalker: this.getSafeLanes(baseSpeed, stalkerActualMult, stalkerDelaySec),
       beeCount: this.bees.length,
+      catLane: this.cat ? this.currentLane : 1,
     };
   }
 
   // UPG2-P1b: vẽ telegraph debut từ DebutWindow typed của tầng A (không tự tính cửa sổ).
-  // Text EN (PB-5); định danh loại bám palette spawn: speedy đỏ / zigzag tím / swarm bão.
+  // Text EN (PB-5); định danh loại bám palette spawn: speedy đỏ / zigzag tím / swarm bão / stalker đỏ neon.
   private showDebutTelegraph(win: DebutWindow): void {
+    // Stage 1: Chỉ xuất hiện ong vàng và ong đỏ, không hiển thị telegraph của các loại ong khác
+    if (ctx.engine.stage === 1 && win.type !== 'speedy') {
+      this.debutTelegraph.setVisible(false);
+      return;
+    }
+    // Stage 2: Chỉ xuất hiện ong speedy hoặc zigzag
+    if (ctx.engine.stage === 2 && win.type === 'stalker') {
+      this.debutTelegraph.setVisible(false);
+      return;
+    }
     const label =
       win.type === 'speedy' ? 'NEW: FAST BEE INCOMING!'
       : win.type === 'zigzag' ? 'NEW: ZIGZAG BEE INCOMING!'
+      : win.type === 'stalker' ? 'NEW: STALKER BEE TARGETING YOU!'
       : 'NEW: SWARM BEE INCOMING!';
     this.debutTelegraph.setText(label).setVisible(true);
   }
@@ -1273,23 +1459,62 @@ export class GameplayScene extends Phaser.Scene {
   /** Spawn render 1 con ong theo quyết định của director (giữ nguyên createBeeEntity cũ). */
   private spawnBeeEntity(type: BeeType, lane: number, speedMult: number): void {
     const beeSize = this.getBeeSize(this.scale.width, this.scale.height);
-    if (type === 'speedy') {
-      this.createBeeEntity('speedy', lane, beeSize * 0.90, speedMult, 0xFF4757);
-    } else if (type === 'zigzag') {
-      this.createBeeEntity('zigzag', lane, beeSize, speedMult, 0xBA68C8, '🌀');
+    let actualType: BeeType = type;
+    // Stage guards:
+    if (ctx.engine.stage === 1 && actualType !== 'normal' && actualType !== 'speedy') {
+      actualType = 'normal';
+    } else if (ctx.engine.stage === 2 && actualType === 'stalker') {
+      actualType = 'zigzag';
+    }
+    const currentLv = ctx.engine.stageLevel ?? 1;
+    const baseBonus = MECHANICS.speedyBaseBonus ?? 1.15;
+    const levelStep = MECHANICS.speedyLevelStep ?? 0.035;
+    const finalSpeedMult = actualType === 'speedy'
+      ? speedMult * (baseBonus + (currentLv - 1) * levelStep)
+      : speedMult;
+
+    if (actualType === 'stalker') {
+      this.createStalkerBeeEntity(lane, beeSize * 1.05, finalSpeedMult);
+    } else if (actualType === 'speedy') {
+      this.createBeeEntity('speedy', lane, beeSize * 0.90, finalSpeedMult, 0xFF4757);
+    } else if (actualType === 'zigzag') {
+      this.createBeeEntity('zigzag', lane, beeSize, finalSpeedMult, 0xBA68C8, '🌀');
     } else {
-      this.createBeeEntity('normal', lane, beeSize, speedMult);
+      this.createBeeEntity('normal', lane, beeSize, finalSpeedMult);
     }
   }
+
+  /** Stalker Bee: Tạo laser đỏ cảnh báo rọi làn mèo trong 0.8s trước khi lao xuống (Dive-bomb) */
+  private createStalkerBeeEntity(lane: number, size: number, speedMult: number): Bee {
+    const bee = this.createBeeEntity('stalker', lane, size, speedMult, 0xFF1744, '🎯');
+    const telegraphSec = MECHANICS.stalkerTelegraphSec ?? 0.8;
+    bee.stalkerDelayLeft = telegraphSec;
+    bee.stalkerDiving = false;
+
+    // Đặt vị trí ban đầu nhấp nháy ở đầu màn hình
+    bee.container.setPosition(this.lanes[lane], 80);
+
+    // Tạo Graphics vẽ tia laser cảnh báo ngắm làn
+    const laser = this.add.graphics().setDepth(z.actor - 1);
+    bee.stalkerLaser = laser;
+
+    // SFX báo hiệu ngắm mục tiêu
+    this.playSfx('sfx_click', 0.45, 2.2);
+
+    return bee;
+  }
+
 
   /** Gọi director mỗi frame; scene chỉ VẼ quyết định (T1c — logic cadence/refusal/swarm ở tầng A). */
   private stepSpawn(dt: number, elapsed: number, engine: GameEngine, diff: { speed: number }): void {
     if (!this.spawnDirector) return;
+    const stageLevelClamped = Math.min(9, Math.max(1, ctx.engine.stageLevel ?? 1));
     const result: SpawnDirectorResult = this.spawnDirector.update({
       dt,
       elapsed,
       engine,
       world: this.buildSpawnWorld(diff.speed),
+      level: stageLevelClamped,
     });
 
     // UPG2-P1b: swarm debut (lần đầu/phiên — result.swarmDebut từ director) gắn message chương;
@@ -1303,7 +1528,7 @@ export class GameplayScene extends Phaser.Scene {
     // UPG2-P1b: telegraph debut — cửa sổ đang mở tại elapsed này → vẽ; đóng → ẩn.
     // Dữ liệu typed từ tầng A (engine.debutAt); scene không tự tính cửa sổ.
     const debutWin = engine.debutAt(elapsed);
-    if (debutWin) {
+    if (debutWin && !(ctx.engine.stage === 1 && debutWin.type !== 'speedy')) {
       this.showDebutTelegraph(debutWin);
     } else if (this.debutTelegraph.visible) {
       this.debutTelegraph.setVisible(false);
@@ -1311,17 +1536,21 @@ export class GameplayScene extends Phaser.Scene {
 
     if (result.doubleSpawn) {
       const secondLane = result.doubleSpawn.lane;
-      const level = engine.getLevel();
+      const level = stageLevelClamped;
       const beeSize = this.getBeeSize(this.scale.width, this.scale.height);
       const dirAtCall = this.spawnDirector;
       this.time.delayedCall(WIRING.doubleSpawnDelayMs, () => {
         if (this.running && !this.swarmActive && !this.bees.some((b) => b.type === 'fat')) {
-          if (!this.willBlockAllLanes(secondLane, undefined, 1.0, -beeSize, diff.speed)) {
+          if (!this.isAdjacentBeeTooClose(secondLane, -beeSize, diff.speed) && !this.willBlockAllLanes(secondLane, undefined, 1.0, -beeSize, diff.speed)) {
             const secondType = dirAtCall
               ? dirAtCall.rollSecondBeeType(this.elapsed, engine, level)
               : null;
             if (secondType !== null) {
-              this.createBeeEntity(secondType, secondLane, beeSize, 1.0);
+              const actualSecond: BeeType = (ctx.engine.stage === 1 && secondType !== 'normal' && secondType !== 'speedy')
+                ? 'normal'
+                : secondType;
+              const mult = actualSecond === 'speedy' ? BEES.speedyMult : 1.0;
+              this.spawnBeeEntity(actualSecond, secondLane, mult);
             }
           }
         }
@@ -1369,7 +1598,13 @@ export class GameplayScene extends Phaser.Scene {
   /** Step spawn thủ công (dt/elapsed kiểm soát được — không qua game loop). */
   stepSpawnForTest(dt: number, elapsed: number): void {
     const engine = ctx.engine;
-    this.stepSpawn(dt, elapsed, engine, engine.difficulty(elapsed, engine.getLevel()));
+    const diff = engine.difficulty(elapsed, engine.getLevel());
+    for (const b of this.bees) {
+      if (b.container && b.container.active) {
+        b.container.y += diff.speed * b.speedMult * dt;
+      }
+    }
+    this.stepSpawn(dt, elapsed, engine, diff);
   }
 
   // ---------- T1d: orchestration va chạm (quyết định thuộc CollisionSystem — tầng A) ----------
@@ -1558,6 +1793,7 @@ export class GameplayScene extends Phaser.Scene {
     this.cameras.main.flash(70, 255, 255, 200, true);
     this.hud.update();
     if (nm.feverTriggered) this.onFeverStart();
+    if (nm.stageClear && nm.stageClearResult) this.onStageClear(nm.stageClearResult);
   }
   /** Pickup qua system (item dạng điểm). */
   checkItemPickupForTest(item: ItemPoint): boolean {
@@ -1609,27 +1845,58 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   // Thuật toán quét quỹ đạo thời gian tới (Trajectory Arrival Time Solver)
-  private willBlockAllLanes(newLane: number, newSecondaryLane: number | undefined, newSpeedMult: number, spawnY: number, baseSpeed: number): boolean {
+  private willBlockAllLanes(
+    newLane: number,
+    newSecondaryLane: number | undefined,
+    newSpeedMult: number,
+    spawnY: number,
+    baseSpeed: number,
+    delaySec = 0,
+  ): boolean {
     const catY = this.cat ? this.cat.y : this.scale.height * 0.78;
-    const tNew = (catY - spawnY) / (baseSpeed * newSpeedMult);
+    const catLane = this.cat ? this.currentLane : 1;
+    const tNew = delaySec + (catY - spawnY) / (baseSpeed * newSpeedMult);
+    if (tNew <= 0) return false;
+
     const blockedLanes = new Set<number>();
     blockedLanes.add(newLane);
     if (newSecondaryLane !== undefined) blockedLanes.add(newSecondaryLane);
 
-    // safeTimeDelta 0.38s: đảm bảo luôn có đủ thời gian phản xạ (khoảng cách an toàn)
-    const safeTimeDelta = 0.38;
+    // safeTimeDelta 0.40s: thời gian an toàn phản xạ đổi làn (mèo chuyển làn mất 120ms, 0.40s là khoảng cách an toàn chuẩn studio)
+    const safeTimeDelta = 0.40;
 
     for (const b of this.bees) {
       if (!b.container || !b.container.active) continue;
-      const tB = (catY - b.container.y) / (baseSpeed * b.speedMult);
+      const delayB = (b.type === 'stalker' && b.stalkerDelayLeft && b.stalkerDelayLeft > 0) ? b.stalkerDelayLeft : 0;
+      const tB = delayB + (catY - b.container.y) / (baseSpeed * b.speedMult);
       if (tB > 0 && Math.abs(tNew - tB) < safeTimeDelta) {
         blockedLanes.add(b.lane);
         if (b.secondaryLane !== undefined) blockedLanes.add(b.secondaryLane);
       }
     }
 
-    // Nếu chặn cả 3 làn (hoặc không còn làn nào an toàn) -> CHẶN
-    return blockedLanes.size >= 3;
+
+    // 1. Nếu chặn cả 3 làn (tạo thành bức tường không thể né) -> CHẶN
+    if (blockedLanes.size >= 3) return true;
+
+    // 2. Bảo vệ lối thoát hiểm của Mèo (Cat Escape Route Guarantee):
+    // Nếu làn hiện tại của mèo bị đe dọa (hoặc là newLane, hoặc đã có ong đến cùng lúc tNew),
+    // thì ít nhất MỘT làn liền kề phải hoàn toàn thông thoáng tại thời điểm này để mèo né qua.
+    if (blockedLanes.has(catLane)) {
+      const escapeLanes = catLane === 0 ? [1] : (catLane === 2 ? [1] : [0, 2]);
+      const hasSafeEscape = escapeLanes.some((el) => !blockedLanes.has(el));
+      if (!hasSafeEscape) {
+        return true; // Mọi đường né của mèo đều bị bít -> CHẶN
+      }
+    }
+
+    // 3. Chống bẫy kẹp gọng kìm 2 làn mép khi mèo đang ở biên:
+    // Mèo ở Làn 0 thì {0, 1} không được cùng lúc bị chặn (không thể nhảy qua làn 1 để tới làn 2)
+    if (catLane === 0 && blockedLanes.has(0) && blockedLanes.has(1)) return true;
+    // Mèo ở Làn 2 thì {1, 2} không được cùng lúc bị chặn
+    if (catLane === 2 && blockedLanes.has(1) && blockedLanes.has(2)) return true;
+
+    return false;
   }
 
   private createBeeEntity(type: BeeType, lane: number, size: number, speedMult: number, tintColor?: number, iconExtra?: string): Bee {
@@ -1685,6 +1952,10 @@ export class GameplayScene extends Phaser.Scene {
   // PERF-FIX B: deactivate trả về pool thay vì destroy (spec §1.B.3) — ẩn + pause tween.
   // Slot lạ (ong Béo không dùng pool) → destroy như code cũ.
   private retireBee(b: Bee) {
+    if (b.stalkerLaser && b.stalkerLaser.active) {
+      b.stalkerLaser.destroy();
+      b.stalkerLaser = undefined;
+    }
     const c = b.container;
     if (!c || !c.active) return;
     c.setVisible(false).setActive(false);
@@ -1772,6 +2043,10 @@ export class GameplayScene extends Phaser.Scene {
     const beeSize = this.getBeeSize(this.scale.width, this.scale.height);
     const safeLane = Phaser.Math.Between(0, MECHANICS.laneCount - 1);
     this.swarmBeesRemaining = 2;
+    const currentLv = ctx.engine.stageLevel ?? 1;
+    const baseBonus = MECHANICS.speedyBaseBonus ?? 1.15;
+    const levelStep = MECHANICS.speedyLevelStep ?? 0.035;
+    const swarmSpeedMult = (MECHANICS.speedyMult ?? BEES.speedyMult) * (baseBonus + (currentLv - 1) * levelStep);
 
     // 2 Làn nguy hiểm có 2 con ong rơi song song
     for (let l = 0; l < 3; l++) {
@@ -1784,7 +2059,7 @@ export class GameplayScene extends Phaser.Scene {
         const { container, sprite, tag } = slot;
         container.setPosition(this.lanes[l], -beeSize).setDepth(z.actor);
         container.setActive(true).setVisible(true).setScale(1).setAlpha(1);
-        sprite.setDisplaySize(beeSize, beeSize);
+        sprite.setDisplaySize(beeSize * 0.90, beeSize * 0.90);
         sprite.setFlipX(Math.random() < 0.5);
         sprite.clearTint();
         sprite.setTint(0xFF4757);
@@ -1794,7 +2069,7 @@ export class GameplayScene extends Phaser.Scene {
         slot.sway.pause();
         slot.bow.pause();
         slot.settle.pause();
-        const bee: Bee = { container, sprite, slot, type: 'speedy', lane: l, speedMult: 1.15, dodged: false, isSwarm: true, id: this.beeSeq++ };
+        const bee: Bee = { container, sprite, slot, type: 'speedy', lane: l, speedMult: swarmSpeedMult, dodged: false, isSwarm: true, id: this.beeSeq++ };
         this.bees.push(bee);
       }
     }
@@ -1818,7 +2093,11 @@ export class GameplayScene extends Phaser.Scene {
 
     this.hud.update();
     if (res.feverTriggered) this.onFeverStart();
-    if (res.levelUp) this.onLevelUp(res.newLevel);
+    if (res.stageClear && res.stageClearResult) {
+      this.onStageClear(res.stageClearResult);
+    } else if (res.levelUp) {
+      this.onLevelUp(res.newLevel);
+    }
   }
 
   private spawnItem(_speed: number) {
@@ -1922,7 +2201,9 @@ export class GameplayScene extends Phaser.Scene {
       this.showFloatingText(it.container.x, it.container.y, '+2 🐟', color.warning);
       this.hud.update();
       if (res.feverTriggered) this.onFeverStart();
-      if (res.levelUp) this.onLevelUp(res.newLevel);
+      if (res.levelUp) {
+        this.onLevelUp(res.newLevel);
+      }
     } else if (it.type === 'shield') {
       ctx.engine.activateShield();
       this.playSfx('sfx_levelup', 0.4);
@@ -1963,7 +2244,11 @@ export class GameplayScene extends Phaser.Scene {
 
     if (r.comboTriggered) this.showComboPopup();
     if (r.feverTriggered) this.onFeverStart();
-    if (r.levelUp) this.onLevelUp(r.newLevel);
+    if (r.stageClear && r.stageClearResult) {
+      this.onStageClear(r.stageClearResult);
+    } else if (r.levelUp) {
+      this.onLevelUp(r.newLevel);
+    }
   }
 
   private spawnLevelConfetti(level: number) {
@@ -1994,34 +2279,125 @@ export class GameplayScene extends Phaser.Scene {
     }
   }
 
-  // D-A2: popup 2s (thay 1.2s) + phụ đề tên cảnh theo palette; tại lv 10/20 đổi thành
-  // chapter card reuse chính popup này (0 asset mới — không làm chapter system riêng). Text EN (PB-5).
-  private onLevelUp(level: number) {
-    this.drawLevelBg(level);
-    // T1e: label + tween level dời về HudRenderer (popup/confetti/sfx vẫn ở scene)
-    this.hud.setLevel(level);
+  // --- Stage-based progression (Separate Stages & Stage Clear) ---
+  private onStageClear(result: StageClearResult) {
+    if (this.isStageClearing) return;
+    this.isStageClearing = true;
+    this.running = false;
+    this.fatBeeActive = false;
+    this.fatBeePending = false;
+    this.swarmActive = false;
 
-    const sceneName = level < 10 ? 'MORNING GARDEN' : level < 20 ? 'SUNSET SPRINT' : 'NIGHT GARDEN';
-    const chapterNo = level === 10 ? 2 : level === 20 ? 3 : 0;
-    if (chapterNo > 0) {
-      this.levelPopup.setText(`CHAPTER ${chapterNo} \u00b7 ${sceneName}`);
-      this.levelSubPopup.setText('LEVEL ' + level);
-    } else {
-      this.levelPopup.setText('LEVEL ' + level + '!');
-      this.levelSubPopup.setText(sceneName);
+    // Dọn dẹp sạch toàn bộ ong đang có trên màn hình (nổ hạt an toàn)
+    for (const b of this.bees) {
+      if (b.container && b.container.active) {
+        this.fx.spawnBeeExplosion(b.container.x, b.container.y);
+        this.retireBee(b);
+      }
     }
-    // Tổng hiển thị ~2s: 220ms in + 1500ms hold + 300ms out
-    this.tweens.add({
-      targets: this.levelPopup, alpha: 1, scale: { from: 0.6, to: 1.15 }, duration: 220, ease: 'back.out',
-      onComplete: () => this.tweens.add({ targets: [this.levelPopup, this.levelSubPopup], alpha: 0, scale: 1.0, duration: 300, delay: 1500, ease: 'cubic.in' }),
+    this.pruneBees();
+
+    this.playSfx('sfx_levelup', 0.65);
+    this.spawnLevelConfetti(result.stage);
+
+    if (this.cat && this.cat.active) {
+      const catBaseY = this.getCatY(this.scale.height);
+      const catSize = this.getCatSize(this.scale.width, this.scale.height);
+      const baseScaleX = catSize.w / this.cat.width;
+      const baseScaleY = catSize.h / this.cat.height;
+      this.tweens.add({
+        targets: this.cat,
+        y: catBaseY - 25,
+        scaleX: baseScaleX * 1.08,
+        scaleY: baseScaleY * 0.92,
+        yoyo: true,
+        duration: 260,
+        repeat: 2,
+        ease: 'quad.out',
+        onComplete: () => {
+          if (this.cat && this.cat.active) {
+            this.cat.y = catBaseY;
+            this.cat.setScale(baseScaleX, baseScaleY);
+          }
+        },
+      });
+      this.fx.spawnSparkles(this.cat.x, this.cat.y - 20, 0xFFD700);
+    }
+
+    this.time.delayedCall(450, () => {
+      this.stageClearModal = new StageClearModal(this, result, {
+        onNextStage: () => this.handleNextStage(result),
+        onPlayAgain: () => this.handlePlayAgainAfterVictory(),
+        onMenu: () => this.handleMenuAfterVictory(),
+      });
     });
-    this.tweens.add({ targets: this.levelSubPopup, alpha: 1, duration: 260, delay: 120, ease: 'quad.out' });
-    this.spawnLevelConfetti(level);
-    this.playSfx('sfx_levelup', 0.45);
+  }
+
+  private handlePlayAgainAfterVictory() {
+    this.isStageClearing = false;
+    ctx.engine.stage = 1;
+    ctx.engine.stageLevel = 1;
+    ctx.engine.startNewGame();
+    this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
+    this.time.delayedCall(dur.scene, () => {
+      this.scene.restart();
+    });
+  }
+
+  private handleMenuAfterVictory() {
+    this.isStageClearing = false;
+    this.cameras.main.fadeOut(dur.scene, 0, 0, 0);
+    this.time.delayedCall(dur.scene, () => {
+      this.scene.start('StartScene');
+    });
+  }
+
+  private handleNextStage(result: StageClearResult) {
+    this.isStageClearing = false;
+    if (result.isVictory || (result.stage >= 3 && result.isStageComplete)) {
+      this.handlePlayAgainAfterVictory();
+      return;
+    }
+    if (result.isStageComplete) {
+      ctx.engine.advanceToNextStage();
+      this.elapsed = 0;
+      this.spawnDirector?.startSession(this.elapsed);
+      this.fatBeeActive = false;
+      this.fatBeePending = false;
+      this.swarmActive = false;
+      this.swarmBeesRemaining = 0;
+    } else {
+      ctx.engine.advanceToNextLevel();
+      this.spawnDirector?.resetSpawnTimer();
+    }
+
+    this.drawLevelBg(ctx.engine.stageLevel);
+    this.hud.setStage(ctx.engine.stage);
+    this.hud.update();
+
+    const bannerText = ctx.engine.stageLevel > 1
+      ? `LEVEL ${ctx.engine.stageLevel} — READY! 🚀`
+      : `STAGE ${ctx.engine.stage} — READY! 🚀`;
+    this.showPowerupPopup(bannerText, color.primary);
+    this.playSfx('sfx_combo', 0.5, 1.2);
+
+    this.time.delayedCall(600, () => {
+      this.running = true;
+    });
+  }
+
+  // Bỏ popup level hiện giữa màn hình lúc đang chơi để tránh làm rối và che tầm nhìn của người chơi (theo yêu cầu của anh Tuyền).
+  // Cấp độ và tiến độ level (60s) đã được hiển thị trên thanh HUD và modal khi hết 60s.
+  private onLevelUp(_level: number) {
+    // Suppressed in-game level popup during active gameplay
   }
 
   private triggerFatBeeBreather() {
+    if (this.fatBeeActive || this.fatBeePending || this.bees.some((b) => b.type === 'fat')) {
+      return;
+    }
     this.fatBeeActive = true;
+    this.fatBeePending = true;
     // T1c: mirror L1941 — bung cadence spawn về 0 (state cadence sống trong director)
     this.spawnDirector?.resetSpawnTimer();
 
@@ -2046,7 +2422,15 @@ export class GameplayScene extends Phaser.Scene {
 
     // Thả chú Ong Béo bay chậm rãi ở 2 làn
     this.time.delayedCall(300, () => {
-      if (!this.running) return;
+      this.fatBeePending = false;
+      if (!this.running) {
+        this.fatBeeActive = false;
+        return;
+      }
+      if (this.bees.some((b) => b.type === 'fat')) {
+        this.fatBeeActive = false;
+        return;
+      }
       this.createFatBeeEntity(midX, lane1, lane2, beeSize * 1.6);
     });
 
@@ -2180,6 +2564,8 @@ export class GameplayScene extends Phaser.Scene {
       this.scene.start('GameOverScene', {
         score: end.score,
         bestScore: end.bestScore,
+        stage: end.stage,
+        bestStage: end.bestStage,
         fish: end.fish,
         totalFish: end.totalFish,
         isNewRecord: end.isNewRecord,
@@ -2211,7 +2597,9 @@ export class GameplayScene extends Phaser.Scene {
     this.hud.relayout(pf, hudY);
     this.hud.drawFeverBar();
     if (this.levelPopup) this.levelPopup.setPosition(pf.center, g.height * 0.36);
-    this.drawLevelBg(ctx.engine.getLevel());
+    if (this.swarmWarningPopup) this.swarmWarningPopup.setPosition(pf.center, g.height * 0.40);
+    if (this.swarmSurvivePopup) this.swarmSurvivePopup.setPosition(pf.center, g.height * 0.45);
+    this.drawLevelBg(ctx.engine.stageLevel ?? 1);
   }
 }
 

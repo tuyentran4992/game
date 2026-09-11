@@ -13,8 +13,8 @@ export const WIRING = {
   get spawnSpeedFactor() { return MECHANICS.spawnSpeedFactor; },
   get spawnLevelFactor() { return MECHANICS.spawnLevelFactor; },
   get spawnIntervalFloor() { return MECHANICS.spawnIntervalFloor; },
-  /** Delay scene hẹn tạo con ong thứ 2 của double-spawn (ms). */
-  doubleSpawnDelayMs: 280,
+  /** Delay scene hẹn tạo con ong thứ 2 của double-spawn (ms) — tăng 280ms -> 650ms để khoảng cách dọc an toàn >=180px. */
+  doubleSpawnDelayMs: 650,
 } as const;
 
 /** Hằng loại ong — SHIM đọc từ MechanicsConfig (nguồn thật, sửa 1 chỗ). */

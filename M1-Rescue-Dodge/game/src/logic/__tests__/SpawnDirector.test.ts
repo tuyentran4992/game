@@ -78,8 +78,8 @@ describe('SpawnDirector — cadence spawn (mirror Gameplay.ts update L1070-1078)
   });
 
   it('refusal KHÔNG reset lastSpawn (mirror: chỉ reset khi spawn thành công)', () => {
-    // bé 3 = spawnCount(warmup=1)+2 → refusal density
-    const r = h.dir.update({ dt: 2.0, elapsed: 5, engine: h.engine, world: makeWorld({ beeCount: 3 }) });
+    // maxBees level 1 = 4 → refusal density khi beeCount >= 4
+    const r = h.dir.update({ dt: 2.0, elapsed: 5, engine: h.engine, world: makeWorld({ beeCount: 4 }) });
     expect(r.spawned).toHaveLength(0);
     expect(r.lastSpawnReset).toBe(false);
     // frame sau lastSpawn vẫn >= interval → spawn ngay với dt nhỏ
@@ -88,22 +88,21 @@ describe('SpawnDirector — cadence spawn (mirror Gameplay.ts update L1070-1078)
   });
 });
 
-describe('SpawnDirector — mật độ theo DifficultyResult.spawnCount', () => {
-  it('warmup: spawnCount=1 → chặn khi beeCount >= 3, cho khi beeCount=2', () => {
+describe('SpawnDirector — mật độ theo level (maxBeesBase + level * maxBeesPerLevel)', () => {
+  it('level 1: maxBees=4 → chặn khi beeCount >= 4, cho khi beeCount=3', () => {
     const h = makeHarness();
-    const blocked = h.dir.update({ dt: 2.0, elapsed: 5, engine: h.engine, world: makeWorld({ beeCount: 3 }) });
+    const blocked = h.dir.update({ dt: 2.0, elapsed: 5, engine: h.engine, world: makeWorld({ beeCount: 4 }) });
     expect(blocked.spawned).toHaveLength(0);
-    const ok = h.dir.update({ dt: 2.0, elapsed: 5, engine: h.engine, world: makeWorld({ beeCount: 2 }) });
+    const ok = h.dir.update({ dt: 2.0, elapsed: 5, engine: h.engine, world: makeWorld({ beeCount: 3 }) });
     expect(ok.spawned).toHaveLength(1);
   });
 
-  it('elapsed 60 level 3: spawnCount theo config → cap = spawnCount + 2 (B1: cap 4)', () => {
-    // UPG2-B1: spawnRateMax 4→2 → spawnCount(60,lv3)=min(3,2)=2, cap=4 (trước B1: 4→cap 6)
+  it('level 3: maxBees = 4 + (3-1)*0.5 = 5 → chặn khi beeCount >= 5, cho khi beeCount=4', () => {
     const h = makeHarness();
     h.engine.score = 44;
-    const blocked = h.dir.update({ dt: 2.0, elapsed: 60, engine: h.engine, world: makeWorld({ beeCount: 4 }) });
+    const blocked = h.dir.update({ dt: 2.0, elapsed: 60, engine: h.engine, world: makeWorld({ beeCount: 5 }) });
     expect(blocked.spawned).toHaveLength(0);
-    const ok = h.dir.update({ dt: 2.0, elapsed: 60, engine: h.engine, world: makeWorld({ beeCount: 3 }) });
+    const ok = h.dir.update({ dt: 2.0, elapsed: 60, engine: h.engine, world: makeWorld({ beeCount: 4 }) });
     expect(ok.spawned).toHaveLength(1);
   });
 });

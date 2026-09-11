@@ -23,6 +23,7 @@ class GameContext {
 
       if (data && typeof data === 'object') {
         const best = typeof data.best_score === 'number' ? data.best_score : (typeof data.bestScore === 'number' ? data.bestScore : 0);
+        const bestStage = typeof data.best_stage === 'number' ? data.best_stage : (typeof data.bestStage === 'number' ? data.bestStage : 1);
         const fish = typeof data.total_fish === 'number' ? data.total_fish : (typeof data.totalFish === 'number' ? data.totalFish : 0);
         const played = typeof data.total_games_played === 'number' ? data.total_games_played : (typeof data.totalGamesPlayed === 'number' ? data.totalGamesPlayed : this.engine.totalGamesPlayed);
         const skins = Array.isArray(data.unlocked_skins) ? data.unlocked_skins : (Array.isArray(data.unlockedSkins) ? data.unlockedSkins : undefined);
@@ -31,6 +32,7 @@ class GameContext {
 
         this.engine = new GameEngine(MECHANICS, {
           bestScore: best,
+          bestStage: bestStage,
           totalFish: fish,
           totalGamesPlayed: played,
           unlockedSkins: skins,
@@ -52,6 +54,9 @@ class GameContext {
         schema_version: 2,
         best_score: this.engine.bestScore,
         bestScore: this.engine.bestScore,
+        best_stage: this.engine.bestStage,
+        bestStage: this.engine.bestStage,
+        stage: this.engine.stage,
         total_fish: this.engine.totalFish,
         totalFish: this.engine.totalFish,
         level: this.engine.getLevel(),
