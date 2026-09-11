@@ -27,7 +27,7 @@ export const MECHANICS: MechanicsConfig = {
   swarmIntervalSec: 44, // UPG2-B1: 22→44 — bot không còn lane thoát khi swarm dồn (diag N=100)
   swarmBonus: 10,
   feverPerSwarm: 30,
-  startSpeed: 630,
+  startSpeed: 210,
   maxSpeed: 630,
   speedIncreasePerSec: 1.0,
   // UPG2-B1 (t_a990dc20, khung CEO #78-Y2): re-sim khóa curve sau P1b debut beat.
