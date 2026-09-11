@@ -108,7 +108,7 @@ ID dạng `GL-<n>`. Kiểm bằng browser manual trên build `game/` (touch/mous
 | GL-15 | saveData/loadData lỗi fallback (BR-11) | Giả lập `saveData` reject + `loadData` lỗi | Bỏ qua, đánh dấu phiên không lưu, KHÔNG crash (State "Save score lỗi"). | ☐ |
 | GL-16 | Rewarded continue (BR-10) | Bấm `continue-btn` lần 1 | `requestRewardedAd('reward-id')`; earned → resume 1 mạng và tiếp tục chơi; not earned → ở Game Over. | ☐ |
 | GL-17 | Continue giới hạn 1 lần (BR-10) | Bấm `continue-btn` lần 2 (sau khi dùng xong) | Nút bị vô hiệu hóa/ẩn/skip — KHÔNG cho tiếp tục lần 2 trong cùng game over. | ☐ |
-| GL-18 | Interstitial chỉ lần 2+ (BR-09) | Chơi → game over lần 1 → Retry → game over lần 2 | Lần game over thứ 1 KHÔNG có interstitial; lần 2+ MỚI hiện interstitial. Không ad trong 10s đầu / level đầu. | ☐ |
+| GL-18 | Interstitial chỉ lần 2+ (BR-09) | Chơi → game over lần 1 → Retry → game over lần 2 | Lần game over thứ 1 KHÔNG có interstitial; lần 2+ MỚI hiện interstitial. Không ad trong warmup đầu / level đầu. | ☐ |
 | GL-19 | Retry reset phiên | Bấm `retry-btn` | Về lại Gameplay, score reset, best giữ nguyên; interstitial theo BR-09 (nếu lần 2+). | ☐ |
 
 ### B.4 Nền tảng / SDK
@@ -128,16 +128,16 @@ ID dạng `GL-<n>`. Kiểm bằng browser manual trên build `game/` (touch/mous
 
 | ID | Ca | Steps | Expected | Trạng thái |
 |----|----|-------|----------|-----------|
-| GL-28 | Level-up mỗi 10 điểm, không reset (BR-14) | Chơi đạt score 10 → quan sát `level-label` + `score-label` | `level-label` đổi lên "Cấp 2"; score KHÔNG reset — vẫn tiếp tục tăng từ mốc 10; cứ mỗi 10đ lên 1 level. | ☐ |
+| GL-28 | Level-up mỗi 10 điểm, không reset (BR-14) | Chơi đạt score 10 → quan sát `level-label` + `score-label` | `level-label` đổi lên "Level 2"; score KHÔNG reset — vẫn tiếp tục tăng từ mốc 10; cứ mỗi 10đ lên 1 level; level-progress bar "NEXT LEVEL" reset về 0/10. | ☐ |
 | GL-29 | Đổi palette nền khi level-up (BR-14) | Chơi qua mốc 10/20/30, chụp nền từng level | Nền đổi palette/cảnh mới ở mỗi level; có ≥ 3 palette (level 1–3+ vòng lại). | ☐ |
-| GL-30 | Popup level-up 1.5s, không chặn (BR-14) | Level lên → chụp ngay + chờ ~2s | `level-popup` hiện "Cấp {n}" ~1.5s rồi tự ẩn; game vẫn chạy (ong vẫn động), KHÔNG chặn gameplay, không ad xen giữa. | ☐ |
+| GL-30 | Popup level-up 2s, không chặn (BR-14) | Level lên → chụp ngay + chờ ~2.5s | `level-popup` hiện "LEVEL {n}!" + `level-popup-sub` tên cảnh ~2s rồi tự ẩn; game vẫn chạy (ong vẫn động), KHÔNG chặn gameplay, không ad xen giữa. | ☐ |
 | GL-31 | Combo né liên tiếp +5 (BR-15) | Né 5 lần liên tiếp không chạm | Cộng thưởng bonus +5; hiện `combo-popup` hiệu ứng "+5". | ☐ |
 | GL-32 | Combo reset khi chạm ong (BR-15) | Đạt streak 5 → chạm ong → né lại đếm lại | Sau khi chạm combo về 0; để được +5 tiếp phải né lại đủ liên tiếp 5 lần mới tính. | ☐ |
 | GL-33 | Kỷ lục mới khi vượt best (BR-16) | Chơi score > best đã lưu | `record-popup` "KỶ LỤC MỚI!" hiện; `best-score` cập nhật; saveData/sendScore đẩy best mới. | ☐ |
 | GL-34 | record-popup không lặp trong phiên (BR-16) | Vượt best → tiếp tục chơi điểm cao hơn | Popup kỷ lục KHÔNG hiện lại lần 2 trong cùng phiên (chỉ 1 lần/phiên). | ☐ |
-| GL-35 | 10s đầu tốc độ thấp (BR-17) | Vào Gameplay, đo tốc độ ong trong 10s đầu | 10s đầu ong bay THẤP (giữ chân người mới); sau 10s tốc độ tăng rõ. | ☐ |
-| GL-36 | Tốc độ tăng theo thời gian + nhảy bậc level (BR-17) | Chơi lâu + qua các mốc level | Tốc độ/spawn ong tăng liên tục sau 10s + nhảy bậc rõ ở mỗi milestone Level. | ☐ |
-| GL-37 | Không interstitial level đầu (BR-17 + BR-09) | Chơi level đầu / 10s đầu | KHÔNG có interstitial ad ở level đầu / 10s đầu (khớp BR-09); ad chỉ khi game over lần 2+. | ☐ |
+| GL-35 | 30s đầu tốc độ thấp (BR-17 D-A2) | Vào Gameplay, đo tốc độ ong trong 30s đầu | 30s đầu ong bay GIỮ NGUYÊN mức thấp (giữ chân người mới); ong thường (normal) spawn ngay từ đầu, không gate theo level. | ☐ |
+| GL-36 | Tốc độ tăng 2 khúc + nhảy bậc level (BR-17 D-A2) | Sim >90s + qua các mốc level | 30→90s ramp nhẹ; sau 90s ramp nhanh hơn; softcap gần max; +nhảy bậc rõ ở mỗi milestone Level (UT `GameEngine.test.ts` BR-17). | ☐ |
+| GL-37 | Không interstitial level đầu (BR-17 + BR-09) | Chơi level đầu / warmup đầu | KHÔNG có interstitial ad ở level đầu / thời gian warmup đầu (khớp BR-09); ad chỉ khi game over lần 2+. | ☐ |
 | GL-38 | data-testid Progression (BR-14/15/16) | Inspect `level-label`, `level-popup`, `combo-popup`, `record-popup` | Cả 4 testid tồn tại, hiển thị đúng thời điểm theo SPEC 4.2. | ☐ |
 
 ---
@@ -156,15 +156,15 @@ ID dạng `GL-<n>`. Kiểm bằng browser manual trên build `game/` (touch/mous
 | BR-06 | Target 13+, không nhắm trẻ em | GL-26 |
 | BR-07 | Metadata: title ≤50, desc ≤150, thumbs 1:1/5:7/16:9, preview 16:9, publisher+genre, không branding | PC-22, PC-23, PC-24, PC-25 |
 | BR-08 | Asset nhân vật = nền tĩnh + tween/physics; cấm AI nhiều frame | PC-08 |
-| BR-09 | Interstitial không level 1-2 / 10s đầu — chỉ game over lần 2+ | GL-18 |
+| BR-09 | Interstitial không level 1-2 / warmup đầu — chỉ game over lần 2+ | GL-18 |
 | BR-10 | Rewarded continue tối đa 1 lần/game over | GL-16, GL-17 |
 | BR-11 | sendScore + saveData; load lỗi dùng phiên hiện tại không crash | GL-14, GL-15 |
 | BR-12 | Game over phải có nút hành động rõ | GL-01, GL-13 |
 | BR-13 | M1 chỉ 1 game "Cuu Meo"; config là nguồn sự thật | PC-03 |
-| BR-14 | Progression: mỗi 10đ lên 1 Level, KHÔNG reset; đổi palette nền + nhảy bậc + popup "Cấp {n}" 1.5s; ≥ 3 palette | GL-28, GL-29, GL-30, GL-38 |
+| BR-14 | Progression: mỗi 10đ lên 1 Level, KHÔNG reset; đổi palette nền + nhảy bậc + popup "LEVEL {n}!" 2s kèm tên cảnh + chapter card mốc 10/20 + level-progress bar; ≥ 3 palette | GL-28, GL-29, GL-30, GL-38 |
 | BR-15 | Combo streak: mỗi 5 lần né liên tiếp cộng +5 (popup combo); reset khi chạm ong | GL-31, GL-32 |
 | BR-16 | Kỷ lục: vượt best → popup record 1 lần/phiên + cập nhật best (saveData/sendScore) | GL-33, GL-34 |
-| BR-17 | Difficulty: 10s đầu tốc độ THẤP; sau tăng + nhảy bậc level; không interstitial level đầu | GL-35, GL-36, GL-37 |
+| BR-17 | Difficulty (D-A2): 30s đầu giữ nguyên mức thấp; ramp 2 khúc; nhảy bậc level; không interstitial level đầu | GL-35, GL-36, GL-37 |
 
 ### C.2 API / Pipeline Command × Test Case
 

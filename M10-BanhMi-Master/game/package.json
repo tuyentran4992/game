@@ -1,0 +1,23 @@
+{
+  "name": "banhmimaster",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Banh Mi Master - flash-order memory sandwich game (Phaser 3 + TS)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node -e \"require('fs').copyFileSync('playgama-bridge-config.json','dist/playgama-bridge-config.json')\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "sim": "node --experimental-strip-types scripts/sim.ts"
+  },
+  "dependencies": {
+    "@game/sdk": "link:../../packages/sdk",
+    "phaser": "^4.2.1"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vite": "5.4.21",
+    "vitest": "1.6.1"
+  }
+}

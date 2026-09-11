@@ -15,6 +15,18 @@ export type BeeType = 'normal' | 'speedy' | 'fat' | 'zigzag';
 
 export type ItemType = 'fish' | 'shield' | 'magnet';
 
+/** Loại có debut beat (UPG2-P1a): mọi loại ong + swarm wave; normal luôn bị loại ở runtime. */
+export type DebutType = BeeType | 'swarm';
+
+/** Cửa sổ telegraph/cụm thưa typed — tầng B (P1b) vẽ từ dữ liệu này, không tự tính. */
+export interface DebutWindow {
+  type: DebutType;
+  /** Giây elapsed của lần ra đầu tiên trong phiên. */
+  firstSeenAt: number;
+  /** Hạn cửa sổ = firstSeenAt + cfg.debutSparseSec (nửa mở [firstSeenAt, until)). */
+  until: number;
+}
+
 export interface MechanicsConfig {
   laneCount: number;
   milestoneInterval: number;     // points per level increase (BR-14)
@@ -35,13 +47,50 @@ export interface MechanicsConfig {
   feverPerSwarm: number;         // +30% Fever gauge upon surviving swarm raid
   startSpeed: number;            // Initial bee speed in pixels/s (warmup)
   maxSpeed: number;              // Maximum capped bee speed in pixels/s
-  speedIncreasePerSec: number;   // Acceleration rate per second
+  speedIncreasePerSec: number;   // Acceleration rate per second (khúc sau earlyRampUntilSec)
+  earlyRampPerSec: number;       // Gentle ramp px/s từ hết warmup đến earlyRampUntilSec (D-A2)
+  earlyRampUntilSec: number;     // Hết khúc ramp sớm (giây), sau đó dùng speedIncreasePerSec
   levelSpeedStep: number;        // Speed boost per level
   spawnIncrease: number;         // Spawn rate acceleration
   spawnRateMax: number;          // Maximum concurrent bees on screen
-  warmupSeconds: number;         // Initial gentle onboarding duration (10s)
+  warmupSeconds: number;         // Initial gentle onboarding duration (30s, D-A2)
   continueMaxPerGameOver: number;// Maximum rewarded continues per game over (1)
   interstitialDelayGames: number;// Interstitial delay count
+
+  // --- Input-feel: lane-switch tween (UPG2-N1, card t_79d2b77d) — [PLACEHOLDER] tới playtest boss ---
+  laneMoveMs: number;            // Duration tween đổi làn của mèo (ms, cũ dur.tn = 120)
+  laneMoveDelayMs: number;       // Delay tween bóng đổ bám nhịp nhảy (ms, cũ 35)
+  laneMoveEase: string;          // Ease tween đổi làn (Phaser ease name, cũ 'cubic.out')
+  laneMoveSettleMs: number;      // Tween dựng dậy scale/angle sau khi tới làn (ms, cũ 80)
+  inputBufferMs: number;         // Buffer input đổi làn (ms, 0 = phản hồi tức thì)
+
+  // --- Cadence spawn (SCOPE+ T1a: 4 hằng từng [MIRROR] literal) — công thức:
+  // max(floor, base - (speed-startSpeed)*speedFactor - (level-1)*levelFactor) ---
+  spawnIntervalBase: number;     // Interval spawn ở speed bắt đầu, level 1 (giây, cũ 1.35)
+  spawnIntervalFloor: number;    // Sàn interval spawn (giây, cũ 0.38)
+  spawnSpeedFactor: number;      // Co speed: mỗi px/s tốc độ rút ngắn interval (cũ 0.0035)
+  spawnLevelFactor: number;      // Co level: mỗi level rút ngắn interval (cũ 0.10)
+
+  // --- Juice: hit-stop + camera punch (UPG2-J1, card t_cc6c390d) — [PLACEHOLDER] tới playtest boss ---
+  // Điều kiện UX#63: hit-stop ≤120ms; KHÔNG băng HUD tween/input buffer (freeze áp dt=0
+  // cho world, không đụng timeScale toàn cục). Camera punch: zoom out-then-in theo lực va.
+  hitStopShieldMs: number;       // Đóng băng world khi khiên đỡ đòn (ms, lực va nhỏ nhất)
+  hitStopHitMs: number;          // Đóng băng world khi va chạm thường (ms)
+  hitStopDeathMs: number;        // Đóng băng world khi chết (ms, ≤120 theo UX#63)
+  punchHitZoom: number;          // Biên zoom camera punch khi va chạm thường (0.04 = +4%)
+  punchDeathZoom: number;        // Biên zoom camera punch khi chết (0.07 = +7%, mạnh hơn)
+  punchHoldMs: number;           // Thời gian giữ điểm đáy zoom trước khi hồi (ms)
+
+  // --- SpeedMult loại ong (SCOPE+ round 2: hợp nhất WIRING/BEES vào MechanicsConfig) ---
+  speedyMult: number;            // Ong speedy bay nhanh hơn (cũ BEES.speedyMult = 1.18)
+  normalMult: number;            // Ong thường (cũ BEES.normalMult = 1.0)
+  fatSpeedMult: number;          // Ong to bay chậm (cũ BEES.fatSpeedMult = 0.72)
+
+  // --- Debut beat (UPG2-P1a, t_6035fb14): cụm thưa + telegraph lần đầu mỗi loại ong
+  // xuất hiện — [PLACEHOLDER] chưa playtest. KHÔNG đổi số bot tổng (KT#74(b)). ---
+  debutSparseSec: number;        // Độ dài cửa sổ debut/cụm thưa sau lần ra đầu (cũ literal 2.0)
+  debutTelegraphMinSec: number;  // Sàn telegraph tầng B phải vẽ ≥ (QA BLOCK: ≥1.2s dữ liệu)
+
   palettes: Palette[];
 }
 
@@ -123,4 +172,5 @@ export interface GameEngineOptions {
   unlockedSkins?: string[];
   selectedSkin?: string;
   quests?: Quest[];
+  rng?: () => number;            // Injectable RNG cho deterministic test (default Math.random)
 }

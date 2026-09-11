@@ -55,6 +55,8 @@ export const dur = {
   slow: 1500,
   banner: 1600,
   spinner: 900,
+  // R5 (t_a562b030): nhịp pulse nút CTA chính (Play Again) — [PLACEHOLDER 900ms, chưa playtest]
+  ctaPulse: 900,
 } as const;
 
 export const z = {

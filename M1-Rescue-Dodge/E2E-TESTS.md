@@ -13,7 +13,7 @@
 - **Cách chạy:** dựng server tĩnh cục bộ (vd `python3 -m http.server` trong thư mục build/),
   mở `index.html` bằng agent-browser. KHÔNG deploy lên YouTube trước khi pass file này.
 - **data-testid:** `start-btn`, `tutorial-text`, `game-canvas`, `score-label`,
-  `level-label`, `level-popup`, `combo-popup`, `record-popup`,
+  `level-label`, `level-popup`, `level-popup-sub`, `combo-popup`, `record-popup`,
   `final-score`, `best-score`, `retry-btn`, `continue-btn`.
 - **Các màn:** Start → Tutorial (text 3s) → Gameplay → Game Over.
 - **Evidence:** với mỗi test, chụp screenshot tại các bước chính, lưu kèm theo
@@ -65,15 +65,16 @@
 
 | ID | Tên | Steps | Expected | Evidence |
 |----|-----|-------|----------|----------|
-| E2E-30 | Level-up đổi cảnh nhìn thấy được (BR-14) | 1) Trong Gameplay đạt score 10. 2) Chụp ngay lúc level lên. | `level-label` đổi lên "Cấp 2"; nền đổi palette/cảnh mới rõ ràng; score KHÔNG reset (vẫn tăng tiếp). | `E2E-30_levelup.png` |
-| E2E-31 | Popup level-up 1.5s không chặn gameplay (BR-14) | 1) Level lên → chụp ngay. 2) Chờ ~2s → chụp lại. | `level-popup` hiện "Cấp {n}" ~1.5s rồi tự ẩn; ong vẫn động, game vẫn chạy được; không ad xen giữa. | `E2E-31_level_popup.png`, `E2E-31_level_popup_after.png` |
+| E2E-30 | Level-up đổi cảnh nhìn thấy được (BR-14) | 1) Trong Gameplay đạt score 10. 2) Chụp ngay lúc level lên. | `level-label` đổi lên "Level 2"; nền đổi palette/cảnh mới rõ ràng; score KHÔNG reset (vẫn tăng tiếp); level-progress bar ("NEXT LEVEL: x/10") reset về 0/10. | `E2E-30_levelup.png` |
+| E2E-31 | Popup level-up 2s không chặn gameplay (BR-14) | 1) Level lên → chụp ngay. 2) Chờ ~2.5s → chụp lại. | `level-popup` hiện "LEVEL {n}!" + `level-popup-sub` tên cảnh (MORNING GARDEN / SUNSET SPRINT / NIGHT GARDEN) ~2s rồi tự ẩn; ong vẫn động, game vẫn chạy được; không ad xen giữa. | `E2E-31_level_popup.png`, `E2E-31_level_popup_after.png` |
 | E2E-32 | Combo +5 khi né liên tiếp (BR-15) | 1) Né liên tiếp ≥5 lần không chạm. 2) Ghi score trước/sau. | Score tăng thêm bonus +5; `combo-popup` "+5" hiện lên. | `E2E-32_combo.png` |
 | E2E-33 | Combo reset khi chạm ong (BR-15) | 1) Đạt streak 5. 2) Để ong chạm. 3) Né lại, đếm. | Sau khi chạm combo về 0; +5 tiếp chỉ tính khi né đủ liên tiếp 5 lần nữa. | `E2E-33_combo_reset.png` |
 | E2E-34 | **User test cần dọn** — popup kỷ lục mới khi vượt best (BR-16) | 1) Reset localStorage. 2) Chơi vượt best cũ. 3) Chụp. | `record-popup` "KỶ LỤC MỚI!" hiện; `best-score` cập nhật ≥ final-score. | `E2E-34_record.png` |
 | E2E-35 | Kỷ lục mới chỉ 1 lần/phiên (BR-16) | 1) Vượt best. 2) Tiếp tục chơi điểm cao hơn nữa, chụp. | Popup `record-popup` KHÔNG hiện lại lần 2 trong cùng phiên dù score tiếp tục vượt. | `E2E-35_record_single.png` |
-| E2E-36 | 10s đầu tốc độ thấp giữ chân (BR-17) | 1) Vào Gameplay. 2) Chụp trong and sau 10s đầu. | 10s đầu ong bay THẤP, dễ né (người mới không bỏ sớm); sau 10s tốc độ/nhịp tăng rõ. | `E2E-36_slow.png`, `E2E-36_faster.png` |
+| E2E-36 | 30s đầu tốc độ thấp giữ chân (BR-17 D-A2) | 1) Vào Gameplay. 2) Chụp trong và sau 30s đầu. | 30s đầu ong bay GIỮ NGUYÊN mức thấp, dễ né (người mới không bỏ sớm); ong thường spawn ngay từ đầu; sau warmup nhịp/tốc độ tăng dần. | `E2E-36_slow.png`, `E2E-36_faster.png` |
 | E2E-37 | Nhảy khó rõ rệt theo level (BR-17) | 1) Ghi tốc độ ong trước level. 2) Level lên chụp so sánh. | Sau level-up tốc độ/spawn ong nhảy lên bậc thấy rõ (không mượt mịn tuyến tính). | `E2E-37_level_diff.png` |
-| E2E-38 | Không interstitial level đầu / 10s đầu (BR-17 + BR-09) | 1) Chơi qua level đầu + 10s đầu. 2) Quan sát màn hình. | KHÔNG có ad/interstitial che màn trong level đầu/10s đầu; ad chỉ khi game over lần 2+. | `E2E-38_no_ad_first.png` |
+| E2E-38 | Không interstitial level đầu / warmup (BR-17 + BR-09) | 1) Chơi qua level đầu + giai đoạn warmup đầu. 2) Quan sát màn hình. | KHÔNG có ad/interstitial che màn trong level đầu/warmup đầu; ad chỉ khi game over lần 2+. | `E2E-38_no_ad_first.png` |
+| E2E-39 | Level-progress bar + chapter card (BR-14 D-A2) | 1) Chụp HUD lúc giữa level (score chưa tới mốc). 2) Đạt score 100 (level 10) → chụp popup. | HUD có bar "NEXT LEVEL: x/10" đổ đầy dần theo điểm; tại level 10 popup là chapter card "CHAPTER 2 · SUNSET SPRINT" (~2s, không chặn gameplay). | `E2E-39_progress_bar.png`, `E2E-39_chapter.png` |
 
 ---
 

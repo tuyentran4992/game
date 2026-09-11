@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { GameEngine } from '../GameEngine';
 import { MECHANICS } from '../mechanics';
+import type { BeeType } from '../types';
 
 describe('GameEngine — score + combo', () => {
   let engine: GameEngine;
@@ -45,21 +46,25 @@ describe('GameEngine — level progression + palette (BR-14)', () => {
   let engine: GameEngine;
   beforeEach(() => { engine = new GameEngine(MECHANICS); engine.startNewGame(); });
 
-  it('level = floor(score/10)+1 và KHÔNG reset', () => {
+  it('level = floor(score/22)+1 và KHÔNG reset (BALANCE-M1: mi 10→22)', () => {
     expect(engine.getLevel(0)).toBe(1);
-    expect(engine.getLevel(9)).toBe(1);
-    expect(engine.getLevel(10)).toBe(2);
-    expect(engine.getLevel(19)).toBe(2);
-    expect(engine.getLevel(20)).toBe(3);
-    expect(engine.getLevel(30)).toBe(4);
+    expect(engine.getLevel(21)).toBe(1);
+    expect(engine.getLevel(22)).toBe(2);
+    expect(engine.getLevel(43)).toBe(2);
+    expect(engine.getLevel(44)).toBe(3);
+    expect(engine.getLevel(66)).toBe(4);
   });
 
-  it('registerDodge trả levelUp=true khi qua mốc 10 điểm (combo đẩy nhanh)', () => {
-    // 4 né đầu = 4 điểm; né thứ 5 → combo +5 => score 10 => level 2
-    for (let i = 0; i < 4; i++) engine.registerDodge();
-    const milestone = engine.registerDodge(); // điểm 10
-    expect(milestone.levelUp).toBe(true);
-    expect(milestone.newLevel).toBe(2);
+  it('registerDodge trả levelUp=true khi qua mốc 22 điểm (combo đẩy nhanh)', () => {
+    // điểm = dodge + combo bonus mỗi 5 → mốc 22 tới ở cú né thứ 12
+    let up: { levelUp: boolean; newLevel: number } | null = null;
+    for (let i = 0; i < 30 && !up; i++) {
+      const r = engine.registerDodge();
+      if (r.levelUp) up = r;
+    }
+    expect(up!.levelUp).toBe(true);
+    expect(up!.newLevel).toBe(2);
+    expect(engine.score).toBeGreaterThanOrEqual(MECHANICS.milestoneInterval);
   });
 
   it('palette chuyển theo ngưỡng level (Level 1..9: ngày, 10..19: hoàng hôn, 20+: đêm)', () => {
@@ -108,26 +113,50 @@ describe('GameEngine — kỷ lục mới (BR-16)', () => {
   });
 });
 
-describe('GameEngine — difficulty curve (BR-17)', () => {
+// BR-17 curve D-A2 (chốt §5.1 card mẹ t_e1f6694d — comment id 23), hệ số chỉnh BALANCE-M1 t_2e94b3be:
+// warmup 30s flat 160 → ramp 1.2px/s tới 90s → 5.0px/s sau 90s; levelSpeedStep 10; softcap 440 K=1.5.
+describe('GameEngine — difficulty curve D-A2 (BR-17)', () => {
   let engine: GameEngine;
   beforeEach(() => { engine = new GameEngine(MECHANICS); engine.startNewGame(); });
 
-  it('trong 10s đầu: tốc độ = startSpeed (THẤP, giữ chân)', () => {
+  it('warmup = 30s: trong 30s đầu tốc độ = startSpeed (THẤP, giữ chân)', () => {
+    expect(MECHANICS.warmupSeconds).toBe(30);
     expect(engine.difficulty(5).speed).toBe(MECHANICS.startSpeed);
     expect(engine.difficulty(0).speed).toBe(MECHANICS.startSpeed);
-    expect(engine.difficulty(10).speed).toBe(MECHANICS.startSpeed);
+    expect(engine.difficulty(30).speed).toBe(MECHANICS.startSpeed);
   });
 
-  it('sau 10s: tốc độ tăng dần theo giây và level', () => {
-    expect(engine.difficulty(15).speed).toBe(MECHANICS.startSpeed + MECHANICS.speedIncreasePerSec * 5);
-    expect(engine.difficulty(20).speed).toBe(MECHANICS.startSpeed + MECHANICS.speedIncreasePerSec * 10);
+  it('khúc ramp sớm (30-90s): tốc độ ramp theo config B1 (0.85px/s), liên tục tại 2 mốc', () => {
+    // UPG2-B1: số neo 1.2→0.85 theo điều khoản card (test cũ khóa giá trị cũ → cập nhật số neo,
+    // công thức D-A2 giữ nguyên; khóa giá trị mới ở balanceB1.test.ts)
+    expect(MECHANICS.earlyRampPerSec).toBe(0.85);
+    expect(MECHANICS.earlyRampUntilSec).toBe(90);
+    expect(engine.difficulty(40).speed).toBe(160 + 0.85 * 10);   // 168.5
+    expect(engine.difficulty(90).speed).toBe(160 + 0.85 * 60);   // 211
+    // liền mạch tại ranh giới 90s
+    expect(engine.difficulty(90.001).speed).toBeCloseTo(engine.difficulty(90).speed, 1);
+  });
+
+  it('sau 90s: phần vượt ramp tính theo 5.0px/s', () => {
+    // difficulty(100) = 160 + 0.85*60 + 5.0*10 = 261
+    expect(engine.difficulty(100).speed).toBe(160 + 51 + 5.0 * 10);
+    // difficulty(110) = 160 + 51 + 5.0*20 = 311 (<440, chưa softcap)
+    expect(engine.difficulty(110).speed).toBe(160 + 51 + 5.0 * 20);
+    // 150s raw = 511 > 440 → softcap sqrt: 440 + 1.5*sqrt(71)
+    expect(engine.difficulty(150).speed).toBeCloseTo(440 + 1.5 * Math.sqrt(71), 5);
+  });
+
+  it('levelSpeedStep = 10: levelBonus = 10*(level-1)', () => {
+    expect(MECHANICS.levelSpeedStep).toBe(10);
+    // elapsed 60s (ramp 0.85*30=25.5), level 5: 160+25.5+10*4 = 225.5 (<440, chưa softcap)
+    expect(engine.difficulty(60, 5).speed).toBe(160 + 0.85 * 30 + 10 * 4);
   });
 
   it('tốc độ sau mốc 440 tăng siêu chậm (soft cap K=1.5) thay vì bị chặn cứng', () => {
-    // Level 10
-    const diffLvl10 = engine.difficulty(45, 10);
-    expect(diffLvl10.speed).toBeGreaterThan(440);
-    expect(diffLvl10.speed).toBeLessThan(470);
+    // Level 40 @ 300s: raw = 160 + 72 + 5.0*210 + 10*39 = 1462 >> 440 → softcap
+    const diff = engine.difficulty(300, 40);
+    expect(diff.speed).toBeGreaterThan(440);
+    expect(diff.speed).toBeLessThan(560);
 
     // Thời gian chơi cực lâu hoặc level cực cao vẫn tăng chậm, không phát nổ
     const crazyDiff = engine.difficulty(1000, 20);
@@ -135,10 +164,17 @@ describe('GameEngine — difficulty curve (BR-17)', () => {
     expect(crazyDiff.speed).toBeLessThan(560);
   });
 
-  it('spawn rate tăng sau 10s và chặn bởi spawnRateMax', () => {
+  it('monotonic: difficulty(180s,lv) > difficulty(60s,lv) mọi level', () => {
+    for (const lv of [1, 5, 10, 20]) {
+      expect(engine.difficulty(180, lv).speed).toBeGreaterThan(engine.difficulty(60, lv).speed);
+    }
+  });
+
+  it('spawn rate tăng sau warmup 30s và chặn bởi spawnRateMax', () => {
     expect(engine.difficulty(5).spawnCount).toBe(1);
-    const d20 = engine.difficulty(20);
-    expect(d20.spawnCount).toBeGreaterThan(1);
+    expect(engine.difficulty(30).spawnCount).toBe(1);
+    const d40 = engine.difficulty(40);
+    expect(d40.spawnCount).toBeGreaterThan(1);
     const dMax = engine.difficulty(1000);
     expect(dMax.spawnCount).toBe(MECHANICS.spawnRateMax);
   });
@@ -273,29 +309,70 @@ describe('GameEngine — Phase 4: Enemy Variety & Swarm Events', () => {
   let engine: GameEngine;
   beforeEach(() => { engine = new GameEngine(MECHANICS); engine.startNewGame(); });
 
-  it('rollBeeType trả về normal trong 10s đầu Level 1', () => {
+  // D-A2: gate ONLY theo elapsed (bỏ điều kiện level===1 dead-code) — 30s đầu chỉ 'normal'.
+  it('rollBeeType trả về normal trong 30s đầu (mọi level, rng adversarial)', () => {
+    const seeded = new GameEngine(MECHANICS, { rng: () => 0.42 }); // mọi roll rơi vào nhánh speedy/zigzag
     for (let i = 0; i < 20; i++) {
-      expect(engine.rollBeeType(5, 1)).toBe('normal');
+      expect(seeded.rollBeeType(5, 1)).toBe('normal');
+      expect(seeded.rollBeeType(29.9, 10)).toBe('normal'); // qua gate level cũng vẫn normal nếu <30s
     }
   });
 
-  it('rollBeeType có thể ra speedy sau 10s ở Level 1', () => {
-    const types = new Set();
-    for (let i = 0; i < 50; i++) {
-      types.add(engine.rollBeeType(15, 1));
+  it('speedy KHÔNG xuất hiện khi elapsed<30 với rng seeded; xuất hiện ngay sau 30s', () => {
+    const seedRng = (vals: number[]) => { let i = 0; return () => vals[i++ % vals.length]; };
+    const e = new GameEngine(MECHANICS, { rng: seedRng([0.1, 0.2, 0.3]) });
+    for (let t = 0; t < 30; t++) {
+      expect(e.rollBeeType(t, 1)).toBe('normal');
     }
+    // elapsed >= 30, level 1: roll < 0.25 → speedy
+    const e2 = new GameEngine(MECHANICS, { rng: () => 0.1 });
+    expect(e2.rollBeeType(31, 1)).toBe('speedy');
+    const types = new Set<BeeType>();
+    const e3 = new GameEngine(MECHANICS, { rng: seedRng([0.1, 0.9]) });
+    for (let i = 0; i < 10; i++) types.add(e3.rollBeeType(45, 1));
     expect(types.has('normal')).toBe(true);
     expect(types.has('speedy')).toBe(true);
   });
 
   it('rollBeeType tại Level 10+ (Hoàng hôn & Đêm) ra thêm ong zigzag', () => {
-    const types = new Set();
+    const types = new Set<BeeType>();
     for (let i = 0; i < 100; i++) {
       types.add(engine.rollBeeType(30, 10));
     }
     expect(types.has('normal')).toBe(true);
     expect(types.has('speedy')).toBe(true);
     expect(types.has('zigzag')).toBe(true);
+  });
+
+  // D-A2 deterministic sim 90s: rng injectable, không Math.random thô.
+  it('sim 90s deterministic: t<30s speed < 300px/s và 0 speedy bee; speed tăng đơn điệu', () => {
+    let seedState = 0xC0FFEE;
+    const mulberry32 = () => {
+      seedState |= 0; seedState = (seedState + 0x6D2B79F5) | 0;
+      let t = Math.imul(seedState ^ (seedState >>> 15), 1 | seedState);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const e = new GameEngine(MECHANICS, { rng: mulberry32 });
+    e.startNewGame();
+
+    let prevSpeed = 0;
+    for (let t = 0; t <= 90; t++) {
+      const speed = e.difficulty(t, e.getLevel()).speed;
+      expect(speed).toBeGreaterThanOrEqual(prevSpeed); // monotonic không giảm
+      prevSpeed = speed;
+      if (t < 30) {
+        // warmup flat theo thời gian (level 1 = mốc onboarding curve): <300px/s
+        expect(e.difficulty(t, 1).speed).toBeLessThan(300);
+        // 60 roll/giây cũng không được ra speedy trong warmup
+        for (let i = 0; i < 60; i++) expect(e.rollBeeType(t, e.getLevel())).not.toBe('speedy');
+      }
+      // mô phỏng tick điểm để level tiến (giữ sim khớp engine state)
+      e.registerDodge();
+      if (t % 3 === 0) e.tickSecond();
+    }
+    // at 90s, riêng time-ramp (level 1): 160 + 2.5*60 = 310 < 440 — chưa chạm softcap
+    expect(e.difficulty(90, 1).speed).toBeLessThanOrEqual(440);
   });
 
   it('shouldTriggerFatBeeBreather tính toán chính xác theo phương trình L(k) = 20 + 15k + 5k^2', () => {

@@ -79,6 +79,8 @@ const config: Phaser.Types.Core.GameConfig = {
 };
 
 const game = new Phaser.Game(config);
+// R5 (t_a562b030): expose cho QA E2E (map toạ độ qua game.scale, điều khiển scene từ test)
+(window as unknown as { __game?: Phaser.Game }).__game = game;
 
 // BR-04: obey pause/resume/mute ngay lập tức
 sdk.onPause(() => {

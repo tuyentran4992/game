@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#E85D26" />
+    <title>Banh Mi Master</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background: #17131c;
+        overflow: hidden;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      }
+      #game {
+        width: 100%;
+        height: 100%;
+      }
+      /* Language / platform button margin alignment (án lệ M1) */
+      [class*="playgama"], [id*="playgama"], [class*="language"], [id*="language"],
+      [class*="globe"], [id*="globe"], [class*="translate"], [id*="translate"],
+      [class*="bridge-lang"], [id*="bridge-lang"] {
+        right: max(16px, calc((100vw - min(100vw, 460px, 58vh)) / 2 + 16px)) !important;
+        top: max(32px, 4.5vh) !important;
+      }
+    </style>
+    <!-- Playgama Bridge v2 (JS Core) — SDK đa nền tảng (YouTube/CrazyGames/...).
+         Không có nền tảng → backend tự fallback ytgame/mock local. -->
+    <script src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script>
+  </head>
+  <body>
+    <div id="game"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

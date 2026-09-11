@@ -202,16 +202,28 @@ export class GameOverScene extends Phaser.Scene {
     // 10. Action Buttons
     const btnWidth = Math.min(250, pw - 48);
 
-    // Nút Primary: "🔁 Play Again"
+    // Nút Primary: "🔁 Play Again" — R5 (t_a562b030): CTA chính nổi nhất màn (glow + pulse)
     const retryBtnH = isShort ? 48 : 54;
     const retryBtn = drawButton(this, 0, curY + retryBtnH / 2, '🔁 Play Again', {
       width: btnWidth,
       height: retryBtnH,
       testid: 'retry-btn',
+      glow: true,
+      pulseMs: dur.ctaPulse,
       textType: { size: isShort ? '17px' : '19px', weight: '900', lh: 1 },
     });
     this.root.add(retryBtn.container);
 
+    // R5: probe QA E2E (tap-count game-over→spawn ≤2; vị trí nút cho click chính xác;
+    // spawn-flag đăng ký từ GameOver qua events.once('create') — không đụng Gameplay.ts)
+    const g = window as unknown as {
+      __gameoverCta?: { taps: number; x: number; y: number };
+      __gameplaySpawned?: boolean;
+    };
+    g.__gameoverCta = { taps: 0, x: this.root.x + retryBtn.container.x, y: this.root.y + retryBtn.container.y };
+    this.scene.get('GameplayScene')?.events.once('create', () => { g.__gameplaySpawned = true; });
+    const cta = g.__gameoverCta;
+    retryBtn.container.on('pointerdown', () => { cta.taps = 1; });
     retryBtn.container.on('pointerdown', async () => {
       retryBtn.container.disableInteractive();
       if (ctx.engine.shouldShowInterstitial()) {

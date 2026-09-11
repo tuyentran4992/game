@@ -92,11 +92,15 @@ dist/
 
 ## 3. HIỆN TRẠNG CÁC GAME
 
-### M1 — "Cuu Meo" (`M1-Rescue-Dodge/`) — rescue/dodge ✅ HOÀN CHỈNH
-- Gameplay: mèo né ong 3 lane; input = chạm/click; level-up đổi palette.
-- Âm thanh: 8 file numpy→mp3. Sprite WAN: mèo + ong.
-- Gói nộp Mediacube sẵn sàng: `build/cuu-meo.zip` + metadata.
-- Test: pipeline 53 pytest · game vitest 19 · tsc 0 · build OK.
+### M1 — "Buzz Blitz" (`M1-Rescue-Dodge/`) — rescue/dodge ✅ FIX ROUND 2 XONG, CHỜ FUN GATE BOSS (04/09)
+- Gameplay: mèo né ong 3 lane; input = chạm/click; level-up đổi palette + chapter cards.
+- **04/09 — PB-M1-FIX (feedback Sofiya/MediaCube):** curve D-A2 balance round 2 (warmup 30s flat 160 → ramp 1.2px/s tới 90s → 5px/s, softcap 440; mi 22, levelSpeedStep 10, spawnRateMax 4). Sim newbie-bot deterministic: sống cửa 30→60s **0%→60%** (24/40 seed), 0 chết warmup. HUD "NEXT LEVEL: x/22" + popup level + chapter (progression thấy được bằng mắt — đúng ý 1 của reviewer); acceleration đầu game giảm — đúng ý 2.
+- Test (main local = `09364856`, tree ≡ bản QA-RETEST t_68477b0d): verify_game.sh 4/4 · vitest **48/48** (BR-17 mô tả curve mới) · boot 390×844 0 lỗi · zip-boot cả 2 bản 0 lỗi.
+- **Gói nộp REPACK-2 (stamp 20260904-1247):** `build/buzz-blitz-mediacube-20260904-1247.zip` (md5 4998d5d0…, 1.34MB, 0 URL ngoài) + bản playgama (md5 67670518…). Dead art xoá sạch từ nguồn (1.81M→1.34M). Sổ: `docs/SUBMISSIONS.md`.
+- **04/09 17:29 — C1a (t_d724a691): metadata hồ sơ Mediacube ĐỦ 3 trường** — `build/metadata/metadata.json` đã thêm `how_to_play` (copy nguyên văn từ root metadata, verified trong src; zip REPACK-2 không đụng — md5 nguyên vẹn); REPACK gate growth-lead 6/6 PASS, log trong sổ nộp.
+- **04/09 ~21:30 — PERF3 fix-round (t_0bf09818→t_162eea7a→t_e49b5119, main d0011c1):** 4 bệnh perf render/GC A/B/C/D sửa xong, 0 đổi gameplay (regression flow A/B giống hệt, verify_game.sh 4/4, vitest 55/55). Gate raster-independent (G1 GC burst ≤-50%: ĐẠT -71%/-57% · G2 ScriptDuration ≤-10%: ĐẠT -13.3%; P95 frame-time swiftshader hạ xếp quan sát — không ngoại suy được cho device thật). FxPool.ts + UT 7 mới. **Nợ E:** Gameplay.ts 2233 dòng god-file → refactor round riêng sau khi M1 ổn (`docs/REJECT-LESSONS.md` mục 5). CHỜ: Fun Gate boss "còn laggy không" trên preview main mới.
+- **CÒN CHỜ:** Fun Gate PB-2 — anh Tuyền chơi tay 3 phút trên preview (supervisor dựng lane sau PREVIEW-GATE 09364856) → đạt thì anh trả lời email Sofiya + bấm resubmit trên MC Play (quyền boss PB-6).
+- (Lịch sử cũ: bản "Cuu Meo" 24/08 nộp pending — title đã đổi "Buzz Blitz" từ 99d7b10.)
 
 ### M2 — "Neon Sort" (`M2-Color-Sort/`) — color-sort ✅ HOÀN CHỈNH
 - Puzzle xếp chất lỏng ống, art Neon Galaxy.
@@ -117,6 +121,7 @@ dist/
 - Quy trình: anh code local → **fun gate** → con nào VUI mới viết SPEC đủ 5 file (`specs/1-<slug>/`) + chuẩn bị `games/<slug>`.
 - Test nền cũ vẫn tốt: vitest 109 · tsc 0 · build OK.
 - **27/08 — NÂNG CHUẨN ART (anh Tuyền chốt):** DESIGN-SYSTEM §4 viết lại thành PREMIUM CASUAL (benchmark 195 game Playgama Trending: candy volumetric, thumbnail-first, juice bắt buộc, art QA gate 5 câu). Áp dụng riêng M5: `M5-Peel/specs/1-peel/ART-STANDARD.md`. Có hiệu lực cả prototype fun gate.
+- **06/09 — PB-IDEA-M5 (CEO, sau khi M1 bị Playgama reject):** quét MoA 3 góc + anti-clone catalog check web (PB-5) → 2 ứng viên sống: **Skip King** (flick đá skip nước, 0 bản cùng mechanic) + **Slice Studio** (trace cắt đúng hình, 1 bản kề Perfect Half — cần khác biệt hóa); pottery = dự phòng. Trình boss chọn → prototype fun gate PB-2 → mới SPEC. Bằng chứng: `/data/agents/ceo/outbox/t_fced83bb/IDEA-LIST.md` + nhật ký catalog trong `docs/SUBMISSIONS.md`. ⚠ M5 Peel: Playgama đã có "Sticker Jam: Peel Off & Match" — re-check catalog trước khi đầu tư lại M5.
 
 ### M4 — "Neon Grid" (`g4-neon-grid/`) — block puzzle ✅ CODE + BUILD
 - **Kiến trúc monorepo đầu tiên:** `@game/core` + `@game/sdk`.
@@ -125,6 +130,13 @@ dist/
 - **Code:** logic/ (pure TS) + scenes/ + render/ + ui/ (GameTheme).
 - **Status:** typecheck ✅ · build ✅ · 1 source → 3 platforms ✅
 - **Cần:** gen asset WAN thật, QA browser, đóng gói.
+
+### M8 — "Slice Studio" (`M8-SliceStudio/`) — trace-cut 🚧 PROTOTYPE XẤU XONG, CHỜ FUN GATE BOSS PB-2 (07/09)
+- Gameplay: silhouette + đường mờ → ngón trace theo đường → nhả tay = tách đôi → % sai số trace-vs-path → 1-3 sao. Khác biệt hóa vs Perfect Half: trace-path quanh hình + đo % sai số + lõi ẩn reveal + no-go zone (catalog GO 07/09, `docs/SUBMISSIONS.md`).
+- **Bảng biến đổi 4 mốc (PB-3b):** L1-2 thẳng học verb (chấm % nền) → L3-5 lõi ẩn reveal (3★ threshold +5, theme tím) → L6-9 cong + phạt wobble ×1.5-2 (cách CHẤM đổi) → L10-12 forbidden segment đỏ (cách CHỌN đổi: nhả trước vùng cấm → chạm tiếp sau — engine phase `mid`; chạm đỏ = chunk lost 0★).
+- **Code theo CONTRACT:** tầng A pure-TS `geom/path|slice.ts`, `level/levels.ts` (12 level + validate), `core/scoring.ts` (GHOST CUT ≥95% streak), `core/engine.ts` (state machine) — 0 import Phaser; tầng B mỏng `scenes/TraceScene|EndScene`, `render/fx.ts` (split = pre-baked half-mask từ path extends qua ellipse, 0 clipper/greiner-hormann), `audio/synth.ts` (WebAudio 5 voice, 0 file MP3), juice: hitstop + flash ADD + shake + 2 mảnh rơi + spark burst. Onboarding: start pulse + demo dot + magnet 48px + nhả sớm không bao giờ fail (chỉ trần 1★). Skip-level debug chỉ bản standalone.
+- **Gate (main `b7ace8e`):** vitest **22/22** · tsc 0 · `verify_game.sh M8-SliceStudio` **5/5** (bundle 386KB ≤1.6MB) · boot check headless Chrome **0 console error** · E2E: L1 trace mô phỏng 99% GHOST CUT → tự lên L2; L10 nhả tại mép đỏ → hold → tiếp sau → GHOST CUT 99%, đỏ/hint render đúng (screenshot).
+- **CHỜ: Fun Gate PB-2** — anh Tuyền chơi tay (trình theo PB-4: preview tĩnh Netlify + 30s mô tả + câu hỏi "chơi có vui không"). Boss GO → mới cắt chain production; FAIL → kill ghi REJECT-LESSONS. Không polish trước duyệt.
 
 ---
 
@@ -159,9 +171,9 @@ python -m pipeline package  --game-dir games/<name>
 ---
 
 ## 6. ĐỐI TÁC / NỘP
-- **Mediacube** — MC Pay account "Tuyen Tran" ✅, MC Play PENDING (chờ duyệt indie).
+- **Mediacube** — MC Pay account "Tuyen Tran" ✅, **MC Play APPROVED** (email Sofiya 04/09 — hết pending). M1 đã review: ⚠️ cần sửa 2 ý (levels progression + giảm acceleration đầu game) rồi resubmit — chi tiết `docs/REJECT-LESSONS.md`.
 - **Playgama** — account kotaro001 ✅, M3 submitted 2026-08-24, review 3-5 ngày.
-- **CrazyGames** — chưa nộp.
+- **CrazyGames** — ⛔ LOẠI khỏi phạm vi (boss chốt 04/09: chỉ duy trì Playgama + Mediacube + Reddit — xem PROJECT-RULES §PB-0).
 - **Reddit Devvit** — M3 port done, chưa deploy.
 
 ---
@@ -180,3 +192,4 @@ python -m pipeline package  --game-dir games/<name>
 - **Vitest có thể hang trên môi trường này** — chạy từng file test riêng lẻ.
 - **Multi-platform build:** Vite build --mode <platform> để build 1 platform riêng.
 - **SDK:** Handler singleton khởi tạo ngay khi import → trong test environment, detect đúng `local`.
+- **07/09 ~12:1x UTC — SKIP KING (M7) boss KILL tại Fun Gate PB-2:** chơi tay bản ce52fd7 (audio+feel+juice FUN2) phán "nhàm chán quá". Dây FUN2 closeout đã done, 0 card live. Nguyên nhân gốc: vòng lặp core 0 biến đổi theo mốc (cột 3 BIEN-DOI-VONG-LAP trống) — đã hợp thức 1 dòng vào docs/REJECT-LESSONS.md mục 4.6. Không resubmit, không vòng kế cho M7. Site netlify skip-king-playables giữ nguyên (chưa xóa).

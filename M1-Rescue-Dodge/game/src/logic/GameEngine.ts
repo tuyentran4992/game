@@ -16,8 +16,11 @@ import type {
   CatSkin,
   Quest,
   GameEngineOptions,
+  DebutType,
+  DebutWindow,
 } from './types';
 import { CAT_SKINS, INITIAL_QUESTS } from '../config';
+import { DebutBeat } from './DebutBeat';
 
 export {
   type DodgeResult,
@@ -63,8 +66,16 @@ export class GameEngine {
   private continueUsed = false;
   fatBeeSpawnCount = 0;
 
+  // D-A2: rng injectable — mọi roll spawn/type logic phải đi qua đây (default Math.random).
+  private readonly rngFn: () => number;
+
+  // UPG2-P1a: state debut beat ủy quyền cho DebutBeat (1 class 1 trách nhiệm — chống god-file).
+  private debut: DebutBeat;
+
   constructor(cfg: MechanicsConfig, opts: GameEngineOptions = {}) {
     this.cfg = cfg;
+    this.rngFn = opts.rng ?? Math.random;
+    this.debut = new DebutBeat(cfg);
     this.bestScore = opts.bestScore ?? 0;
     this.totalFish = opts.totalFish ?? 0;
     this.totalGamesPlayed = opts.totalGamesPlayed ?? 0;
@@ -86,6 +97,8 @@ export class GameEngine {
     this.recordShownThisSession = false;
     this.continueUsed = false;
     this.fatBeeSpawnCount = 0;
+    // UPG2-P1a: debut 1 lần/PHIÊN — ván mới reset toàn bộ firstSeen.
+    this.debut.clear();
     this.totalGamesPlayed += 1;
   }
 
@@ -275,12 +288,13 @@ export class GameEngine {
   }
 
   // --- Enemy Variety (Phân phối loại ong thường/nhanh/zigzag theo tiến trình) ---
+  // D-A2: gate CHỈ theo elapsed — hết warmup (30s) là bắt đầu đa dạng hóa (bỏ `level === 1`).
   rollBeeType(elapsedSec = this.elapsed, level = this.getLevel()): BeeType {
-    if (elapsedSec < this.cfg.warmupSeconds && level === 1) {
+    if (elapsedSec < this.cfg.warmupSeconds) {
       return 'normal';
     }
 
-    const roll = Math.random();
+    const roll = this.rngFn();
     if (level < 10) {
       // Level 1-9 (Ban ngày): 75% thường, 25% nhanh
       return roll < 0.25 ? 'speedy' : 'normal';
@@ -290,6 +304,17 @@ export class GameEngine {
       if (roll < 0.50) return 'zigzag';
       return 'normal';
     }
+  }
+
+  // --- Debut beat (UPG2-P1a, t_6035fb14) — ủy quyền DebutBeat, CONTRACT §3.3 ---
+  /** Ghi lần đầu xuất hiện của 1 loại trong phiên (spawn/swarm gọi; normal bị bỏ qua). */
+  noteDebut(type: DebutType, atElapsedSec: number): void {
+    this.debut.note(type, atElapsedSec);
+  }
+
+  /** Cửa sổ telegraph đang mở tại `at` (typed DebutWindow — tầng B vẽ từ dữ liệu này) hoặc null. */
+  debutAt(at: number): DebutWindow | null {
+    return this.debut.activeAt(at);
   }
 
   // --- Update Timers theo dt ---
@@ -327,12 +352,20 @@ export class GameEngine {
     };
   }
 
-  // --- Difficulty curve (BR-17) ---
+  // --- Difficulty curve (BR-17, D-A2: ramp 2 khúc) ---
+  // elapsed < warmup          → startSpeed (flat, giữ chân người mới)
+  // warmup ≤ elapsed ≤ 90s    → ramp sớm mượt earlyRampPerSec (2.5px/s)
+  // elapsed > 90s             → phần vượt tính theo speedIncreasePerSec (5.0px/s)
+  // Late-game shape (softcap sqrt K=1.5 tại maxSpeed) giữ nguyên.
   difficulty(elapsedSec = this.elapsed, level = this.getLevel()): DifficultyResult {
     const warm = this.cfg.warmupSeconds;
     let ramp = 0;
     if (elapsedSec > warm) {
-      ramp = this.cfg.speedIncreasePerSec * (elapsedSec - warm);
+      const earlySpan = Math.min(elapsedSec, this.cfg.earlyRampUntilSec) - warm;
+      ramp = this.cfg.earlyRampPerSec * earlySpan;
+      if (elapsedSec > this.cfg.earlyRampUntilSec) {
+        ramp += this.cfg.speedIncreasePerSec * (elapsedSec - this.cfg.earlyRampUntilSec);
+      }
     }
     const levelBonus = this.cfg.levelSpeedStep * (level - 1);
     const rawSpeed = this.cfg.startSpeed + ramp + levelBonus;
