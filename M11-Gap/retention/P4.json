@@ -1,0 +1,91 @@
+{
+  "direction": "P4 — Nhịp phiên & onboarding: cấu trúc 60 giây đầu không chữ, thứ tự dạy luật, 'one more level', thời lượng phiên mục tiêu, hook quay lại ngày 2 (không daily), đo 100% offline",
+  "proposals": [
+    {
+      "id": "P4-01",
+      "name": "Onboarding 60 giây KHÔNG chữ: màn 1 chính là tutorial",
+      "mechanism": "Bỏ hẳn menu chào và mọi dòng hướng dẫn. Người chơi rơi thẳng vào tờ giấy đã gấp 4 với 1 lỗ đục; nếp gấp 'thở' (phồng/xẹp nhẹ) chỉ đúng vào chỗ lỗ, và chỉ 1 trong 4 đáp án có tương tác visual đó. Chọn sai thì tờ giấy rung nhẹ rồi cho chọn lại ngay, không có fail screen. Sau ~45-60 giây người chơi thấy cảnh mở bung (unfold animation 2 giây) — phần thưởng thị giác của màn 1.",
+      "metric": "% người chơi mới chạm được 'đáp án đúng màn 1' trong ≤60 giây (funnel step: load → first_tap → first_answer → unfold_seen); mục tiêu ≥80% đi qua mốc 1 phút đầu.",
+      "benchmark": {
+        "value": "Top game web trên CrazyGames: ≥80% người chơi ở lại chơi ≥1 phút sau khi vào; yêu cầu kênh là 'đưa user mới thẳng vào gameplay, tối đa 1 click'.",
+        "source_url": "https://docs.crazygames.com/resources/basic-launch-metrics/",
+        "date": "2026-09-13"
+      },
+      "how_measured": "Log local qua SDK storage (localStorage): sự kiện t0=level1_shown, t1=first_tap, t2=first_answer_selected, t3=unfold_seen kèm timestamp. Playtest offline 10 người: đọc log qua devtools console, đếm funnel + bấm giờ. Không gọi mạng.",
+      "what_would_falsify": "Trong 10 người playtest, ≥3 người ngồi >60 giây ở màn 1 mà không chọn đáp án nào (đứng hình/ấm ừ), hoặc median thời gian tới đáp án đầu >45 giây → 'không chữ' thất bại, phải thêm chỉ dẫn hình ảnh mạnh hơn hoặc 1 dòng icon.",
+      "playables_ok": true
+    },
+    {
+      "id": "P4-02",
+      "name": "Thứ tự dạy biến thể: mỗi luật mới cách nhau 5-10 màn, ra mắt ở màn siêu dễ",
+      "mechanism": "Đường luật: L1-5 lỗ giữa mặt giấy (dễ nhất) → L6-10 lỗ ĐÚNG TRÊN NẾP gấp (mở bung ra lỗ nằm ở giữa mép) → L11-15 CẮT 1 GÓC → L16-20 gấp 8 lớp → L21+ tổ hợp. Mỗi luật mới xuất hiện lần đầu ở dạng 'biết đáp án gần như chắc chắn' (3 phương án nhiễu rất hiển nhiên + animation mở bung chậm), 2-3 màn sau mới siết nhiễu. Không giới thiệu 2 luật mới cùng màn.",
+      "metric": "Tỉ lệ qua màn ngay lần đầu (first-attempt clear) theo từng level: 10 màn đầu ≥90-95%, và không level nào sau mốc ra luật mới rơi <70%.",
+      "benchmark": {
+        "value": "Target first-attempt completion 95-100% cho level 1-10, 85-95% cho 11-30; quy tắc 'một mechanic mới mỗi lần, cho thành thạo trong 5-10 level trước khi thêm cái sau'.",
+        "source_url": "https://egmatic.com/blog/create-drag-drop-games-players-actually-finish",
+        "date": "2026-06-05"
+      },
+      "how_measured": "Sự kiện level_start/level_result(level_id, attempts, success) ghi localStorage ring-buffer; script console tổng hợp thành histogram first-attempt clear theo level. Xem qua màn chơi thử offline, không telemetry.",
+      "what_would_falsify": "Playtest cho thấy cluster level <70% clear rơi đúng 1-2 màn sau MỖI lần giới thiệu luật mới (spike lặp lại theo chu kỳ ~5 màn) → nhịp giới thiệu quá dày; hoặc clear rate màn luật mới >98% liên tục → quá chậm, người chơi giỏi chán.",
+      "playables_ok": true
+    },
+    {
+      "id": "P4-03",
+      "name": "'One more level': màn kế tiếp đã gấp sẵn chờ trên màn hình, không có 'win screen'",
+      "mechanism": "Sau animation mở bung (kết quả đúng/sai đều coi là xong màn), KHÔNG có màn hình tổng kết sao/cộng điểm chặn giữa. Thay vào đó 2 giây sau, tờ giấy của màn kế tự gấp lại ngay giữa màn hình với 1 nút 'MỞ' to — câu hỏi 'cái này mở ra là hình gì?' tự xuất hiện trong đầu người chơi. Đổi biến thể luật (lỗ→cắt góc) đặt ngay sau 1 màn dễ để 'một màn nữa' luôn rẻ (60 giây).",
+      "metric": "Level-to-level continue rate (tỉ lệ vào màn N+1 sau khi xong màn N) ≥85% trong 10 màn đầu; số màn mỗi phiên.",
+      "benchmark": {
+        "value": "Poki: game thành công trên web có average playtime 5+ phút; ngưỡng 'healthy' để đi tiếp là trung bình >3 phút VÀ ≥25% lượt chơi dài >3 phút — với màn 60 giây tức là cần ~5 màn/phiên cho nhóm tốt.",
+        "source_url": "https://developers.poki.com/guide/player-fit-test",
+        "date": "2026-09-13"
+      },
+      "how_measured": "Cặp sự kiện level_end → next_level_start trong log localStorage cùng timestamp; continue rate và phân phối 'màn/phiên' tính bằng script console đọc log nội bộ máy. Offline hoàn toàn.",
+      "what_would_falsify": "Đo thấy ≥50% phiên dừng ở đúng 1-2 màn VÀ điểm dừng rơi NGAY SAU một màn trả lời ĐÚNG (hứng khởi xong là rời đi) → phần thưởng 'biết đáp án' đã đóng vòng lặp, 'one more level' không hoạt động, phải đổi chỗ treo kết quả (đoán trước khi mở).",
+      "playables_ok": true
+    },
+    {
+      "id": "P4-04",
+      "name": "Thời lượng phiên mục tiêu 5-7 phút (~5-7 màn), màn = breakpoint tự nhiên",
+      "mechanism": "Mỗi màn khoá cứng 45-75 giây (timer mềm không phạt); không energy, không chờ, không session nào bắt buộc >10 phút. Thiết kế sao cho median phiên rơi vào 5-7 phút: đủ 1 chu kỳ 'học luật mới + thử tài' nhưng kết thúc sớm enough để người chơi còn 'thèm' — ngắt ở giữa một biến thể đang hay chứ không hết content.",
+      "metric": "Median session duration (log); mục tiêu ≥4 phút (ngưỡng Poki), sweet spot 5-7 phút; sessions/người/ngày.",
+      "benchmark": {
+        "value": "Casual games: median session 5-15 phút (hyper-casual chỉ 60-180 giây); CrazyGames coi 10+ phút average playtime là dấu hiệu game thành công.",
+        "source_url": "https://mwm.ai/glossary/session-length",
+        "date": "2026-04"
+      },
+      "how_measured": "session_start/session_end (end = 30 giây không tương tác hoặc tab hidden) ghi localStorage; xuất JSONL đọc bằng console, tính median + histogram. Đo bằng mắt trong playtest: bấm giờ tay 10 phiên đối chiếu log.",
+      "what_would_falsify": "Median phiên <2 phút VÀ điểm rời đi rơi GIỮA màn (level giữa chừng, chưa có kết quả) → 60 giây/màn quá dài cho 1 đơn vị giải trí, phải rút màn xuống ~30 giây hoặc gộp 2 màn 1 lần mở; ngược lại nếu phiên kéo >15 phút liên tục mà không có dấu hiệu mệt thì nới nhịp.",
+      "playables_ok": true
+    },
+    {
+      "id": "P4-05",
+      "name": "Cliffhanger 'phong bì chưa mở' + màn hình trở lại đúng điểm dừng (hook D1 không cần daily, không cần mạng)",
+      "mechanism": "Khi người chơi rời đi giữa biến thể mới (hoặc sau màn cuối của block 5), lưu trạng thái 'phong bì đang gấp dở'. Lần mở game kế tiếp (bất kể khi nào), màn đầu TIÊN hiển thị chính tờ giấy đó đang gấp, nhãn duy nhất là 1 icon bàn tay — không chữ, không ngày, không streak phạt. Không dùng daily challenge, không notification; động lực quay lại là 'mở nốt cái đang dở', không phải sợ mất chuỗi.",
+      "metric": "'Local D1' theo thiết bị: % người chơi có ≥1 phiên vào NGÀY LỊCH TIẾP THEO (tính từ date last-played đã lưu máy); mục tiêu ≥15%; màn resume: % bấm 'mở nốt' ≥60%.",
+      "benchmark": {
+        "value": "Web (CrazyGames Basic Launch): game tốt đạt D1 10-15%. Mobile puzzle (AppsFlyer Q3-2022): D1 31.85%, D7 12.18%. GameAnalytics 2024: D1 median toàn thể loại ~22.6%, D7 puzzle median 4.3-4.8% — chọn mục tiêu D1 15% / D7 5% là vượt chuẩn web, sát median puzzle mobile.",
+        "source_url": "https://docs.crazygames.com/resources/basic-launch-metrics/",
+        "date": "10-15%: CrazyGames docs (truy cập 13/09/2026); 31.85%/12.18%: https://business.mistplay.com/resources/mobile-game-retention-benchmarks (2023-10-03); 22.64%/4.27-4.79%: https://investgame.net/wp-content/uploads/2025-02-2025-GameAnalytics-Mobile-Gaming-Benchmarks.pdf (2025-02)"
+      },
+      "how_measured": "localStorage lưu first_play_date, các ngày đã chơi (mảng date dedupe, ~365 byte/năm/người) + flag pending_envelope. Khi đóng gói bản QA, script console đọc array date và tính D1/D7 nội bộ máy — không gửi đi đâu. Playtest gom log thủ công (copy JSON từ console) để tổng hợp.",
+      "what_would_falsify": "Cohort playtest ≥30 người có local D1 <10% (dưới đáy 'strong' của web) HOẶC nút resume bị bỏ qua >50% (vào thẳng menu level list thay vì mở nốt phong bì) → cliffhanger không đủ mạnh, phải tìm hook khác (kỷ lục cá nhân/ghost thuộc trục P2).",
+      "playables_ok": true
+    },
+    {
+      "id": "P4-06",
+      "name": "Đường ống đo offline: event log ring-buffer ≤100KB trong SDK storage + export JSONL thủ công",
+      "mechanism": "Một logger duy nhất ghi mọi sự kiện P4 (session_start/end, funnel màn 1, level_start/result, resume_shown/resume_tapped, dates) thành dòng JSON vào 1 khoá localStorage giới hạn ~100KB, tự bay event cũ nhất (ring buffer). Dev/QA đọc bằng snippet console in ra JSONL rồi tự tay tính funnel bằng Python. Toàn bộ nằm trong hạn mức <3MB của Playables, không có bất kỳ request nào.",
+      "metric": "Độ tin cây của phép đo: ≥95% phiên trong playtest có đủ cặp session_start/session_end + ít nhất 1 level_result trong log.",
+      "benchmark": {
+        "value": null,
+        "unverified": true,
+        "why": "Không tìm được benchmark công bố cho 'pipeline đo retention bằng localStorage không mạng'; chỉ có ràng buộc nền là Playables yêu cầu save qua SDK storage <3MB (theo README-RET.md). Con số 95% coverage là ngưỡng nội bộ tự đặt để biết log đủ tin cậy."
+      },
+      "how_measured": "Script tự test chạy offline: mô phỏng 100 phiên (headless, local) ghi log → verify không vượt 100KB, không mất event giữa 2 phiên liên tiếp, thứ tự timestamp đúng; nếu localStorage bị xoá (chế độ ẩn danh) thì game vẫn chơi bình thường, chỉ mất log.",
+      "what_would_falsify": "Playtest thật mất >20% session data (ring buffer cán sớm hơn dự kiến, hoặc storage bị trình duyệt thanh lọc) khiến funnel không đọc được → chuyển sang đo 'cầm tay bấm giờ' trong 10-15 phiên playtest thay vì log.",
+      "playables_ok": true
+    }
+  ],
+  "summary": "Cấu trúc phiên đề xuất: vào game ≤1 click tới tờ giấy đầu tiên; 60 giây đầu không một chữ nào (màn 1 = demo có chỉ dẫn hình thể); phiên mục tiêu 5-7 phút ≈ 5-7 màn, màn = breakpoint tự nhiên. Thứ tự dạy luật: lỗ giữa mặt → lỗ trên nếp → cắt góc → gấp 8 → tổ hợp, mỗi luật mới cách nhau 5-10 màn và ra mắt ở màn siêu dễ. Machine 'one more level': sau kết quả, tờ giấy kế tự gấp giữa màn hình chờ nút MỞ, không win screen. Hook ngày 2 không daily: phong bì 'chưa mở dở' hiển thị đầu tiên khi quay lại. Số neo: conversion ≥1 phút 80%+ và D1 10-15% là 'strong' theo CrazyGames docs; Poki cần avg playtime >3 phút, game tốt 5+ phút; puzzle mobile D1 31.85%/D7 12.18% (AppsFlyer qua Mistplay), D7 median puzzle 4.3-4.8% (GameAnalytics 2024). Đo toàn bộ bằng localStorage ring-buffer ≤100KB, export JSONL đọc tay — không một call mạng nào. Mạnh nhất: P4-01 vì nó là cổ chai trên cùng của mọi funnel (mất ở đây thì mọi lớp dưới vô nghĩa) và CrazyGames đặt đúng tiêu chí ≥80%/≥1 phút làm KPI nền. Rủi ro nhất: P4-05 — mục tiêu local D1 15% lấy từ game CÓ push notification/install base, còn Playables không có notification; người dùng YouTube lướt qua một lần có thể không bao giờ quay lại đúng entry, nên con số D1 'local' ở đây có thể sàn thấp hơn nhiều và dễ đánh giá sai hook.",
+  "notes": "Toàn bộ đo đạc offline, không event nào rời máy. Không đề xuất nằm ở trục P1 (số lượng màn/ramp sao), P2 (kỷ lục/ghost), P3 (skin/rewarded)."
+}

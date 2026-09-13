@@ -1,0 +1,56 @@
+[2026-09-13 15:17:08] chờ PID 121414 (bước 1) kết thúc…
+[2026-09-13 15:18:13] chờ PID 121414 (bước 1) kết thúc…
+[2026-09-13 15:23:32] === BẮT ĐẦU chuỗi swarm B1a ===
+[2026-09-13 15:23:32] chờ bước test PID 121414 xong…
+[2026-09-13 15:36:09] bước 1 đã kết thúc
+[2026-09-13 15:36:09] có 7 file test → chạy bước 2 (code)
+[2026-09-13 15:36:09] START 2-code (max-turns 80)
+[2026-09-13 15:36:12] bước test kết thúc (dùng lại kết quả sẵn có)
+[2026-09-13 15:36:12] có 7 file test → BƯỚC 2: code (1 con, bắt buộc 1 tác giả)
+[2026-09-13 15:36:13] bước 1 đã kết thúc
+[2026-09-13 15:36:13] có 7 file test → chạy bước 2 (code)
+[2026-09-13 15:36:13] START 2-code (max-turns 80)
+--- [2026-09-13 15:37:19] KHỞI ĐỘNG LẠI chuỗi sạch (SKIP_TESTS, dùng 7 file test sẵn có) ---
+[2026-09-13 15:37:19] === BẮT ĐẦU chuỗi swarm B1a ===
+[2026-09-13 15:37:19] SKIP_TESTS=1 → dùng file test sẵn có
+[2026-09-13 15:37:19] có 7 file test → BƯỚC 2: code (1 con, bắt buộc 1 tác giả)
+[2026-09-13 16:11:54] END 2-code exit=1 (logs/B1a-2-code.log)
+[2026-09-13 16:11:54] CỔNG máy: typecheck + test:logic
+[2026-09-13 16:11:58] CỔNG FAIL (logs/B1a-gate.log) → DỪNG, cần 1 vòng fix
+[2026-09-13 16:14:25] === BẮT ĐẦU chuỗi swarm B1a ===
+[2026-09-13 16:14:25] SKIP_TESTS=1 → dùng file test sẵn có
+[2026-09-13 16:14:25] có 7 file test → BƯỚC 2: code (1 con, bắt buộc 1 tác giả)
+[2026-09-13 16:14:25] chế độ FIX: chạy B1a-2b-fix.md (thay vì prompt code)
+[2026-09-13 16:32:37] END 2b-fix exit=1 (logs/B1a-2b-fix.log)
+[2026-09-13 16:32:37] CỔNG máy: typecheck + test:logic
+[2026-09-13 16:32:56] CỔNG PASS → BƯỚC 3: 3 phiên review SONG SONG (code · fuzz/purity · kiến trúc)
+[2026-09-13 16:38:54] END 3c-review-arch exit=1 (logs/B1a-3c-review-arch.log)
+[2026-09-13 16:40:40] END 3a-review-code exit=1 (logs/B1a-3a-review-code.log)
+[2026-09-13 16:45:19] END 3b-review-fuzz exit=1 (logs/B1a-3b-review-fuzz.log)
+[2026-09-13 16:45:19] 3 phiên review xong → CHUỖI XONG B1a (chờ Hermes đọc + verify ở mốc)
+[2026-09-13 16:45:32] === BẮT ĐẦU chuỗi B1a (variant=default) ===
+[2026-09-13 16:45:32] SKIP_CODE=1 → bỏ qua
+[2026-09-13 16:45:32] CỔNG máy (HARNESS.yaml:gate)
+[2026-09-13 16:45:50] CỔNG PASS
+[2026-09-13 16:45:50] REVIEW: 3 phiên song song (chỉ đọc)
+[2026-09-13 16:45:50] START 3a-code (prompt=B1a-3a-code.md max-turns=30 mode=readonly variant=default)
+[2026-09-13 16:45:50] START 3c-arch (prompt=B1a-3c-arch.md max-turns=30 mode=readonly variant=default)
+[2026-09-13 16:45:50] START 3b-stress (prompt=B1a-3b-stress.md max-turns=30 mode=readonly variant=default)
+METRICS {"ts": "2026-09-13T16:45:53Z", "variant": "v1-harness", "batch": "B1a", "step": "3a-code", "model": "qwen3.8-flash", "max_turns": 30, "turns": 1, "duration_s": 2.7, "api_ms": 0, "ttft_ms": null, "cost_usd": 0, "session_id": "5fc650a4-c5d4-4054-96ea-a47fd76c671b", "resume_from": null, "ctx_per_turn_avg": 0, "ctx_per_turn_max": 0, "syspack": "B1a-syspack.md", "exit": 1, "timeout": null, "input_tokens": 0, "output_tokens": 0, "cache_read": 0, "cache_creation": 0}
+[B1a/3a-code] 1 lượt · 2.7s · vào 0 · cache 0 · ra 0 · $0 · ok
+[2026-09-13 16:45:53] END 3a-code exit!=0 (xem /data/youtube-playables/M11-Gap/logs/B1a-3a-code.log)
+METRICS {"ts": "2026-09-13T16:45:54Z", "variant": "v1-harness", "batch": "B1a", "step": "3b-stress", "model": "qwen3.8-flash", "max_turns": 30, "turns": 1, "duration_s": 2.9, "api_ms": 0, "ttft_ms": null, "cost_usd": 0, "session_id": "f029cd7b-0801-4d9b-9101-c38873719704", "resume_from": null, "ctx_per_turn_avg": 0, "ctx_per_turn_max": 0, "syspack": "B1a-syspack.md", "exit": 1, "timeout": null, "input_tokens": 0, "output_tokens": 0, "cache_read": 0, "cache_creation": 0}
+[B1a/3b-stress] 1 lượt · 2.9s · vào 0 · cache 0 · ra 0 · $0 · ok
+[2026-09-13 16:45:54] END 3b-stress exit!=0 (xem /data/youtube-playables/M11-Gap/logs/B1a-3b-stress.log)
+METRICS {"ts": "2026-09-13T16:45:54Z", "variant": "v1-harness", "batch": "B1a", "step": "3c-arch", "model": "qwen3.8-flash", "max_turns": 30, "turns": 1, "duration_s": 3.3, "api_ms": 0, "ttft_ms": null, "cost_usd": 0, "session_id": "0e2bbe40-2471-4030-9519-603f2859be4c", "resume_from": null, "ctx_per_turn_avg": 0, "ctx_per_turn_max": 0, "syspack": "B1a-syspack.md", "exit": 1, "timeout": null, "input_tokens": 0, "output_tokens": 0, "cache_read": 0, "cache_creation": 0}
+[B1a/3c-arch] 1 lượt · 3.3s · vào 0 · cache 0 · ra 0 · $0 · ok
+[2026-09-13 16:45:54] END 3c-arch exit!=0 (xem /data/youtube-playables/M11-Gap/logs/B1a-3c-arch.log)
+[2026-09-13 16:45:54] CHUỖI XONG B1a — chờ Hermes đọc 3 báo cáo review
+[2026-09-13 16:46:28] === BẮT ĐẦU chuỗi B1a (variant=default) ===
+[2026-09-13 16:46:28] SKIP_CODE=1 → bỏ qua
+[2026-09-13 16:46:28] CỔNG máy (HARNESS.yaml:gate)
+[2026-09-13 16:46:45] CỔNG PASS
+[2026-09-13 16:46:45] REVIEW: 3 phiên song song (chỉ đọc)
+[2026-09-13 16:46:45] START 3a-code (prompt=B1a-3a-code.md max-turns=30 mode=readonly variant=default)
+[2026-09-13 16:46:45] START 3c-arch (prompt=B1a-3c-arch.md max-turns=30 mode=readonly variant=default)
+[2026-09-13 16:46:45] START 3b-stress (prompt=B1a-3b-stress.md max-turns=30 mode=readonly variant=default)

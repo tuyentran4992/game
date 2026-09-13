@@ -1,0 +1,3 @@
+[claude-code:unrecognized_model] {"model":"ds/deepseek-flash","query_source":"generate_session_title"}
+[claude-code:unrecognized_model] {"model":"qwen3.8-flash","query_source":"sdk"}
+Error: Reached max turns (80)

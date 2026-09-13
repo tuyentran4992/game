@@ -1,0 +1,145 @@
+[
+  {
+    "channel": "playgama",
+    "route": "R1",
+    "title": "Paper Doll Diary: Dress Up DIY",
+    "url": "https://playgama.com/game/paper-doll-diary-dress-up-diy",
+    "mechanic_verb": "dress-up giấy trên búp bê giấy — không gấp/đục",
+    "similarity": 1,
+    "votes": [1, 1, 1],
+    "evidence_note": "Lên từ search nội bộ https://playgama.com/search?q=paper+fold và ?q=paper+folding. Trang chỉ mô tả tô/xếp váy giấy, không có verb gấp-rồi-đục-đoán. Các query 'fold and punch', 'paper punch', 'punch hole', 'cut corner', 'unfold puzzle', 'guess unfolded' trên Playgama trả về 0 kết quả liên quan (chỉ backfill game random: solitaire, bubble shooter...).",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "playgama",
+    "route": "R1",
+    "title": "Paper Princess - Doll Dress Up",
+    "url": "https://playgama.com/game/paper-princess--doll-dress-up",
+    "mechanic_verb": "dress-up giấy — verb khác hẳn",
+    "similarity": 1,
+    "votes": [1, 1, 1],
+    "evidence_note": "Kết quả search nội bộ https://playgama.com/search?q=paper+fold (cùng cụm Paper Doll Diary). Không có game nào trên Playgama có mechanic gấp→đục/cắt→đoán hình mở bung.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "crazygames",
+    "route": "R1",
+    "title": "Chigiri: Paper Puzzle",
+    "url": "https://www.crazygames.com/game/chigiri-paper-puzzle-fng",
+    "mechanic_verb": "xé + xếp mảnh giấy thành tranh (chigiri-e collage) — không gấp/đục",
+    "similarity": 1,
+    "votes": [1, 1, 1],
+    "evidence_note": "Lên từ search nội bộ https://www.crazygames.com/search?q=paper+puzzle. Mô tả chính thức: 'Combine the pieces however you imagine. Tear and arrange each piece to become a master of Chigiri-e' — cùng chủ đề giấy, verb xé-tranh, không phải gấp-đục-đoán.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "crazygames",
+    "route": "R1",
+    "title": "Unfold Escape Room Puzzle",
+    "url": "https://www.crazygames.com/game/unfold-escape-room-puzzle",
+    "mechanic_verb": "escape room 3D point-and-click — trùng chữ 'Unfold' trong tên",
+    "similarity": 0,
+    "votes": [0, 0, 0],
+    "evidence_note": "Lên từ search nội bộ https://www.crazygames.com/search?q=unfold (kết quả duy nhất). Mô tả (mirror fun.yxjm.net): xoay/zoom phòng 3D tìm đồ — không liên quan mechanic giấy. Lưu ý cho việc đặt tên: từ 'Unfold' đã có trên CrazyGames dù khác mechanic.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "crazygames",
+    "route": "R1",
+    "title": "Search nội bộ CrazyGames: q=fold / q=punch / q=hole+punch / q=folded+paper",
+    "url": "https://www.crazygames.com/search?q=fold",
+    "mechanic_verb": "không đọc được kết quả",
+    "similarity": null,
+    "votes": [],
+    "evidence_note": "KHONG_KIEM_CHUNG_DUOC: trang render kết quả bằng JS phía client — web_extract chỉ trả về header/logo, không thấy danh sách game với các URL đã thử: /search?q=fold, /search?q=punch, /search?q=hole+punch, /search?q=folded+paper. Đã vớt được qua /search?q=paper+fold (chỉ ra Lethal Sniper 3D — không liên quan), /search?q=origami ('We did not find what you were looking for'), /search?q=snowflake (không kết quả).",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "devvit",
+    "route": "R1",
+    "title": "Search nội bộ r/Devvit + Reddit games directory",
+    "url": "https://old.reddit.com/r/devvit/search/?q=paper+punch&restrict_sr=on",
+    "mechanic_verb": "không đọc được kết quả",
+    "similarity": null,
+    "votes": [],
+    "evidence_note": "KHONG_KIEM_CHUNG_DUOC: Reddit chặn truy cập máy khách — /r/devvit/search (web) trả login-wall/2FA, search.json trả 'You've been blocked by network security' (403), /launchpad/games/ trả 404. Thử qua Google site-search 'site:reddit.com/r/devvit paper fold punch' và 'devvit paper puzzle': không thấy game Devvit nào có mechanic gấp-đục-đoán (chỉ thấy PathRush, Pixelary, jigsaw 'Solved!' — verb khác).",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "ytplayables",
+    "route": "R1",
+    "title": "Danh mục YouTube Playables (browse/A-to-Z)",
+    "url": "https://www.youtube.com/playables/browse",
+    "mechanic_verb": "không đọc được kết quả",
+    "similarity": null,
+    "votes": [],
+    "evidence_note": "KHONG_KIEM_CHUNG_DUOC: Playables yêu cầu đăng nhập — trang game lẻ báo 'You must sign in to play this game', URL /playables/browse và /playables?q=... bị redirect về shell rỗng (invalid_url) khi extract không cookie. Check qua snapshot tìm kiếm của youtube.com/playables (nhiều lượt crawl, thấy toàn bộ mục Popular): Thief Puzzle, Hole.io, Going Balls, Dessert DIY, Draw Bridge, Stealth Master, Build a Queen, Tall Man Run, Man Runner 2048... — không có game gấp giấy/đục lỗ nào xuất hiện; nhưng không loại trừ được cả catalog A-to Z.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "other",
+    "route": "R1",
+    "title": "Unfoldit",
+    "url": "https://www.unfolditapp.com/",
+    "mechanic_verb": "gấp-rồi-đục-đoán-hình",
+    "similarity": 3,
+    "votes": [3, 3, 3],
+    "evidence_note": "'a sheet of paper is sequentially folded and hole-punched in steps. Your job is to mentally unfold the paper after the last step and show where the hole punches would be' — đúng verb của GẤP. Phát hiện qua search 'punch hole puzzle'/'unfoldit'. Kênh: iOS + Android app (App Store/Google Play), KHÔNG có trên 4 kênh nộp.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "other",
+    "route": "R1",
+    "title": "Daily Unfold",
+    "url": "https://www.dailyunfold.com/",
+    "mechanic_verb": "xem giấy đã gấp+đục → đoán vị trí lỗ khi mở",
+    "similarity": 3,
+    "votes": [3, 3, 3],
+    "evidence_note": "Trang chủ: 'Each day you get a fresh sheet that has been folded along the dashed lines and then hole-punched through every layer. Your job is to predict exactly where all the holes will appear once the paper is unfolded.' — mechanic gần như 1:1, khác ở chỗ đánh lưới ô thay vì chọn 1/4 hình. Web daily + app iOS mới (Show HN ~8/2026). Không có trên 4 kênh nộp.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "other",
+    "route": "R1",
+    "title": "Holepunch (holepunch.fun)",
+    "url": "https://holepunch.fun",
+    "mechanic_verb": "tự gấp → đục xuyên lớp → mở kiểm tra mẫu (nghịch chiều với ta)",
+    "similarity": 3,
+    "votes": [3, 2, 3],
+    "evidence_note": "'Fold the paper, punch through the layers, unfold, and match the pattern' — same paper/layer/punch không gian, nhưng người chơi chủ động gấp+đục để đạt mẫu thay vì quan sát tờ đã gấp và đoán. Đa số 3/3 phiếu → mức 3 (1 phiếu mức 2 vì chiều nghịch). Ra mắt 7/2026, post r/playmygame; web thuần, chưa lên 4 kênh nộp.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "other",
+    "route": "R1",
+    "title": "Hole Punchler (DAT practice)",
+    "url": "https://millslogan.github.io/holepunch",
+    "mechanic_verb": "đề thi gấp+đục lỗ → suy đáp án hình mở",
+    "similarity": 3,
+    "votes": [3, 3, 3],
+    "evidence_note": "'ask you to visualize how a piece of paper would look after a series of folds and punches... the game will randomly generate a question and you have to deduce the correct answer' — đúng mechanic DAT hole-punch, dạng quiz nhiều đáp án. Bản miễn phí dạng trang học tập cá nhân, không phải sản phẩm kênh nộp.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "other",
+    "route": "R1",
+    "title": "Paper Fold (com.game.foldpuzzle)",
+    "url": "https://play.google.com/store/apps/details?id=com.game.foldpuzzle&hl=en_US",
+    "mechanic_verb": "gấp giấy để lộ hình ẩn — không đục lỗ",
+    "similarity": 2,
+    "votes": [2, 1, 2],
+    "evidence_note": "Store listing: 'Fold the paper to unveil hidden objects!... you're not just folding, you're revealing hidden shapes' — có verb gấp + đoán hình nhưng bỏ bước đục/cắt. 4.5★, 1M+ lượt — chứng tỏ chủ đề gấp giấy bán được nhưng khác mechanic lõi của GẤP.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "other",
+    "route": "R1",
+    "title": "Fold Paper (Coolmath Games)",
+    "url": "https://www.coolmathgames.com/0-fold-paper",
+    "mechanic_verb": "gấp theo đúng thứ tự để lộ mặt kia tờ giấy — không đục",
+    "similarity": 1,
+    "votes": [1, 1, 1],
+    "evidence_note": "Trang mô tả: 'fold the paper in the correct order to reveal the image on the other side' — cùng chủ đề giấy, verb khác (logic gấp, không punch/cut, không đoán hình mở bung).",
+    "date_checked": "2026-09-13"
+  }
+]

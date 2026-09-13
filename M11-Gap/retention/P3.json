@@ -1,0 +1,96 @@
+{
+  "direction": "P3 — Phần thưởng & cosmetic + điểm chạm rewarded ad / interstitial hợp lệ luật Playables",
+  "proposals": [
+    {
+      "id": "P3-01",
+      "name": "Tiền tệ 'Mực Gấp' + cửa hàng skin giấy / màu nếp gấp",
+      "mechanism": "Mỗi màn thắng (+thưởng streak đoán đúng liên tiếp) trả 'Mực' — đơn vị tiền tệ thuần trong game, không đổi được bằng tiền thật. Mực mua skin tờ giấy (hoa văn: kẻ ô, caro, giấy kraft, giấy hoa văn cổ) và màu đường nếp gấp. Cửa hàng nằm ở màn giữa các chapter, mở được ngay cả khi thua.",
+      "metric": "% người chơi trang bị ít nhất 1 skin khác mặc định trong 7 ngày đầu; số màn trung bình giữa 2 lần đổi skin",
+      "benchmark": {
+        "value": null,
+        "unverified": true,
+        "why": "Brief hỏi 'số skin đủ cho 2-3 tuần' nhưng chưa tìm được benchmark ngành có nguồn cho con số này — cấm bịa. Mục tiêu thiết kế tạm thời (tự chọn, cần data xác nhận): 8-10 skin + 4 palette nếp gấp, tốc độ mở khoá ~2 món mới mỗi chapter ~6 màn, vừa đủ ~3 tuần chơi chậm."
+      },
+      "how_measured": "Counter trong save qua SDK storage của Playables (mua skin id, equip skin id, mực còn lại) — không gọi mạng ngoài, QA offline bằng Playwright đọc localStorage. Tỷ lệ equip = số user có equip != default / tổng user có save.",
+      "what_would_falsify": "Nếu đa số người chơi tích Mực mà không bao giờ đổi skin (tỷ lệ equip <10% sau 7 ngày), hoặc reset skin về mặc định sau khi mua → cosmetic không phải động lực quay lại của audience này; cắt ngân sách skin, dồn sang album/huy hiệu (P3-02).",
+      "playables_ok": true
+    },
+    {
+      "id": "P3-02",
+      "name": "Album 'Những Mẫu Giấy Đã Mở' + huy hiệu chương (bộ sưu tập NHỎ)",
+      "mechanism": "Mỗi lần đoán đúng mở bung 1 mẫu giấy vào album (kèm 1 dòng trivia gấp giấy thật, 100% offline); mỗi chapter 6 màn khép lại bằng 1 huy hiệu 'chủ đề'. Cố ý giữ bộ sưu tập nhỏ: ≤14 mẫu + ≤6 huy hiệu cho mùa đầu — vì dữ liệu achievement cho thấy bộ càng dài tỷ lệ hoàn thành sụp theo cấp số.",
+      "metric": "% người chơi mở ≥80% album trong thời gian chơi; D7 quay lại của người đã mở ≥3 huy hiệu vs chưa có huy hiệu nào",
+      "benchmark": {
+        "value": "Median chỉ 1.9% người chơi unlock 'mọi' achievement; game có <16 achievement: 6.3% hoàn thành hết, >50 achievement: 1.2% (mẫu 696 game Steam)",
+        "source_url": "https://coilr.org/reports/steam-completion-rates",
+        "date": "2026-08-31"
+      },
+      "how_measured": "Danh sách album_id đã mở + badge_id lưu trong save local (SDK storage); event 'album_opened' log cục bộ, dump qua Playwright khi QA. So retention local cohort giữa 2 nhóm có/không ≥3 huy hiệu.",
+      "what_would_falsify": "Nếu người chơi mở xong album rồi dừng hẳn (quay lại D7 của nhóm full-album không cao hơn nhóm không mở album) → album chỉ là 'checklist chết', không tạo lý do quay lại; hoặc completion rate mùa đầu <5% → bộ sưu tập vẫn quá dài so với nhịp 60 giây.",
+      "playables_ok": true
+    },
+    {
+      "id": "P3-03",
+      "name": "Rewarded ad điểm chạm 1: GẤP HỞ lại — undo 1 lần đoán sai / hint 'soi 1 nếp gấp'",
+      "mechanism": "Chọn sai 1 trong 4 đáp án = hết màn; cho phép xem 1 video opt-in (ytgame.ads.requestRewardedAd với reward id riêng) để undo lượt sai đó hoặc bật hint loại 1 đáp án. Mỗi màn tối đa 1 lần undo, hint có cooldown 2 màn — để hint không thay thế được tư duy.",
+      "metric": "Tỷ lệ phiên có ≥1 rewarded undo (target ≥30% như benchmark casual); D1-retention của nhóm dùng undo ≥1 lần vs nhóm không",
+      "benchmark": {
+        "value": "Rewarded video engagement: Casual 36% (top 3 thể loại, sau Word 38.4% / RPG 37.6%); phần thưởng 'additional moves' đạt 30.5% engagement — 'undo' chính là additional move của game đoán hình (dữ liệu LevelPlay trong Unity Mobile Growth & Monetization Report 2024)",
+        "source_url": "https://investgame.net/news/pdf/mobile-growth-and-monetization-report-2024",
+        "date": "2024-09-01"
+      },
+      "how_measured": "Mỗi requestRewardedAd(id) chỉ chạy khi người bấm nút opt-in → đếm id trong save local (rewarded_undo_shown, rewarded_undo_completed), offline qua Playwright. Nhóm A/B tự nhiên: ai bấm vs ai không trong cùng cohort QA + feedback.",
+      "what_would_falsify": "Nếu <10% người từng xem undo quay lại đoán đúng (undo chỉ kéo dài cái sai) HOẶC tỷ lệ chơi lại màn tăng mà thời gian phiên giảm mạnh (người chơi bails sau khi hết undo) → undo-by-ad là frustration farm, bỏ điểm chạm này.",
+      "playables_ok": true
+    },
+    {
+      "id": "P3-04",
+      "name": "Rewarded ad điểm chạm 2: TIẾP TỤC sau game over + nhân đôi Mực khi thắng",
+      "mechanism": "Sau màn thua, đúng 1 lựa chọn opt-in: xem video để tiếp tục màn đang dở (không mất tiến trình màn) — cùng pattern đã chốt ở M1/M3. Khi thắng, hiện nút 'x2 Mực' rewarded. Cả hai đều là ytgame.ads.requestRewardedAd, không có ad nào tự bật.",
+      "metric": "% người xem video continue rồi hoàn thành màn; số lần nhận rewarded / DAU; D30 local cohort của người xem ≥1 rewarded tuần đầu",
+      "benchmark": {
+        "value": "Người xem ≥1 rewarded video tuần đầu có D30 retention 53-68% so với benchmark 13% (số tương quan, không phải nhân quả — Tapjoy/ironSource, đăng trên Unity blog)",
+        "source_url": "https://unity.com/blog/understanding-the-impact-of-rewarded-ads-on-iap-retention-and-engagement",
+        "date": "2026-09-13"
+      },
+      "how_measured": "Đếm rewarded_continue_offer / rewarded_continue_watched / level_resumed trong save local; so cohort local xem-vs-không-xem. Lưu ý tự chọn (selection bias): người chủ động bấm ads vốn đã nghiện hơn, nên chỉ dùng làm tương quan ban đầu.",
+      "what_would_falsify": "Nếu nhóm xem rewarded continue có D7 không cao hơn hẳn nhóm không xem (≪ chênh lệch như benchmark), hoặc người bấm continue xong thoát ngay sau khi thua lại lần 2 → continue-by-ad chỉ giữ được 1 phiên, không giữ được người.",
+      "playables_ok": true,
+      "forbidden_flagged": "cụm 'iap' chỉ nằm trong URL/tiêu đề nguồn Unity Tapjoy — đề xuất KHÔNG có mua bán trong game, chỉ Mực ảo từ chơi/xem rewarded opt-in"
+    },
+    {
+      "id": "P3-05",
+      "name": "Interstitial ĐÚNG CHỖ: sau game-over/score screen từ lần thua thứ 2, tuyệt đối không đầu level",
+      "mechanism": "requestInterstitialAd() chỉ gọi tại 2 điểm: (a) sau màn hình điểm khi người chơi bấm 'màn tiếp theo' ở CHAPTER chuyển cảnh, (b) sau game over từ lần thứ 2 trở đi trong phiên — lần thua đầu tiên chỉ có rewarded continue, không interstitial. Không bao giờ đặt ở đầu level hay giữa 60 giây lật giấy (vi phạm chính sách quảng cáo và giết màn demo).",
+      "metric": "Tỷ lệ thoát phiên trong 5 giây sau interstitial; số phiên/thua giữ nguyên khi bật interstitial so với giai đoạn tắt",
+      "benchmark": {
+        "value": "Chính sách Google Play (Better Ads Experiences): interstitial toàn màn xuất hiện 'bất ngờ' — gồm lúc BẮT ĐẦU level/segment nội dung — bị cấm; phải đóng được sau 15s; rewarded opt-in được miễn. Nghiên cứu Deloitte×AdMob 6/2025: 1 lần gặp ad tính năng gây ám ảnh tăng churn 6-7%, ad trên end-card/reward screen làm tỷ lệ rời game gấp ~3 lần → interstitial phải ĐẶT SAU phần thưởng, không đè lên nó",
+        "source_url": "https://support.google.com/googleplay/android-developer/answer/12271244",
+        "date": "2026-09-13"
+      },
+      "how_measured": "Log local: timestamp interstitial_shown vs phiên_dừng_gần_nhất (offline, QA Playwright + người thật). So churn 5s sau interstitial với churn tự nhiên cùng vị trí khi tắt interstitial (build dev có toggle).",
+      "what_would_falsify": "Nếu bật interstitial mà phiên/người hoặc D7 giảm rõ (hoặc người chơi báo 'game đầy quảng cáo' trong phản hồi) → hạ về 0 interstitial, chỉ giữ rewarded; ngược lại nếu interstitial ở chapter-break mà churn 5s ≈ churn tự nhiên thì vị trí này hợp lệ để scale.",
+      "playables_ok": true
+    },
+    {
+      "id": "P3-06",
+      "name": "Nhiều điểm rewarded NHỎ thay vì 1 điểm to: +1 Mực khi 'soi đáp án' ở màn khó, x2 streak",
+      "mechanism": "Ngoài undo/continue (P3-03/P3-04), mở thêm 2-3 điểm rewarded opt-in loại 'giá trị nhỏ': nhân đôi streak Mực, mở khoá 1 màu nếp gấp 'dùng thử 1 màn'. Tổng điểm chạm rewarded giữ ở mức 4-5 cho 1 phiên ~8-10 màn (game casual nhiều placement nhỏ engagement cao hơn 1 placement to).",
+      "metric": "Tổng rewarded views / DAU (target 2-4); engagement rate per placement — placement nào <10% thì loại",
+      "benchmark": {
+        "value": "Game có 15-20 rewarded placements đạt engagement rate tới 46% (Unity LevelPlay, Mobile Growth & Monetization Report 2024) — casual có 'thèm' rewarded khi phần thưởng đúng chỗ; Gacha 31.1% / thêm lượt 30.5% là reward type mạnh nhất",
+        "source_url": "https://investgame.net/news/pdf/mobile-growth-and-monetization-report-2024",
+        "date": "2024-09-01"
+      },
+      "how_measured": "Mỗi placement 1 reward id riêng trong SDK call → đếm theo id trong save local, offline. Engagement per placement = views_id / eligible_offers_id.",
+      "what_would_falsify": "Nếu thêm placement nhỏ mà rewarded views/DAU không tăng (cannibalise nhau) hoặc người chơi nhận 'dùng thử' xong không bao giờ mua skin thật → placement thừa chỉ tổ ồn, thu về đúng 2 điểm chạm undo/continue.",
+      "playables_ok": true
+    }
+  ],
+  "summary": "Trục P3 chốt 6 đề xuất phần thưởng/cosmetic + bản đồ điểm chạm ad hợp lệ. Mạnh nhất: P3-02 Album + huy hiệu — vì bộ sưu tập nhỏ có data chống lưng (game <16 achievement có 6.3% người hoàn thành hết, >50 chỉ 1.2% — nguồn Coilr/Steam 2026-08-31) và 100% local, không rủi ro chính sách. P3-03/P3-04 (rewarded undo + continue) là 2 điểm chạm doanh thu hợp pháp duy nhất kiểu 'cứu người chơi': neo 36% RV engagement casual (Unity/LevelPlay 2024) và D30 53-68% vs 13% cho người xem rewarded tuần đầu (Tapjoy/Unity — tương quan, có selection bias, đã ghi rõ). P3-05 interstitial chỉ sau game-over lần 2 / chapter-break — đúng cả 2 chiều: Playables SDK khuyến nghị 'natural break', Google Play cấm ad đầu level, và Deloitte×AdMob 6/2025 cho thấy ad đè end-card/reward screen làm quit rate gấp ~3 lần, nên interstitial phải đặt SAU khi đã trả thưởng. Rủi ro nhất: P3-01 skin — brief đòi số 'skin đủ 2-3 tuần' nhưng KHÔNG có benchmark ngành nào cho con số đó → để unverified, số lượng 8-10 skin là giả định thiết kế phải tự đo bằng tỷ lệ equip. Điều kiện giết chung cả trục: nếu người chơi tích Mực/huy hiệu mà không đổi, không quay lại → audience GẤP không chơi vì cosmetic, dồn tiền về meta level (P1/P2).",
+  "meta": {
+    "agent": "P3",
+    "date": "2026-09-13",
+    "rules_check": "Chỉ dùng ytgame SDK ads (rewarded opt-in: undo/hint/continue/x2; interstitial sau game over, không đầu game). Không mua bán tiền thật, không ad tự nhét, không gọi mạng ngoài — mọi log/save qua storage cục bộ. Save <3MB (chỉ id + counter, không ảnh)."
+  }
+}

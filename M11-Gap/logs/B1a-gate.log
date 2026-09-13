@@ -1,0 +1,27 @@
+
+> paper-crease@0.1.0 typecheck
+> tsc --noEmit
+
+
+> paper-crease@0.1.0 test:logic
+> vitest run tests/logic
+
+
+ RUN  v2.1.9 /data/youtube-playables/M11-Gap/game
+
+ ✓ tests/logic/generator.test.ts (24 tests) 1509ms
+ ✓ tests/logic/fold-unfold.test.ts (30 tests) 52ms
+ ✓ tests/logic/validator.test.ts (28 tests) 47ms
+stdout | tests/logic/generator-10000.test.ts
+[B1a][TC-GEN-05] generated=10000/10000 distinctSpecs=10000 elapsedMs=8370
+
+ ✓ tests/logic/generator-10000.test.ts (7 tests) 8389ms
+ ✓ tests/logic/fold-rules.test.ts (15 tests) 21ms
+ ✓ tests/logic/level-config.test.ts (6 tests) 46ms
+ ✓ tests/logic/rational.test.ts (17 tests) 16ms
+
+ Test Files  7 passed (7)
+      Tests  127 passed (127)
+   Start at  16:46:32
+   Duration  13.29s (transform 440ms, setup 0ms, collect 624ms, tests 10.08s, environment 3ms, prepare 784ms)
+

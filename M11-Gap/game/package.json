@@ -1,0 +1,25 @@
+{
+  "name": "paper-crease",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Paper Crease \u2014 fold the sheet, punch a hole, guess the unfolded pattern.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "build:standalone": "tsc --noEmit && vite build --mode standalone",
+    "build:playgama": "tsc --noEmit && vite build --mode playgama",
+    "build:ytgame": "tsc --noEmit && vite build --mode ytgame",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:logic": "vitest run tests/logic"
+  },
+  "dependencies": {
+    "phaser": "^4.2.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vite": "^5.4.0",
+    "vitest": "^2.0.0"
+  }
+}

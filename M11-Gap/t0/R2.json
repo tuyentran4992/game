@@ -1,0 +1,79 @@
+[
+  {
+    "channel": "playgama",
+    "route": "R2",
+    "title": "Cartoon Traffic Racing Paper Derby",
+    "url": "https://playgama.com/category/new",
+    "mechanic_verb": "đua xe ô tô giấy (chủ đề giấy, verb đua — không gấp/đục)",
+    "similarity": 1,
+    "votes": [1, 1, 1],
+    "evidence_note": "Lọt danh mục /category/new khi duyệt bảng game mới của Playgama. Chỉ cùng chủ đề 'paper' (xe giấy), không có verb gấp-rồi-đục-đoán-hình mở bung.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "other",
+    "route": "R2",
+    "title": "Daily Unfold",
+    "url": "https://www.dailyunfold.com/",
+    "mechanic_verb": "giấy đã gấp + đục lỗ → người chơi đoán vị trí lỗ khi mở bung (chọn ô trên lưới, không chọn 1/4 đáp án)",
+    "similarity": 3,
+    "votes": [3, 3, 3],
+    "evidence_note": "Trang chủ ghi rõ: 'A paper is folded, then a hole is punched. Tap the grid to mark where punch holes appear when unfolded' + 3 câu đố/ngày + Expert 8x8. Cùng mechanic cốt lõi, khác input (đánh dấu lưới vs trắc nghiệm 4 hình). CÓ app iOS (apps.apple.com id6782201691) nhưng KHÔNG nằm trong 4 kênh đích.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "other",
+    "route": "R2",
+    "title": "Holepunch: a daily paper-folding puzzle",
+    "url": "https://holepunch.fun/",
+    "mechanic_verb": "tự gấp giấy theo mũi tên → tự đục lỗ → mở bung so pattern (vòng fold-punch-unfold, chiều người chơi thao tác)",
+    "similarity": 3,
+    "votes": [3, 3, 2],
+    "evidence_note": "Trang: 'Fold the paper, punch through the layers, unfold, and match the pattern'; các mức Easy 4x4/1 punch → Insanity hình khối. Phiếu 2 vì người chơi tự gấp thay vì chỉ đoán, nhưng dùng chung bộ ba verb fold+punch+unfold-match → đa số 3. Ngoài 4 kênh đích.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "other",
+    "route": "R2",
+    "title": "Paper Fold: Paper Puzzle 3D (Google Play)",
+    "url": "https://play.google.com/store/apps/details?id=com.TumbGames.PaperFold",
+    "mechanic_verb": "chạm để gấp tờ giấy thành hình (fold-to-shape, không đục lỗ/đoán mở bung)",
+    "similarity": 1,
+    "votes": [1, 1, 1],
+    "evidence_note": "Google Play ghi 'Tap to fold the unfold paper picture', 1M+ downloads, tag Paper/Fold. Verb là gấp-tạo-hình kiểu origami, không có punch/đoán hình mở → mức 1 theo luật README.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "ytplayables",
+    "route": "R2",
+    "title": "YouTube Playables — catalog New/A-to-Z/Browse",
+    "url": "https://www.youtube.com/playables",
+    "mechanic_verb": "khong_xac_dinh_duoc",
+    "similarity": null,
+    "votes": [],
+    "evidence_note": "KHONG_KIEM_CHUNG_DUOC: trang Playables render bằng JS — web_extract chỉ lấy được shell (Home/Browse/A to Z/New), kể cả /playables/browse. Chỉ đọc được bảng Popular qua snippet tìm kiếm (Top: Thief Puzzle, Hole.io, Save The Pets, Stealth Master, Dessert DIY, Build a Queen, Tall Man Run, Man Runner 2048, Bridge Race, Going Balls, Hide N Seek, Draw Bridge, 1+2=3, MR RACER) — không bản nào fold-punch, nhưng NEW/A-to-Z chưa duyệt trọn được.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "crazygames",
+    "route": "R2",
+    "title": "CrazyGames — bảng xếp hạng /hot (Trending games)",
+    "url": "https://www.crazygames.com/hot",
+    "mechanic_verb": "khong_xac_dinh_duoc",
+    "similarity": null,
+    "votes": [],
+    "evidence_note": "KHONG_KIEM_CHUNG_DUOC: /hot trả về shell rỗng (chỉ logo) vì render client-side; /best/puzzle và /t/paper trả 404 'dead end' → kênh không có trang topic 'paper' và không có URL xếp hạng tĩnh để duyệt. Đã bù bằng /new (70 title, grep paper|fold|punch|unfold|origami|cut = 0 khớp) và /c/puzzle trang 1 (24 title, không có fold-punch).",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "devvit",
+    "route": "R2",
+    "title": "Reddit official games directory (devvit.com/games + developers.reddit.com/games + r/devvit top)",
+    "url": "https://www.devvit.com/games",
+    "mechanic_verb": "khong_xac_dinh_duoc",
+    "similarity": null,
+    "votes": [],
+    "evidence_note": "KHONG_KIEM_CHUNG_DUOC: devvit.com/games bị chặn 'private/internal network', developers.reddit.com/games http_error, r/devvit/top(.json và old.reddit) 403 bot-wall. Bù bằng 2 đường danh mục khác được: r/devvit trang đầu (tin game mới: Sudoku/Minesweeper/Solitaire Daily, slurpwave, Bomberman — không có fold-punch) và gallery hackathon Fun and Games with Devvit (duyệt 9/11 trang, 262 submission — không bản paper-fold-punch nào).",
+    "date_checked": "2026-09-13"
+  }
+]

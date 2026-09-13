@@ -1,0 +1,9 @@
+{"agent": "R3", "file": "t0/R3.json", "rows": 11, "sim3": 6, "blocked": 1}
+{"agent": "R4", "file": "t0/R4.json", "rows": 10, "sim3": 6, "blocked": 1}
+{"agent": "R2", "file": "t0/R2.json", "rows": 7, "sim3": 2, "blocked": 3}
+{"agent": "R5", "file": "t0/R5.json", "rows": 16, "sim3": 9, "blocked": 3}
+{"agent": "R1", "file": "t0/R1.json", "rows": 13, "sim3": 4, "blocked": 3}
+{"agent": "P4", "file": "retention/P4.json", "proposals": 6}
+{"agent": "P1", "file": "retention/P1.json", "proposals": 6}
+{"agent": "P3", "file": "retention/P3.json", "proposals": 6}
+{"agent": "P2", "file": "retention/P2.json", "proposals": 5}

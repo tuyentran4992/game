@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Chạy nối chuỗi 4 bước của 1 batch: 1) tests → 2) code → 3a) review code → 3b) review kiến trúc.
+# Cổng chặn giữa bước 2 và 3: typecheck + test phải XANH, nếu không thì DỪNG chuỗi (không tự sửa).
+# Dùng: bash run-batch.sh B1a <pid_buoc1_dang_chay|0> <max_turns_code>
+set -u
+BATCH="${1:-B1a}"
+WAIT_PID="${2:-0}"
+MAXT="${3:-80}"
+BASE=/data/youtube-playables/M11-Gap
+LOG="$BASE/logs"
+mkdir -p "$LOG"
+CHAIN="$LOG/chain-$BATCH.log"
+export PATH="/data/.local/share/pnpm/bin:$PATH"
+source /data/scripts/claude-env.sh
+if [ -z "${ANTHROPIC_BASE_URL:-}" ]; then echo "LỖI: env Claude không nạp được" >> "$CHAIN"; exit 2; fi
+
+log() { echo "[$(date -u '+%F %T')] $*" >> "$CHAIN"; }
+
+run() { # $1=prompt  $2=tên log  $3=max-turns
+  local pf="$BASE/prompts/$1" nm="$2" mt="$3"
+  if [ ! -f "$pf" ]; then log "THIẾU PROMPT $pf → dừng"; exit 4; fi
+  log "START $nm (max-turns $mt)"
+  ( cd "$BASE/game" && claude --bare -p "$(cat "$pf")" --model qwen3.8-flash --max-turns "$mt" --verbose ) > "$LOG/$BATCH-$nm.log" 2>&1
+  local rc=$?
+  log "END $nm exit=$rc (log: logs/$BATCH-$nm.log)"
+  return $rc
+}
+
+# 0) chờ bước 1 (nếu đang chạy) kết thúc
+if [ "$WAIT_PID" != "0" ]; then
+  log "chờ PID $WAIT_PID (bước 1) kết thúc…"
+  while [ -d "/proc/$WAIT_PID" ]; do sleep 20; done
+  log "bước 1 đã kết thúc"
+fi
+
+# 0b) cổng vào: phải CÓ file test
+n=$(ls "$BASE"/game/tests/logic/*.test.ts 2>/dev/null | wc -l)
+if [ "$n" -eq 0 ]; then log "DỪNG: bước 1 không tạo file test nào"; exit 3; fi
+log "có $n file test → chạy bước 2 (code)"
+
+# 1) BƯỚC 2 — code
+run "$BATCH-2-code.md" "2-code" "$MAXT" || log "bước 2 exit≠0 (vẫn chạy cổng kiểm để biết thực trạng)"
+
+# 2) CỔNG máy giữa bước 2 → 3 (không phải Hermes verify: đây là điều kiện tự-check của chuỗi)
+log "CỔNG: typecheck + test:logic"
+if ( cd "$BASE/game" && npm run typecheck && npm run test:logic ) > "$LOG/$BATCH-gate.log" 2>&1; then
+  log "CỔNG PASS → chạy 2 phiên review SONG SONG"
+  # Chạy song song: 2 session riêng biệt, mỗi phiên 1 log, không thấy kết luận của nhau (độc lập tốt hơn tuần tự).
+  run "$BATCH-3a-review-code.md" "3a-review-code" 40 &
+  P1=$!
+  run "$BATCH-3b-review-arch.md" "3b-review-arch" 40 &
+  P2=$!
+  wait "$P1"; R1=$?
+  wait "$P2"; R2=$?
+  log "2 phiên review xong (exit code: review-code=$R1, review-arch=$R2)"
+  log "CHUỖI XONG $BATCH — chờ Hermes đọc 2 báo cáo + verify ở mốc"
+else
+  log "CỔNG FAIL (xem logs/$BATCH-gate.log) → DỪNG chuỗi, cần 1 vòng fix rồi chạy lại từ bước gate"
+  exit 5
+fi

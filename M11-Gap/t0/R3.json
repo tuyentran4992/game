@@ -1,0 +1,123 @@
+[
+  {
+    "channel": "other",
+    "route": "R3",
+    "title": "Unfoldit – Paper Puzzle Game",
+    "url": "https://apps.apple.com/us/app/unfoldit-paper-puzzle-game/id1248922247",
+    "mechanic_verb": "gấp-rồi-đục-đoán-hình",
+    "similarity": 3,
+    "votes": [3, 3, 3],
+    "evidence_note": "App Store + Google Play (Erudite Apps). Trang mô tả: 'paper is sequentially folded and hole-punched... mentally unfold to show where hole punches would be', 1.885+ level. Trùng cốt 100% verb gấp-đục-đoán; khác: người chơi chấm lưới thay vì chọn 1/4 hình, không có cut-góc.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "other",
+    "route": "R3",
+    "title": "Daily Unfold",
+    "url": "https://apps.apple.com/us/app/daily-unfold/id6782201691",
+    "mechanic_verb": "gấp-rồi-đục-đoán-hình",
+    "similarity": 3,
+    "votes": [3, 3, 3],
+    "evidence_note": "App Store (Mert Aslan, iOS 15.1+). Đã mở trang bằng web_extract: 'square of paper folded along dashed lines, a hole punched straight through... predict where the holes land when the paper opens flat'. Same mechanic, format daily 3 câu + leaderboard; không phải game web kênh nộp.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "other",
+    "route": "R3",
+    "title": "FOLD & PUNCH (AIPopcorn)",
+    "url": "https://play.google.com/store/apps/details?id=com.aipopcorn.game.foldandpunch",
+    "mechanic_verb": "gấp-rồi-đục-đoán-hình",
+    "similarity": 3,
+    "votes": [3, 3, 3],
+    "evidence_note": "TRÙNG TÊN ỨNG VIÊN #4. Google Play (AIPopcorn, 10+ installs, v0.4.1 09/2026), đã xác thực bằng web_extract: 'fold the square paper from its edges, choose one place to punch, then unfold and see whether the holes match the goal'. 20 puzzle logic, mobile app — không phải game web.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "other",
+    "route": "R3",
+    "title": "Unfold (Puzzle Cottage daily)",
+    "url": "https://puzzlecottage.com/",
+    "mechanic_verb": "gấp-rồi-đục-đoán-hình",
+    "similarity": 3,
+    "votes": [3, 3, 3],
+    "evidence_note": "Web game (không thuộc 4 kênh). Trang đã xác thực: 'A piece of paper is folded and hole-punched. Predict where the holes end up when it's unfolded' — daily, 3 độ khó, mirror-symmetry. Trùng verb; khác: dự đoán vị trí lỗ trên lưới, không có lựa chọn 4 hình.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "other",
+    "route": "R3",
+    "title": "Paper Punch Party (TestingMom)",
+    "url": "https://gamebrain.co/game/paper-punch-party",
+    "mechanic_verb": "gấp-rồi-đục-đoán-hình",
+    "similarity": 3,
+    "votes": [3, 3, 3],
+    "evidence_note": "GẦN TRÙNG TÊN ỨNG VIÊN #2 ('Paper Punch Party' ≠ 'Paper Punch'). App iOS giáo dục 2017 luyện CogAT: 'paper folding or hole punch questions' — cùng mechanic dạng test. URL gamebrain xác thực; trang App Store gốc 404 (xem dòng blocked dưới).",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "other",
+    "route": "R3",
+    "title": "Paper folding (Spatial Reasoning Games / zfalomir)",
+    "url": "https://zfalomir.itch.io/paper-folding",
+    "mechanic_verb": "gấp-rồi-đục-chọn-1-trong-5-hình",
+    "similarity": 3,
+    "votes": [3, 3, 3],
+    "evidence_note": "itch.io + Google Play (com.spatialreasoninggames.PaperFolding), bản browser 'Play in browser'. Mô tả: 'papers will be folded and punched... the punched paper must be guessed from 5 different possibilities' — đúng quiz chọn-hình khi-mở-bung, chỉ khác 5 đáp án vs 4.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "other",
+    "route": "R3",
+    "title": "Paper Cuts (puzzle trong Professor Layton)",
+    "url": "https://layton.fandom.com/wiki/Puzzle:Paper_Cuts",
+    "mechanic_verb": "gấp-rồi-cắt-đoán-hình",
+    "similarity": 2,
+    "votes": [2, 2, 2],
+    "evidence_note": "Không phải game độc lập — 1 puzzle phụ (UF068) trong game DS: gấp giấy làm tư rồi vẽ đường cắt, đoán hình lúc mở. Cùng verb một phần (cắt góc thay vì đục lỗ, câu hỏi vẽ-ngược), chỉ là mini-puzzle trong game khác.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "other",
+    "route": "R3",
+    "title": "Unfold",
+    "url": "https://freegames.org/unfold",
+    "mechanic_verb": "trượt-mở-tile-màu-điền-chỗ-trống",
+    "similarity": 1,
+    "votes": [1, 1, 1],
+    "evidence_note": "GẦN TRÙNG TÊN ỨNG VIÊN #3 ('Unfold' ≈ 'Unfold It'). Trang xác thực: 'drag the colors and unfold them into the empty spaces' — tile puzzle trừu tượng, không có giấy/gấp/đục. Chỉ trùng chữ 'unfold', mechanic khác hẳn.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "other",
+    "route": "R3",
+    "title": "Unfold (Barnus)",
+    "url": "https://play.google.com/store/apps/details?id=com.szabo.unfold&hl=en",
+    "mechanic_verb": "nối-chạm-số-theo-đường-liền-mạch",
+    "similarity": 0,
+    "votes": [0, 0, 0],
+    "evidence_note": "TRÙNG TÊN gần với ứng viên #3: app Google Play tên 'Unfold' (hung installs 10+). web_extract xác nhận: 'connect the numbered dots with a single continuous line to fill the grid' — không liên quan giấy. Tên trần 'Unfold' đã có trên Google Play.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "other",
+    "route": "R3",
+    "title": "Paper Fold",
+    "url": "https://play.google.com/store/apps/details?id=com.game.foldpuzzle&hl=en",
+    "mechanic_verb": "gấp-giấy-lộ-hình-ẩn",
+    "similarity": 1,
+    "votes": [1, 1, 1],
+    "evidence_note": "GẦN TRÙNG TÊN với chủ đề 'GẤP'. Google Play: 'fold the paper to unveil hidden objects' — gấp để lộ hình (origami reveal), không có đục lỗ/đoán hình mở bung. Verb gấp khác mục đích → mức 1.",
+    "date_checked": "2026-09-13"
+  },
+  {
+    "channel": "other",
+    "route": "R3",
+    "title": "Paper Punch Party (trang App Store gốc)",
+    "url": "https://apps.apple.com/us/app/paper-punch-party/id1213082030",
+    "mechanic_verb": "gấp-rồi-đục-đoán-hình",
+    "similarity": null,
+    "votes": [],
+    "evidence_note": "KHONG_KIEM_CHUNG_DUOC: trang App Store id1213082030 trả về 'The page you're looking for can't be found' (web_extract 2026-09-13) — app 2017 có thể đã gỡ; chỉ xác nhận mechanic qua page gamebrain.co ở dòng trên.",
+    "date_checked": "2026-09-13"
+  }
+]

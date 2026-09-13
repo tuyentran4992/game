@@ -1,0 +1,25 @@
+# SSOT cho mọi lần gọi Claude Code ở M11-Gap. Sửa Ở ĐÂY, không sửa trong script.
+# Runner: harness/claude_step.py (đọc file này) — orchestrator: run-swarm.sh
+default_variant: v1-harness
+
+variants:
+  # v0 = cách cũ (không bơm luật) — giữ lại để đo A/B "trước/sau harness"
+  v0-baseline: { rules: null,               pack: null }
+  # v1 = bơm luật phiên + gói ngữ cảnh qua --append-system-prompt-file
+  v1-harness:  { rules: harness/rules-core.md, pack: auto }
+
+model: qwen3.8-flash
+# model cho từng nhóm model khác (chỉ dùng khi chạy thí nghiệm E4)
+models: { flash: qwen3.8-flash, ds: ds/deepseek-flash, glm: glm-5.2 }
+
+max_turns: { tests: 90, code: 80, fix: 60, review: 40 }
+
+tools_disallow: [WebSearch, WebFetch, Task, TodoWrite, NotebookEdit]
+
+# cổng máy: bắt buộc xanh mới đi tiếp
+gate: "npm run typecheck && npm run test:logic"
+
+review_set: [3a-code, 3b-stress, 3c-arch]
+
+metrics: logs/metrics.jsonl
+logs_dir: logs

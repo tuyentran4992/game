@@ -1,0 +1,6 @@
+# Machine logs (lớn, không cần cho người đọc)
+logs/*.stream.jsonl
+logs/packs/
+logs/.chain-*.lock
+game/dist/
+game/coverage/

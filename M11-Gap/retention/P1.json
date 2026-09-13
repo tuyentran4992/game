@@ -1,0 +1,90 @@
+{
+  "direction": "P1 — Cấu trúc tiến trình LEVEL: số màn, ramp độ khó, sao/thứ hạng, chương mở khoá",
+  "proposals": [
+    {
+      "id": "P1-01",
+      "name": "Chiến dịch hữu hạn 120 màn = 8 chương x 15 màn, không sống (lives), không gate tiền tệ",
+      "mechanism": "Launch với đúng 120 màn chia 8 chương, mỗi chương 15 màn, map tuyến tính, chương kế mở khi tích đủ sao tối thiểu trong chương hiện tại. Chọn 15 vì ~15 màn x 60-90 giây + transition ≈ 20-25 phút ≈ đúng một phiên puzzle web trung vị, nên 'xong 1 chương' = 'vừa đã 1 phiên'.",
+      "metric": "Median level xa nhất đạt được trong phiên đầu; % người chơi chạm chương 8; phiên/người chơi.",
+      "benchmark": {
+        "value": "Candy Crush: episode = 15 màn (2 episode đầu = 10), world = 5 episode = 75 màn — chứng thực kích thước 'chunk' 15 màn là chuẩn ngành",
+        "source_url": "https://scrambly.io/blog/tips/how-many-levels-in-candy-crush-saga",
+        "date": "2025-04-18"
+      },
+      "how_measured": "Event cục bộ level_start/level_complete (pattern phễu của Poki: measure level N start/complete/fail) ghi vào save SDK local <3MB; QA 10-20 người playtest, đọc log bằng console/localStorage, không gọi mạng.",
+      "what_would_falsify": "Nếu đa số tester nghỉ trước màn 20 dù win-rate giai đoạn đó vẫn >75% (chán vì catalogue dài và chậm, không phải vì khó) → cắt còn 60-80 màn.",
+      "playables_ok": true
+    },
+    {
+      "id": "P1-02",
+      "name": "Ramp theo chương: mỗi chương dạy đúng 1 từ vựng gấp/cắt mới, chỉnh độ khó bằng 'độ dài lời giải'",
+      "mechanism": "Chương 1: gấp 4 lớp, lỗ giữa tờ. Chương 2: lỗ nằm trên nếp. Chương 3: lỗ ở mép. Chương 4: cắt góc chéo. Chương 5+: gấp 8 lớp và tổ hợp. Trong chương, độ khó tăng bằng số bước suy luận (dial 'steps to solve' của GDC Level Design Workshop), không bằng đồng hồ đếm ngược.",
+      "metric": "Win-rate từng màn theo băng: màn 1-30 kỳ vọng ≥75%, màn 'checkpoint' giữa chương 40-60%, không màn nào dưới ~25% ở nửa đầu game.",
+      "benchmark": {
+        "value": "Thí nghiệm CHI 2017 trên 10.472 lượt chơi (difficulty gán sẵn): bậc DỄ nhất tạo động lực cao nhất — không được chất hard spike bắt buộc khi ramp",
+        "source_url": "https://github.com/nirmalpatel/difficulty_overrated_chipaper_data",
+        "date": "2017-05-06"
+      },
+      "how_measured": "Đếm win/first-win per level từ log local (level_start/complete/fail + cờ first_try); vẽ đường cong win-rate offline bằng python, so với băng mục tiêu.",
+      "what_would_falsify": "Nếu các màn 'teach rule mới' (màn đầu mỗi chương) có fail-rate trung bình >40% và người chơi thoát phiên ngay tại đó → cách dạy 1-rule/chương quá gắt, phải giãn rule mới ra 3-4 màn đệm.",
+      "playables_ok": true
+    },
+    {
+      "id": "P1-03",
+      "name": "Sao 1-3: 1 = thắng, 2 = thắng không dùng gợi ý, 3 = thắng ngay lần đầu; màn skip không được sao",
+      "mechanism": "Sao chấm bằng tiêu chí độ khó (first-try, không hint) chứ không bằng điểm số may rủi. 10 màn đầu thiết kế để gần như ai cũng 3 sao lần đầu (tạo 'beginner's luck' như Candy Crush). Nếu có skip thì màn bị skip nhận 0 sao để sao phản ánh trình thật.",
+      "metric": "% màn thắng được chơi lại để đòi sao cao hơn; số sao trung bình/chương; tỉ lệ full-sao chương 1.",
+      "benchmark": {
+        "value": "CrazyGames (docs puzzle): khuyến nghị không cho coins/sao khi skip màn — sao phải phản ánh trình thật; nguồn phụ cho '10 màn đầu 3 sao': https://yukaichou.com/gamification-study/game-mechanics-research-candy-crush-addicting",
+        "source_url": "https://docs.crazygames.com/resources/monetizing-puzzle",
+        "date": "2026-09-13"
+      },
+      "how_measured": "Event level_replay + star_earned(level, n) ghi local; so sessions có replay-vs-not. Retention ngày kế đo qua cohort playtest hoặc dashboard do kênh cung cấp, không tự dựng thu thập.",
+      "what_would_falsify": "Thí nghiệm 3-sao trên Foldit (CHI 2017, https://doi.org/10.1145/3025453.3025997): sao tăng replay nhưng KHÔNG khác biệt về measured retention. Nếu cohort của mình cũng vậy (replay tăng, quay lại ngày sau không tăng) → sao chỉ là trang trí, dồn thiết kế mở khoá vào P1-01/P1-05 thay vì vào sao.",
+      "playables_ok": true
+    },
+    {
+      "id": "P1-04",
+      "name": "Nhịp thở trong chương: cứ 2-3 màn khó là 1 màn 'dễ thắng 3 sao chắc' (tỉ lệ ~2:1)",
+      "mechanism": "Trong 15 màn của mỗi chương xếp theo pattern: 2 màn dạy rule mới (siêu dễ) → 8 màn luyện → 3 màn combo → 1 checkpoint khó → 1 breather dễ + 1 màn 'wow' (hình mở bung hài hước). breather đảm bảo ai cũng vớt lại được cảm giác giỏi trước khi vào phần khó kế.",
+      "metric": "Tỉ lệ thoát phiên tại chỗ (session end ngay sau màn X) tại màn khó so với màn khó không có breather phía sau.",
+      "benchmark": {
+        "value": "Tổng kết học liệu level design puzzle: tăng khó đột ngột gây bỏ chơi, tăng quá chậm gây chán; progression kiểu arcade cần điểm xả friction",
+        "source_url": "https://scholar.smu.edu/cgi/viewcontent.cgi?article=1000&context=guildhall_leveldesign_etds",
+        "date": "2024-04-25"
+      },
+      "how_measured": "Ghi timestamp phiên kết thúc + level_id cuối (local). So 'quãng đường sống sót' sau checkpoint giữa 2 nhóm pattern có/không breather qua playtest A/B trên 2 bản build.",
+      "what_would_falsify": "Nếu sau khi chèn breather, điểm thoát phiên vẫn tập kết đúng sau cùng các màn checkpoint như cũ → nhịp thở không có tác dụng, vấn đề nằm ở độ khó checkpoint chứ không ở nhịp.",
+      "playables_ok": true
+    },
+    {
+      "id": "P1-05",
+      "name": "Đổi giao diện giấy theo chương = mốc tiến trình (theme gắn vào cấu trúc, không phải hàng hoá)",
+      "mechanism": "Mỗi chương khoác 1 loại giấy định sẵn (vở ô-li → báo cũ → kraft → gói quà → bản đồ...) đổi tự động khi vào chương, đánh dấu 'thế giới mới' y như world của Candy Crush. Đây là khung chương của P1 — không bán, không quay thưởng, không tích tiền (kinh tế cosmetic thuộc trục P3, không đè nhau).",
+      "metric": "% tester nói được mình đang 'ở phần nào' của game; level-reach tại ranh giới chương (có tụt không).",
+      "benchmark": {
+        "value": "Candy Crush tổ chức 10.700+ màn thành 714 episode hữu danh, mỗi episode 15 màn (2 episode đầu 10 màn) — chunk có tên là đơn vị định vị tiến trình chuẩn ngành",
+        "source_url": "https://web.stanford.edu/class/cs105/showcase/showcase/candycrush/Levels.html",
+        "date": "2026-09-13"
+      },
+      "how_measured": "Playtest: hỏi miệng + log màn đạt được quanh ranh giới chương (level 14-16, 29-31...) xem có 'vực rơi' sau mốc theme không.",
+      "what_would_falsify": "Nếu tester không nhận ra sự đổi theme trong phỏng vấn cuối session ('tưởng một kiểu giấy từ đầu') → theme chỉ là wallpaper, bỏ chi phí art, quay về chương không tên.",
+      "playables_ok": true
+    },
+    {
+      "id": "P1-06",
+      "name": "Endgame có chủ đích: hết 120 màn hiện màn 'hết nội dung' + vòng Master tự chạy lại campaign vì full sao",
+      "mechanism": "Playables BẮT BUỘC game nói rõ khi không còn nội dung. Sau chương 8: màn kết chính thức (số sao tổng, % full-sao từng chương) rồi mở 'Master': chơi lại 120 màn với luật khó hơn (không hint), mỗi chương full 3 sao hiện dấu mộc hoàn thành trên map. Tái sử dụng toàn bộ level đã dựng, chi phí content gần 0.",
+      "metric": "% người về đích có ≥1 màn replay sau end screen; số sao trung bình tăng thêm sau khi vào Master.",
+      "benchmark": {
+        "value": "Luật Playables (Google, cập nhật 20/08/2025): 'Game MUST communicate that there is no more content to engage with, such as after the final level' — hết nội dung là điều kiện cert, phải thiết kế chứ không được để người chơi tự đoán",
+        "source_url": "https://developers.google.com/youtube/gaming/playables/certification/requirements_design",
+        "date": "2025-08-20"
+      },
+      "how_measured": "Cờ campaign_completed + level_replay sau cờ đó trong save local; đếm trong cohort playtest tới được màn 120.",
+      "what_would_falsify": "Nếu ≥80% người về đích thoát ngay không replay nào (và nhóm này thắng hết 120 màn không khó khăn gì) → chiến dịch quá ngắn/dễ, người chơi 'xong là xong', cần nhân đôi số màn hoặc nâng trần sao thay vì thêm Master mode.",
+      "playables_ok": true
+    }
+  ],
+  "summary": "Xương sống khuyến nghị: 120 màn / 8 chương x 15 (P1-01), mỗi chương dạy đúng 1 từ vựng gấp/cắt mới (P1-02), sao 1-3 chấm theo first-try/không-hint (P1-03), nhịp thở dễ-khó 2:1 (P1-04), theme giấy = mốc chương (P1-05), end screen + Master replay (P1-06). Neo mạnh nhất: episode 15 màn của Candy Crush (scrambly 04/2025), 21 phút playtime puzzle trên CrazyGames khớp 1 chương = 1 phiên, luật cert Playables bắt buộc khai báo hết nội dung. Rủi ro lớn nhất: P1-03 — thí nghiệm Foldit (CHI 2017) đo được sao tăng replay nhưng KHÔNG tăng measured retention, nên sao không được gánh toàn bộ mở khoá; gate chương chỉ cần sao tối thiểu thấp (12/15), đừng bắt full-sao. Xếp hạng độ chắc: P1-01 > P1-02 > P1-04 > P1-06 > P1-05 > P1-03."
+}

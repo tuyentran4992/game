@@ -1,0 +1,7 @@
+
+[tool] Bash: {'command': 'ls src/logic/ && grep -rn "layers" src/logic/ | head -20', 'description': 'List logic files and grep layers'}
+1. `cd /data/youtube-playables/M11-Gap/game && npm run typecheck && npm run test:logic`
+2. Test tại `tests/logic/*.test.ts`, import tương đối `../../src/logic/<file>` (helper chung `./helpers`).
+3. `unfoldHolesWithCount(...)` và `unfoldPointsWithCount(...)` trong `src/logic/foldRules.ts` (đều trả `{ at: RatPoint; layers: number }[]`).
+
+[result] is_error=False num_turns=2 duration_ms=6515 cost_usd=0.03524125

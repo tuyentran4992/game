@@ -1,0 +1,76 @@
+{
+  "direction": "P2 — Kỷ lục & so kè KHÔNG cần backend (toàn bộ state nằm trong SDK storage local, 0 call mạng)",
+  "proposals": [
+    {
+      "id": "P2-01",
+      "name": "Ghost của chính mình — đua với lần gấp tốt nhất",
+      "mechanism": "Mỗi màn lưu lại sequence hành động của lần chơi tốt nhất (mỗi lớp gấp chọn đáp án nào + timestamp, ~40-80 bytes/màn vì chỉ 4-8 quyết định trong 60s). Khi chơi lại, 'bản ghost' của chính mình hiện như lớp giấy mờ chạy song song; phá được ghost (nhanh hơn hoặc sai ít hơn) thì ghost mới đè ghost cũ.",
+      "metric": "retry-rate mỗi màn: số lần chơi trung bình trên 1 lượt-clear-first; % lượt chơi kết thúc ngay sau khi clear mà không thử lại",
+      "benchmark": {
+        "value": "Nghiên cứu dọc 4 tuần (CHI PLAY 2019): đua đồng thời với ghost của các lần chơi trước (hiện tại vs quá khứ) tăng hiệu suất, intrinsic motivation và flow so với điều kiện không cạnh tranh — định tính, không có effect size cho casual web",
+        "source_url": "https://doi.org/10.1145/3313831.3376256",
+        "date": "2019-10-22"
+      },
+      "how_measured": "Counter local trong SDK storage: plays_per_level, clears_per_level, ghost_beat_count; suy ra retry-rate = plays/clears. Đối chiếu bằng self-play QA (Playwright lặp màn có ghost vs không ghost) và số liệu Playables console nếu tài khoản dev được cấp. Không cần analytics gọi mạng.",
+      "what_would_falsify": "Nếu thêm ghost mà retry-rate/màn không tăng (±5%) so với bản chỉ có bảng sao, hoặc người chơi bỏ qua màn ngay sau clear lần 1 với tỷ lệ như cũ → ghost không tạo động lực 'phá kỷ lục', chỉ là hiệu ứng trang trí.",
+      "playables_ok": true
+    },
+    {
+      "id": "P2-02",
+      "name": "Streak theo phiên — chuỗi đoán đúng liền mạch, không phải chuỗi ngày",
+      "mechanism": "Đếm chuỗi trả lời đúng liên tiếp trong phiên (reset khi sai hoặc tắt game). Mốc 3/5/8 có animation + tiếng riêng; lưu 'best streak mọi thời đại' local. Sợ đứt chuỗi ngay trong phiên tạo áp lực 'thêm 1 màn nữa' đúng lúc interstitial tự nhiên xuất hiện.",
+      "metric": "số màn/phiên (session length) và % phiên kết thúc vì hết màn thay vì thoát giữa chừng",
+      "benchmark": {
+        "value": "Duolingo: người đạt streak 7 ngày quay lại ngày hôm sau cao gấp 2.4 lần so với người chưa có streak (A/B test nội bộ, reported relative)",
+        "source_url": "http://blog.duolingo.com/improving-the-streak",
+        "date": "2020-11-19"
+      },
+      "how_measured": "Local: levels_per_session, sessions_per_device, exit_point (màn cuối hay giữa chuỗi). So 2 bản build A/B tự chơi + mẫu QA nhỏ; nếu Playables console cho số liệu retention thì lấy làm nguồn chính. Ghi chú lệch bối cảnh: streak Duolingo tính theo NGÀY, ở đây tính theo PHIÊN.",
+      "what_would_falsify": "Nếu bật streak mà median levels/session không nhích so với baseline, hoặc người chơi thoát ngay sau khi ĐỨT streak (exit rate tăng ở màn kế tiếp sau sai) → streak theo phiên gây ức chế chứ không giữ chân; phải đổi sang mốc thưởng thay vì phạt.",
+      "playables_ok": true
+    },
+    {
+      "id": "P2-03",
+      "name": "Tường kỷ lục LOCAL — top-5 thành tích của chính thiết bị này",
+      "mechanism": "Bảng 'kỷ lục của máy bạn' sau mỗi chương: 5 lượt chơi tốt nhất mỗi màn (thời gian + số lần sai), xếp hạng hiển thị kiểu giấy dán tường. Hạng 2-3 cũ đóng vai trò mục tiêu ngầm — người chơi nhắm phá chính thành tích xếp trên mình chứ không cần ai khác.",
+      "metric": "% màn có ≥2 lượt chơi SAU lần clear đầu; thời lượng phiên khi mở screen kỷ lục",
+      "benchmark": {
+        "value": "Thí nghiệm brainstorming (Computers in Human Behavior 2017): chỉ CẦN SỰ HIỆN DIỆN của bảng xếp hạng đã đẩy hiệu suất lên ngang điều kiện 'goal khó/impossible' — người chơi tự đặt mục tiêu ở đỉnh bảng",
+        "source_url": "https://doi.org/10.1016/j.chb.2015.08.008",
+        "date": "2017-06-01"
+      },
+      "how_measured": "Local: requeue_rate sau clear = plays(level sau first_clear)/sessions; đếm click vào screen kỷ lục. Nguồn neo là task-performance (không phải retention) nên chỉ dùng làm bằng chứng-direction, không hứa hẹn con số.",
+      "what_would_falsify": "Nếu bảng kỷ lục local hầu như không được mở lại sau lần đầu (<10% phiên có view) hoặc requeue-rate sau clear-first không đổi → 'so với chính top-5 của mình' không đủ sức kéo chơi lại khi thiếu đối thủ thật; chuyển ngân sách sang P2-01 ghost.",
+      "playables_ok": true
+    },
+    {
+      "id": "P2-04",
+      "name": "Seed thách đố — mã chia sẻ mang theo cả đề bài LẪN điểm số",
+      "mechanism": "PRNG seeded sinh biến thể màn (gấp 4/8 lớp, vị trí lỗ/cắt, đáp án nào là thật). Mã chia sẻ dạng GAP-XXXXX-SCORE (base32, có checksum) — người nhận nhập mã ở menu 'Thách đố' offline, nhận đúng tờ giấy đó và THẤY NGAY điểm của người gửi vì nó nằm trong mã; phá được điểm ghi trong mã là 'thắng bạn' không cần mạng.",
+      "metric": "% thiết bị từng nhập ≥1 mã; số phiên trong 7 ngày của thiết bị có nhận mã so với không nhận mã",
+      "benchmark": {
+        "value": "Wordle: thêm nút share spoiler-free grid giữa tháng 12/2021 → người chơi tăng từ 90 (01/11/2021) lên 300.000 (02/01/2022) trong ~2 tháng; chính tác giả nói tính năng chia sẻ 'có tác động cực lớn' giúp lan truyền",
+        "source_url": "https://www.nytimes.com/2022/01/03/technology/wordle-word-game-creator.html",
+        "date": "2022-01-03"
+      },
+      "how_measured": "Local counter: code_generated, code_entered, code_beaten (điểm mới > điểm trong mã). Vòng đời seed QA bằng deterministic unit test cùng seed trên 2 thiết bị. Không có bất kỳ truy vấn mạng nào — điểm số vận chuyển trong clipboard/text, kiểu emoji grid.",
+      "what_would_falsify": "Nếu người chơi tạo mã nhưng gần như không ai nhập mã (code_entered/code_generated < 5%) → cơ chế 'so kè qua mã' không kích hoạt vì chia sẻ trong Playables không có kênh chat tự nhiên; khi đó chỉ còn P2-05 ảnh kết quả là đường chia sẻ khả thi.",
+      "playables_ok": true
+    },
+    {
+      "id": "P2-05",
+      "name": "Ảnh kết quả 'mở bung tờ giấy' — canvas snapshot + grid ký tự copy được",
+      "mechanism": "Màn hình kết quả render sẵn canvas: tờ giấy mở bung với vết lỗ/đường cắt, số lớp, thời gian, streak, mã seed. Nút 'Sao chép' put clipboard dạng text-art (kiểu emoji grid Wordle, không spoil đáp án) + 'Tải ảnh' (canvas.toBlob, hoạt động offline hoàn toàn).",
+      "metric": "% màn hình kết quả có action copy/save; và (proxy vòng ngoài) nhắc đến game trong comment/bài đăng nếu kênh đo được",
+      "benchmark": {
+        "value": "Twitter case study (dữ liệu đăng trên TechCrunch): 3,3 triệu người đã tweet 32,2 triệu tweet về Wordle từ giữa tháng 10/2021, thiết bị khuếch tán chính là lưới emoji spoiler-free",
+        "source_url": "https://techcrunch.com/2022/05/04/wordle-new-york-times-user-growth",
+        "date": "2022-05-04"
+      },
+      "how_measured": "Local event counter copy_clicked / image_saved trên màn kết quả, tính tỷ lệ trên tổng results-screen views. Test clipboard API + toBlob trên cả 2 nền tảng (mobile webview + desktop) trong QA nội bộ, không cần bên thứ ba.",
+      "what_would_falsify": "Nếu <3% lượt xem màn hình kết quả dẫn tới copy/save → ảnh kết quả không phải 'social currency' với dạng câu đố giấy này (khác Wordle vì ảnh dễ spoil hình đáp án); phải đổi sang text-art chỉ hiện số lớp/số sai, ẩn hình.",
+      "playables_ok": true
+    }
+  ],
+  "summary": "P2-01 (ghost chính mình) là đề xuất mạnh nhất: cơ chế 'đua với quá khứ' có bằng chứng học thuật (CHI PLAY 2019, 4 tuần, tăng motivation + flow), chi phí dữ liệu cực nhỏ (~50 bytes/màn, dư trong quota 3MB), và hợp trực tiếp với loop 60s của game GẤP. P2-02 (streak theo phiên) có số neo to nhất (Duolingo 2.4x quay lại) nhưng RỦI RO NHẤT vì neo đó đo streak THEO NGÀY còn game này không daily — nếu streak phiên gây ức chế, người chơi thoát luôn sau cú sai đầu; phải ship kèm thiết kế 'chuỗi mềm' (mốc thưởng, không phạt). P2-04 + P2-05 cặp đôi với nhau: seed-code mang điểm trong text là đường 'so kè bạn bè' 100% offline duy nhất khả dụng trên Playables (không chat, không feed trong game), ảnh canvas là đường lan truyền ra ngoài. Điểm nghẽn thật của cả trục: KHÔNG có analytics gọi mạng, nên mọi metric chỉ đo được bằng counter local + Playwright QA + dashboard do nền tảng cấp — số liệu sẽ thô, chỉ so được A/B nội bộ, không so được benchmark ngành trực tiếp. Vì vậy mọi benchmark ở trên đều là neo-direction (Duolingo/Wordle/HCI), không phải cam kết effect size. Ưu tiên build: P2-01 → P2-02 → P2-04; P2-03 gộp vào màn hình của P2-01; P2-05 làm sau khi seed-code chạy ổn."
+}
