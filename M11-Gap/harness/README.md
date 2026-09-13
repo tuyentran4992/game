@@ -48,3 +48,7 @@ Cùng **1 batch**, 2 lần chạy khác `--variant` ⇒ so `turns · duration_s 
 | B1a test | 137 | ~45.000 | 28,7 | ~11.000 |
 | B1a code | 181 | ~55.000 | 34,6 | ~10.600 |
 | SMOKE qua harness | 2 | 2.781 | 0,15 | ~2.400 (lệnh ngắn, TTFT 3,2s) |
+
+## Quyết định 13/09/2026 (anh chốt)
+Giữ harness **trong M11** (`M11-Gap/harness/`) tới khi có **số A/B thật** — **chưa** tách ra `scripts/claude-harness/` dùng chung cho M1..M11. Khi nào có kết quả + làm batch M11b thì mới bàn chuyển (việc chuyển = parametrize `--root`, bỏ hardcode `BASE` trong `orchestrate.sh`).
+Lý do: chưa có bằng chứng harness giúp nhanh hơn/rẻ hơn ⇒ không dựng hạ tầng chung trước khi có số.

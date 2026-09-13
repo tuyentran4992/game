@@ -1,0 +1,118 @@
+
+[tool] Bash: {'command': 'ls src/logic/ tests/logic/', 'description': 'List logic and test files'}
+
+[tool] Bash: {'command': 'npm run typecheck 2>&1 | tail -15 && npm run test:logic 2>&1 | tail -30', 'description': 'Run typecheck and logic tests'}
+
+[tool] Bash: {'command': 'wc -l src/logic/*.ts tests/logic/*.ts; echo ---; grep -nE "^import" src/logic/*.ts tests/logic/*.ts', 'description': 'Count lines and show imports'}
+
+[tool] Bash: {'command': 'cat src/logic/types.ts src/logic/rational.ts', 'description': 'Read types and rational'}
+
+[tool] Bash: {'command': 'cat src/logic/foldRules.ts', 'description': 'Read foldRules'}
+
+[tool] Bash: {'command': 'cat src/logic/validator.ts', 'description': 'Read validator'}
+
+[tool] Bash: {'command': "sed -n '1,150p' src/logic/generator.ts", 'description': 'Read generator head'}
+
+[tool] Bash: {'command': "sed -n '150,330p' src/logic/generator.ts", 'description': 'Read generator middle'}
+
+[tool] Bash: {'command': "sed -n '330,546p' src/logic/generator.ts", 'description': 'Read generator tail'}
+
+[tool] Bash: {'command': 'cat tests/logic/helpers.ts', 'description': 'Read test helpers'}
+
+[tool] Bash: {'command': 'grep -n "it(\\|expect(" tests/logic/generator-10000.test.ts | head -60', 'description': 'Scan 10000 test assertions'}
+
+[tool] Bash: {'command': 'grep -rn "Math.random\\|Date.now\\|performance.now\\|document\\|window\\|fetch\\|@ts-ignore\\|console.log\\|NOT_IMPLEMENTED\\|: any\\|<any>\\|as any" src/logic/*.ts', 
+
+[tool] Bash: {'command': 'python3 /data/shared-board-agent-waves/game-gap-giay/code/g01_fold_sim.py 2>&1 | head -60', 'description': 'Run python geometry ground truth'}
+
+[tool] Bash: {'command': "mkdir -p /tmp/fuzz && cat > /tmp/fuzz/vitest.config.mts <<'EOF'\nimport { defineConfig } from 'vitest/config'\nexport default defineConfig({\n  test: { include: ['/tmp
+
+[tool] Bash: {'command': "cat > /tmp/fuzz/vitest.config.mts <<'EOF'\nexport default {\n  test: { include: ['/tmp/fuzz/**/*.spec.ts'], environment: 'node', testTimeout: 600000, hookTimeout: 6000
+
+[tool] Bash: {'command': 'cat > /tmp/fuzz/f1f7.spec.ts <<\'EOF\'\nimport { it, expect } from \'vitest\'\nimport { levelSpec, shareCode } from \'/data/youtube-playables/M11-Gap/game/src/logic/ge
+
+[tool] Bash: {'command': 'cat > /tmp/fuzz/f2.spec.ts <<\'EOF\'\nimport { it, expect } from \'vitest\'\nimport { levelSpec, levelConfigFor, shareCode } from \'/data/youtube-playables/M11-Gap/gam
+
+[tool] Bash: {'command': 'grep -n "punch\\|print\\|layers=" /data/shared-board-agent-waves/game-gap-giay/code/g01_fold_sim.py | sed -n \'1,60p\'', 'description': 'Inspect python ground-truth sc
+
+[tool] Bash: {'command': "sed -n '1,55p' /data/shared-board-agent-waves/game-gap-giay/code/g01_fold_sim.py", 'description': 'Read python fold sim source'}
+
+[tool] Bash: {'command': 'cat > /tmp/fuzz/f6.spec.ts <<\'EOF\'\nimport { it, expect } from \'vitest\'\nimport { unfoldPoints } from \'/data/youtube-playables/M11-Gap/game/src/logic/foldRules\'\
+
+[tool] Bash: {'command': 'python3 - <<\'EOF\'\nimport re\np=\'/tmp/fuzz/f6.spec.ts\'\ns=open(p).read()\ns=s.replace("""      const got = keyOf(unfoldPoints(folds, R(1n, 1n), [{ x: R(BigInt(2 * 
+
+[tool] Bash: {'command': 'python3 - <<\'EOF\'\np=\'/tmp/fuzz/f6.spec.ts\'\ns=open(p).read()\ns=s.replace("""    for (const c of cells) {\n      if (f === \'H\') { if (c.fx >= w / 2) c.fx = w - 
+
+[tool] Bash: {'command': 'cat >> /tmp/fuzz/f6.spec.ts <<\'EOF\'\n\n// ===== F6c: oracle doc lap chi dung cho chuoi KHONG cheo (vung packet la chu nhat day dan) =====\nconst N2 = 16\nfunction st
+
+[tool] Bash: {'command': 'npx vitest run --config /tmp/fuzz/vitest.config.mts /tmp/fuzz/f6.spec.ts -t "F6c" 2>&1 | grep -A3 "F6c diem"', 'description': 'Show full F6c output line'}
+
+[tool] Bash: {'command': 'grep -n "it(\\|const .*=\\s*\\(levelSpec\\|unfold\\|makeLayers\\|bitmapOf\\)\\|expect(" tests/logic/generator.test.ts | sed -n \'1,80p\'', 'description': 'Scan generat
+
+[tool] Bash: {'command': "sed -n '1,60p' tests/logic/fold-unfold.test.ts", 'description': 'Read fold-unfold test head'}
+
+[tool] Bash: {'command': "sed -n '236,262p' tests/logic/generator.test.ts; echo ====; sed -n '160,200p' tests/logic/generator.test.ts", 'description': 'Read PC-01 and cross-check tests'}
+
+[tool] Bash: {'command': 'cat > /tmp/fuzz/f2b.spec.ts <<\'EOF\'\nimport { it, expect } from \'vitest\'\nimport { levelSpec } from \'/data/youtube-playables/M11-Gap/game/src/logic/generator\'\ni
+
+[tool] Bash: {'command': 'sed -n \'1,150p\' tests/logic/generator-10000.test.ts | grep -n "unfold\\|sameSet\\|samePointSet\\|bitmapOf\\|hamming\\|minPairDistance\\|validateSpec\\|2 \\*\\*\\|lay
+
+[tool] Bash: {'command': 'grep -n "unfold\\|sameSet\\|bitmapOf\\|hamming\\|minPairDistance\\|layerCount\\|2 \\*\\*\\|toEqual(\\[" tests/logic/validator.test.ts tests/logic/level-config.test.ts 
+
+[tool] Bash: {'command': "sed -n '85,102p' tests/logic/generator-10000.test.ts", 'description': 'Inspect 10000 test inner loop'}
+
+[tool] Bash: {'command': 'cat > /tmp/fuzz/f1b.spec.ts <<\'EOF\'\nimport { it, expect } from \'vitest\'\nimport { levelSpec } from \'/data/youtube-playables/M11-Gap/game/src/logic/generator\'\ni
+Đã chạy xong fuzz. Output cổng kiểm (lượt 1, thật):
+
+```
+> tsc --noEmit        (sạch, 0 lỗi)
+ ✓ tests/logic/generator.test.ts (24)   ✓ tests/logic/fold-unfold.test.ts (30)
+ ✓ tests/logic/validator.test.ts (28)   ✓ tests/logic/generator-10000.test.ts (7)  [TC-GEN-05] generated=10000/10000 distinctSpecs=10000 elapsedMs=16071
+ ✓ tests/logic/fold-rules.test.ts (15)  ✓ tests/logic/level-config.test.ts (6)  ✓ tests/logic/rational.test.ts (17)
+ Test Files  7 passed (7) | Tests  127 passed (127)
+
+grep "Math.random|Date.now|performance.now|document|window|fetch|@ts-ignore|console.log|NOT_IMPLEMENTED|any" src/logic/*.ts → 3 dòng, tất cả là COMMENT nhắc "CẤM Math.random" (generator.ts:4,52,81). 0 hit thật.
+```
+
+Số đo từ script nháp `/tmp/fuzz/{f1f7,f1b,f2,f2b,f6}.spec.ts` (chạy `npx vitest run --config /tmp/fuzz/vitest.config.mts`):
+
+```
+F1  n=6000 (200 seed REV nước ngoài, foldCount 1-4, levelIndex -1000..98999) bad=0 minPairDistance=6
+    foldShapes={"H":1505,"V":751,"HV":355,"VH":397,"HH":366,"VV":360,"HVH":363,"VHV":354,"HHV":340,"DHV":223,"DVH":233,"DHVH":753}
+F1b n=10000 bad=0 distinct=10000 emptyAnswer=0 dupPunch=0 totalMs=3904 ms/de=0.390
+F7  totalMs=3363/6000 de (0.560 ms/de) => 10000 de du doan 5604 ms
+F2  NONDET(levelSpec)=0 BAD=[] ; 22 combo bun (foldCount 0/5/6/-3/NaN, punchCount 0/-9/99, levelIndex -5/0/1e6/1.5/NaN/Infinity/2^53, seed ""/5000 ky tu) -> khong crash
+    validate: empty options ok=false d=0 | 5 options ok=false | answer empty ok=false | odd coord ok=false
+              out of sheet ok=false d=5 | correctIndex=9/-1 ok=false | punch action EMPTY ok=false->TRUE (LO) | dup holes ok=true
+    levelConfigFor: -1/0/121/1e6/1.5/NaN/Infinity/-1e9 -> THROW thong diep mien rang buoc 1..120 (dung); {levels:[1,2]} -> "Cannot use 'in' operator to search for 'folds' in" (LO)
+F2b foldCount vi pham=7/48 (foldCount=4 & useDiagonal=false -> folds="H", validateSpec van ok, difficulty=3)
+    punchCount vi pham 7/16 to hop: pc=3 -> got=2, pc=4 -> got=2/3 (x15 moi to hop)
+F3  distinctHashes=1/100  shareCodeStable=true code=GAP-LS4CO-1234  afterCache=true
+F5  mismatchUnderHostileGlobals=0 (Math.random/Date.now/performance.now cam = throw luc chay 220 luot sinh de -> khong bi goi)
+F6a cases=15 lech=0 (so voi output that g01_fold_sim.py: 4/2/1/4/2, 8/4/4/2/6/3, D 2/1, DV 4/3)
+F6c diem so sanh=640 lech=0 (oracle dem o xeo chong nha doc lap, 10 chuoi khong cheo) ; o duc KHONG co giay: khong co
+```
+
+```
+KẾT LUẬN: PASS (F8 FAIL — phải vá 3 điểm trước B1b)
+| F1 | PASS | /tmp/fuzz/f1b.spec.ts: 10000 đề/seed ngoài lai ⇒ bad=0, distinct=10000/10000; f1f7.spec.ts: 6000 đề cfg random foldCount 1..4 ⇒ bad=0, minPairDistance=6 |
+| F2 | PASS (có lỗ) | 22 input bẩn ⇒ 0 crash, NONDET=0; levelConfigFor chặn đúng dải (generator.ts:497). NHƯNG: src/logic/generator.ts:118 `?? CHAIN_ROWS[0]` biến foldCount=4 thành 1 nếp silently; validator.ts:73 `Math.max(1, ...)` làm đề punch-rỗng vẫn `ok=true` |
+| F3 | PASS | distinctHashes=1/100 với ('SEED-F3',42,cfg ch7); gọi lại sau 200 đề khác vẫn ra byte-identical ⇒ 3 map cache không rò (generator.ts:126-128) |
+| F4 | PASS | vitest environment:'node', assert `typeof globalThis.document === 'undefined'` xanh; grep document/window/fetch = 0 hit trong src/logic |
+| F5 | PASS | stub Math.random/Date.now/performance.now = throw, chạy 220 lượt sinh ⇒ 0 lời gọi, 0 mismatch; mọi biến thiên qua hash32+multiply32 (generator.ts:57-77) |
+| F6 | PASS | 15/15 case biên khớp output Python thật (4/2/1/8/4/4/2/6/3, D=2/1, DV=4/3) + 640 điểm lưới 1/16 khớp oracle cell-stack độc lập, 0 vượt trần 2^n; 0 vị trí đục không có giấy |
+| F7 | PASS | 0.390 ms/đề (10000 đề = 3904 ms) script reviewer; 16071 ms cho ca 10000 đề KÈM validateSpec+6 cặp hamming trong tests/logic/generator-10000.test.ts |
+| F8 | FAIL | tests/logic/generator.test.ts:165-176 dùng `unfoldHoles` của src làm oracle cho `answerHoles` (cùng module ⇒ chỉ bắt được lệch generator, không bắt được sai hình học); tests/logic/validator.test.ts:38-43 tính `minPairDistance` bằng `bitmapOf`+`hamming` rồi so với `minPairDistance` = vòng lặp; tests/logic/generator-10000.test.ts:103 lấy `validateSpec.ok` làm cổng chính ⇒ ca 10.000 đề tự tham chiếu. Oracle ĐỘC LẬP duy nhất là bảng truth hardcode ở tests/logic/fold-unfold.test.ts:24+ |
+```
+
+ĐIỂM NGHI NGỜ:
+- `config/chapters.json` chưa tồn tại ⇒ không kiểm chứng được `levelConfigFor` với bảng chương thật; nếu có `layers:16` hoặc `folds` dài 4 không chéo thì rơi vào nhánh silent-fallback (F2/F2b).
+- Thẩm mỹ ô nhiễu (độ "nhìn giống thật", độ dễ của đề) máy không đo ⇒ chưa kiểm chứng.
+- `shareCode` ổn định trong cùng tiến trình (đo được), nhưng miền giá trị `NaN`/âm vẫn sinh code hợp lệ (`GAP-JDP5F-NaN`) ⇒ không rõ B1c có chấp nhận không.
+
+3 RỦI RO LỚN NHẤT:
+1) `validator.ts:73 sourcesOf = Math.max(1, ...)` + `SPEC_RULES` không đối chiếu `answerHoles` với `action` ⇒ đề "4 lỗ nhưng 0 điểm đục" vẫn `ok=true`; vì ca 10.000 đề lấy chính `validateSpec` làm cổng (F8) nên lưới an toàn không tự phát hiện được loại hỏng này.
+2) `generator.ts:113-119 chainFor`: mọi `foldCount` không khớp `CHAIN_ROWS` (4 không chéo, ≥5, 0, NaN) đều âm thầm ra `['H']` — không exception, validator vẫn xanh, nhưng bậc lớp/tiến trình chương sai mà không ai biết; tương tự `punchCount≥3` bị cắt còn 2.
+3) `generator.ts:464 readField` ném `TypeError: Cannot use 'in' operator` khi một dòng `levels` trong JSON không phải object ⇒ lỗi tầng dữ liệu lọt xuống logic, B1b/B1c chỉ nhận được stack crash không có thông điệp rule.
+
+[result] is_error=False num_turns=33 duration_ms=656093 cost_usd=1.6316097500000004

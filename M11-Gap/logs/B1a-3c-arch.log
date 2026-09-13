@@ -1,0 +1,92 @@
+
+[tool] Bash: {'command': 'ls src/logic/ && echo "---TESTS---" && ls tests/logic/ && echo "---WC---" && wc -l src/logic/*.ts tests/logic/*.ts'}
+
+[tool] Bash: {'command': 'npm run typecheck 2>&1 | tail -15'}
+
+[tool] Bash: {'command': 'npm run test:logic 2>&1 | tail -25'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/types.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/rational.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/foldRules.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/generator.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/validator.ts'}
+
+[tool] Bash: {'command': 'grep -nE "Math.random|Date.now|performance.now|document|window|fetch|: any|as any|any\\\\[|@ts-ignore|console.log|NOT_IMPLEMENTED" src/logic/*.ts; echo "EXIT=$?"'}
+
+[tool] Bash: {'command': 'grep -nE "^import" src/logic/*.ts; echo "=== exports used outside ==="; for s in cellKeyOf creaseLines unfoldHolesWithCount unfoldPointsWithCount unfoldHoles ratPoint 
+
+[tool] Bash: {'command': 'grep -rn "if (\\|else \\|switch" src/logic/*.ts | wc -l; echo "--- per file ---"; grep -cE "\\bif\\b|\\belse\\b|\\bswitch\\b" src/logic/*.ts'}
+
+[tool] Bash: {'command': 'mkdir -p /tmp/a5 && cp -r src tests package.json tsconfig.json vitest.config.ts /tmp/a5/ 2>/dev/null; ls /tmp/a5; cd /tmp/a5 && ls node_modules 2>/dev/null | head -2; 
+
+[tool] Bash: {'command': 'cd /tmp/a5 && ln -sfn /data/youtube-playables/M11-Gap/game/node_modules node_modules && ./node_modules/.bin/vitest run tests/logic 2>&1 | tail -6'}
+
+[tool] Bash: {'command': 'cd /tmp/a5 && python3 - <<\'EOF\'\nimport re\np=\'src/logic/types.ts\'; s=open(p).read()\ns=s.replace("export type FoldKind = \'H\' | \'V\' | \'D\';","export type Fold
+
+[tool] Bash: {'command': 'cd /tmp/a5 && python3 - <<\'EOF\'\np=\'src/logic/foldRules.ts\'; s=open(p).read()\nrow = """  Q: {\n    label: \'diagonal crease along x+y=1 (square only)\',\n    axis
+
+[tool] Bash: {'command': 'cd /tmp/a5 && ./node_modules/.bin/vitest run tests/logic 2>&1 | grep -A12 "FAIL\\|× " | head -40'}
+
+[tool] Bash: {'command': 'cd /tmp/a5 && cat > /tmp/a5/probe_q.test.ts <<\'EOF\'\nimport { describe, it, expect } from \'vitest\';\nimport { levelConfigFor, levelSpec } from \'../src/logic/gener
+
+[tool] Bash: {'command': 'cd /tmp/a5 && mkdir -p tests/logic && cat > tests/logic/x-a5.test.ts <<\'EOF\'\nimport { describe, it, expect } from \'vitest\';\nimport { levelConfigFor, levelSpec } 
+
+[tool] Bash: {'command': 'echo "== tests imports =="; grep -nE "^import" tests/logic/*.ts | grep -v "from \'\\\\./helpers\'" ; echo; echo "== catch =="; grep -rn "catch" src/logic/*.ts; echo "=
+
+[tool] Bash: {'command': 'echo "== reflect usage =="; grep -rn "reflect" src/logic tests/logic | head; echo "== toNumber usage =="; grep -rn "toNumber" src/logic tests/logic | head; echo "== in
+
+[tool] Bash: {'command': 'sed -n 1,60p tests/logic/helpers.ts'}
+
+[tool] Bash: {'command': 'grep -n "kind ===\\|kind:" src/logic/*.ts | head -20; echo "=== const dup ==="; grep -n "OPTIONS\\b\\|OPTION_COUNT\\|RASTER_GRID = \\|const GRID\\|MIN_RASTER_DISTANCE 
+
+[tool] Bash: {'command': 'npm run typecheck && npm run test:logic 2>&1 | tail -12'}
+
+[tool] Bash: {'command': 'grep -nE "NGƯỠNG tham khảo" src/logic/*.ts; echo "== lines vs ngưỡng =="; awk \'FNR==1{}{}END{}\' /dev/null; wc -l src/logic/*.ts; echo "== module-level mutable caches
+
+[tool] Bash: {'command': 'cd /tmp/a5 && cat > tests/logic/x-a10.test.ts <<\'EOF\'\nimport { describe, it, expect } from \'vitest\'\nimport { levelSpec, levelConfigFor } from \'../../src/logic/g
+
+[tool] Bash: {'command': 'cd /tmp/a5 && cat > tests/logic/x-a10b.test.ts <<\'EOF\'\nimport { describe, it, expect } from \'vitest\'\nimport { levelSpec } from \'../../src/logic/generator\'\ncon
+```
+KẾT LUẬN: FAIL
+| mục | phán quyết | bằng chứng (file:dòng hoặc số đo) |
+| A1 | PASS | Đồ thị import thật (grep ^import): types←rational(rational.ts:9)←foldRules(foldRules.ts:18-19)←validator(validator.ts:13-15)←generator(generator.ts:20-24). Không cycle, không file ngoài src/logic import lõi (grep "logic/" src = 0 kết quả), 0 DOM/phaser/fetch. |
+| A2 | FAIL | generator.ts = 546 dòng vs chính ngưỡng nó khai ở generator.ts:19 (~180) ⇒ 3×; mang 5 trách nhiệm: PRNG 57-88, bảng chuỗi nếp 92-117, packet/lattice cache 120-164, registry ô nhiễu 260-406, bảng chương 459-545. validator.ts 190 vs ngưỡng 100 (validator.ts:12) — trộn raster math (25-64) + rule table (96-173). |
+| A3 | PASS | Registry dẫn dắt thật, không trang trí: makeLayers đọc FOLD_RULES[kind].crease + nextSize theo axis (foldRules.ts:147-164, 80-86); pickOptions lặp DISTRACTOR_RULES (generator.ts:395-406); validateSpec flatMap SPEC_RULES (validator.ts:176-179); ANSWER_MESSAGES tra theo số ô khớp (validator.ts:84-91,128). |
+| A4 | PASS | Không còn chuỗi if/else ≥3 nhánh theo kiểu nghiệp vụ. 3-arm duy nhất là clamp số (validator.ts:33) và định nghĩa thứ tự -1/0/1 (rational.ts:76-81); dispatch axis đã là Record (foldRules.ts:80-85), góc cắt là Record (generator.ts:236-241). |
+| A5 | FAIL | Làm thật trong /tmp/a5 (copy, repo sạch — `git status --porcelain src tests` rỗng). Thêm FoldKind 'Q' phải sửa **4 file**: types.ts:23, foldRules.ts FOLD_RULES **và** LINE_AXIS:225, generator.ts CHAIN_ROWS:94 **và** FOLD_KINDS:496, tests/logic/fold-rules.test.ts:18. Chỉ 1 lỗi biên dịch (TS2741 ở FOLD_RULES); phần FOLD_KINDS hỏng **âm thầm**: đo được levelConfigFor trả foldCount **1** thay vì 2 khi config khai folds:['Q','H']. |
+| A6 | FAIL | Abstraction không ai tiêu thụ: cellKeyOf (validator.ts:182) 0 caller trong src+tests; Layer.map lát-cắt-1-trục (foldRules.ts:110-111,127-134) chỉ xuất hiện ở 1 assert `not.toThrow` (fold-rules.test.ts:108) — không nằm trong đường tính đáp án; RatPoint (types.ts:21, rational.ts:119) cùng loại mặt nạ; Packet.packetSize (foldRules.ts:120,159) chỉ test dùng. |
+| A7 | PASS | Bảng chương là dữ liệu truyền vào: levelConfigFor đọc field theo danh sách keys (generator.ts:462-544), foldCount suy từ `layers`, không hardcode 8×15 trong code. |
+| A8 | FAIL | Ngưỡng nằm trong logic, không có tên: "≤3 ô" lặp 2 chỗ (generator.ts:301 `Math.min(3, owned.size)` và :349 `Math.min(3, d.answer.length)`) trong khi chứng minh fallback ở :370-375 lại dựa con số đó; bước 101 + offset 17/23/5 (generator.ts:290,365,379); default layers=4/holes=1 (generator.ts:532-534). |
+| A9 | FAIL | Trùng lặp có chủ ý sai chỗ: OPTIONS=4 (generator.ts:39) vs OPTION_COUNT=4 (validator.ts:22) — cùng một luật PC-04, hai hằng; FOLD_KINDS:496 chép lại union FoldKind (types.ts:23); tests/logic/helpers.ts chép gcd/rút gọn (47-60) + GRID=16, MIN=6 (24,29) thay vì import. |
+| A10 | FAIL | Hàm không tham chiếu-nó-nguyên-vẹn: generator.ts:116 `return row.folds` đưa **nguyên mảng registry** cho caller, types.ts:35 `folds: FoldKind[]` không readonly ⇒ PC-02 gãy. Đo thật (/tmp/a5): `levelSpec('S',1,cfg).folds` = 'V,V'; sau khi caller `push('D')` vào object đã trả về thì cùng (seed,index) trả **'H,H'**. Thêm 3 cache module không khoá không giải phóng (generator.ts:122-124) trả Point[] chia sẻ. |
+| A11 | PASS | Lỗi đúng tầng: validator không bao giờ throw, mỗi rule trả message có mã (validator.ts:96-179, decode lẻ → null ở :37-39); từ chối config ngoài dải throw ở tầng sinh đề kèm lý do (generator.ts:529); rational throw tại chỗ định nghĩa giá trị (:36, :68, :126). |
+| A12 | PASS | grep "catch" src/logic/*.ts = 0 kết quả. |
+| A13 | PASS | grep "document|window|fetch" src/logic/*.ts = 0; shareCode (generator.ts:450-453) chỉ dựng chuỗi mã, không API/URL/title. |
+| A14 | FAIL | Đa số black-box tốt (bảng chân lý Python fold-unfold.test.ts:15-16; generator test gọi validateSpec/minPairDistance), nhưng có 2 chỗ chạm nội bộ: khoá "registry có ĐÚNG 3 dòng" (fold-rules.test.ts:18) và assert rỗng `expect(() => FOLD_RULES[k].reflect(...)).not.toThrow()` / `layers[0].map(...)` (fold-rules.test.ts:22,108). |
+| A15 | FAIL | Thêm 1 `SheetAction` kind phải sửa 4 điểm rải và **không có lỗi biên dịch**: types.ts:25-27, validator.ts:74 (`kind === 'punch' ? ... : []` mặc định coi là cắt), generator.ts:413-419, generator.ts:444. Thêm 1 tính năng "bỏ reset cache/hoàn tác đề" phải sửa cả 3 file logic vì cache + mảng chia sẻ (A10). |
+
+ĐIỂM NGHI NGỜ:
+- Không kiểm chứng được ranh giới tầng trên: chưa file nào ngoài `src/logic/` import lõi (grep = 0), nên A1/A15 mới chỉ đúng cho đồ thị nội bộ; batch B1b/B1c sẽ là lúc lộ (đặc biệt hazard mutation ở A10).
+- `config/chapters.json` chưa tồn tại (generator.ts:456-458 tự khai) ⇒ không đo được A7/A8 với dữ liệu chương thật, chỉ đo với fixture test.
+- Ô `not.toThrow()` ở fold-rules.test.ts:22,108 che mất việc `Layer.map`/`reflect` là code không ai dùng — không kết luận được chủ ý khung bắt buộc hay tự tác giả thêm.
+
+3 RỦI RO LỚN NHẤT:
+1) Mảng CHAIN_ROWS/cache bị đưa thẳng ra ngoài `LevelSpec.folds` (generator.ts:116 + types.ts:35): một scene Phaser `sort/reverse/push` vào spec sẽ đổi đề của cùng seed+index — đã tái hiện được ('V,V' → 'H,H'), phá PC-02/C4 ở tầng tích hợp chứ không chỉ trên giấy.
+2) Hợp đồng kiểu gấp/action KHÔNG do compiler giữ: FOLD_KINDS (generator.ts:496) và LINE_AXIS (foldRules.ts:225, Partial) nuốt kind mới âm thầm (đo: foldCount 1 thay 2); validator.ts:74 mặc định mọi action không phải 'punch' là 1 nguồn ⇒ thêm luật "cắt/đục" mới sẽ cho trần số lỗ sai mà không đỏ test.
+3) generator.ts 546 dòng/5 trách nhiệm là nơi mọi luật mới (PC-08 hint, D1 animation, action mới) đều phải chui vào ⇒ xung đột sửa chồng chéo và ngưỡng chất lượng của chính file (khai 180 dòng) đã bị bỏ qua 3×.
+
+Lệnh cổng kiểm (dán output thật):
+`cd /data/youtube-playables/M11-Gap/game && npm run typecheck && npm run test:logic`
+```
+> tsc --noEmit        (0 lỗi)
+[B1a][TC-GEN-05] generated=10000/10000 distinctSpecs=10000 elapsedMs=8731
+ Test Files  7 passed (7)
+      Tests  127 passed (127)
+```
+</analysis>
+
+[result] is_error=False num_turns=27 duration_ms=399637 cost_usd=0.8637402500000001
