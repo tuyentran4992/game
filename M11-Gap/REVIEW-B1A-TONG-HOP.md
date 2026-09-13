@@ -38,7 +38,8 @@ Harness: 89 lượt · cache 2,47M token · **3 báo cáo đầy đủ**. ⇒ ~4
 - Cổng máy trong phiên 3c: `127 passed (7 files)`, 10.000 đề 8,7s.
 
 ## Chi phí
-- 3 phiên review: **$4,15** · tổng phiên có cost hôm nay: **$0.00** (0 phiên, 0 lượt).
+- 3 phiên review qua harness: **$4,15** (từ `logs/metrics.jsonl`: $1,65 + $1,63 + $0,86) + 3 lần smoke $0,06 ⇒ **~$4,21**.
+- Các phiên chạy TAY trước harness (test/code/fix/3 review cũ) **không ghi được cost** (file phiên CLI không lưu `total_cost_usd`) ⇒ con số đó chưa tính được, em KHÔNG đoán.
 - Cách cũ cho 3 phiên review: cache 9,85M token mà **không ra kết quả** ⇒ tiền mất, không có thông tin.
 
 ## Việc chặn B1b (đề xuất vòng fix cuối)
