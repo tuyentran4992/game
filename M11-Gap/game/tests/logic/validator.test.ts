@@ -10,6 +10,7 @@
 // ============================================================================
 import { describe, it, expect } from 'vitest'
 import { bitmapOf, hamming, minPairDistance, validateSpec } from '../../src/logic/validator'
+import type { ValidationResult } from '../../src/logic/validator'
 import type { LevelSpec, Rat } from '../../src/logic/types'
 import {
   CENTER,
@@ -23,6 +24,8 @@ import {
   diffHoles,
   flatPts,
   goodSpec,
+  handDistance,
+  handPairwiseMinOf,
   duplicatedOptionSpec,
   distractorEqualsAnswerSpec,
   mkSpec,
@@ -35,13 +38,12 @@ import {
 
 const cells = (bm: boolean[]): number => bm.filter(Boolean).length
 
-/** Min hamming đôi một của 4 phương án, tính TỪ bitmapOf+hamming (đo bằng chính API). */
-const pairwiseMin = (spec: LevelSpec): number => {
-  const bms = spec.options.map((o) => bitmapOf(o.holes, GRID))
-  let m = Number.POSITIVE_INFINITY
-  for (let i = 0; i < bms.length; i++) for (let j = i + 1; j < bms.length; j++) m = Math.min(m, hamming(bms[i], bms[j]))
-  return m
-}
+/**
+ * Min hamming đôi một của 4 phương án — B3/F-8: công thức VIẾT TAY trong helpers
+ * (⌊x·grid⌋ bằng bigint + đếm ô lệch), KHÔNG dùng bitmapOf/hamming mà rule PC-04 của
+ * chính validator đang dùng. Trước đây hai bên cùng một công thức ⇒ lỗi chung lọt lưới.
+ */
+const pairwiseMin = (spec: LevelSpec): number => handPairwiseMinOf(spec.options.map((o) => o.holes), GRID)
 
 // Lý do phải NÊU ĐƯỢC tên vấn đề (TC-GEN-08). Cho phép cả từ khoá EN/VI + mã rule,
 // nhưng bắt buộc lỗi "số đáp án" nói về đáp án và lỗi "trùng nhau" nói về sự trùng.
@@ -110,8 +112,15 @@ describe('validator.hamming — khoảng cách raster (PC-04)', () => {
 })
 
 describe('validator.minPairDistance — khoảng cách nhỏ nhất của 4 ô (PC-04)', () => {
-  it('PC-04: minPairDistance == min 6 cặp hamming(bitmapOf(...)) — đo bằng chính 2 API kia', () => {
+  it('PC-04 + B3/F-8: minPairDistance == min 6 cặp khoảng cách VIẾT TAY (oracle độc lập với bitmapOf)', () => {
     expect(minPairDistance(goodSpec(), GRID)).toBe(pairwiseMin(goodSpec()))
+  })
+
+  it('B3/F-8: oracle viết tay khớp con số ĐÃ KIỂM BẰNG TAY ở header helpers (min = 12 ô)', () => {
+    expect(pairwiseMin(goodSpec())).toBe(12)
+    expect(handDistance(flatPts(FIX_ANSWER), flatPts(FIX_NEAR), GRID)).toBe(2)
+    expect(handDistance(flatPts(FIX_ANSWER), flatPts(FIX_D1), GRID)).toBe(12)
+    expect(handDistance(flatPts(FIX_D1), flatPts(FIX_D2), GRID)).toBe(16)
   })
 
   it('PC-04: đề tốt vượt ngưỡng — minPairDistance >= ' + MIN_PAIR_DISTANCE + ' (ngưỡng từ validator.ts/g08_verify)', () => {
@@ -221,5 +230,59 @@ describe('validator.validateSpec — cổng PC-03 + PC-04 (TC-GEN-08)', () => {
     expect(validateSpec(outHigh).ok).toBe(false)
     expect(validateSpec(outLow).ok).toBe(false)
     expect(validateSpec(outHigh).errors.join(' |')).toMatch(RE_ANSWER)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// B2/F-2 — validateSpec là CỔNG, không phải hàm tra cứu: input bẩn ({} / null / thiếu
+// field / mảng toạ độ lẻ) phải trả về ValidationResult với lý do nêu TÊN field. Bản cũ
+// ném TypeError ở rule đầu tiên chạm `spec.options.length` ⇒ caller (scene, QA tool) crash.
+// ---------------------------------------------------------------------------
+describe('B2/F-2 · validateSpec chặn spec rác bằng errors, không bằng exception', () => {
+  const asSpec = (box: unknown): LevelSpec => box as unknown as LevelSpec
+  const cut = (patch: Record<string, unknown>): LevelSpec => asSpec({ ...goodSpec(), ...patch })
+  const DIRTY: readonly [string, unknown][] = [
+    ['{}', {}],
+    ['null', null],
+    ['undefined', undefined],
+    ['chuỗi', 'spec'],
+    ['số', 0],
+    ['thiếu options', cut({ options: undefined })],
+    ['thiếu answerHoles', cut({ answerHoles: undefined })],
+    ['thiếu action', cut({ action: undefined })],
+    ['thiếu correctIndex', cut({ correctIndex: undefined })],
+    ['thiếu folds', cut({ folds: undefined })],
+    ['options rỗng', cut({ options: [] })],
+    ['mảng toạ độ lẻ', cut({ answerHoles: flatPts(FIX_ANSWER).slice(0, 3) })],
+    ['folds kiểu lạ', cut({ folds: ['Z'] })],
+    ['action.kind lạ', cut({ action: { kind: 'tear', points: [] } })],
+  ]
+
+  it('mọi input bẩn ⇒ KHÔNG ném, ok = false và có ít nhất một lỗi', () => {
+    for (const [name, box] of DIRTY) {
+      let res: ValidationResult | undefined
+      expect(() => {
+        res = validateSpec(asSpec(box))
+      }, 'input ' + name).not.toThrow()
+      expect(res, 'input ' + name).toBeDefined()
+      expect(res!.ok, 'input ' + name + ': ' + res!.errors.join('; ')).toBe(false)
+      expect(res!.errors.length, 'input ' + name).toBeGreaterThan(0)
+    }
+  })
+
+  it('spec thiếu field ⇒ thông điệp nêu ĐÚNG tên field còn thiếu (TC-GEN-08 "nêu đúng lý do")', () => {
+    for (const f of ['seed', 'levelIndex', 'chapter', 'folds', 'action', 'answerHoles', 'options', 'correctIndex', 'difficulty', 'timerOn']) {
+      const res = validateSpec(cut({ [f]: undefined }))
+      expect(res.ok, 'thiếu ' + f).toBe(false)
+      expect(res.errors.join(' |'), 'phải nêu tên ' + f).toContain(f)
+    }
+  })
+
+  it('{} ⇒ báo thiếu RIÊNG TỪNG field của LevelSpec, không phải một message chung chung', () => {
+    const FIELDS = ['seed', 'levelIndex', 'chapter', 'folds', 'action', 'answerHoles', 'options', 'correctIndex', 'difficulty', 'timerOn']
+    const res = validateSpec({} as unknown as LevelSpec)
+    expect(res.ok).toBe(false)
+    expect(res.errors.length).toBe(FIELDS.length)
+    for (const f of FIELDS) expect(res.errors.some((e) => e.includes('"' + f + '"')), 'phải nêu ' + f).toBe(true)
   })
 })

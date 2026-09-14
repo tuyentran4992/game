@@ -1,0 +1,137 @@
+
+[tool] Bash: {'command': 'ls -la src/logic/ && echo "---CONFIG---" && ls -la config/ 2>/dev/null | head -20', 'description': 'List src/logic and config files'}
+
+[tool] Bash: {'command': 'npm run typecheck 2>&1 | tail -15', 'description': 'Run typecheck'}
+
+[tool] Bash: {'command': 'npm run test:logic 2>&1 | tail -30', 'description': 'Run logic tests'}
+
+[tool] Bash: {'command': 'grep -n "^import" src/logic/economy.ts src/logic/save.ts src/logic/saveMigrate.ts src/logic/saveSchema.ts src/logic/records.ts src/logic/recordsStore.ts src/logic/tele
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/economy.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/save.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/saveMigrate.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/saveSchema.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/records.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/recordsStore.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/telemetry.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/i18n.ts'}
+
+[tool] Bash: {'command': 'wc -l tests/logic/economy.test.ts tests/logic/save.test.ts tests/logic/records.test.ts tests/logic/telemetry.test.ts tests/logic/i18n.test.ts tests/logic/records-store
+
+[tool] Bash: {'command': 'grep -nE "Math.random|Date.now|performance.now|new Date|document|window|fetch\\(|: any|as any|@ts-ignore|console.log|NOT_IMPLEMENTED|TODO" src/logic/economy.ts src/log
+
+[tool] Bash: {'command': 'sed -n 1,40p tests/logic/save.test.ts; echo "...."; sed -n 200,240p tests/logic/save.test.ts', 'description': 'Inspect save test header and registry assertions'}
+
+[tool] Bash: {'command': 'grep -n "it(\\|describe(" tests/logic/economy.test.ts tests/logic/i18n.test.ts tests/logic/telemetry.test.ts | sed \'s/it(/it(/\' | head -70', 'description': 'List tes
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/cache.ts'}
+
+[tool] Bash: {'command': 'cat config/skins.json config/album.json config/ink.json', 'description': 'Show config json files'}
+
+[tool] Bash: {'command': 'set -e\nrm -rf /tmp/a5 && mkdir -p /tmp/a5\ncd /data/youtube-playables/M11-Gap/game\ncp -r src tests config tsconfig.json package.json vitest.config.ts /tmp/a5/ 2>/dev
+
+[tool] Bash: {'command': 'cd /data/youtube-playables/M11-Gap/game; grep -rn "skins.json\\|album.json\\|ink.json" src tests --include=*.ts | head; echo "=== main.ts head ==="; grep -n "^import\\
+
+[tool] Bash: {'command': 'mkdir -p /tmp/a5 && cp -r /data/youtube-playables/M11-Gap/game/src /data/youtube-playables/M11-Gap/game/tests /data/youtube-playables/M11-Gap/game/config /data/youtube
+
+[tool] Bash: {'command': 'cd /tmp/a5 && ls game | head -5 && head -3 probe_q.test.ts && rm -rf /tmp/a5/game /tmp/a5/probe_q.test.ts && npx vitest run tests/logic/save.test.ts tests/logic/config
+
+[tool] Bash: {'command': 'cd /tmp/a5 && npx vitest run tests/logic/save.test.ts tests/logic/config-caps.test.ts 2>&1 | tail -6', 'description': 'Run baseline save + config tests in sandbox', 'd
+
+[tool] Bash: {'command': 'cd /tmp/a5 && npx vitest run tests/logic/save.test.ts tests/logic/config-caps.test.ts 2>&1 | grep -E "FAIL|✗|Error|❯" | head -12', 'description': 'Show which sandbox t
+
+[tool] Bash: {'command': 'mv /tmp/a5/tests/tests /tmp/a5junk 2>/dev/null; cd /tmp/a5 && python3 - <<\'PY\'\nimport re,io,pathlib\np=pathlib.Path(\'/tmp/a5\')\n# (a) SAVE_VERSION -> 2 + new fiel
+
+[tool] Bash: {'command': 'cd /tmp/a5 && npx tsc --noEmit 2>&1 | tail -5; echo "=== TESTS ==="; npx vitest run tests/logic/save.test.ts tests/logic/records-store.test.ts 2>&1 | grep -E "Test Fil
+
+[tool] Bash: {'command': 'mv /tmp/a5/tests/logic/zz-a5.test.ts /tmp/a5junk-zz.ts 2>/dev/null; cd /tmp/a5 && npx tsc --noEmit 2>&1 | tail -3; echo "(tsconfig include?)"; grep -n "include" tsconf
+
+[tool] Bash: {'command': 'cd /tmp/a5 && ls tests/logic | grep -v "\\.test\\.ts$" >/dev/null; mkdir -p /tmp/a5junkdir; for f in tests/logic/zz-*.ts; do mv "$f" /tmp/a5junkdir/ 2>/dev/null; done;
+
+[tool] Bash: {'command': 'cd /tmp/a5 && for f in tests/logic/x-a10.test.ts tests/logic/x-a10b.test.ts tests/logic/x-a5.test.ts; do mv "$f" /tmp/a5junkdir/ 2>/dev/null; done; npx tsc --noEmit 2>
+
+[tool] Bash: {'command': 'grep -rn "skin_\\|badgeLevels\\|crease_master" src/logic/*.ts src/main.ts | grep -v "^src/logic/saveSchema.ts:2[0-9]" | head -15', 'description': 'Locate skin/badge id
+
+[tool] Bash: {'command': 'cd /tmp/a5 && python3 - <<\'PY\'\nimport json,pathlib\np=pathlib.Path(\'/tmp/a5\')\n# (b) skin thu 9 + badge thu 7: CHI SUA CONFIG\ns=json.loads((p/\'config/skins.json
+
+[tool] Bash: {'command': 'cd /data/youtube-playables/M11-Gap/game\necho "=== A4: if/else-if/switch in 5 B1c files(+satellites) ==="\ngrep -nE "\\} else if|\\bswitch *\\(|\\bif *\\(" src/logic/e
+
+[tool] Bash: {'command': 'cd /data/youtube-playables/M11-Gap/game\necho "=== else-if chains ==="\ngrep -nE "else if" src/logic/*.ts | awk -F: \'{print $1}\' | sort | uniq -c | sort -rn | head\n
+
+[tool] Bash: {'command': 'cd /data/youtube-playables/M11-Gap/game\nfor f in economy save saveSchema saveMigrate records recordsStore telemetry i18n; do\n names=$(grep -oE "^export (function|con
+
+[tool] Bash: {'command': 'cd /data/youtube-playables/M11-Gap/game\nfor f in economy save saveSchema saveMigrate records recordsStore telemetry i18n; do\n names=$(grep -oE "^export (function|con
+
+[tool] Bash: {'command': 'cd /data/youtube-playables/M11-Gap/game\nsed -n 96,160p tests/logic/i18n.test.ts', 'description': 'Inspect i18n source-scanning test'}
+
+[tool] Bash: {'command': 'cd /data/youtube-playables/M11-Gap/game\nsed -n 285,315p tests/logic/economy.test.ts; echo "=== telemetry 136-147 ==="; sed -n 130,147p tests/logic/telemetry.test.ts',
+
+[tool] Bash: {'command': 'cd /tmp/a5 && npx vitest run $(ls tests/logic/*.test.ts | grep -v generator-10000 | tr \'\\n\' \' \') 2>&1 | grep -E "Test Files|Tests |FAIL" | head -10', 'description
+
+[tool] Bash: {'command': 'grep -n "serializeSave\\|FIELD_NAMES\\|Object.keys" tests/logic/save.test.ts | head -20', 'description': 'Check save test coupling to key order'}
+
+[tool] Bash: {'command': 'cd /data/youtube-playables/M11-Gap/game\necho "== splice/shift trong telemetry =="; grep -n "splice\\|shift()\\|unshift" src/logic/telemetry.ts\necho "== catch rỗng ==
+
+[tool] Bash: {'command': 'cd /data/youtube-playables/M11-Gap/game\ngrep -n "migrateSave(V0_RAW).migrated\\|steps.length\\|steps\\[0\\]" tests/logic/save.test.ts\necho "=== levelState imports ==
+Chạy đủ 4 nhóm lệnh (repo + sandbox /tmp). Số liệu thật:
+
+**Cổng kiểm repo** (dán nguyên):
+```
+Test Files  22 passed (22)      Tests  361 passed (361)   Duration  104.78s
+[B1a][TC-GEN-05] generated=10000/10000 distinctSpecs=10000 elapsedMs=65045
+typecheck: tsc --noEmit → 0 lỗi
+grep Math.random|Date.now|performance.now|document|window|fetch|any|@ts-ignore|console.log|NOT_IMPLEMENTED (8 file B1c) → 0 dòng
+```
+**A5 làm thật trong /tmp/a5** (copy src+tests+config, symlink node_modules, repo không bị đụng):
+- (a) `SAVE_VERSION=2` + field `streak_best`: sửa **2 file** (`saveSchema.ts` +1 dòng FIELDS, `saveMigrate.ts` +1 hàm V2_ADDED +1 dòng MIGRATIONS); `tsc` sạch; `npx vitest run` 21 file/350 test → **1 đỏ duy nhất**: `AssertionError: expected ['0->1','1->2'] to deeply equal ['0->1']`.
+- (b) skin `skin_holo` + badge cấp 4: **0 file code**, chỉ `config/skins.json`/`config/album.json`; 30/30 test xanh.
+- (c) `vi`: **1 file** (`i18n.ts`: VI_COPY + `Locale` union + 1 dòng DICTIONARIES), `t()`/`lookup()`/`collectUsedKeys()` không đổi; xanh hết.
+
+```
+KẾT LUẬN: FAIL
+| mục | phán quyết | bằng chứng (file:dòng hoặc số đo) |
+| A1 | PASS | DAG 1 chiều, 0 vòng: economy←chỉ saveSchema(type); save←records/recordsStore; saveSchema/saveMigrate←save; records←recordsStore; telemetry/i18n←0 src nào (grep "^import"). B1a (rational/foldRules/generator/validator/types) không import bất kỳ file B1c nào |
+| A2 | PASS | economy.ts:0 import save/records; records.ts không gọi setItem/getItem (KV I/O dồn ở recordsStore.ts:38,49); telemetry.ts chỉ import cache.ts:9 (không biết skin/ink); i18n.ts chỉ có copy+regex, 0 luật |
+| A3 | PASS (cả 4) | MIGRATIONS là mảng data + while chạy theo from/to (saveMigrate.ts:30,44,53-64) — chứng minh bằng A5(a); ring = slots+`head`+`sum`, drop O(1) `head+=1`, đúng 1 `splice` ở sweep (telemetry.ts:124-152); registry locale `DICTIONARIES` (i18n.ts:45); bảng luật BUY_RULES/BADGE_RULES (economy.ts:76,119) |
+| A4 | PASS | `else if` toàn 8 file B1c = 0; `if` nhiều nhất ở cache.ts (2) và records.ts (1 nhánh lẻ); 0 `switch`; chuỗi cứu hộ main→good→fresh là vòng bảng RESCUE_ORDER (save.ts:72-75), không phải if dây |
+| A5a | PASS | 2 file (saveSchema.ts:13,88 + saveMigrate.ts:24,33-34), 0 sửa save.ts/types/serialize/defaultSave; tsc sạch, 349/350 test xanh |
+| A5b | PASS | 0 file code — chỉ 2 file config; `buySkin(inv,id,prices)` nhận bảng giá từ ngoài (economy.ts:85). Nợ: nâng trần badge 6→7 vẫn phải sửa `CAPS.badges` (cache.ts:27) + `caps.badges` (config/album.json) = 2 nguồn |
+| A5c | PASS | 1 file (i18n.ts:37,45-47); `t(key,dict,vars)` không nhận locale nên không phải sửa; 30/30 xanh |
+| A6 | PASS | KV của telemetry narrower (TelemetryStorage, telemetry.ts:90) để KV.save thoả được; `removeItem` có call site thật (save.ts:92); không interface rỗng |
+| A7 | FAIL | Hệ số nằm TRONG code thay vì inject: `CAPS` (cache.ts:25-37) chép tay 5 số của config/album.json; saveSchema.ts:70,78,79,82,86,88 đọc `CAPS` trực tiếp trong khi economy.ts:103,133 lại nhận `cap` qua tham số — cùng 1 con số, 2 kỷ luật; drift chỉ do tests/logic/config-caps.test.ts:21-25 chặn, không do cấu trúc |
+| A8 | KHÔNG KIỂM CHỨNG ĐƯỢC | §3 pack (tên field SaveV1) nằm ở specs/ — bị cấm đọc. Tên thật trong bảng: version, level, stars, ink, skins_owned, album_items, badges, sound_on, rev, ghosts, walls, dates (saveSchema.ts:73-88); `Save`+default+thứ tự serialize suy ra từ 1 bảng (dòng 92,96,101,108) ⇒ không có bản khai thứ hai |
+| A9 | FAIL | Bộ kiểm thô bị chép 3 lần: saveSchema.ts:36-40 (isInt/isStr/isPlain) vs records.ts:40-44 (isInt/isNum/isStr/isPlain) vs telemetry.ts:46-54 (isNum/isStr/isBox) — 3 bản copy cùng khái niệm |
+| A10 | FAIL | `events()` trả CHÍNH object bên trong ring (telemetry.ts:213) và `normalize()` copy `data` nông (dòng 109) ⇒ caller sửa nested làm sai `len` đã cache ⇒ `bytesOf()` (dòng 131) lệch JSON thật. Ngoài ra các hàm economy/records/save đều không mutation input (buySkin:89-93, copyBadges:127, copyRows:60, migrateSave:48 `{...raw}`) |
+| A11 | PASS |脏 input ⇒ kết quả có kiểu (parseSave:84-93, loadSave:123, decodeRecords:160-166, validateEvent:75-79); chỉ lỗi lập trình ném (economy.ts:51, records.ts:69) |
+| A12 | FAIL (nhẹ) | 0 `catch {}` rỗng, kv_error/storageDown đều báo ra ngoài (save.ts:30-37,48; telemetry.ts:171). Lỗ hổng: `restore()` bắt lỗi JSON.parse rồi `return` im lặng (telemetry.ts:187-190) — snapshot đọc hỏng mà không có cờ nào; và `applyWrite` rev RAM/storage bằng nhau ⇒ im lặng chọn 'write-storage' (save.ts:62) |
+| A13 | PASS | 0 URL/title/API; key storage có namespace (`m11.*`, saveSchema.ts:19-22, telemetry.ts:43) và KV truyền vào qua tham số, không tự tìm localStorage |
+| A14 | FAIL | save.test.ts:227 `expect(migrateSave(V0_RAW).migrated).toEqual([steps[0].from+'->'+steps[0].to])` chốt cứng registry 1 dòng ⇒ thêm version 2 là test đỏ dù hành vi đúng (đo thật: 1/350 đỏ). Ngoài ra fixtures JSON viết tay (save.test.ts:6-7 header) + telemetry đo byte bằng TextEncoder độc lập ⇒ phần lớn test là lưới an toàn thật |
+| A15 | PASS | Thêm tính năng kinh tế kiểu "ruy băng/streak dài hạn": field = 1 dòng FIELDS + 1 dòng MIGRATIONS (2 file cũ), event = 1 dòng EVENT_NAMES, copy = 1 dòng dict; 0 file B1a bị đụng. Đo: thêm field v2 chỉ làm đỏ 1 test |
+| API chết | CẢNH BÁO (≤3) | `TELEMETRY_KEY` export nhưng 0 dùng ngoài file (telemetry.ts:43) → bỏ export; `dictEn` alias tương thích chỉ test dùng (i18n.ts:50) → gộp về `dictOf(DEFAULT_LOCALE)`; `writeSave/loadSave/applyWrite/migrateSave/streakNext/locales/collectUsedKeys` chưa có production caller (main.ts chỉ nối recordsStore) — hợp lệ trước B2, theo dõi |
+```
+
+**ĐIỂM NGHI NGỜ**
+- Tên field `SaveV1` so với pack §3: không chấm được vì cấm đọc `specs/`.
+- `tests/logic/i18n.test.ts:118-150` là test quét **source text bằng readFileSync** để chặn copy hardcode — có giá trị kiến trúc nhưng không phải kiểm chứng hành vi; một regex `isDisplayCopy` đổi là đổi kết luận, tôi không chấm đỏ.
+- Trần byte ring tính bằng công thức `2+sum+n-1` (telemetry.ts:131): khớp JSON.stringify ở test, nhưng lệch ngay nếu có mutation input như A10 đã nêu.
+
+**3 RỦI RO LỚN NHẤT**
+1) Save âm thầm lệch thật/chestim: `events()`/`normalize()` nông + `len` cache ⇒ ring telemetry có thể vượt trần byte mà `bytesOf()` vẫn báo đạt (A10).
+2) Hai nguồn sự thật cho cùng một trần (CAPS vs config/*.json) — B2/UI đọc config, lõi đọc CAPS; thiếu 1 trong 2 lần sửa là lệch không ai biết ngoài config-caps.test.ts (A7).
+3) Test chốt số dòng registry (save.test.ts:227) khiến lần thêm version thật đầu tiên bị hiểu nhầm là bug nghiệp vụ, dễ dẫn tới việc "sửa test cho khớp" thay vì sửa hành vi (A14).
+
+**3 nợ kiến trúc nên trả sớm nhất**
+1) Đổi assertion `migrated` ở save.test.ts:227 thành bất biến chuỗi (mỗi bậc from→to liên tục, bật cuối = SAVE_VERSION) + thêm fixture v0→v_current — xoá luôn điểm đỏ duy nhất của A5(a).
+2) Đưa `isInt/isStr/isNum/isPlain/isBox/listOf` về 1 module lá (cache.ts hoặc guard mới cùng cấp) và cho saveSchema/records/telemetry dùng chung — xoá 3 bản copy (A9).
+3) Bỏ `CAPS` trùng lặp: truyền `caps` vào `migrateSave`/FIELDS tidy (giống cách economy nhận `cap`), hoặc sinh CAPS từ config ở tầng platform rồi bơm xuống — đóng A7 và A15 cùng lúc.
+
+**Đề xuất gọn hoá (1 câu, không code hộ)**: gộp `save.ts + saveSchema.ts + saveMigrate.ts` thành đúng **2** file (schema+migration gộp vì cả hai cùng đọc `FIELDS`; mặt tiền ghi/cứu hộ giữ nguyên) và xoá `dictEn` + export `TELEMETRY_KEY` — giảm 1 tầng re-export (save.ts:16-19) mà không đổi API nào test đang dùng.
+
+[result] is_error=False num_turns=42 duration_ms=603529 cost_usd=1.2538675

@@ -54,8 +54,9 @@ else
 fi
 
 # ---------- CỔNG MÁY ----------
-log "CỔNG máy (HARNESS.yaml:gate)"
-if ( cd game && npm run typecheck && npm run test:logic ) > "$LOG/$BATCH-gate.log" 2>&1; then
+GATE_CMD=$(python3 -c "import yaml;print(yaml.safe_load(open('HARNESS.yaml'))['gate'])")
+log "CỔNG máy: $GATE_CMD"
+if ( cd game && eval "$GATE_CMD" ) > "$LOG/$BATCH-gate.log" 2>&1; then
   log "CỔNG PASS"
 else
   log "CỔNG FAIL ($LOG/$BATCH-gate.log) → DỪNG, cần 1 vòng fix"; exit 5

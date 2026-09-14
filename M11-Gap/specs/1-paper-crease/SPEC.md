@@ -257,6 +257,21 @@ Phaser 3 (TS) + vite; logic thuần TS tách khỏi Phaser; build đa nền tả
 
 ---
 
+## 7.5 ĐỊNH NGHĨA "CẮT GÓC" (chốt 13/09/2026 — sau review B1a, mục F-5)
+
+Bối cảnh: code B1a tính cắt góc = **1 điểm** (`unfoldPoints(folds, ONE, [corner])`) ⇒ đáp án là ảnh của một điểm ("lỗ tròn"), trong khi oracle `game-gap-giay/code/g01_fold_sim.py:55-83` (`corner_cut`) cắt một **vùng tam giác** rồi đếm **cụm tổn thương** và phân loại `full-hole-ish` / `edge-notch`. TEST-CASES TC-GEN-11 đã yêu cầu "đáp án tính theo hình cắt mở bung, **không phải lỗ tròn**". ⇒ Đây là **CODE SAI**, SPEC bổ sung định nghĩa dưới đây để máy kiểm được.
+
+| Mã | Luật (nguồn sự thật duy nhất) |
+|---|---|
+| PC-03.1 | Cắt góc = **vùng tam giác vuông** tại 1 góc của **packet** (gói đã gấp). Hai cạnh góc vuông = `size`, cùng đơn vị tờ gốc. `size` chọn từ bảng `CUT_SIZES`, KHÔNG hardcode trong hàm. |
+| PC-03.2 | Đáp án của đề `cut` = **tập ô raster 16×16 bị vùng cắt phủ sau khi mở bung** (dùng `bitmapOf`), KHÔNG dùng `unfoldPoints` cho một điểm. |
+| PC-03.3 | So sánh đáp án với 3 ô nhiễu của đề `cut` bằng **bitmap + hamming ≥ `MIN_RASTER_DISTANCE`**, giống đề `punch`. |
+| PC-03.4 | Cỡ cắt `size ∈ {1/16, 1/8, 1/4}` × **cạnh NGẮN** của packet. Cấm cỡ < 1/16: trên lưới 16×16 hai cỡ khác nhau sẽ ra cùng bitmap ⇒ đề không phân biệt được. |
+| PC-03.5 | Phân loại tổn thương theo oracle: cụm có BOTH chiều > 3×`size` ⇒ `full-hole-ish`; ngược lại `edge-notch`. Dùng để SINH NHIỄU (nhiễu kiểu "khuyết mép" khác nhiễu kiểu "lỗ tròn"). |
+| PC-03.6 | Chương 4+ (SPEC §6.1): "cắt to/nhỏ, cắt 2 góc" ⇒ cho phép 1-2 nhát cắt; nhiều nhát thì mỗi nhát 1 góc khác nhau. |
+
+Ghi chú kiểm chứng: phép thử bắt buộc — đề `cut` phải khác đề `punch` ở **cùng seed** (bitmap khác nhau, không chỉ khác `action`); cỡ 1/16 và 1/4 phải ra bitmap KHÁC nhau.
+
 ## 8. TIÊU CHÍ HOÀN THÀNH (Definition of Done)
 
 1. 5 file SPEC (+`PROMPT.md`, `CATALOG-CHECK.md`) đã có và anh Tuyền đã duyệt.

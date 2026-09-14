@@ -1,0 +1,16 @@
+{
+  "_note": "⚠️ PLACEHOLDER — tran ho so PC-12/PC-16. Nguon so do la pack §4 (14 mau album, 6 huy hieu, 5 dong wall moi man, 365 ngay); test B1c kiem dung cac tran nay.",
+  "_doc": "Cac tran duoc truyen lam THAM SO cho addAlbumItems/awardBadge va dung khi migrate trong src/logic/save.ts — logic khong tu mo file nay.",
+  "caps": {
+    "albumItems": 14,
+    "badges": 6,
+    "wallRowsPerLevel": 5,
+    "ghostsPerLevel": 1,
+    "days": 365
+  },
+  "badgeLevels": [
+    { "id": "crease_master", "level": 1 },
+    { "id": "crease_master", "level": 2 },
+    { "id": "crease_master", "level": 3 }
+  ]
+}

@@ -8,11 +8,11 @@
 // "truyền vào khi test"). Bảng cfg lấy nguyên văn SPEC §6.1 + PC-01 — xem helpers.cfgFor.
 // ============================================================================
 import { describe, it, expect } from 'vitest'
-import { levelSpec } from '../../src/logic/generator'
+import { levelConfigFor, levelSpec } from '../../src/logic/generator'
 import type { ChapterLevelConfig } from '../../src/logic/generator'
 import { unfoldHoles } from '../../src/logic/foldRules'
 import { minPairDistance, validateSpec } from '../../src/logic/validator'
-import type { LevelSpec } from '../../src/logic/types'
+import type { FoldKind, LevelSpec } from '../../src/logic/types'
 import {
   CAMPAIGN_LEVELS,
   CHAPTERS,
@@ -22,6 +22,8 @@ import {
   MIN_PAIR_DISTANCE,
   R,
   diffHoles,
+  handCapacity,
+  handCells,
   holeCount,
   insideSheet,
   punchPointsOf,
@@ -115,12 +117,13 @@ describe('generator.levelSpec — PC-02 deterministic từ seed (TC-GEN-01, TC-G
   it('PC-02: levelIndex THỰC SỰ đi vào dòng sinh đề — cùng cfg, 30 màn liên tiếp không được cho ra MỘT đề duy nhất', () => {
     // Trong cùng 1 chương cfg chỉ khác levelInChapter ⇒ nếu generator bỏ qua levelIndex thì
     // toàn bộ 30 đề giống hệt nhau (bug thật của các bản prototype cũ).
+    // Dải 1..N (không 0..N-1): B2/F-2 xếp levelIndex=0 vào input bẩn bị levelSpec từ chối.
     const cfg = cfgFor(1, 1)
     const keys = new Set<string>()
-    for (let i = 0; i < 30; i++) keys.add(serializeSpec(levelSpec(GAME_SEED, i, cfg)))
+    for (let i = 1; i <= 30; i++) keys.add(serializeSpec(levelSpec(GAME_SEED, i, cfg)))
     expect(keys.size).toBeGreaterThanOrEqual(2)
     const counts = new Set<string>()
-    for (let i = 0; i < 200; i++) counts.add(String(holeCount(levelSpec(GAME_SEED, i, cfg).answerHoles)))
+    for (let i = 1; i <= 200; i++) counts.add(String(holeCount(levelSpec(GAME_SEED, i, cfg).answerHoles)))
     expect(counts.size).toBeGreaterThanOrEqual(2)
   })
 
@@ -187,15 +190,23 @@ describe('generator.levelSpec — PC-03 đúng 1 đáp án sinh từ trạng th�
   })
 
   it('PC-03 · số lỗ phải khớp bậc số lớp: chương 1-4 (gấp làm 4) tối đa 4 lỗ, chương 5+ (8 lớp) tối đa 8 lỗ', () => {
-    const over = campaign().filter((spec) => {
+    // §7.5 (vòng C): TRẦN 2^số nếp là của ĐỀ ĐỤC ĐIỂM. Đề cut là một VÙNG ⇒ đáp án là tập
+    // Ô RASTER bị vùng phủ, số ô không bị chặn bởi bậc lớp (mà bởi số điểm mẫu × số lớp).
+    const punch = campaign().filter((s) => s.action.kind === 'punch')
+    const over = punch.filter((spec) => {
       const cap = 2 ** spec.folds.length
       return holeCount(spec.answerHoles) > cap || holeCount(spec.answerHoles) < 1
     })
     expect(over.map((s) => s.levelIndex)).toEqual([])
-    const ch1 = campaign().filter((s) => chapterOf(s) === 1)
+    const ch1 = punch.filter((s) => chapterOf(s) === 1)
     expect(ch1.every((s) => holeCount(s.answerHoles) <= 4)).toBe(true)
-    const late = campaign().filter((s) => chapterOf(s) >= 5)
+    const late = punch.filter((s) => chapterOf(s) >= 5)
     expect(late.every((s) => holeCount(s.answerHoles) <= 8)).toBe(true)
+    // Đề cut: không có hai lỗ nào chìm trong một ô ảnh (ô là đơn vị thị giác của §7.5).
+    for (const spec of campaign().filter((s) => s.action.kind === 'cut')) {
+      expect(holeCount(spec.answerHoles)).toBeGreaterThanOrEqual(1)
+      expect(handCells(spec.answerHoles, GRID).size).toBe(holeCount(spec.answerHoles))
+    }
   })
 })
 
@@ -304,5 +315,123 @@ describe('generator.levelSpec — PC-01 tham số chương là DỮ LIỆU, khô
     const second = campaign().map(serializeSpec)
     expect(second).toEqual(first)
     expect(new Set(first).size).toBeGreaterThan(1) // không phải "một đề duy nhất lặp 120 lần"
+  })
+})
+
+// ---------------------------------------------------------------------------
+// VÒNG FIX B · B1 (review F-1) — cfg.punchCount là ĐỊNH LUẬT, không phải gợi ý.
+// Bản cũ: hết ô hợp lệ là trả về ÍT điểm đục hơn config khai (chain HV + punchCount 3 ⇒
+// 2 nguồn, 200/200 seed), và `Math.max(1, cfg.punchCount)` che luôn punchCount rác.
+// Oracle dùng ở đây là handCapacity() trong helpers — affine số nguyên lưới 1/8 VIẾT TAY,
+// không gọi layerCount/punchRun của src ⇒ src không được tự chấm bài mình.
+// ---------------------------------------------------------------------------
+const CHAIN_HV: FoldKind[] = ['H', 'V']
+const CHAIN_HVH: FoldKind[] = ['H', 'V', 'H']
+const CHAIN_HHV: FoldKind[] = ['H', 'H', 'V']
+const CHAIN_DHVH: FoldKind[] = ['D', 'H', 'V', 'H']
+
+/** Bảng chương 8 × 15 theo DATA-MODEL §3.1 — `holesMaxLate` là chỗ bảng thật xin quá trần. */
+function chaptersTable(holesMaxLate: number): unknown {
+  const list: unknown[] = []
+  for (let c = 1; c <= CHAPTERS; c++) {
+    const folds: FoldKind[] = c >= 6 ? ['D', 'H', 'V'] : c >= 5 ? CHAIN_HVH : CHAIN_HV
+    const levels: unknown[] = []
+    for (let k = 1; k <= LEVELS_PER_CHAPTER; k++) {
+      levels.push({ level_index: (c - 1) * LEVELS_PER_CHAPTER + k, folds, action: c >= 4 ? 'cut' : 'punch', timer_sec: c >= 7 ? 60 : 0 })
+    }
+    list.push({ chapter: c, layers: c >= 5 ? 8 : 4, timer: c >= 7, holes_min: c >= 7 ? 2 : 1, holes_max: c >= 7 ? holesMaxLate : 1, levels })
+  }
+  return { chapters: list }
+}
+
+type Scan = { punched: number; cut: number; short: string[]; badThrow: string[]; overAsk: string[] }
+
+/** quét 120 màn: "thiếu" = trả đề mà số điểm đục < cfg.punchCount; "ném oan" = ném khi còn chỗ. */
+function scanTable(table: unknown): Scan {
+  const out: Scan = { punched: 0, cut: 0, short: [], badThrow: [], overAsk: [] }
+  for (let level = 1; level <= CAMPAIGN_LEVELS; level++) {
+    const cfg = levelConfigFor(table, level)
+    const chain = cfg.folds ?? []
+    const room = handCapacity(chain)
+    try {
+      const spec = levelSpec(GAME_SEED, level, cfg)
+      const got = spec.action.kind === 'cut' ? -1 : punchPointsOf(spec).length
+      if (got === -1) out.cut += 1
+      else if (got === cfg.punchCount) out.punched += 1
+      else out.short.push('màn ' + level + ' ' + chain.join('') + ' cfg.punchCount=' + cfg.punchCount + ' nhưng sinh ' + got)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      if (room >= cfg.punchCount) out.badThrow.push('màn ' + level + ' ' + chain.join('') + ' punchCount=' + cfg.punchCount + ' (còn chỗ cho ' + room + ') ném: ' + msg)
+      else if (!msg.includes(chain.join('')) || !msg.includes('punchCount=' + cfg.punchCount)) out.badThrow.push('màn ' + level + ' ném không nêu chain+punchCount: ' + msg)
+      else out.overAsk.push('màn ' + level + ' ' + chain.join('') + ' xin ' + cfg.punchCount + ' > trần ' + room)
+    }
+  }
+  return out
+}
+
+describe('B1/F-1 · cfg.punchCount được tôn trọng tuyệt đối trên bảng chương thật 8×15', () => {
+  it('(a) 120 màn: không màn nào sinh ÍT điểm đục hơn config, không màn nào ném oan', () => {
+    const r = scanTable(chaptersTable(3))
+    console.log('[B1] bảng holes_max=3: punch đủ=' + r.punched + ' cắt=' + r.cut +
+      ' ném đúng lý do hình học=' + r.overAsk.length + ' :: ' + r.overAsk.slice(0, 3).join(' | '))
+    expect(r.short, 'sinh thiếu điểm đục: ' + r.short.join(' || ')).toEqual([])
+    expect(r.badThrow, 'ném sai lý do: ' + r.badThrow.join(' || ')).toEqual([])
+    expect(r.punched + r.cut).toBe(CAMPAIGN_LEVELS - r.overAsk.length)
+  })
+
+  it('(a2) cùng bảng với holes_max=2 (trong trần hình học): 120/120 màn sinh đề, đủ điểm đục', () => {
+    const r = scanTable(chaptersTable(2))
+    expect(r.badThrow, r.badThrow.join(' || ')).toEqual([])
+    expect(r.overAsk, r.overAsk.join(' || ')).toEqual([])
+    expect(r.punched + r.cut).toBe(CAMPAIGN_LEVELS)
+    expect(r.punched).toBeGreaterThanOrEqual(45) // ch1-3 không cắt góc ⇒ bắt buộc có đủ màn punch thật
+  })
+
+  it('(b) 200 seed × HV/HVH/HHV × punchCount 3..4 ⇒ hoặc đủ, hoặc NÉM nêu chain + punchCount', () => {
+    const bad: string[] = []
+    for (const chain of [CHAIN_HV, CHAIN_HVH, CHAIN_HHV])
+      for (const n of [3, 4])
+        for (let s = 1; s <= 200; s++) {
+          const cfg: ChapterLevelConfig = { ...cfgFor(1, 1), foldCount: chain.length, folds: chain, punchCount: n, useCut: false }
+          const who = chain.join('') + '/' + n + '/S-' + s
+          try {
+            const spec = levelSpec('S-' + s, 7, cfg)
+            if (punchPointsOf(spec).length !== n) bad.push(who + ' sinh thiếu: ' + punchPointsOf(spec).length)
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e)
+            if (handCapacity(chain) >= n) bad.push(who + ' NÉM OAN (còn chỗ): ' + msg)
+            else if (!msg.includes(chain.join('')) || !msg.includes('punchCount=' + n)) bad.push(who + ' ném không nêu chain+punchCount: ' + msg)
+          }
+        }
+    expect(bad.slice(0, 6), bad.length + ' vi phạm: ' + bad.slice(0, 3).join(' || ')).toEqual([])
+  })
+
+  it('(b2) điều khiển dương: chuỗi còn chỗ thì MỌI seed ra đủ điểm đục (HV/HVH/HHV × 2, DHVH × 3)', () => {
+    const cases: [FoldKind[], number][] = [[CHAIN_HV, 2], [CHAIN_HVH, 2], [CHAIN_HHV, 2], [CHAIN_DHVH, 3]]
+    const bad: string[] = []
+    for (const [chain, n] of cases) {
+      if (handCapacity(chain) < n) bad.push('bảng chờ sai: ' + chain.join('') + ' trần ' + handCapacity(chain) + ' < ' + n)
+      for (let s = 1; s <= 50; s++) {
+        const cfg: ChapterLevelConfig = { ...cfgFor(1, 1), foldCount: chain.length, folds: chain, punchCount: n, useCut: false, useDiagonal: true }
+        const spec = levelSpec('OK-' + s, 7, cfg)
+        if (punchPointsOf(spec).length !== n) bad.push(chain.join('') + '/' + n + '/OK-' + s + ' -> ' + punchPointsOf(spec).length)
+        if (holeCount(spec.answerHoles) > 2 ** chain.length) bad.push(chain.join('') + '/' + n + '/OK-' + s + ' vượt trần vị trí lỗ')
+      }
+    }
+    expect(bad, bad.slice(0, 4).join(' || ')).toEqual([])
+  })
+
+  it('(b3) pool suy từ CHAIN_ROWS không được chứa chuỗi chật hơn punchCount (không đề bị bớt điểm)', () => {
+    const bad: string[] = []
+    for (let s = 1; s <= 120; s++) {
+      const cfg: ChapterLevelConfig = { ...cfgFor(8, s), foldCount: 3, punchCount: 2, useCut: false, useDiagonal: true }
+      try {
+        const spec = levelSpec('POOL-' + s, s, cfg)
+        if (punchPointsOf(spec).length !== 2) bad.push('POOL-' + s + ' ' + spec.folds.join('') + ' -> ' + punchPointsOf(spec).length)
+      } catch (e) {
+        bad.push('POOL-' + s + ' ném: ' + (e instanceof Error ? e.message : String(e)))
+      }
+    }
+    expect(bad, bad.slice(0, 3).join(' || ')).toEqual([])
   })
 })

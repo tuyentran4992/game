@@ -1,4 +1,8 @@
 
+> paper-crease@0.1.0 gate
+> npm run typecheck && npm run test:logic && node tools/gate-smell.mjs
+
+
 > paper-crease@0.1.0 typecheck
 > tsc --noEmit
 
@@ -9,19 +13,34 @@
 
  RUN  v2.1.9 /data/youtube-playables/M11-Gap/game
 
- ✓ tests/logic/generator.test.ts (24 tests) 1509ms
- ✓ tests/logic/fold-unfold.test.ts (30 tests) 52ms
- ✓ tests/logic/validator.test.ts (28 tests) 47ms
+stdout | tests/logic/generator.test.ts > B1/F-1 · cfg.punchCount được tôn trọng tuyệt đối trên bảng chương thật 8×15 > (a) 120 màn: không màn nào sinh ÍT điểm đục hơn config, không màn nào ném oan
+[B1] bảng holes_max=3: punch đủ=65 cắt=50 ném đúng lý do hình học=5 :: màn 94 DHV xin 3 > trần 2 | màn 96 DHV xin 3 > trần 2 | màn 100 DHV xin 3 > trần 2
+
+ ✓ tests/logic/generator.test.ts (29 tests) 5036ms
+   ✓ generator.levelSpec — PC-02 deterministic từ seed (TC-GEN-01, TC-GEN-02) > TC-GEN-01 · PC-02: determinism giữ nguyên khi sinh hàng loạt màn khác xen giữa (không trạng thái ẩn) 404ms
+   ✓ generator.levelSpec — PC-03 đúng 1 đáp án sinh từ trạng thái mở (TC-GEN-04) > PC-03 · số lỗ phải khớp bậc số lớp: chương 1-4 (gấp làm 4) tối đa 4 lỗ, chương 5+ (8 lớp) tối đa 8 lỗ 326ms
+   ✓ generator.levelSpec — PC-04 bốn ô phân biệt, đạt ngưỡng khác biệt > PC-04 + ngưỡng: 120 màn — minPairDistance trên lưới 16 ≥ 6 và validateSpec ok cho mọi đề 357ms
+   ✓ generator.levelSpec — PC-01 tham số chương là DỮ LIỆU, không hardcode > TC-GEN-11 · PC-03 + PC-01: dải chương 4..8 CÓ xuất hiện "cắt 1 góc chéo" hợp lệ; chương 1..3 chỉ đục lỗ 426ms
+   ✓ B1/F-1 · cfg.punchCount được tôn trọng tuyệt đối trên bảng chương thật 8×15 > (b) 200 seed × HV/HVH/HHV × punchCount 3..4 ⇒ hoặc đủ, hoặc NÉM nêu chain + punchCount 630ms
+ ✓ tests/logic/chain-config.test.ts (27 tests) 1764ms
+   ✓ A1/F-1 · chainFor cấm nuốt foldCount ngoài bảng > 200 seed liên tiếp: mọi chuỗi tuân luật, tất định, và bảng không bị hẹp đến mức chỉ ra 1 chuỗi 1324ms
+ ✓ tests/logic/fold-rules.test.ts (27 tests) 183ms
+ ✓ tests/logic/validator.test.ts (32 tests) 77ms
 stdout | tests/logic/generator-10000.test.ts
-[B1a][TC-GEN-05] generated=10000/10000 distinctSpecs=10000 elapsedMs=8370
+[B1a][TC-GEN-05] generated=10000/10000 distinctSpecs=10000 punchCountBad=0 rasterBad=0 elapsedMs=27742
 
- ✓ tests/logic/generator-10000.test.ts (7 tests) 8389ms
- ✓ tests/logic/fold-rules.test.ts (15 tests) 21ms
- ✓ tests/logic/level-config.test.ts (6 tests) 46ms
- ✓ tests/logic/rational.test.ts (17 tests) 16ms
+ ✓ tests/logic/generator-10000.test.ts (11 tests) 27774ms
+ ✓ tests/logic/fold-unfold.test.ts (30 tests) 78ms
+ ✓ tests/logic/rational.test.ts (26 tests) 36ms
+ ✓ tests/logic/level-config.test.ts (6 tests) 64ms
+ ✓ tests/logic/refactor-contract.test.ts (9 tests) 262ms
+ ✓ tests/logic/validator-action.test.ts (9 tests) 101ms
+ ✓ tests/logic/share-code.test.ts (7 tests) 20ms
 
- Test Files  7 passed (7)
-      Tests  127 passed (127)
-   Start at  16:46:32
-   Duration  13.29s (transform 440ms, setup 0ms, collect 624ms, tests 10.08s, environment 3ms, prepare 784ms)
+ Test Files  11 passed (11)
+      Tests  213 passed (213)
+   Start at  20:28:02
+   Duration  42.44s (transform 1.01s, setup 0ms, collect 1.66s, tests 35.40s, environment 4ms, prepare 1.61s)
 
+GATE V2 — 16 file trong src/logic · max-lines=250 · dup-lines=6
+KẾT QUẢ: PASS (0 vi phạm thật)

@@ -1,0 +1,114 @@
+
+[tool] Bash: {'command': 'ls src/logic/ && echo "---" && wc -l src/logic/economy.ts src/logic/save.ts src/logic/records.ts src/logic/telemetry.ts src/logic/i18n.ts tests/logic/economy.test.ts t
+
+[tool] Bash: {'command': 'npm run typecheck 2>&1 | tail -15'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/economy.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/save.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/records.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/telemetry.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/i18n.ts'}
+
+[tool] Bash: {'command': 'cat src/logic/cache.ts; echo "=== vitest config ==="; cat vitest.config.ts; echo "=== pkg ==="; cat package.json'}
+
+[tool] Bash: {'command': 'npm run test:logic 2>&1 | tail -25'}
+
+[tool] Bash: {'command': 'grep -nE "Math.random|Date.now|performance.now|document|window|fetch|\\bany\\b|@ts-ignore|console\\.log|NOT_IMPLEMENTED" src/logic/economy.ts src/logic/save.ts src/log
+
+[tool] Bash: {'command': 'grep -cE "Math.random|Date.now|performance.now|document|window|fetch|\\bany\\b|@ts-ignore|console\\.log|NOT_IMPLEMENTED" src/logic/economy.ts src/logic/save.ts src/log
+
+[tool] Bash: {'command': 'rm -rf /tmp/b1c && mkdir -p /tmp/b1c/build && npx tsc src/logic/*.ts --outDir /tmp/b1c/build --module esnext --target es2022 --moduleResolution bundler --skipLibCheck 
+
+[tool] Bash: {'command': 'mkdir -p /tmp/b1c/build && npx tsc src/logic/*.ts --outDir /tmp/b1c/build --module esnext --target es2022 --moduleResolution bundler --skipLibCheck 2>&1 | head -5; ls 
+
+[tool] Bash: {'command': "cd /tmp/b1c && cat > probe0.mjs <<'EOF'\nimport * as S from './build/save.js';\nconst d = S.defaultSave();\nconsole.log('SAVE_KEYS', JSON.stringify(S.SAVE_KEYS));\ncon
+
+[tool] Bash: {'command': 'cd /tmp/b1c/build && sed -i -E "s|from \'\\./([A-Za-z0-9_]+)\'|from \'./\\1.js\'|g" *.js && grep -n "from \'\\./" save.js | head -5 && cd /tmp/b1c && node probe0.mjs'}
+
+[tool] Bash: {'command': 'cd /tmp/b1c && cat > f1_f2.mjs <<\'EOF\'\nimport * as S from \'./build/save.js\';\nconst { parseSave, defaultSave, serializeSave, SAVE_KEYS } = S;\nlet seed = 12345;\n
+
+[tool] Bash: {'command': "cd /tmp/b1c && cat > f3.mjs <<'EOF'\nimport * as S from './build/save.js';\nconst { parseSave, defaultSave, serializeSave, migrateSave, MIGRATIONS } = S;\nconsole.log(
+
+[tool] Bash: {'command': "cd /tmp/b1c && cat > f3b.mjs <<'EOF'\nimport * as S from './build/save.js';\nconst { parseSave, defaultSave, migrateSave } = S;\nconst base = defaultSave();\nconst try
+
+[tool] Bash: {'command': "cd /tmp/b1c && cat > f3c.mjs <<'EOF'\nimport * as S from './build/save.js';\nconst { parseSave, defaultSave, migrateSave, serializeSave } = S;\nconst base = defaultSav
+
+[tool] Bash: {'command': "cd /tmp/b1c && cat > f3d.mjs <<'EOF'\nimport * as S from './build/save.js';\nimport * as RS from './build/recordsStore.js';\nimport * as R from './build/records.js';\n
+
+[tool] Bash: {'command': "cd /tmp/b1c && cat > f3e.mjs <<'EOF'\nimport * as S from './build/save.js';\nconst { parseSave, defaultSave, SAVE_KEYS } = S;\nconst base = defaultSave();\nconst cands
+
+[tool] Bash: {'command': 'cd /tmp/b1c && python3 - <<\'PY\'\nimport re\ns = open(\'/tmp/b1c/f3e.mjs\').read()\ns = s.replace("removeItem: (k) => void mem.delete(k) });", "removeItem: (k) => { m
+
+[tool] Bash: {'command': "cd /tmp/b1c && cat > f2b_f4.mjs <<'EOF'\nimport * as S from './build/save.js';\nimport { CAPS } from './build/cache.js';\nconst { parseSave, defaultSave, serializeSave
+
+[tool] Bash: {'command': "cd /tmp/b1c && cat > caps_f4b.mjs <<'EOF'\nimport * as S from './build/save.js';\nimport { CAPS } from './build/cache.js';\nconst { parseSave, defaultSave, serializeSa
+
+[tool] Bash: {'command': "cd /tmp/b1c && python3 - <<'PY'\nsrc = r'''\nimport * as S from './build/save.js';\nimport { CAPS } from './build/cache.js';\nconst { parseSave, defaultSave, serialize
+
+[tool] Bash: {'command': 'cd /tmp/b1c && python3 - <<\'PY\'\nsrc = r\'\'\'\nimport { t, lookup, dictOf, dictEn, locales, collectUsedKeys } from \'./build/i18n.js\';\nimport { createTelemetry, v
+
+[tool] Bash: {'command': 'cd /tmp/b1c && python3 - <<\'PY\'\nsrc = r\'\'\'\nimport * as S from \'./build/save.js\';\nconst { parseSave, defaultSave, serializeSave, loadSave, writeSave, SAVE_KEY
+
+[tool] Bash: {'command': 'grep -nE "it\\(|expect\\(" tests/logic/save.test.ts | grep -nE "serializeSave|parseSave|migrateSave|defaultSave|writeSave|loadSave" | head -40'}
+
+[tool] Bash: {'command': 'grep -cE "toBeDefined|toBeTruthy|not.toThrow\\(\\)\\s*$" tests/logic/economy.test.ts tests/logic/save.test.ts tests/logic/records.test.ts tests/logic/telemetry.test.ts
+
+[tool] Bash: {'command': 'grep -nE "toBeDefined|toBeTruthy|toBe\\(CAPS|toBe\\(STAR_SCALE|toEqual\\(CAPS|\\.length\\)\\.toBe\\([a-zA-Z]+\\(" tests/logic/records.test.ts tests/logic/telemetry.tes
+
+[tool] Bash: {'command': 'python3 - <<\'PY\'\nimport re,glob\npat = re.compile(r\'expect\\(([^()]*(?:\\([^()]*\\))?[^()]*)\\)\\.\\w+\\(\\s*(?!\\\'|\\"|`|-?\\d|true|false|null|\\[|\\{)([A-Za-z_$
+
+[tool] Bash: {'command': 'grep -nE "expect\\(.*\\)\\.(toBe|toEqual|toBeGreaterThan|toBeLessThanOrEqual)\\(.*\\(" tests/logic/telemetry.test.ts tests/logic/records.test.ts tests/logic/i18n.test.
+
+[tool] Bash: {'command': 'grep -nE "utf8|TextEncoder|CAPS|import" tests/logic/telemetry.test.ts | head -12; echo "=== records helper ==="; grep -nE "SLOTS|^import|ZERO_STRING" tests/logic/recor
+
+[tool] Bash: {'command': 'cd /tmp/b1c && python3 - <<\'PY\'\nsrc = r\'\'\'\nimport * as E from \'./build/economy.js\';\nimport * as R from \'./build/records.js\';\nimport { validateEvent, creat
+
+[tool] Bash: {'command': 'grep -nE "missing" tests/logic/i18n.test.ts | head -8; echo "=== save.test co case array 1 phan tu bam? ==="; grep -nE "ghosts|walls" tests/logic/save.test.ts | head -
+```
+KẾT LUẬN: FAIL
+```
+| mục | phán quyết | bằng chứng (file:dòng hoặc số đo) |
+|---|---|---|
+| C1 | PASS | `npm run typecheck` sạch + `Test Files 22 passed (22) / Tests 361 passed (361)`, Duration 98.77s (dán ở lượt chạy gate; 5 file B1c: i18n 8, economy 18, records 19, telemetry 9, save 23 `it()`) |
+| C2 | PASS | không có `toBeDefined/toBeTruthy` trong 5 file test (grep 0 khớp); assert chữ số cụ thể, vd `records.test.ts:73` `toEqual(new Array(120).fill(0))`, `telemetry.test.ts:20` cap 100*1024 viết tay |
+| C3/C4 | PASS (B1c) | 2000 vòng `loadSave+writeSave` = **68ms**; determinism 100 vòng (economy+records+telemetry) → 1 hash duy nhất `820838956` |
+| C5 | KHÔNG KIỂM CHỨNG ĐƯỢC | không chạy `g01_fold_sim.py` — 5 file B1c (economy/save/records/telemetry/i18n) không chứa hình học nếp |
+| C6 | FAIL | PC-16: `save.ts:43-52` ghi **không trần byte** — blob 6.149.169 B vẫn `ok:true, mirror:'written'` (đo). PC-19: `i18n.ts:66-75` để lọt `{n}` trần kèm `missing:false` (xem F5) |
+| C7 | PASS | chạy trong node trần: `document=undefined window=undefined localStorage=undefined`; grep `Math.random|Date.now|performance.now|document|window|fetch|any|@ts-ignore|console.log|NOT_IMPLEMENTED` trên economy/save/records/telemetry/i18n(+saveSchema/saveMigrate/recordsStore) = **0 khớp cả 8 file** |
+| C8 | PASS | `tsc --noEmit` không ra lỗi; 0 `any`, 0 `@ts-ignore` |
+| C9 | FAIL | biên input: `applyWrite({ram: undefined, storage: undefined})` **NÉM TypeError** (`save.ts:58` chỉ chặn `=== null`) trong khi `LoadResult.save?: undefined` (`save.ts:70`) là nhánh hợp lệ sau `kv_unavailable`. Repro: `loadSave(KV ném semua) ⇒ {ok:false,reason:'kv_unavailable',save:undefined}` → `applyWrite({ram: failed.save, storage: failed.save})` → `THROW TypeError: Cannot read properties of undefined (reading 'rev')` |
+| C10 | PASS | 0 `console.log`/`NOT_IMPLEMENTED` (grep); không có code chết thấy được |
+| C11 | PASS | `serializeSave` ổn định: `serializeSave(parseSave(t).save) === t` cho mọi blob thử (kể cả worst-case 9.4KB) |
+| C12 | KHÔNG KIỂM CHỨNG ĐƯỢC | đề/đáp án thuộc B1a, nằm ngoài 5 file B1c |
+| F1 | PASS | 2.586 lượt `parseSave` (mọi v trí cắt chia 17 + **cắt từng ký tự** mọi đầu/cuối + 2.000 chuỗi random/token-noise + `[`×5000 + 2MB 'x') ⇒ **0 ném**, kiểu luôn đúng (`ok:true⇒save object`, `ok:false⇒reason string`), mọi field schema luôn có. 2.000 chuỗi rác ×thang cứu hộ `loadSave` ⇒ **0 lỗi** |
+| F2 | PASS (có chủ đích) | `__proto__` trong blob: `{}.polluted=undefined`, `Object.prototype` không đổi, `parseSave ok=true` + field rác (`ink:"abc"`,`stars:123`,`version:{}`) về default; key lạ `extra_key` **bị bỏ** (whitelist); ghost row có `spec:{}` → giữ 3 số, **rò rỉ đề bài bị chặn** |
+| F3 | FAIL | v0 thiếu 6 field → điền đủ (`{version:1,level:7,stars,ink:42,skins_owned:[skin_classic],album_items:[],badges:[],sound_on:false,rev:0,ghosts:[],walls:[],dates:[]}`), `skins_owned/album_items/badges` **NGUYÊN** (2 skin, 1 album, 1 badge, ink 77, rev 5), migrate **idempotent** (`1==2? true, 2==3? true`). NHƯNG `ghosts/walls` dạng bản ghi (`[{levelIndex,ms,wrongTaps}]`) bị **xóa sạch** vì 0→1 không chuyển đổi: `filled:["ghosts"]` có tồn tại trong `migrateSave` nhưng `ParseResult` chỉ có 2 khoá `ok,save` ⇒ `loadSave` trả `{ok:true, source:'main', repaired:false, ghosts:[]}` **không một tín hiệu**, rồi `writeSave` (rev+1) ghi bản trống xuống ⇒ **mất vĩnh viễn**. Repro tối thiểu: `main = serialize({...defaultSave, ghosts:['1:900:0','2:700:1','3:650:0', null]})` → `loadSave` → `ghosts=[]` (cả 3 dòng hợp lệ chết vì 1 phần tử rác), `walls` giữ nguyên → sau 1 lần `writeSave`, KV còn `ghosts.length=0`. Cùng kiểu: `walls:[[1,2,3],['x']] → []` |
+| F4 | PASS | 4 KV hỏng ×(load→ghi→đọc) : `throwAll`→`{ok:false,reason:'kv_unavailable'}` + `writeSave→kv_error`; `falsey`(setItem trả `false`)→`ok:true, mirror:'written'`; `blackhole`(xóa sạch/whiteout giữa phiên, 2 màn L1→L2)→0 exception, RAM `{lvl:2,ink:60,rev:2}` còn nguyên, load cuối `src:main`; `halfDead` **main ném + backup còn sống** → cứu đúng `{src:'backup', lvl:9, ink:500}`. KV trả kiểu lạ (object/string) → không crash. *Lưu ý:* `falsey`/`blackhole` được báo `mirror:'written'` vì `save.ts:30-37` chỉ xem **ném** là hỏng, không đọc lại đối chiếu |
+| F5 | FAIL | 500 key random + `''`,`' '`,`'.'`,`'{'`,`'{}'`,`'__proto__'`,`'constructor'`,`'toString'`,`'__defineGetter__'` ⇒ **0 ném, 0 trả `undefined`**, key lạ trả chính key. VI PHẠM: `lookup('hud.continue', dictEn)` (không truyền `n`) → `{text:'Continue — Level {n}', missing:false}` (`i18n.ts:66-69` giữ nguyên placeholder, `i18n.ts:75` gắn `missing=false`) ⇒ `{n}` trần lên UI mà **không khai báo missing**; `t()` lại vứt cờ missing. Ngoài ra `t(key, null)` / `t(key, undefined)` **NÉM TypeError** (`i18n.ts:73` `dict[key]`) trái dòng "không bao giờ ném" ở `i18n.ts:78` |
+| F6 | PASS | 50.000 push (event 5KB trộn event nhỏ): 0 ném, `dropped=49901`, còn 99, `bytesOf()=100924` **khớp chính xác** `TextEncoder(JSON.stringify(events()))`, max xuyên suốt 100962 ≤ cap cứng 102400; timestamp đơn điệu `true`; "event mới nhất luôn còn" `true`; snapshot xuống KV 32.423B (≤ `CAPS.snapshotKeep=32`). Event 200KB → `{ok:false, dropped:0}` và ring vẫn 100924B (không phá vỡ) |
+| F7 | PASS | save worst-case thật (120 ghosts, 120 walls, 365 dates, 14 album, 6 badges, 60 skins) = **9.412B**: serialize 0.101ms, parse 0.539ms, **roundtrip 0.641ms** (≪50ms, 4 lần/phiên ≈ 2.6ms), `writeSave` 0.540ms/lan; `inkAward` 100k = 20.2ms; mua skin 100k = 176.5ms. *(`applyPurchase` không tồn tại — chỉ có `buySkin`.)* |
+| F8 | FAIL (test tự làm oracle) | `save.test.ts:183` `expect(r.save).toEqual(defaultSave())` + `:184` `expect(serializeSave(r.save)).toBe(text)` (so 2 output của src với nhau), `:254` `:264` `toBe(defaultSave().sound_on)`, `:353` `toEqual(defaultSave().skins_owned)`, `:431` `toBe(defaultSave().level)`, `:227` `migrated` so với chuỗi dựng từ `MIGRATIONS` ⇒ default đổi theo là test vẫn xanh. Đối chiếu: `telemetry.test.ts:20,47` và `records.test.ts:31,73` dùng TextEncoder/hằng viết tay → **không** self-oracle |
+| A1–A15 (phụ) | PASS | đồ thị import thật 1 chiều: `i18n→levelState(type)`, `telemetry→cache`, `records→progression,cache,save`, `save→cache,saveSchema,saveMigrate`, `saveSchema→progression,cache,economy(type)`, `recordsStore→cache,records,save(type)` — không vòng; `economy.ts:76-80` `BUY_RULES` và `:119-125` `BADGE_RULES`, `telemetry.ts:68` `CHECKS`, `i18n.ts:45` `DICTIONARIES` đúng là bảng dữ liệu; phép thử A5: thêm 1 `Denial` = sửa 1 bảng + types + test |
+
+**Ca làm implementation sai/chết (tóm tắt repro)**
+1. `applyWrite` ném TypeError ở nhánh `undefined` — `save.ts:58` (`save === null` thay vì `save == null`) + `save.ts:70` cho phép `save: undefined`. Input `{ram: loadSave(deadKV).save, storage: …}` → `THROW TypeError: Cannot read properties of undefined (reading 'rev')`.
+2. Mất dữ liệu vĩnh viễn không tín hiệu — `ParseResult` chỉ có `{ok, save}` (đo: `keys= ok,save`), cờ `filled` của `migrateSave` không đi qua `parseSave`/`loadSave`; 1 phần tử rác trong `ghosts`/`walls` ⇒ xóa **cả mảng** (vd `['1:900:0','2:700:1','3:650:0',null]` → `[]`) với `ok:true, repaired:false`, rồi `writeSave` ghi đè lên disk.
+3. `i18n.fill` để lọt `{n}` trần với `missing:false` (`i18n.ts:66-75`) — không đạt F5.
+4. Kinh tế không chặn biên giá: `buySkin({ink:50},'a',[{id:'a',ink:-99}])` → `ink:149` (âm giá **đúc thêm Mực**), `ink:NaN` → `ink:NaN`; `awardBadge([],'b/level:1.5/',6)` nhận badge cấp 1.5; `addAlbumItems(list,[],NaN)` → **không cắt** (NaN so sánh false) — mọi số này phải bị validator tầng config chặn, không phải để logic suy ra (`economy.ts:79,90,108,124`).
+5. `writeSave` không có trần byte (`save.ts:43-52`): 6.149.169B vẫn `ok:true`; `ghosts` nhận chuỗi **dài tuỳ ý** (`['x'.repeat(200)+i]`, 120 phần tử) và `skins_owned` không cap (100 → 100) ⇒ đường vòng qua `CAPS` của `cache.ts`.
+6. `version:-1` được chấp nhận và giữ nguyên `-1` forever (migrate không có bước ⇒ `fromFuture=false`, không `filled`); blob `version:2` đọc `ok:true` nhưng **rơi field mới** và `fromFuture` cũng không lộ ra `ParseResult`.
+
+ĐIỂM NGHI NGỜ:
+- Không đọc `saveSchema.ts`/`saveMigrate.ts`/`recordsStore.ts` theo luật phiên ⇒ hình dạng chuẩn của `ghosts`(string[])/`walls`(number[][]) phải **suy luận bằng fuzz**; nếu pack quy định dạng khác thì mục 2 phải hạ mức.
+- `mirror:'written'` khi `setItem` trả `false` (không ném) — phụ thuộc hợp đồng KV của tầng platform, không kết luận được.
+- `PushResult` không có `reason` ⇒ không phân biệt "bị từ chối vì stale timestamp" (`telemetry.ts:203`) với "không hợp lệ".
+- `applyPurchase` (tên trong đề bài F7) không tồn tại; đã đo `buySkin` thay.
+- Không chạy `g01_fold_sim.py` (chân lý hình học) vì ngoài phạm vi 5 file B1c.
+
+3 RỦI RO LỚN NHẤT: 1) **Mất save không thể phục hồi**: một phần tử rác trong `ghosts`/`walls` xoá sạch cả mảng và `writeSave` lần đầu ghi đè bản wiped xuống disk + gương `good` (`save.ts:43-52`), caller không có cách nào biết vì `ParseResult`/`LoadResult` không mang cờ sửa chữa. 2) **Crash thật trong game-loop**: `applyWrite({ram: res.save, …})` ngay sau một lần `loadSave` fail là TypeError (`save.ts:58,70`) — đúng kịch bản ERR-01 mà tầng này sinh ra để chặn. 3) **Đúc Mực qua bảng giá**: giá âm/NaN đi thẳng từ `config/*.json` vào `buySkin` làm `ink` tăng hoặc hóa `NaN` (`economy.ts:79,90`), không có floor/cap nào trong lõi, và `writeSave` không chặn blob vượt quota ⇒ một lỗi dữ liệu cấu hình trở thành lỗi kinh tế + lỗi ghi đĩa.
+
+[result] is_error=False num_turns=36 duration_ms=705954 cost_usd=1.56574775

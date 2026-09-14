@@ -1,0 +1,83 @@
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/levelState.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/progression.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/level-state.test.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/helpers.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/hint-undo.test.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/stars.test.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/progression.test.ts'}
+
+[tool] Bash: {'command': 'npm run typecheck 2>&1 | tail -20 && echo "=== TEST ===" && npm run test:logic 2>&1 | tail -30', 'description': 'Run typecheck and logic tests', 'timeout': 600000}
+
+[tool] Bash: {'command': 'echo "--- grep banned ---" && grep -nE "Math.random|Date.now|performance.now|document|window|fetch|: any|as any|@ts-ignore|console.log|NOT_IMPLEMENTED" src/logic/level
+
+[tool] Bash: {'command': 'cd /data/youtube-playables/M11-Gap/game/tests/logic && for s in resultOf LEVEL_PHASES TRANSITIONS archetypeOf wrongInfo missingHoles extraHoles explainKey inkEarned Le
+
+[tool] Bash: {'command': 'echo "--- rational toPoints/pointKey ---"; grep -nE "export (function|const) (toPoints|pointKey)" src/logic/rational.ts; echo "--- stars.ts constants usage ---"; grep 
+
+[tool] Bash: {'command': 'cd /data/youtube-playables/M11-Gap/game && echo "--- rational exports ---" && grep -nE "^export (function|const) (toPoints|pointKey)" src/logic/rational.ts && echo "--
+
+[tool] Bash: {'command': 'echo "=== run 1 ===" && npx vitest run tests/logic/level-state.test.ts tests/logic/hint-undo.test.ts tests/logic/stars.test.ts tests/logic/progression.test.ts 2>&1 | t
+
+[tool] Bash: {'command': 'python3 /data/shared-board-agent-waves/game-gap-giay/code/g01_fold_sim.py 2>&1 | tail -20', 'description': 'Run geometric ground-truth python script'}
+
+[tool] Bash: {'command': "mkdir -p /tmp/b1b-review && cat > /tmp/b1b-review/edge.test.ts <<'EOF'\nimport { describe, expect, it } from 'vitest';\nimport * as PG from '/data/youtube-playables/M1
+
+[tool] Bash: {'command': 'cat > /tmp/b1b-review/edge2.test.ts <<\'EOF\'\nimport { describe, expect, it } from \'vitest\';\nimport * as PG from \'/data/youtube-playables/M11-Gap/game/src/logic/p
+
+[tool] Bash: {'command': 'echo "--- timer budget constants in src/logic ---" && grep -rniE "TIME_|BUDGET|LIMIT_MS|deadline|tooSlow|timedOut" src/logic/*.ts | head; echo "--- generator level bou
+
+[tool] Bash: {'command': 'grep -nE "^export function|^function|FREE|lastFree|GAP" src/logic/stars.ts | sed -n \'1,30p\'', 'description': 'List function signatures in stars.ts'}
+```
+KẾT LUẬN: FAIL
+```
+
+| mục | phán quyết | bằng chứng (file:dòng hoặc số đo) |
+|---|---|---|
+| C1 test xanh THẬT | PASS | `tsc --noEmit` sạch; `Test Files 15 passed (15) / Tests 267 passed (267), Duration 84.57s`; riêng 4 file B1b: `Test Files 4 passed (4) / Tests 54 passed (54)` (level-state 17, progression 13, hint-undo 11, stars 13) |
+| C2 test không sáo rỗng | **FAIL** | assert không-điều-kiện-được: `stars.test.ts:159` `expect(f(21,stars)).toBe(f(21,stars))`, `stars.test.ts:160` `expect(stars).toBe(copy)` với `copy = stars` (`:155`, string bất biến ⇒ luôn đúng). Hợp đồng `win` bị đặt tên khác src: test `stars.test.ts:5` ghi `win(won,...)` trong khi `src/logic/stars.ts:51` là `win(firstTry, usedHint)` ⇒ test không phát hiện được đổi nghĩa. Không có test nào đụng `resultOf`, `LevelResult`, `wrongInfo`, `missingHoles/extraHoles`, `inkEarned`, `archetypeOf`, `TRANSITIONS`, `LEVEL_PHASES` (grep: `tests/` rỗng, src chỉ 1 file khai báo) |
+| C3 10.000 đề | PASS (B1b không sinh đề) | `generator-10000.test.ts`: `[B1a][TC-GEN-05] generated=10000/10000 distinctSpecs=10000 elapsedMs=56384` vẫn xanh sau khi thêm B1b; B1b chỉ đọc bảng |
+| C4 determinism | PASS | /tmp probe 100 lần chuỗi `markReady→tap→resolve→nextLevel→resultOf` + `chapterOf/archetypeOf/revealRules/paperThemeOf`: `DETINCT_HASHES=1`; grep cấm: `Math.random|Date.now|performance.now` **0 khớp** trong `levelState.ts`/`progression.ts` (chỉ 1 dòng comment `levelState.ts:4`) |
+| C5 chân lý hình học | PASS (đúng phần B1b chạm tới) | `g01_fold_sim.py`: HV+punch off-crease = **4** lỗ, D-then-V on-crease = **3**, 1 D off-diagonal = **2**, corner-raw 8 lớp = **6/8**; `holeDiff` của `levelState.ts:110-115` trên fixture cho `{missingHoles:4, extraHoles:8}` đúng (đo thật bằng /tmp probe) — **nhưng** không test nào assert các số này (C2) |
+| C6 rule cài thật | FAIL một phần | PC-01 **PASS**: `progression.ts:58-60` timer true chỉ ch7-8 + `progression.test.ts:174-181`. PC-05 **PASS**: `levelState.ts:38-40` buffer tap khoá, `:205-213` undo 1 lần, `level-state.test.ts:190-196` taps=2. PC-06 **PASS**: `stars.ts:51` `win(firstTry,usedHint)` + `stars.test.ts:85-87` 4 dòng [3,2,1,1]. PC-07 **PASS (mở khoá không tụt)**: `progression.ts:169-171` + `progression.test.ts:204-214`. PC-09 **PASS**: `TRANSITIONS.next=[]` (`levelState.ts:17`), `nextSpec` bật sẵn ở `correct` (`:176-177`), `level-state.test.ts:211-219` makeNext đúng 1 lần. PC-10 **PASS**: `advanceClock` (`:216-221`) không đổi phase, không phạt. **CHƯA CÓ AI CÀI**: ngưỡng thời gian — `grep -rniE "TIME_|BUDGET|LIMIT_MS|deadline|timedOut" src/logic/*.ts` → **0 khớp**, `timerOn` không được `levelState.ts` đọc. **PC-08 FAIL**: `FREE_HINT_GAP=2` ở `progression.ts:41` có 0 consumer (grep `FREE_HINT_GAP` src = 1 file), logic thật hardcode `- 2` ở `stars.ts:107` |
+| C7 hằng số có nguồn | FAIL | Có nguồn đúng: `LEVELS_PER_CHAPTER=15` `:35`, `GATE_STARS=12` `:39`, `CAMPAIGN_LEVELS=120` `:37`, `revealLevel` `:45-60` khớp bảng §6.1 mà test chép tay (`progression.test.ts:49`). **SAI**: `FREE_HINT_GAP` là hằng số trang trí (xem C6); `unlockNeed` tính từ `end-(15-12)` (`:71`) tức `GATE_STARS` được dùng như **số MÀN đã chạm**, không phải số sao — tên hằng误导; `inkEarned:0` (`levelState.ts:235`) có ghi nguồn B1c, chấp nhận được |
+| C8 typecheck / any | PASS | `npm run typecheck` 0 lỗi; grep `: any|as any|@ts-ignore` trong `levelState.ts`/`progression.ts`/`stars.ts` = 0 khớp. `progression.ts:159-167` dùng overload + narrow `typeof`, không any |
+| C9 edge | **FAIL** | Bug thật, đo được: dạng gọi khai trong pack §3 `isChapterUnlocked(stars, best, chapter)` **NÉM** khi `best = 0` — kết quả probe: `(stars,0,ch2) => THROW:level 0 ngoai 1..120`, `(stars120_1star,0,ch8) => THROW` (nguyên nhân `progression.ts:164` `levelOf(b)` trong khi `:90` cấm 0; chính `bestLevel` `:112` trả 0 cho "chưa chơi"). Ngoài ra `resolve` ở màn 120 gọi `makeNext(121)` vô điều kiện (`levelState.ts:176`, probe: `GEN_WAS_CALLED_WITH_121`) — không test nào cho biên cuối chiến dịch |
+| C10 không rác | FAIL | Code chết/mù: `TRANSITIONS` (`levelState.ts:16-18`) không file nào import và không test nào đọc ⇒ đồ thị chuyển pha bị **nhân bản** với `ACTIONS` (`:26-35`) — thêm cạnh mà quên 1 trong 2 là không ai bắt được (DRY/A9). `archetypeOf` (`progression.ts:147`) export nhưng 0 consumer, 0 test. `unlockedBy` `:170` có vế `reached >= row.firstLevel` luôn thừa vì `unlockNeed = firstLevel - 4` (suy ra từ `:71`). `Math.max(0, taps-1)` (`levelState.ts:210`) che vi phạm bất biến thay vì assert. KHÔNG có `console.log`/code `NOT_IMPLEMENTED` |
+| C11 NOT_IMPLEMENTED | PASS | `grep -n NOT_IMPLEMENTED src/logic/levelState.ts src/logic/progression.ts` → rỗng (exit 1); `share-code.test.ts` 7 test vẫn xanh |
+| C12 1 đáp án / 4 ô | PASS (kế thừa B1a) | `levelState.ts:159-163` chỉ nhận `0..options.length-1` và thông báo nêu "mọi đề có 4 ô (PC-03)"; validator B1a vẫn xanh (`validator.test.ts` 146ms). B1b không tự sinh ô |
+| B1b-EXTRA (a) 6 phase, correct→next, không win-screen | PASS | `levelState.ts:13` đúng 6; `:17` `correct:['next']`, `next:[]` không cạnh ra; `TRANSITIONS` không có giá trị nào thuộc `WIN_SCREEN_PHASES` (`level-state.test.ts:40`); test đối chiếu bằng bảng **chép tay** `:36` + assert tập phase đạt được `:140-147` — không dẫn xuất từ src (không oracle tự tham chiếu) |
+| B1b-EXTRA (b) resultOf + firstTry | PASS về code, FAIL về test | `RESULT_PHASES=['correct','next']` (`:43,228,238`), `firstTry = misses===0 && !undoUsed` (`:233`) — probe thật: đường undo rồi đúng ⇒ `{"firstTry":false,...}`, đường retry ⇒ `firstTry:false, misses 1`. undo **có** mất tư cách 3★ vì `stars.ts:51 win(firstTry,…)`. **NHƯNG** `resultOf` không có bất kỳ test nào (grep `resultOf` trong tests = rỗng; `hint-undo.test.ts:202-209` chỉ so `snap`, không chạm firstTry) ⇒ rules PC-06/PC-19 ở nhánh này không được bảo vệ |
+| B1b-EXTRA (c) applyResult/isChapterUnlocked/timerEnabled | PASS/PASS/FAIL nhẹ | `applyResult` ghi đè: `stars.test.ts:108-116` (3 rồi 1 ⇒ '1', sum=1) ✓; `isChapterUnlocked` không tụt khoá: `progression.test.ts:204-213` (10 sao, bestLevel 12 ⇒ true) ✓; `timerEnabled` false ch1-6: `progression.test.ts:174-181` ✓; nhưng dạng 3 tham số của `isChapterUnlocked` crash C9 |
+
+**Lệnh cổng kiểm (output thật):**
+```
+> tsc --noEmit            (0 lỗi)
+ ✓ tests/logic/level-state.test.ts (17 tests) 41ms
+ ✓ tests/logic/progression.test.ts (13 tests) 40ms
+ ✓ tests/logic/hint-undo.test.ts (11 tests) 27ms
+ ✓ tests/logic/stars.test.ts (13 tests) 23ms
+ ✓ tests/logic/generator-10000.test.ts (11 tests) 56413ms
+ Test Files  15 passed (15)   Tests  267 passed (267)   Duration 84.57s
+```
+Số đo phụ: `PROGRESSION_10K_MS=41` (40.000 lời gọi chapterOf/archetypeOf/revealRules/bestLevel), `DETINCT_HASHES=1`, `isChapterUnlocked(stars,0,2) => THROW:level 0 ngoai 1..120`.
+
+ĐIỂM NGHI NGỜ
+- Không được phép đọc `specs/` + pack B1b ⇒ không xác minh được: bộ 8 `revealLevel` (7,20,…,110), `vocabId`/`theme`/`layers`, `unlockNeed` có đúng §6.1 hay không, và "gate 12" là **12 sao** hay **12 màn đã chạm**. Code+test chọn nghĩa "màn đã chạm" (`progression.ts:169-171`) trong khi tên hằng là `GATE_STARS` (`:39`).
+- Bảng `EXPLAIN_BY_SUBJECT` (`levelState.ts:51-53`) ánh xạ `D → 'punch-on-crease'` và `none → 'fold-layer-count'`: chỉ 1/4 ID từng được sinh ra trong test, không có nguồn kiểm chứng (pack §2 dòng 36 được viện dẫn nhưng không đọc được).
+- `peekFold` (`:200-202`) trả null ngay khi sang `answered`/`wrong`/sau `retry` dù `hintUsed` còn — không test nào chốt hành vi này; có thể là lỗi UX thật.
+- `stars.ts` nằm ngoài danh sách file được đọc, nên các kết luận về `win/freeHint_GAP/lastThreeStar` chỉ dựa trên grep chữ ký+dòng (`stars.ts:51,107,118`) — chưa đọc toàn file.
+- C6 các rule PC-02/03/04 thuộc B1a, không chấm lại theo đề bài.
+
+3 RỦI RO LỚN NHẤT
+1) **Crash đường goi pack**: `isChapterUnlocked(stars, best, chapter)` ném khi `best=0` (`progression.ts:164`+`:90`). Giá trị 0 chính là sentinel do `bestLevel` (`:112`) sinh ra cho save mới ⇒ màn hình chọn chương B2 sẽ vỡ ngay lần chơi đầu.
+2) **Constant-rules là giả**: `FREE_HINT_GAP` không ai tiêu thụ, gap 2 màn hardcode trong `stars.ts:107`; `GATE_STARS` chỉ được dùng để *sinh sẵn* `unlockNeed` trong bảng. Sửa 2 hằng này để tinh chỉnh độ khó sẽ **không đổi hành vi** — đúng loại lỗi mà checklist C7/A7 cấm.
+3) **Máy trạng thái có 2 nguồn sự thật và phần thưởng không được test**: `TRANSITIONS` nhân bản `ACTIONS` mà không test nào so hai bên (`levelState.ts:16-18` vs `:26-35`); toàn bộ `resultOf`/`wrongInfo`/`missingHoles`/`extraHoles`/`firstTry` (PC-06, PC-19) và `archetypeOf` (nhịp 15 màn) có 0 test ⇒ thêm 1 phase/1 archetype chỉ cần sửa 1 chỗ là test vẫn xanh, game vẫn sai.
+
+[result] is_error=False num_turns=19 duration_ms=454452 cost_usd=1.0673347499999999

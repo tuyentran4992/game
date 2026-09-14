@@ -17,7 +17,7 @@ max_turns: { tests: 90, code: 80, fix: 60, review: 40 }
 tools_disallow: [WebSearch, WebFetch, Task, TodoWrite, NotebookEdit]
 
 # cổng máy: bắt buộc xanh mới đi tiếp
-gate: "npm run typecheck && npm run test:logic"
+gate: "npm run gate"   # typecheck + test:logic + gate-smell (smell cơ học, có nợ khai báo ở tools/gate-allow.json)
 
 review_set: [3a-code, 3b-stress, 3c-arch]
 

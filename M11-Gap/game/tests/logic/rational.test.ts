@@ -5,7 +5,8 @@
 // TDD: viết TRƯỚC code ⇒ chạy ra ĐỎ với NOT_IMPLEMENTED. Không case nào skip/todo.
 // ============================================================================
 import { describe, it, expect } from 'vitest'
-import { rat, add, sub, mul, div, eq, cmp, toNumber, key } from '../../src/logic/rational'
+import { rat, add, sub, mul, div, eq, cmp, toNumber, key, point } from '../../src/logic/rational'
+import type { Rat } from '../../src/logic/types'
 
 // Các giá trị dùng chung KHAI BÁO DẠNG HÀM (thunk) để mỗi it() tự gọi: nhờ vậy khi src
 // chưa implement, từng case hiện FAILURE riêng với lý do NOT_IMPLEMENTED (thay vì cả file
@@ -111,5 +112,101 @@ describe('rational — so khớp CHÍNH XÁC bằng số hữu tỉ (PC-03, ch�
   it('PC-02: rat() nhận cả number lẫn bigint cho cùng một giá trị (chữ ký hợp đồng trong khung src)', () => {
     expect(eq(rat(1, 2), rat(1n, 2n))).toBe(true)
     expect(key(rat(3, 8))).toBe(key(rat(3n, 8n)))
+  })
+})
+
+// ============================================================================
+// VÒNG FIX C · C1 (review F2) — `gcd` trong rational.ts lặp tới khi số dư bằng 0;
+// với Rat rác (NaN / Infinity / string / number thực / mẫu 0) điều kiện đó ĐÚNG MÃI ⇒
+// 3/23 case đề xấu TREO tới timeout. Hợp đồng mới: mọi điểm vào kiểm kiểu + hữu hạn
+// tại cửa, SAI LÀ NÉM. Mỗi case dưới đây đo cả THỜI GIAN (< 50ms) vì "ném sau khi treo
+// 5 giây" cũng là treo.
+// ============================================================================
+describe('C1/F2 · Rat rác NÉM tại cửa vào — không treo, không trả Rat rác', () => {
+  /** Trả [số ms đã chạy, lỗi bắt được (null nếu không ném)]. */
+  const grab = (fn: () => unknown): [number, unknown] => {
+    const t0 = Date.now()
+    let err: unknown = null
+    try {
+      fn()
+    } catch (e) {
+      err = e
+    }
+    return [Date.now() - t0, err]
+  }
+  const H = () => rat(1n, 2n)
+  /** Rat rác dựng TAY — giả đúng cảnh JSON/hàng đợi phản hồi không qua rat(). */
+  const JUNK: readonly [string, () => Rat][] = [
+    ['toado NaN', () => ({ n: Number.NaN, d: 1n }) as unknown as Rat],
+    ['tu so Infinity', () => ({ n: Number.POSITIVE_INFINITY, d: 3n }) as unknown as Rat],
+    ['Rat dung tu string', () => ({ n: '1', d: '2' }) as unknown as Rat],
+    ['number thay bigint', () => ({ n: 1, d: 2 }) as unknown as Rat],
+    ['so thuc 1.5', () => ({ n: 1.5, d: 2 }) as unknown as Rat],
+    ['mau so 0', () => ({ n: 1n, d: 0n }) as unknown as Rat],
+  ]
+  /** Mỗi hàm công khai chạm số học — toàn bộ phải từ chối Rat rác như nhau. */
+  const USERS: readonly [string, (a: Rat) => unknown][] = [
+    ['key', key],
+    ['toNumber', toNumber],
+    ['eq', (a) => eq(a, H())],
+    ['cmp', (a) => cmp(a, H())],
+    ['add', (a) => add(a, H())],
+    ['sub', (a) => sub(H(), a)],
+    ['mul', (a) => mul(a, a)],
+    ['div', (a) => div(H(), a)],
+    ['point', (a) => point(a, H())],
+  ]
+
+  for (const [name, make] of JUNK) {
+    it('C1 · Rat rác (' + name + '): mọi phép công khai ném Error nêu tên < 50ms', () => {
+      for (const [fn, use] of USERS) {
+        const [ms, err] = grab(() => use(make()))
+        expect(err, fn + ' nhận ' + name + ' mà không ném').toBeInstanceOf(Error)
+        expect((err as Error).message, fn + ' phải nêu nguồn lỗi rational').toContain('rational')
+        expect(ms, fn + ' (' + name + ') mất ' + ms + 'ms — gcd đang quay mà không bị chặn').toBeLessThan(50)
+      }
+    })
+  }
+
+  it('C1 · rat() tự chặn input bẩn ở tham số (NaN/Infinity/1.5/string/mẫu 0) nhanh < 50ms', () => {
+    const bad: readonly [string, () => unknown][] = [
+      ['rat(NaN)', () => rat(Number.NaN)],
+      ['rat(Infinity)', () => rat(Number.POSITIVE_INFINITY)],
+      ['rat(-Infinity)', () => rat(Number.NEGATIVE_INFINITY)],
+      ['rat(1.5)', () => rat(1.5)],
+      ["rat('1','2')", () => rat('1' as unknown as number, '2' as unknown as number)],
+      ['rat(1,0)', () => rat(1, 0)],
+      ['rat(0n,0n)', () => rat(0n, 0n)],
+      ['rat(null)', () => rat(null as unknown as number)],
+    ]
+    for (const [who, fn] of bad) {
+      const [ms, err] = grab(fn)
+      expect(err, who + ' phải bị từ chối').toBeInstanceOf(Error)
+      expect(ms, who + ' ném sau ' + ms + 'ms').toBeLessThan(50)
+    }
+  })
+
+  it('C1 · chứng minh gcd KHÔNG chạy: bộ đếm đọc n/d phải dừng ở cổng kiểm, không ở vòng lặp Euclid', () => {
+    let reads = 0
+    const poison = {
+      get n(): bigint {
+        reads += 1
+        return Number.NaN as unknown as bigint
+      },
+      get d(): bigint {
+        reads += 1
+        return 1n
+      },
+    } as unknown as Rat
+    expect(() => key(poison)).toThrow(/bigint/)
+    // need() chỉ đọc n và d MỘT lần mỗi bên. gcd() trên rác sẽ đọc hàng nghìn lượt.
+    expect(reads, 'gcd đã quay trên Rat rác = vòng lặp chưa bị chặn ở cửa').toBeLessThanOrEqual(4)
+  })
+
+  it('C1 · điều khiển dương: bigint hợp lệ (kể cả khổng lồ) vẫn tính đúng, không bị cổng vào chặn oan', () => {
+    expect(key(rat(10n ** 60n, 3n))).toBe(key(rat(10n ** 60n, 3n)))
+    expect(eq(rat(2n, 4n), H())).toBe(true)
+    expect(cmp(rat(-(10 ** 18)), rat(0))).toBe(-1)
+    expect(toNumber(rat(1n, 8n))).toBe(0.125)
   })
 })

@@ -64,3 +64,119 @@ METRICS {"ts": "2026-09-13T16:57:44Z", "variant": "v1-harness", "batch": "B1a", 
 [B1a/3b-stress] 33 lượt · 658.2s · vào 144 · cache 911,267 · ra 28,449 · $1.6316 · ok
 [2026-09-13 16:57:44] END 3b-stress ok
 [2026-09-13 16:57:44] CHUỖI XONG B1a — chờ Hermes đọc 3 báo cáo review
+[2026-09-13 17:02:17] === BẮT ĐẦU chuỗi B1a (variant=default) ===
+[2026-09-13 17:02:17] CHẾ ĐỘ FIX: B1a-2c-fix-a.md
+[2026-09-13 17:02:17] START 2b-fix (prompt=B1a-2c-fix-a.md max-turns=70 mode=edit variant=default)
+Traceback (most recent call last):
+  File "/data/youtube-playables/M11-Gap/harness/claude_step.py", line 133, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/data/youtube-playables/M11-Gap/harness/claude_step.py", line 94, in main
+    us = m.get("usage") or {}
+         ^^^^^
+AttributeError: 'str' object has no attribute 'get'
+[2026-09-13 17:29:00] END 2b-fix exit!=0 (xem /data/youtube-playables/M11-Gap/logs/B1a-2b-fix.log)
+[2026-09-13 17:29:00] CỔNG máy (HARNESS.yaml:gate)
+[2026-09-13 17:29:04] CỔNG FAIL (/data/youtube-playables/M11-Gap/logs/B1a-gate.log) → DỪNG, cần 1 vòng fix
+[2026-09-13 17:30:26] === BẮT ĐẦU chuỗi B1a (variant=default) ===
+[2026-09-13 17:30:26] CHẾ ĐỘ FIX: B1a-2d-fix-a2.md
+[2026-09-13 17:30:26] START 2b-fix (prompt=B1a-2d-fix-a2.md max-turns=35 mode=edit variant=default)
+Traceback (most recent call last):
+  File "/data/youtube-playables/M11-Gap/harness/claude_step.py", line 133, in <module>
+    def batch_basename(p):
+                 ^^^^^^
+  File "/data/youtube-playables/M11-Gap/harness/claude_step.py", line 94, in main
+    if not isinstance(o, dict): continue
+         ^^^^^
+AttributeError: 'str' object has no attribute 'get'
+[2026-09-13 17:33:12] END 2b-fix exit!=0 (xem /data/youtube-playables/M11-Gap/logs/B1a-2b-fix.log)
+[2026-09-13 17:33:12] CỔNG máy: npm run gate
+[2026-09-13 17:33:32] CỔNG PASS
+[2026-09-13 17:33:32] REVIEW: 3 phiên song song (chỉ đọc)
+[2026-09-13 17:33:32] START 3a-code (prompt=B1a-3a-code.md max-turns=30 mode=readonly variant=default)
+[2026-09-13 17:33:32] START 3c-arch (prompt=B1a-3c-arch.md max-turns=30 mode=readonly variant=default)
+[2026-09-13 17:33:32] START 3b-stress (prompt=B1a-3b-stress.md max-turns=30 mode=readonly variant=default)
+METRICS {"ts": "2026-09-13T17:41:34Z", "variant": "v1-harness", "batch": "B1a", "step": "3c-arch", "model": "qwen3.8-flash", "max_turns": 30, "turns": 33, "duration_s": 482.0, "api_ms": 366996, "ttft_ms": 3702, "cost_usd": 1.3581, "session_id": "e0c40eb5-1882-4218-a948-18cd5dbf6b1e", "resume_from": null, "ctx_per_turn_avg": 4035, "ctx_per_turn_max": 4035, "syspack": "B1a-syspack.md", "exit": 0, "timeout": null, "input_tokens": 156, "output_tokens": 20435, "cache_read": 910094, "cache_creation": 59335}
+[B1a/3c-arch] 33 lượt · 482.0s · vào 156 · cache 910,094 · ra 20,435 · $1.3581 · ok
+[2026-09-13 17:41:34] END 3c-arch ok
+METRICS {"ts": "2026-09-13T17:42:31Z", "variant": "v1-harness", "batch": "B1a", "step": "3b-stress", "model": "qwen3.8-flash", "max_turns": 30, "turns": 28, "duration_s": 538.7, "api_ms": 385355, "ttft_ms": 2245, "cost_usd": 1.5088, "session_id": "dd003bd6-9018-48ea-8f35-41777a80addc", "resume_from": null, "ctx_per_turn_avg": 4030, "ctx_per_turn_max": 4030, "syspack": "B1a-syspack.md", "exit": 0, "timeout": null, "input_tokens": 132, "output_tokens": 22360, "cache_read": 992514, "cache_creation": 70778}
+[B1a/3b-stress] 28 lượt · 538.7s · vào 132 · cache 992,514 · ra 22,360 · $1.5088 · ok
+[2026-09-13 17:42:31] END 3b-stress ok
+METRICS {"ts": "2026-09-13T17:43:36Z", "variant": "v1-harness", "batch": "B1a", "step": "3a-code", "model": "qwen3.8-flash", "max_turns": 30, "turns": 34, "duration_s": 604.4, "api_ms": 483122, "ttft_ms": 2331, "cost_usd": 1.6144, "session_id": "1837e1ad-0ac0-4bf9-9d81-1dcfdabc4cd9", "resume_from": null, "ctx_per_turn_avg": 4027, "ctx_per_turn_max": 4027, "syspack": "B1a-syspack.md", "exit": 0, "timeout": null, "input_tokens": 138, "output_tokens": 23113, "cache_read": 1026528, "cache_creation": 80895}
+[B1a/3a-code] 34 lượt · 604.4s · vào 138 · cache 1,026,528 · ra 23,113 · $1.6144 · ok
+[2026-09-13 17:43:37] END 3a-code ok
+[2026-09-13 17:43:37] CHUỖI XONG B1a — chờ Hermes đọc 3 báo cáo review
+[2026-09-13 17:44:54] === BẮT ĐẦU chuỗi B1a (variant=default) ===
+[2026-09-13 17:44:54] CHẾ ĐỘ FIX: B1a-2e-fix-b.md
+[2026-09-13 17:44:54] START 2b-fix (prompt=B1a-2e-fix-b.md max-turns=90 mode=edit variant=default)
+METRICS {"ts": "2026-09-13T18:11:46Z", "variant": "v1-harness", "batch": "B1a", "step": "2b-fix", "model": "qwen3.8-flash", "max_turns": 90, "turns": 88, "duration_s": 1611.8, "api_ms": 1529648, "ttft_ms": 2784, "cost_usd": 7.129, "session_id": "2ea9866e-aec6-4626-b18f-864ea6a66bf9", "resume_from": null, "ctx_per_turn_avg": 4110, "ctx_per_turn_max": 4132, "syspack": "B1a-syspack.md", "exit": 0, "timeout": null, "input_tokens": 468, "output_tokens": 83403, "cache_read": 8157662, "cache_creation": 150720}
+[B1a/2b-fix] 88 lượt · 1611.8s · vào 468 · cache 8,157,662 · ra 83,403 · $7.129 · ok
+[2026-09-13 18:11:46] END 2b-fix ok
+[2026-09-13 18:11:46] CỔNG máy: npm run gate
+[2026-09-13 18:12:12] CỔNG PASS
+[2026-09-13 18:12:12] REVIEW: 3 phiên song song (chỉ đọc)
+[2026-09-13 18:12:12] START 3c-arch (prompt=B1a-3c-arch.md max-turns=30 mode=readonly variant=default)
+[2026-09-13 18:12:12] START 3b-stress (prompt=B1a-3b-stress.md max-turns=30 mode=readonly variant=default)
+[2026-09-13 18:12:12] START 3a-code (prompt=B1a-3a-code.md max-turns=30 mode=readonly variant=default)
+METRICS {"ts": "2026-09-13T18:21:45Z", "variant": "v1-harness", "batch": "B1a", "step": "3c-arch", "model": "qwen3.8-flash", "max_turns": 30, "turns": 26, "duration_s": 573.3, "api_ms": 277486, "ttft_ms": 2518, "cost_usd": 1.0093, "session_id": "107f898f-26c0-4ef7-9185-b0114b067dca", "resume_from": null, "ctx_per_turn_avg": 4101, "ctx_per_turn_max": 4101, "syspack": "B1a-syspack.md", "exit": 0, "timeout": null, "input_tokens": 120, "output_tokens": 16355, "cache_read": 597045, "cache_creation": 45208}
+[B1a/3c-arch] 26 lượt · 573.3s · vào 120 · cache 597,045 · ra 16,355 · $1.0093 · ok
+[2026-09-13 18:21:45] END 3c-arch ok
+METRICS {"ts": "2026-09-13T18:24:34Z", "variant": "v1-harness", "batch": "B1a", "step": "3a-code", "model": "qwen3.8-flash", "max_turns": 30, "turns": 31, "duration_s": 742.5, "api_ms": 389848, "ttft_ms": null, "cost_usd": 1.9234, "session_id": "5081c037-07ce-45b8-87e5-f67b75f85b37", "resume_from": null, "ctx_per_turn_avg": 4134, "ctx_per_turn_max": 4152, "syspack": "B1a-syspack.md", "exit": 1, "timeout": null, "input_tokens": 180, "output_tokens": 23121, "cache_read": 1630539, "cache_creation": 82565}
+[B1a/3a-code] 31 lượt · 742.5s · vào 180 · cache 1,630,539 · ra 23,121 · $1.9234 · ok
+[2026-09-13 18:24:35] END 3a-code exit!=0 (xem /data/youtube-playables/M11-Gap/logs/B1a-3a-code.log)
+METRICS {"ts": "2026-09-13T18:25:40Z", "variant": "v1-harness", "batch": "B1a", "step": "3b-stress", "model": "qwen3.8-flash", "max_turns": 30, "turns": 38, "duration_s": 808.2, "api_ms": 456384, "ttft_ms": 2756, "cost_usd": 1.8761, "session_id": "a8e09c80-7c7f-44d8-bb1c-b386da75e852", "resume_from": null, "ctx_per_turn_avg": 4096, "ctx_per_turn_max": 4096, "syspack": "B1a-syspack.md", "exit": 0, "timeout": null, "input_tokens": 174, "output_tokens": 24798, "cache_read": 1473213, "cache_creation": 80244}
+[B1a/3b-stress] 38 lượt · 808.2s · vào 174 · cache 1,473,213 · ra 24,798 · $1.8761 · ok
+[2026-09-13 18:25:40] END 3b-stress ok
+[2026-09-13 18:25:40] CHUỖI XONG B1a — chờ Hermes đọc 3 báo cáo review
+[2026-09-13 18:26:25] === BẮT ĐẦU chuỗi B1a (variant=default) ===
+[2026-09-13 18:26:25] CHẾ ĐỘ FIX: B1a-2f-fix-c.md
+[2026-09-13 18:26:25] START 2b-fix (prompt=B1a-2f-fix-c.md max-turns=95 mode=edit variant=default)
+METRICS {"ts": "2026-09-13T18:57:24Z", "variant": "v1-harness", "batch": "B1a", "step": "2b-fix", "model": "qwen3.8-flash", "max_turns": 95, "turns": 96, "duration_s": 1859.1, "api_ms": 1797491, "ttft_ms": null, "cost_usd": 9.1033, "session_id": "d7f2910f-b876-4094-a7b8-de858859e980", "resume_from": null, "ctx_per_turn_avg": 4364, "ctx_per_turn_max": 4380, "syspack": "B1a-syspack.md", "exit": 1, "timeout": null, "input_tokens": 570, "output_tokens": 89168, "cache_read": 11494625, "cache_creation": 176179}
+[B1a/2b-fix] 96 lượt · 1859.1s · vào 570 · cache 11,494,625 · ra 89,168 · $9.1033 · ok
+[2026-09-13 18:57:24] END 2b-fix exit!=0 (xem /data/youtube-playables/M11-Gap/logs/B1a-2b-fix.log)
+[2026-09-13 18:57:24] CỔNG máy: npm run gate
+[2026-09-13 18:58:08] CỔNG PASS
+[2026-09-13 18:58:08] REVIEW: 3 phiên song song (chỉ đọc)
+[2026-09-13 18:58:08] START 3a-code (prompt=B1a-3a-code.md max-turns=30 mode=readonly variant=default)
+[2026-09-13 18:58:08] START 3c-arch (prompt=B1a-3c-arch.md max-turns=30 mode=readonly variant=default)
+[2026-09-13 18:58:08] START 3b-stress (prompt=B1a-3b-stress.md max-turns=30 mode=readonly variant=default)
+METRICS {"ts": "2026-09-13T19:06:09Z", "variant": "v1-harness", "batch": "B1a", "step": "3a-code", "model": "qwen3.8-flash", "max_turns": 30, "turns": 28, "duration_s": 481.2, "api_ms": 293075, "ttft_ms": 2333, "cost_usd": 1.233, "session_id": "46d78c1d-4141-4de1-8403-7ca8bd00a0eb", "resume_from": null, "ctx_per_turn_avg": 4086, "ctx_per_turn_max": 4086, "syspack": "B1a-syspack.md", "exit": 0, "timeout": null, "input_tokens": 108, "output_tokens": 14442, "cache_read": 781552, "cache_creation": 74694}
+[B1a/3a-code] 28 lượt · 481.2s · vào 108 · cache 781,552 · ra 14,442 · $1.233 · ok
+[2026-09-13 19:06:09] END 3a-code ok
+METRICS {"ts": "2026-09-13T19:06:58Z", "variant": "v1-harness", "batch": "B1a", "step": "3b-stress", "model": "qwen3.8-flash", "max_turns": 30, "turns": 38, "duration_s": 530.0, "api_ms": 366778, "ttft_ms": 2269, "cost_usd": 1.7602, "session_id": "06679f21-24a1-4666-b492-755911b8dcff", "resume_from": null, "ctx_per_turn_avg": 4089, "ctx_per_turn_max": 4089, "syspack": "B1a-syspack.md", "exit": 0, "timeout": null, "input_tokens": 180, "output_tokens": 20386, "cache_read": 1477039, "cache_creation": 79469}
+[B1a/3b-stress] 38 lượt · 530.0s · vào 180 · cache 1,477,039 · ra 20,386 · $1.7602 · ok
+[2026-09-13 19:06:58] END 3b-stress ok
+METRICS {"ts": "2026-09-13T19:08:31Z", "variant": "v1-harness", "batch": "B1a", "step": "3c-arch", "model": "qwen3.8-flash", "max_turns": 30, "turns": 28, "duration_s": 622.7, "api_ms": 489204, "ttft_ms": 2620, "cost_usd": 1.2042, "session_id": "4fb31a6b-1fd8-4c53-ac40-d2a96e2e3e80", "resume_from": null, "ctx_per_turn_avg": 4094, "ctx_per_turn_max": 4094, "syspack": "B1a-syspack.md", "exit": 0, "timeout": null, "input_tokens": 114, "output_tokens": 18067, "cache_read": 735185, "cache_creation": 58626}
+[B1a/3c-arch] 28 lượt · 622.7s · vào 114 · cache 735,185 · ra 18,067 · $1.2042 · ok
+[2026-09-13 19:08:31] END 3c-arch ok
+[2026-09-13 19:08:31] CHUỖI XONG B1a — chờ Hermes đọc 3 báo cáo review
+[2026-09-13 19:09:14] === BẮT ĐẦU chuỗi B1a (variant=default) ===
+[2026-09-13 19:09:14] CHẾ ĐỘ FIX: B1a-2h-fix-d.md
+[2026-09-13 19:09:14] START 2b-fix (prompt=B1a-2h-fix-d.md max-turns=95 mode=edit variant=default)
+METRICS {"ts": "2026-09-13T19:35:29Z", "variant": "v1-harness", "batch": "B1a", "step": "2b-fix", "model": "qwen3.8-flash", "max_turns": 95, "turns": 96, "duration_s": 1574.4, "api_ms": 1470986, "ttft_ms": null, "cost_usd": 7.8945, "session_id": "8949b760-e49c-4276-9b15-2dd0debe4c2d", "resume_from": null, "ctx_per_turn_avg": 4429, "ctx_per_turn_max": 4444, "syspack": "B1a-syspack.md", "exit": 1, "timeout": null, "input_tokens": 570, "output_tokens": 76748, "cache_read": 9862487, "cache_creation": 162566}
+[B1a/2b-fix] 96 lượt · 1574.4s · vào 570 · cache 9,862,487 · ra 76,748 · $7.8945 · ok
+[2026-09-13 19:35:29] END 2b-fix exit!=0 (xem /data/youtube-playables/M11-Gap/logs/B1a-2b-fix.log)
+[2026-09-13 19:35:29] CỔNG máy: npm run gate
+[2026-09-13 19:36:15] CỔNG PASS
+[2026-09-13 19:36:15] REVIEW: 3 phiên song song (chỉ đọc)
+[2026-09-13 19:36:15] START 3a-code (prompt=B1a-3a-code.md max-turns=30 mode=readonly variant=default)
+[2026-09-13 19:36:15] START 3b-stress (prompt=B1a-3b-stress.md max-turns=30 mode=readonly variant=default)
+[2026-09-13 19:36:15] START 3c-arch (prompt=B1a-3c-arch.md max-turns=30 mode=readonly variant=default)
+METRICS {"ts": "2026-09-13T19:43:42Z", "variant": "v1-harness", "batch": "B1a", "step": "3a-code", "model": "qwen3.8-flash", "max_turns": 30, "turns": 31, "duration_s": 446.7, "api_ms": 279678, "ttft_ms": null, "cost_usd": 1.5169, "session_id": "5c8b4f7d-f6e4-4487-b16d-942e634c4f3c", "resume_from": null, "ctx_per_turn_avg": 4084, "ctx_per_turn_max": 4084, "syspack": "B1a-syspack.md", "exit": 1, "timeout": null, "input_tokens": 180, "output_tokens": 13106, "cache_read": 1387475, "cache_creation": 76008}
+[B1a/3a-code] 31 lượt · 446.7s · vào 180 · cache 1,387,475 · ra 13,106 · $1.5169 · ok
+[2026-09-13 19:43:42] END 3a-code exit!=0 (xem /data/youtube-playables/M11-Gap/logs/B1a-3a-code.log)
+METRICS {"ts": "2026-09-13T19:44:48Z", "variant": "v1-harness", "batch": "B1a", "step": "3c-arch", "model": "qwen3.8-flash", "max_turns": 30, "turns": 33, "duration_s": 512.2, "api_ms": 335064, "ttft_ms": 3756, "cost_usd": 1.3092, "session_id": "e67124f5-caf1-4535-9f17-432ce33dce93", "resume_from": null, "ctx_per_turn_avg": 4092, "ctx_per_turn_max": 4092, "syspack": "B1a-syspack.md", "exit": 0, "timeout": null, "input_tokens": 168, "output_tokens": 15628, "cache_read": 1056786, "cache_creation": 59930}
+[B1a/3c-arch] 33 lượt · 512.2s · vào 168 · cache 1,056,786 · ra 15,628 · $1.3092 · ok
+[2026-09-13 19:44:48] END 3c-arch ok
+METRICS {"ts": "2026-09-13T19:45:17Z", "variant": "v1-harness", "batch": "B1a", "step": "3b-stress", "model": "qwen3.8-flash", "max_turns": 30, "turns": 31, "duration_s": 541.7, "api_ms": 364998, "ttft_ms": null, "cost_usd": 1.7583, "session_id": "ec785a14-d027-4230-a0fc-444b67b3b473", "resume_from": null, "ctx_per_turn_avg": 4087, "ctx_per_turn_max": 4087, "syspack": "B1a-syspack.md", "exit": 1, "timeout": null, "input_tokens": 180, "output_tokens": 21953, "cache_read": 1443510, "cache_creation": 74477}
+[B1a/3b-stress] 31 lượt · 541.7s · vào 180 · cache 1,443,510 · ra 21,953 · $1.7583 · ok
+[2026-09-13 19:45:17] END 3b-stress exit!=0 (xem /data/youtube-playables/M11-Gap/logs/B1a-3b-stress.log)
+[2026-09-13 19:45:17] CHUỖI XONG B1a — chờ Hermes đọc 3 báo cáo review
+[2026-09-13 19:45:43] === BẮT ĐẦU chuỗi B1a (variant=default) ===
+[2026-09-13 19:45:43] CHẾ ĐỘ FIX: B1a-2i-fix-e.md
+[2026-09-13 19:45:43] START 2b-fix (prompt=B1a-2i-fix-e.md max-turns=120 mode=edit variant=default)
+METRICS {"ts": "2026-09-13T20:22:08Z", "variant": "v1-harness", "batch": "B1a", "step": "2b-fix", "model": "qwen3.8-flash", "max_turns": 120, "turns": 121, "duration_s": 2184.7, "api_ms": 1928359, "ttft_ms": null, "cost_usd": 11.9397, "session_id": "c1ed330f-9060-4421-8d84-c1784706d7b0", "resume_from": null, "ctx_per_turn_avg": 4663, "ctx_per_turn_max": 4663, "syspack": "B1a-syspack.md", "exit": 1, "timeout": null, "input_tokens": 720, "output_tokens": 117268, "cache_read": 15452975, "cache_creation": 200594}
+[B1a/2b-fix] 121 lượt · 2184.7s · vào 720 · cache 15,452,975 · ra 117,268 · $11.9397 · ok
+[2026-09-13 20:22:08] END 2b-fix exit!=0 (xem /data/youtube-playables/M11-Gap/logs/B1a-2b-fix.log)
+[2026-09-13 20:22:08] CỔNG máy: npm run gate
+[2026-09-13 20:23:10] CỔNG FAIL (/data/youtube-playables/M11-Gap/logs/B1a-gate.log) → DỪNG, cần 1 vòng fix

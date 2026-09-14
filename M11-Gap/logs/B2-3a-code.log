@@ -1,0 +1,88 @@
+
+[tool] Bash: {'command': 'ls src/platform/ tests/platform/ 2>&1; echo "---"; ls src/ ; echo "--- package.json scripts"; python3 -c "import json;print(json.dumps(json.load(open(\'package.json\')
+
+[tool] Bash: {'command': 'npm run gate 2>&1 | tail -40', 'description': 'Run gate command'}
+
+[tool] Bash: {'command': 'wc -l src/platform/*.ts src/main.ts tests/platform/*.ts; echo "--- gate-smell"; cat tools/gate-smell.mjs', 'description': 'Count lines and read gate-smell tool'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/types.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/index.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/main.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/debug.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/sdkAdapter.ts'}
+
+[tool] Bash: {'command': 'tail -30 /tmp/claude-0/-data-youtube-playables-M11-Gap-game/58f24a0b-a8b0-4f94-b3a3-fa5bf1a9a0e2/tasks/bl5c3dexs.output', 'description': 'Check gate progress output'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/nullAdapter.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/playgamaAdapter.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/ytgameAdapter.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/adMock.ts'}
+
+[tool] Bash: {'command': 'echo "=== A) mạng trong src/**"; grep -rnE "fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon|importScripts|navigator\\.connection|https?://" src/ --include=*.ts |
+
+[tool] Bash: {'command': 'for f in tests/platform/*.test.ts; do echo "--- $f"; grep -cE "\\bto(Be|Equal|DeepEqual|Throw|Rejects|Resolves|CloseTo|MatchObject)\\w*\\(" $f; grep -nE "toBeDefined|t
+
+[tool] Bash: {'command': 'sed -n 1,200p tests/platform/network-ban.test.ts', 'description': 'Read network-ban test'}
+
+[tool] Bash: {'command': 'cat tests/platform/helpers/fakes.ts', 'description': 'Read platform test fakes'}
+
+[tool] Bash: {'command': 'sed -n 1,60p tests/platform/host-shape.test.ts; echo "......"; sed -n 60,155p tests/platform/host-shape.test.ts', 'description': 'Read host-shape test'}
+
+[tool] Bash: {'command': 'grep -rn "PC-13\\|PC-14\\|PC-17\\|PC-20" tests/ src/ tools/ 2>/dev/null | head -40; echo "=== config/"; ls config/ 2>/dev/null; echo "=== packs"; ls ../harness/packs/ 
+
+[tool] Bash: {'command': 'grep -n "abc\\|-9\\|1\\.5\\|1e6\\|zz\\|level=0\\|9999\\|10\\^" tests/platform/debug.test.ts | head -30; echo "=== test names debug.test"; grep -n "it(\\|describe(" tes
+
+[tool] Bash: {'command': 'grep -nE "PC-13|PC-14|PC-17|PC-20" ../harness/packs/b2.md ../specs/1-paper-crease/SPEC.md 2>/dev/null | head -30; echo "=== §7 pack"; awk \'/^## *7|^§7|## §7|## 7\\./{
+
+[tool] Bash: {'command': 'sed -n 1,60p tests/platform/standalone-full-loop.test.ts', 'description': 'Read standalone full loop test head'}
+
+[tool] Bash: {'command': 'echo "=== §7 cổng máy nguyên văn ==="; grep -rnE \'\\bfetch\\s*\\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon|importScripts|navigator\\.connection|https?://\' src
+
+[tool] Bash: {'command': 'sed -n 60,142p tests/platform/standalone-full-loop.test.ts; echo "=====REGISTRY====="; sed -n 1,97p tests/platform/registry.test.ts', 'description': 'Read standalone l
+
+[tool] Bash: {'command': 'echo "=== interstitial trong src/platform ==="; grep -rn "interstitial" src/platform/*.ts | wc -l; grep -rn "focus\\|blur\\|visibilitychange" src/ --include=*.ts || ec
+
+[tool] Bash: {'command': 'echo "=== faults trong MỌI test ==="; grep -rn "faults\\|writeFailures\\|readFailures" tests/ || echo "0"; echo "=== ai import main.ts ==="; grep -rn "src/main\\|from 
+
+[tool] Bash: {'command': 'head -12 /tmp/claude-0/-data-youtube-playables-M11-Gap-game/58f24a0b-a8b0-4f94-b3a3-fa5bf1a9a0e2/tasks/bl5c3dexs.output; echo "=== ad-mock timers ==="; grep -n "useFak
+
+[tool] Bash: {'command': 'grep -n "isCampaignLevel\\|CAMPAIGN" src/logic/progression.ts | head; echo "=== gate tail typecheck ==="; grep -n "typecheck\\|error TS\\|Test Files\\|Tests " /tmp/cla
+
+[tool] Bash: {'command': 'timeout 120 python3 /data/shared-board-agent-waves/game-gap-giay/code/g01_fold_sim.py 2>&1 | tail -12', 'description': 'Run python geometry truth script'}
+```
+KẾT LUẬN: FAIL
+```
+| mục | phán quyết | bằng chứng |
+|---|---|---|
+| C1 | PASS | `npm run gate` exit 0 — `Test Files 31 passed (31)`, `Tests 449 passed (449)`, `Duration 117.79s`; `GATE V2 — 27 file trong src/logic · KẾT QUẢ: PASS (0 vi phạm thật)`; tests/platform = 88 case xanh |
+| C2 | **FAIL** | debug hooks + composition root không có case nào: `grep -rn "applyDebugHooks\|withEphemeralSave" tests/` → **0**; `grep -rln "bootGame\|adapterKV\|persistRecords\|bootRecords" tests/` → **0** (main.ts:31-57 chưa từng被执行). "Test" duy nhất chạm main.ts là regex trên text source: `tests/logic/records-store.test.ts:179-180` ⇒ oracle giả. Comment hứa suông: `types.ts:30` "test đọc `storage.faults`" trong khi `grep -rn "faults\|writeFailures\|readFailures" tests/` → **0 assertion** (chỉ 2 chỗ chuyển tham số fakes.ts:376,428); `network-ban.test.ts:131` còn comment "nullAdapter CHƯA tồn tại ⇒ đỏ có chủ đích" đã lỗi thời |
+| C3 | PASS (số) | `[B1a][TC-GEN-05] generated=10000/10000 distinctSpecs=10000 punchCountBad=0 rasterBad=0 elapsedMs=59059` — đủ vòng, nhưng **59.0s** cho riêng case này (gate log), tổng suite 117.79s; con số 8.5s trong lịch sử commit không còn đúng |
+| C4 | PASS (phần platform) | `parseDebugQuery` gọi 2 lần giống hệt: `debug.test.ts:90`; seed giữ nguyên literal không lower-case: `debug.ts:78-81` |
+| C5 | KHÔNG KIỂM CHỨNG ĐƯỢC | `g01_fold_sim.py` chạy exit 0, in đủ các ca corner-cut; không đối chiếu vì phạm vi B2 loại `src/logic` |
+| C6 | **FAIL** | **PC-13** chỉ chặn ở kiểu: `types.ts:13` union 4 khoá + `ads.showRewarded(place: RewardedPlacement)` (`types.ts:43`) — runtime không kiểm gì, `sdkAdapter.ts:145` chuyển `place` thẳng cho bridge rồi vọng lại; vế "continue 1 lần/game over" và "x2 Mực SAU khi thắng" không có ở bất kỳ file nào. **PC-14** chỉ có "cửa riêng": `sdkAdapter.ts:147-155`, `playgamaAdapter.ts:87`, `ytgameAdapter.ts:86`; cả 4 vế ràng buộc (sau score screen / cấm 60s đầu / cấm trước khi kết thúc màn đầu / hiện sau khi trao thưởng) **0 dòng cài đặt** — `grep -rniE "interstitial|cooldown|60" src/` chỉ ra cooldown hint (`progression.ts:40`), không có gate interstitial. **PC-17** làm được nửa mute-AND (`sdkAdapter.ts:198-208` `gameMuted \|\| hostMuted`) + forwarding pause/resume (`:181-197`); "dừng timer + nhạc" không tồn tại, và standalone **không có nguồn mất focus nào**: `grep -rn "focus\|blur\|visibilitychange" src/` → **0** ⇒ handler PC-17 không bao giờ bắn ở đúng môi trường PC-20 yêu cầu. **PC-20** cài thật ở adapter (`nullAdapter.ts:41-105`, `sdkAdapter.ts:213`) nhưng chưa từng đi qua `bootGame()` (`main.ts:31`) |
+| C7 | PASS | `grep -rnE "\bwindow\b\|\bdocument\b\|\blocalStorage\b" src/ --include=*.ts \| grep -v "^src/platform/\|^src/main.ts"` → đúng 1 dòng, là **comment** `src/logic/saveSchema.ts:24`; code = 0. Cổng ADR-01 strip-comment trong `network-ban.test.ts:105-115` xanh |
+| C8 | PASS | `tsc --noEmit` không ra dòng nào (gate exit 0); `grep -rnE ": any\|as any\|@ts-ignore\|@ts-expect-error\|@ts-nocheck" src/platform/ src/main.ts` → **0**. Cổng §7 nguyên văn: `grep -rnE '\bfetch\s*\(\|XMLHttpRequest\|WebSocket\|EventSource\|sendBeacon\|importScripts\|navigator\.connection\|https?://' src --include='*.ts'` → **`0 MẠNG`** |
+| C9 | PASS | bridge half-với: `host-shape.test.ts:45-146` (10 case, gate ĐỦ mọi hàm qua `*_METHODS` — `playgamaAdapter.ts:58-65`, `ytgameAdapter.ts:53-55`); tên trùng prototype: `registry.test.ts:52-60` + `sdkAdapter.ts:62-65` hasOwnProperty; `?level=999999/0` biên: `debug.test.ts:67-81`; dải 1..120 dẫn xuất `CAMPAIGN_LEVELS` (`debug.ts:74` gọi `isCampaignLevel`, `progression.ts:37`) |
+| C10 | **FAIL** | Nửa parse OK và có test (`debug.test.ts:76` `it.each(['abc','-9','0','1e6','1.5'])`, `:98` `['zz','','a%20b','abc;DROP']`). Nửa "không crash **im lặng**" thì sai: nuốt lỗi KV ở `nullAdapter.ts:52-54,65-67` và `sdkAdapter.ts:120-122,133-135` chỉ để lại MỘT tín hiệu là `faults`, mà tín hiệu đó **không test nào đọc** (0 assertion, xem C2) ⇒ đường lỗi không quan sát được. Ngoài ra `withEphemeralSave` (`debug.ts:109-129`) — hành vi chặn ghi save thật khi `?level` — chưa chạy lần nào trong test |
+| C11 | KHÔNG KIỂM CHỨNG ĐƯỢC | shareCode thuộc `src/logic`, nằm ngoài phạm vi B2; `tests/logic/share-code.test.ts` (7 case) xanh trong gate |
+| C12 | PASS | `grep -rnE "console\.\|alert(\|debugger" src/platform/ src/main.ts` → **0**. Cờ `debug` chỉ được parse và truyền (`debug.ts:88`, `main.ts:32-33`), chưa có overlay nào ⇒ không có đường vòng cờ |
+
+ĐIỂM NGHI NGỜ:
+- Không chạy được `bootGame()` thật trong node để đo C10 từ đầu đến cuối (main.ts không có test nào import) ⇒ mọi nhận định về nối dây production là **đọc code**, không phải đo.
+- `PlaygamaBridge` / `YtgameBridge` là shape tự đặt (playgamaAdapter.ts:27-42, ytgameAdapter.ts:23-36) — bridge thật của host không có trong repo (chính file thừa nhận ở `playgamaAdapter.ts:8-9`) ⇒ "adapter dịch đúng từ vựng" không kiểm chứng được với SDK thật.
+- `index.ts:32-36` dựng cả 3 adapter singleton lúc import ⇒ state `faults`/memory-mirror dùng chung qua nhiều test; xanh hiện tại nhưng là coupling thật, chưa đo được độ ổn định lâu dài.
+- Không kiểm được PC-14/PC-17 ở tầng call-site vì scene B3 chưa tồn tại — có thể đây là phân công trễ chứ không phải遗漏 của B2; chấm theo đúng những gì pack B2 tự tuyên bố.
+
+3 RỦI RO LỚN NHẤT:
+1) **Toàn bộ 4 debug hooks SPEC §5.4 chưa có một dòng test nào chạy qua hành vi** (`applyDebugHooks`/`withEphemeralSave` = 0 test; mock ads chỉ được test tách rời `createMockAds`) ⇒ ?level=NN hiện tại vẫn CÓ THỂ ghi đè save thật của người chơi và không ai phát hiện; ?ad=mock cũng chưa chắc cắm vào adapter.
+2) **PC-14 và PC-17 chỉ tồn tại trên comment/kiểu**: không gate interstitial (60s, sau màn 1, sau khi trao thưởng), không nguồn pause trong standalone, không dừng timer/nhạc ⇒ B3 sẽ nối dây vào khoảng trống và rule này chỉ được "kiểm" bằng mock tự chốt đáp án.
+3) **Tín hiệu nuốt lỗi `faults` không có test nào đọc**, trong khi nó là lý do biện minh cho việc `catch {}` ở 4 chỗ (nullAdapter.ts:52/65, sdkAdapter.ts:121/133) ⇒ mất save/mất tiếng vẫn "xanh"; đồng thời case 10.000 đề đã trượt từ ~8.5s xuống **59.0s** (suite 117.8s) và đang bị neo trong gate.
+
+[result] is_error=False num_turns=30 duration_ms=405308 cost_usd=0.94158825

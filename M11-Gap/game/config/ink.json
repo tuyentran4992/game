@@ -1,0 +1,10 @@
+{
+  "_note": "⚠️ PLACEHOLDER — bang Muc PC-11. Gia tri chep theo fixture trong tests/logic/economy.test.ts (INK_TABLE); khi pack §3 duoc cap nhat thi chi sua file nay, logic khong doi.",
+  "_doc": "baseByStars[i] = Muc goc khi man dat i sao (i = 0..3). streakBonus khong cong don: chi tinh bonus cua MOC CAO NHAT da cham (pack §4 PC-11).",
+  "baseByStars": [1, 2, 3, 5],
+  "streakBonus": [
+    { "at": 3, "bonus": 2 },
+    { "at": 5, "bonus": 4 },
+    { "at": 8, "bonus": 8 }
+  ]
+}

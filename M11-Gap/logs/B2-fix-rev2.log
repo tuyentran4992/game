@@ -1,0 +1,182 @@
+
+[tool] Bash: {'command': 'ls && echo "--- src ---" && find src tests -type f -name "*.ts" | sort && echo "--- loc ---" && wc -l src/logic/*.ts src/platform/*.ts src/main.ts 2>/dev/null | tail -
+
+[tool] Bash: {'command': 'for f in src/platform/types.ts src/platform/adMock.ts src/platform/nullAdapter.ts src/platform/sdkAdapter.ts; do echo "=== $f ==="; cat -n $f; done', 'description': 'R
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/types.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/index.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/adMock.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/nullAdapter.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/sdkAdapter.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/telemetry.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/main.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/debug.ts'}
+
+[tool] Bash: {'command': 'grep -n "export" src/logic/progression.ts | head -40 && echo "=== KV in save.ts ===" && grep -n "export type KV" -A 5 src/logic/save.ts && echo "=== recordsStore expor
+
+[tool] Bash: {'command': 'grep -rn "KV" src/logic/*.ts | head -20; echo "=== progression 28-50 ==="; sed -n \'28,50p\' src/logic/progression.ts; echo "=== level bounds helpers ==="; grep -rn "C
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/platform/helpers/fakes.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/platform/registry.test.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/playgamaAdapter.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/ytgameAdapter.ts'}
+
+[tool] Bash: {'command': 'grep -rn "available" tests/ src/ --include=*.ts | grep -v "^src/platform/sdkAdapter\\|^src/platform/nullAdapter\\|^src/platform/adMock\\|^src/platform/types\\|^src/pla
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/platform/host-shape.test.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/platform/ad-mock.test.ts'}
+
+[tool] Bash: {'command': 'grep -rn "createMemoryStorage\\|throwOnWrite\\|withDeadStorage\\|mockAsPlatformAds\\|createMockAds\\|save_error\\|fault" tests/ src/ --include=*.ts | grep -v "^src/log
+
+[tool] Bash: {'command': "sed -n '1,80p' tests/platform/playgama-adapter.test.ts", 'description': 'Read playgama adapter test head'}
+
+[tool] Bash: {'command': 'ls tools; echo "=== network-ban ==="; cat -n tests/platform/network-ban.test.ts | sed -n \'1,80p\'', 'description': 'List tools and read network-ban test'}
+
+[tool] Bash: {'command': "sed -n '80,200p' tests/platform/network-ban.test.ts", 'description': 'Read rest of network-ban test'}
+
+[tool] Bash: {'command': 'grep -rn "bootRecords\\|persistRecords\\|platformKV\\|main\'" tests/ src/ --include=*.ts | head; echo "=== null-adapter test storage part ==="; sed -n \'1,45p\' tests/
+
+[tool] Bash: {'command': 'grep -rn "ad\\b\\|ads\\|Ad" src/logic/economy.ts src/logic/levelState.ts src/logic/chapters.ts 2>/dev/null | head -20; echo "=== levelState exports ==="; grep -n "expo
+
+[tool] Bash: {'command': 'grep -rn "SAVE_KEYS\\s*=" -A 12 src/logic/save.ts | head -30; echo "=== recordsStore ==="; sed -n \'1,60p\' src/logic/recordsStore.ts; echo "=== keys in logic ==="; gr
+
+[tool] Bash: {'command': 'sed -n \'1,40p\' src/logic/saveSchema.ts; echo "=== records STORAGE_KEY ==="; grep -n "STORAGE_KEY" -B3 -A3 src/logic/records.ts | head -30; echo "=== SAVE_STORAGE_KEY
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/platform/debug.test.ts'}
+
+[tool] Bash: {'command': 'grep -rn "withEphemeralSave\\|applyDebugHooks\\|ephemeral" tests/ | grep -v "^tests/platform/debug.test.ts:2[0-9]" | head -20', 'description': 'Find ephemeral save tes
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/platform/standalone-full-loop.test.ts'}
+
+[tool] Bash: {'command': 'sed -n \'80,200p\' tests/platform/playgama-adapter.test.ts; echo "############ YTGAME"; sed -n \'40,175p\' tests/platform/ytgame-adapter.test.ts', 'description': 'Read
+
+[tool] Bash: {'command': 'head -60 tests/logic/refactor-contract.test.ts; echo "#### config-caps head"; head -40 tests/logic/config-caps.test.ts; echo "#### FIRST_LEVEL?"; grep -rn "FIRST_LEVEL
+
+[tool] Bash: {'command': "sed -n '76,135p' src/logic/progression.ts", 'description': 'Read progression validation region'}
+
+[tool] Bash: {'command': 'cat tsconfig.json; echo "#### vitest.config"; cat vitest.config.ts; echo "#### gate-allow"; cat tools/gate-allow.json', 'description': 'Read tsconfig, vitest config, g
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/progression.ts', 'limit': 12, 'offset': 1}
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/progression.ts', 'old_string': 'function rowOf(chapter: number): ChapterRow {', 'new_string': '/
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/progression.ts', 'old_string': "function levelOf(level: number): number {\n  if (!Number.isInteg
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/types.ts', 'old_string': "// Pattern: Interface (Strategy)\n// TRÁCH NHIỆM: hợp đồng DUY NHẤT
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/types.ts', 'old_string': '//   ytgame nằm hẳn ở adapter (pack B2 §1). CẤM thêm method: bề mặt
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/types.ts', 'old_string': "/**\n * Bốn trạng thái ad mà tầng gọi phân nhánh theo (PC-13/PC-14)
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/types.ts', 'old_string': '/**\n * Hai KHOÁ SAVE THẬT (DATA-MODEL §1.2) — đúng bảng này bị ?le
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/nullAdapter.ts', 'old_string': '// Pattern: Null Object\n// TRÁCH NHIỆM: bản "standalone: loc
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/nullAdapter.ts', 'old_string': "/**\n * Storage của phiên không nền tảng: bản sao trong bộ nh
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/sdkAdapter.ts', 'old_string': 'export type SdkAdsSource = {\n  readonly available: boolean;\n
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/sdkAdapter.ts', 'old_string': "function storagePart(sources: SdkSources, offline: PlatformSto
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/sdkAdapter.ts', 'old_string': '//   SdkSources — phần dịch TỪ VỰNG của mình; mọi hành vi chun
+
+[tool] Bash: {'command': "sed -n '1,12p' src/platform/sdkAdapter.ts", 'description': 'View sdkAdapter header'}
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/sdkAdapter.ts', 'old_string': '//   host vắng) nằm ở\n//   đây đúng một lần ⇒ thêm nền tảng m
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/playgamaAdapter.ts', 'old_string': '  return {\n    available: true,\n    rewarded: (place: R
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/ytgameAdapter.ts', 'old_string': '  return {\n    available: true,\n    rewarded: (place: Rew
+
+[tool] Write: {'file_content': '// Pattern: Stub có kịch bản (bảng kết quả) + Recorder\n// TRÁCH NHIỆM: bộ ads GIẢ bật bằng ?ad=mock (SPEC §5.4, pack B2 §3) trả kết quả CẤU HÌNH ĐƯỢC\n//   (thàn
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/adMock.ts', 'old_string': '// Pattern: Stub có kịch bản (bảng kết quả) + Recorder\n// TRÁCH N
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/adMock.ts', 'old_string': "import type { AdOutcome as ContractAdOutcome, PlatformAds, Rewarde
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/adMock.ts', 'old_string': 'export type MockAds = {\n  readonly available: boolean;\n  readonl
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/adMock.ts', 'old_string': "const SCRIPTED_OUTCOME: Record<MockAdResult, AdOutcome> = {\n  ok:
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/adMock.ts', 'old_string': "/** Mock ad theo kịch bản; hết `results` thì LẶP LẠI phần tử CUỐI 
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/adMock.ts', 'offset': 44}
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/adMock.ts', 'old_string': "/** Mock ad theo kịch bản; hết `results` thì LẶP LẠI phần tử cuối 
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/adMock.ts', 'limit': 14}
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/adMock.ts', 'old_string': '//   lại MỌI lời gọi theo thứ tự cho test soi (pack B2 §4, tinh th
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/debug.ts', 'old_string': "import { createMockAds, DEFAULT_MOCK_CONFIG, mockAsPlatformAds, typ
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/debug.ts', 'old_string': "import { createMockAds, DEFAULT_MOCK_CONFIG, type MockAdConfig } fr
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/debug.ts', 'old_string': '/** Dải màn của chiến dịch — NGUỒN SPEC §1.4.1 (120 màn = 8 chương 
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/debug.ts', 'limit': 14, 'offset': 28}
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/debug.ts', 'old_string': '/** Dải màn lấy THẲNG từ logic/progression (A8): đổi chiến dịch ⇒ ?
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/debug.ts', 'old_string': "/** Token chữ số thập phân THUẦN trong 1..120; 0 / âm / số thực / '
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/debug.ts', 'old_string': '/** ?level=NN: 2 khoá save thật đi bản trong bộ nhớ; đọc vẫn thấy s
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/debug.ts', 'old_string': '  {\n    when: (flags) => flags.adMock,\n    apply: (adapter, mockC
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/main.ts', 'old_string': "// Pattern: Composition Root\n// TRÁCH NHIỆM (B2): đọc query qua platform/deb
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/main.ts', 'old_string': ' * Adapter không có cửa xoá ⇒ `removeItem` là ghi chuỗi trống, và readRecords
+
+[tool] Bash: {'command': 'npm run typecheck 2>&1 | grep -E "^src/" | head -30', 'description': 'Typecheck source files only'}
+
+[tool] Bash: {'command': 'npm run typecheck 2>&1 | tail -40', 'description': 'Run typecheck'}
+
+[tool] Bash: {'command': 'npx tsc --noEmit', 'description': 'Typecheck with tsc'}
+
+[tool] Bash: {'command': 'node ./node_modules/typescript/bin/tsc --noEmit', 'description': 'Typecheck via local tsc binary'}
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/platform/helpers/fakes.ts', 'old_string': '// ======================================================
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/platform/helpers/fakes.ts', 'old_string': "import type {\n  PlaygamaAdEvent,\n  PlaygamaBridge,\n  P
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/platform/helpers/fakes.ts', 'limit': 100, 'offset': 45}
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/platform/helpers/fakes.ts', 'old_string': "/** 4 điểm rewarded nguyên văn DATA-MODEL §5.1. */\nexpor
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/platform/helpers/fakes.ts', 'old_string': "/** 'storage.get' · 'ads.showRewarded' · … — dẫn xuất từ 
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/platform/helpers/fakes.ts', 'old_string': '/** never nếu danh sách phủ ĐỦ interface; lỗi gán true ⇔ 
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/platform/helpers/fakes.ts', 'limit': 45, 'offset': 158}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/platform/helpers/fakes.ts', 'limit': 60, 'offset': 99}
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/platform/helpers/fakes.ts', 'old_string': '/** Bề mặt hàm MỌI adapter phải có — dùng cho TC-SAO-03 "
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/platform/helpers/fakes.ts', 'limit': 70, 'offset': 175}
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/platform/helpers/fakes.ts', 'old_string': "/** Từ vựng sự kiện rewarded của bridge Playgama (adapter
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/platform/helpers/fakes.ts', 'old_string': "  readonly ads: {\n    showRewardedVideo(place: string, c
+
+[tool] Bash: {'command': 'grep -n "YtgameAdEvent\\|\'shown\' | \'error\'\\|/\\*\\* Từ vựng" tests/platform/helpers/fakes.ts', 'description': 'Locate remaining re-declared types in fakes'}
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/platform/helpers/fakes.ts', 'old_string': "/** Từ vựng sự kiện rewarded của bridge ytgame — KHÁC Pla
+
+[tool] Bash: {'command': "sed -n '290,320p' tests/platform/helpers/fakes.ts", 'description': 'Check ytgame fake type region'}
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/platform/helpers/fakes.ts', 'old_string': '/** Từ vựng sự kiện rewarded của bridge ytgame — NHẬP từ 
+
+[result] is_error=True num_turns=91 duration_ms=1344453 cost_usd=6.099642

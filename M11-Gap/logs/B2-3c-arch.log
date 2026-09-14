@@ -1,0 +1,95 @@
+
+[tool] Bash: {'command': 'ls src/platform/ tests/platform/ config/ 2>&1 | head -40 && echo "---WC---" && wc -l src/logic/*.ts src/platform/*.ts src/main.ts src/render/*.ts tests/platform/*.ts 2
+
+[tool] Bash: {'command': 'npm run typecheck 2>&1 | tail -15 && echo "===TEST===" && npm run test:logic 2>&1 | tail -25'}
+
+[tool] Bash: {'command': 'cat -n src/main.ts'}
+
+[tool] Bash: {'command': 'cat -n src/platform/index.ts src/platform/types.ts'}
+
+[tool] Bash: {'command': 'cat -n src/platform/nullAdapter.ts src/platform/adMock.ts'}
+
+[tool] Bash: {'command': 'cat -n src/platform/debug.ts'}
+
+[tool] Bash: {'command': 'cat -n src/platform/sdkAdapter.ts'}
+
+[tool] Bash: {'command': 'cat -n src/platform/playgamaAdapter.ts src/platform/ytgameAdapter.ts'}
+
+[tool] Bash: {'command': 'tail -22 /tmp/claude-0/-data-youtube-playables-M11-Gap-game/3f8c56f7-019b-4ce5-8966-3e1046a7ca7d/tasks/bwdly8owk.output'}
+
+[tool] Bash: {'command': 'echo "=== LOGIC FORBIDDEN ==="; grep -nE "Math.random|Date.now|performance.now|document|window|fetch|@ts-ignore|console.log|NOT_IMPLEMENTED" src/logic/*.ts | head -20;
+
+[tool] Bash: {'command': 'head -8 /tmp/claude-0/-data-youtube-playables-M11-Gap-game/3f8c56f7-019b-4ce5-8966-3e1046a7ca7d/tasks/bwdly8owk.output; echo "=== caller-side conditionals on ads/platf
+
+[tool] Bash: {'command': 'echo "=== imports in platform+main ==="; grep -nE "^import|^} from|from \'" src/platform/*.ts src/main.ts | grep "from \'" ; echo "=== tests/platform imports ==="; gre
+
+[tool] Bash: {'command': 'cat -n tests/platform/registry.test.ts; sed -n 1,60p tests/platform/helpers/fakes.ts | cat -n'}
+
+[tool] Bash: {'command': 'grep -nE "it\\(|expect\\(|ADAPTER_METHODS|interface|typeof |Object\\.keys" tests/platform/host-shape.test.ts | head -40'}
+
+[tool] Bash: {'command': 'cat tsconfig.json; ls src/'}
+
+[tool] Bash: {'command': 'set -e; rm -rf /tmp/a5; mkdir -p /tmp/a5; cp -r src /tmp/a5/src; cp -r tests /tmp/a5/tests; cp tsconfig.json package.json /tmp/a5/; ln -s /data/youtube-playables/M11-G
+
+[tool] Bash: {'command': 'mkdir -p /tmp/a5 && cp -r src /tmp/a5/src && cp tsconfig.json /tmp/a5/ && /data/youtube-playables/M11-Gap/game/node_modules/.bin/tsc --noEmit -p /tmp/a5/tsconfig.json;
+
+[tool] Bash: {'command': 'cat > /tmp/a5/src/platform/devvitAdapter.ts <<\'EOF\'\n// Giả lập KÊNH THỨ 3 (Reddit Devvit) cho phép thử A5 — chỉ dịch từ vựng.\nimport { createNullAdapter } from \'.
+
+[tool] Bash: {'command': 'mkdir -p /tmp/a5b && cp -r src /tmp/a5b/src && cp tsconfig.json /tmp/a5b/ && ls /tmp/a5b/src && /data/youtube-playables/M11-Gap/game/node_modules/.bin/tsc --noEmit -p 
+
+[tool] Bash: {'command': 'pwd; ls /tmp | head -20; ls -la /tmp/a5b/src | head'}
+
+[tool] Bash: {'command': 'D=$(mktemp -d /tmp/arch-a5.XXXXXX); cd $D && cp -r /data/youtube-playables/M11-Gap/game/src ./src && printf \'%s\\n\' \'{"extends":"/data/youtube-playables/M11-Gap/gam
+
+[tool] Bash: {'command': 'D=/tmp/arch-a5.Ig6a95; cat > $D/src/platform/devvitAdapter.ts <<\'EOF\'\n// KÊNH THỨ 3 giả (Reddit Devvit) — phép thử A5: chỉ dịch TỪ VỰNG.\nimport { createNullAdapter
+
+[tool] Bash: {'command': 'D=/tmp/arch-a5.Ig6a95; sed -i "s/  type SdkAdsSource, type SdkLifecycleSource, type SdkSources, type SdkStorageSource,/  type SdkAdsSource, type SdkSources, type SdkSt
+
+[tool] Bash: {'command': 'grep -rln "\'ytgame\'" tests/ src/ | sort; echo "=== hardcode 3 names in tests ==="; grep -rn "standalone\', \'playgama\', \'ytgame\'\\|names.length).toBe(3)" tests/ |
+
+[tool] Bash: {'command': 'echo "=== createSdkAdapter call sites ==="; grep -rn "createSdkAdapter(" src/ tests/ | grep -v "^src/platform/sdkAdapter.ts:213" | sed \'s/:.*createSdkAdapter/ -> crea
+
+[tool] Bash: {'command': 'echo "=== unused exports in platform (A6) ==="; for f in src/platform/*.ts; do for n in $(grep -oE "export (function|const|type) [A-Za-z_]+" $f | awk \'{print $3}\' | 
+
+[tool] Bash: {'command': 'echo "=== try/catch in platform ==="; grep -n "try {\\|catch" src/platform/*.ts; echo "=== unused check ==="; grep -rn "withEphemeralSave\\|detectPlatformName\\|create
+
+[tool] Bash: {'command': 'echo "=== config layer imports ==="; grep -rn "config/" src/ --include=*.ts | head; echo "=== who imports logic/config* or json ==="; ls src/logic | head -40; echo "==
+
+[tool] Bash: {'command': 'grep -rn "onPause\\|setAudioEnabled\\|onAudioEnabledChange" tests/platform/*.test.ts | grep -i "throw" | head; echo "--- lifecycle throw coverage: none above means unc
+
+[tool] Bash: {'command': 'grep -n "SCRIPT_STATUS\\|NO_ADS\\|const NO_ADS\\|HOOK_PIPELINE\\|ENVIRONMENT_PROBE\\|ADAPTER_BY_NAME\\|const ADAPTERS\\|QUERY_KEYS\\|STORAGE_METHODS\\|DATA_METHODS\\|R
+```
+KẾT LUẬN: FAIL (1 lỗi thật ở tầng adapter — A13; phần còn lại đúng pattern)
+```
+
+| mục | phán quyết | bằng chứng (file:dòng hoặc số đo) |
+|---|---|---|
+| C1 (nền) | PASS | `npm run typecheck` → `tsc --noEmit` 0 lỗi; `npm run test:logic` → `Test Files 31 passed (31) / Tests 449 passed (449) / Duration 117.69s` (exit 0) |
+| C7 (nền) | PASS | grep `Math.random\|Date.now\|performance.now\|document\|window\|fetch\|@ts-ignore\|console.log\|NOT_IMPLEMENTED` trong `src/logic/*.ts` = 0 dòng code khớp (chỉ 5 dòng chú thích: generator.ts:7, levelState.ts:4, rng.ts:1/5/51) |
+| A1 | PASS | Chuỗi thật: `src/logic` 0 import platform/phaser/DOM (`grep -rlE "platform\|phaser" src/logic/*.ts` = rỗng). Platform→logic chỉ 2 chỗ hợp chiều: types.ts:10 (`SAVE_KEYS`), debug.ts:11 (`isCampaignLevel`). main.ts:16-18 → `./platform`, `./platform/debug`, `./platform/types`. Platform→render: 0 (src/render chưa tồn tại). Tên `playgama/ytgame/standalone` lọt ra ngoài `platform/index.ts`+`debug.ts` = 0 (grep cả `src/`) |
+| A2 | PASS | 1 file 1 trách nhiệm; lớn nhất `sdkAdapter.ts` 219 dòng nhưng chỉ "hành vi chung của adapter" (storage/ads/lifecycle rơi về null). `wc -l`: adMock 72, debug 156, index 76, nullAdapter 105, playgama 114, sdk 219, types 86, ytgame 112, main 57 |
+| A3 | PASS | Null Object THẬT: `NO_ADS` trả `unavailable` ngay trong kết quả (nullAdapter.ts:73-80); `createSdkAdapter(sources, offline)` rơi về offline từng lời gọi (sdkAdapter.ts:116,144,149,184,189,195,202). KHÔNG có cổng `isAvailable()`. grep caller-side `if (.*ads\|if (.*available\|platform ===\|instanceof Null\|switch (platform`: 0 khớp ở `src/main.ts`, 0 ở ngoài adapter (chỉ playgamaAdapter.ts:81 gate shape) |
+| A4 | PASS | `grep -cE "} else if\|switch ("` trên 8 file platform + main.ts = **0/0 hết**. Thay bằng bảng: ADAPTERS+ADAPTER_BY_NAME (index.ts:32,43), ENVIRONMENT_PROBE (index.ts:26), QUERY_KEYS (debug.ts:28), HOOK_PIPELINE (debug.ts:137), SCRIPT_STATUS (adMock.ts:42), `*_METHODS` (playgama 58-65, ytgame 52-54) |
+| A5 | PASS | **Đo thật** trong `/tmp/arch-a5.Ig6a95`: copy `src`, thêm `platform/devvitAdapter.ts` (chỉ dịch từ vựng) + sửa bảng ⇒ `diff -rq` = đúng **1 file CŨ** (`src/platform/index.ts`, cả 4 sửa nằm trong khối bảng/type của nó); `tsc --noEmit -p /tmp/a5b…` → exit 0. Kèm 1 dòng test khoá từ vựng: registry.test.ts:25,67 |
+| A6 | PASS (có nợ) | Không có tầng trung gian thừa: `MockAds = PlatformAds & recorder` (adMock.ts:32) ⇒ gán thẳng khe `ads` (debug.ts:142). Nợ: 6 ký hiệu export không ai dùng ngoài file sở hữu — `detectPlatformName` (index.ts:57), `PLATFORM_NAMES` (45), `createMemoryStorage` (nullAdapter.ts:41), `hasMethod` (sdkAdapter.ts:85), `LOG_STORAGE_KEY` (types.ts:66), `withEphemeralSave` (debug.ts:109); + tham số mặc định chết `offline = createNullAdapter()` (sdkAdapter.ts:213) vì 2 call site đều truyền tay |
+| A7 | PASS | Mọi lựa chọn là dữ liệu: ADAPTERS (index.ts:32), ENVIRONMENT_PROBE (26), HOOK_PIPELINE (debug.ts:137), SCRIPT_STATUS (adMock.ts:42), BẢNG KHOÁ KV (`SAVE_STORAGE_KEYS` types.ts:73, `PLATFORM_STORAGE_KEYS` 80) |
+| A8 | PASS | Platform không giữ con số dải màn: debug.ts:74 gọi `isCampaignLevel` (logic/progression.ts:98 là nguồn duy nhất). Số duy nhất: `DEFAULT_TIMEOUT_MS = 1500` (adMock.ts:35) có tên, thuộc mock |
+| A9 | PASS | Khoá save dẫn xuất từ `SAVE_KEYS`, không chuỗi thứ hai (types.ts:10,73-84); fakes.ts:41 lấy `SAVE_STORAGE_KEYS[0]` thay vì khai lại. Cảnh báo độ dài: toàn repo 5999 dòng cho phần chấm, file to nhất 239 dòng |
+| A10 | PASS | `parseDebugQuery` thuần (debug.ts:84), mock không đồng hồ hệ thống (chỉ `setTimeout` có chủ đích, adMock.ts:62). Ghi chú: `nullAdapter` singleton (nullAdapter.ts:105) có KV mutable chia sẻ — registry.test.ts:88-92 ghi thẳng vào nó |
+| A11 | PASS | Luật nghiệp vụ vẫn ở `src/logic/validator.ts`; platform chỉ dịch từ vựng +che lỗi host (xem A13 cho lỗ hổng) |
+| A12 | PASS | 0 `catch {}` rỗng (`grep -n "catch"` = 9 chỗ, tất cả có hành động): faults += 1 (nullAdapter.ts:52,65; sdkAdapter.ts:120,133) hoặc map `failed` (sdkAdapter.ts:78) hoặc giữ nguyên token rác (debug.ts:42). Tín hiệu `faults` là giá trị đọc được (types.ts:31) |
+| A13 | **FAIL** | Host ném ở lifecycle KHÔNG bị chặn: `sdkAdapter.ts:185` (`live.onPause`), `:190` (`live.onResume`), `:179` (`live.onAudioEnabled`), `:203` (`live.setAudioEnabled`) nằm ngoài mọi `try`. Storage/ads được che (117-135, 76-80) ⇒ một bridge host lỗi khi `mute()`/`onPause()` sẽ nổ trần xuyên `main.ts` lên scene. Test chỉcovers bridge *vắng*, chưa cover bridge *ném*: tests/platform/host-shape.test.ts (10 it, không có case lifecycle throw), registry.test.ts:79,74 chỉ test adapter lạnh |
+| A14 | PASS | Test nhập public factories, không sờ nội bộ: symbol được import = `platformRegistry, createNullAdapter, createPlaygamaAdapter, createYtgameAdapter, createMockAds, parseDebugQuery, PlaygamaBridge, YtgameBridge`. Bề mặt adapter DẪN XUẤT từ interface (fakes.ts:11-15 + ADAPTER_METHODS) ⇒ đổi types.ts là tsc đỏ, không phải danh sách chép tay |
+| A15 | PASS | Thêm placement rewarded thứ 5 = sửa 1 file `src/platform/types.ts:13` (+ test fakes). Thêm kênh = 1 file + 1 file bảng (đo ở A5). Thêm debug hook thứ 5 = 1 dòng HOOK_PIPELINE (debug.ts:137) |
+
+**ĐIỂM NGHI NGỜ**
+- `src/render/*` chưa tồn tại ⇒ cạnh `platform → render → main` và "scene không gọi SDK trực tiếp" **KHÔNG KIỂM CHỨNG ĐƯỢC** ở B2 (chỉ mới có `main.ts` 57 dòng, 0 scene).
+- Việc strip debug (B5/SPEC §5.4) mới kiểm được ở mức "1 call site" (`src/main.ts:33` là chỗ duy nhất gọi `applyDebugHooks`, `readSearch` là chỗ duy nhất đọc `location`); chưa có cổng grep trên bundle nộp ⇒ chưa chứng minh được bundle sạch.
+- Không chạy `python3 .../g01_fold_sim.py` (chân lý hình học) vì thuộc phạm vi reviewer nghiệp vụ — mục C5 để trống có chủ đích.
+
+**3 RỦI RO LỚN NHẤT**
+1) **A13**: bridge host ném ở `onPause/onResume/mute/onAudioEnabled` (sdkAdapter.ts:179,185,190,203) đi thẳng lên scene → game chết giữa màn trên nền tảng thật; cần cùng một wrapper `try → bỏ qua + đếm fault` như storagePart.
+2) **A6/mtc**: 6 export chết + 1 tham số mặc định chết (đặc biệt `detectPlatformName`, `withEphemeralSave`, default `offline`) — surface lớn hơn hợp đồng, dễ bị B3 gọi tắt vòng qua `createAdapter()`/`applyDebugHooks()` làm hỏng đường strip debug.
+3) **registry.test.ts:25,67** khoá cứng đúng 3 tên nên mỗi kênh mới phải sửa test (khác phần còn lại lặp theo `platformRegistry.names`); kèm `nullAdapter` singleton mutable chia sẻ giữa các test — nếu B3 viết qua `resolve('standalone')` sẽ lẫn trạng thái giữa case.
+
+[result] is_error=False num_turns=31 duration_ms=525658 cost_usd=0.9667175000000001

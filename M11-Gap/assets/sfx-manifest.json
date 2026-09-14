@@ -1,0 +1,63 @@
+{
+  "module": "M11-Gap",
+  "generator": "scripts/gen_sfx_m11.py",
+  "sample_rate": 22050,
+  "files": {
+    "fold": {
+      "file": "game/public/sfx/fold.wav",
+      "label": "Giấy gấp (mỗi lượt gấp)",
+      "ms": 340,
+      "bytes": 15038,
+      "sha256": "a0f20ce533319a79"
+    },
+    "unfold": {
+      "file": "game/public/sfx/unfold.wav",
+      "label": "Giấy bung (khi mở từng lớp)",
+      "ms": 500,
+      "bytes": 22094,
+      "sha256": "8153bfb00171b240"
+    },
+    "punch": {
+      "file": "game/public/sfx/punch.wav",
+      "label": "Đục lỗ",
+      "ms": 120,
+      "bytes": 5336,
+      "sha256": "a354802cf6376e59"
+    },
+    "correct": {
+      "file": "game/public/sfx/correct.wav",
+      "label": "Đúng",
+      "ms": 600,
+      "bytes": 26504,
+      "sha256": "0495212dbbb34596"
+    },
+    "wrong": {
+      "file": "game/public/sfx/wrong.wav",
+      "label": "Sai",
+      "ms": 340,
+      "bytes": 15038,
+      "sha256": "c6d925edb11b940e"
+    },
+    "star": {
+      "file": "game/public/sfx/star.wav",
+      "label": "Nhận sao",
+      "ms": 420,
+      "bytes": 18566,
+      "sha256": "c140392cef22aeef"
+    },
+    "click": {
+      "file": "game/public/sfx/click.wav",
+      "label": "Bấm nút",
+      "ms": 60,
+      "bytes": 2690,
+      "sha256": "d75ae832724f3428"
+    },
+    "counter": {
+      "file": "game/public/sfx/counter.wav",
+      "label": "Đếm Mực Gấp / mua skin",
+      "ms": 300,
+      "bytes": 13274,
+      "sha256": "1e1c4371dc34fb7c"
+    }
+  }
+}

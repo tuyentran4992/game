@@ -1,0 +1,118 @@
+
+[tool] Bash: {'command': 'ls src/logic/ && ls tests/logic/ && ls config/', 'description': 'List logic, tests, config files'}
+
+[tool] Bash: {'command': 'npm run typecheck 2>&1 | tail -20 && npm run test:logic 2>&1 | tail -40', 'description': 'Run typecheck and logic tests', 'timeout': 600000}
+
+[tool] Bash: {'command': 'wc -l src/logic/economy.ts src/logic/save.ts src/logic/records.ts src/logic/telemetry.ts src/logic/i18n.ts src/logic/saveMigrate.ts src/logic/saveSchema.ts src/logic/r
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/save.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/saveSchema.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/saveMigrate.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/economy.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/records.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/telemetry.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/i18n.ts'}
+
+[tool] Bash: {'command': 'cat config/ink.json; echo ---; cat config/skins.json; echo ---; cat config/album.json', 'description': 'Read config json files'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/i18n.test.ts'}
+
+[tool] Bash: {'command': 'grep -rn "ink.json\\|skins.json\\|album.json\\|config/" src/ --include=*.ts | head -20; echo "=== who imports config ==="; grep -rn "json" src/main.ts | head; echo "==
+
+[tool] Bash: {'command': 'node -e "\nconst fs=require(\'fs\');\nfor(const f of fs.readdirSync(\'src/logic\').filter(x=>x.endsWith(\'.ts\')).sort()){\n const s=fs.readFileSync(\'src/logic/\'+f,\
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/cache.ts'}
+
+[tool] Bash: {'command': 'sed -n 1,60p tests/logic/config-caps.test.ts; echo "=== main.ts head ==="; sed -n 1,60p src/main.ts', 'description': 'Read config-caps test and main.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/economy.test.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/recordsStore.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/save.test.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/telemetry.test.ts'}
+
+[tool] Bash: {'command': 'grep -n "10_000\\|10000\\|break\\|for (let i" tests/logic/records.test.ts tests/logic/telemetry.test.ts | head -30', 'description': 'Check loop bounds in records/telem
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/records.test.ts'}
+
+[tool] Bash: {'command': 'mkdir -p /tmp/b1c && npx tsc src/logic/*.ts --outDir /tmp/b1c/js --module commonjs --target es2022 --skipLibCheck --strict false 2>&1 | head -5; ls /tmp/b1c/js | head 
+
+[tool] Bash: {'command': 'cat > /tmp/b1c/t1.js <<\'EOF\'\nconst J=\'/tmp/b1c/js/\';\nconst save=require(J+\'save.js\'), eco=require(J+\'economy.js\'), rec=require(J+\'records.js\'), tel=require
+
+[tool] Bash: {'command': "cat > /tmp/b1c/t2.js <<'EOF'\nconst J='/tmp/b1c/js/';\nconst tel=require(J+'telemetry.js'), save=require(J+'save.js'), cache=require(J+'cache.js');\nconst enc=new Text
+
+[tool] Bash: {'command': "cat > /tmp/b1c/t3.js <<'EOF'\nconst J='/tmp/b1c/js/';\nconst tel=require(J+'telemetry.js');\nconst CAP=100*1024;\nconst ev=(t,i)=>({name:'level_start',t,data:{seq:i,pa
+
+[tool] Bash: {'command': 'grep -rn "TELEMETRY_KEY\\|restore\\|snapshot" tests/logic/*.ts | head; echo "=== records-store test head ==="; sed -n 1,40p tests/logic/records-store.test.ts', 'descri
+
+[tool] Bash: {'command': "cat > /tmp/b1c/t4.js <<'EOF'\nconst J='/tmp/b1c/js/';\nconst save=require(J+'save.js');\nconst enc=new TextEncoder(); const u8=s=>enc.encode(s).length;\nconst d=save.d
+
+[tool] Bash: {'command': "cd /tmp/b1c && cat > t5.js <<'EOF'\nconst J='/tmp/b1c/js/';\nconst save=require(J+'save.js');\nconst d=save.defaultSave();\nconst over={...d,ghosts:Array.from({length:
+
+[tool] Bash: {'command': 'cat > /tmp/b1c/t6.js <<\'EOF\'\nconst J=\'/tmp/b1c/js/\';\nconst save=require(J+\'save.js\'), rec=require(J+\'records.js\'), tel=require(J+\'telemetry.js\'), i18n=requ
+
+[tool] Bash: {'command': 'cat > /tmp/b1c/t7.js <<\'EOF\'\nconst J=\'/tmp/b1c/js/\';\nconst save=require(J+\'save.js\'), rec=require(J+\'records.js\'), i18n=require(J+\'i18n.js\');\nconsole.log(
+
+[tool] Bash: {'command': "cat > /tmp/b1c/t8.js <<'EOF'\nconst J='/tmp/b1c/js/';\nconst rs=require(J+'recordsStore.js');\nconst m=new Map(); const kv={getItem:k=>m.has(k)?m.get(k):null,setItem:(
+
+[tool] Bash: {'command': 'echo "=== C7/C8/C10 grep logic ==="; grep -nE "Math.random|Date.now|performance.now|document|window|fetch|: any|as any|@ts-ignore|console\\.log|NOT_IMPLEMENTED|TODO|FI
+
+[tool] Bash: {'command': 'grep -nE "Math.random|Date.now|performance.now|document|window|fetch|any|@ts-ignore|console.log|NOT_IMPLEMENTED" src/logic/*.ts | head -20; echo "rc=$?"; echo "=== dep
+
+[tool] Bash: {'command': 'rm -rf /tmp/b1c/scan && mkdir -p /tmp/b1c/scan && cp -r src/logic /tmp/b1c/scan/src_logic && cat > /tmp/b1c/plant.ts <<\'EOF\'\nexport const MESSAGES: Record<string, u
+
+[tool] Bash: {'command': "cat > /tmp/b1c/t9.js <<'EOF'\nconst J='/tmp/b1c/js/';\nconst tel=require(J+'telemetry.js');\nconst CAP=100*1024; const u8=s=>new TextEncoder().encode(s).length;\nconst
+
+[tool] Bash: {'command': 'mkdir -p /tmp/b1c/s2 && cp -r src/logic /tmp/b1c/s2/src_logic && printf \'export const hint = "Please Choose A Skin First";\\nexport const bad = ["Tap The Corner To Fo
+
+[tool] Bash: {'command': 'grep -rn "applyWrite\\|loadSave\\|writeSave\\|inkAward\\|buySkin\\|awardBadge\\|addAlbumItems\\|createTelemetry" src/ --include=*.ts | grep -v "^src/logic/save.ts\\|^s
+```
+KẾT LUẬN: FAIL
+```
+
+Lệnh cổng kiểm (output thật):
+```
+$ npm run typecheck && npm run test:logic
+> tsc --noEmit          (0 lỗi)
+ ✓ tests/logic/generator-10000.test.ts (11 tests) 68093ms
+[B1a][TC-GEN-05] generated=10000/10000 distinctSpecs=10000 punchCountBad=0 rasterBad=0 elapsedMs=68037
+ ✓ tests/logic/save.test.ts (23) | records.test.ts (19) | telemetry.test.ts (9) | i18n.test.ts (8) | economy.test.ts (18) | records-store.test.ts (13)
+ Test Files  22 passed (22)
+      Tests  361 passed (361)   Duration  106.05s
+```
+Số đo /tmp (script nháp, không sửa repo):
+
+| mục | phán quyết | bằng chứng (file:dòng hoặc số đo) |
+|---|---|---|
+| C1 | PASS | typecheck 0 lỗi; 361/361 test xanh, 22 file, 106.05s (output ở trên) |
+| C2 | PASS (1 nit) | 5 file B1c: 77 `it()` / 260 `expect()`, 0 `toBeDefined`; giá trị chờ viết tay (economy.test.ts:42-77 bảng 34 dòng; telemetry.test.ts:56 đo TextEncoder). Nit self-oracle: save.test.ts:227 lấy nhãn bậc từ chính `MIGRATIONS` |
+| C3 | PASS | telemetry.test.ts:19 `STRESS=10000`, :52/:61 loop đủ, không `break`. Đo lại: 10.000 push = **117ms**, kept 1298, `bytesOf=102355` **bằng chính xác** `TextEncoder(JSON.stringify(events()))` (kể cả khi key order đảo: 38==38); `utf8Length` khớp TextEncoder 20000/20000 |
+| C4 | PASS | `migrateSave` fixture v0 ×100 ⇒ distinct=1; `loadSave` KV rỗng ×100 ⇒ 1; `encodeRecords` ×100 ⇒ 1; `shareCode` ×100 ⇒ 1 |
+| C5 | PASS | save.ts:72-125. 6 tổ hợp chạy thật: main corrupt+good lành→`backup` lvl44 ink900; main+good corrupt→`fresh` lvl1 stars 0 + skins từ wardrobe `["skin_classic","skin_neon"]`; main not_object→`fresh`; main missing+good corrupt→`fresh`; KV ném cả 2→`ok:false kv_unavailable`; main lành→`main`, good bị bỏ. 6/6 tất định 2 lần gọi |
+| C6 | **FAIL** | **PC-15 hỏng thật**: telemetry.ts:167 ghi `live()` nhưng `live()` (telemetry.ts:132) trả `Slot[]` ⇒ snapshot trên disk là `[{"ev":{…},"len":76}]`, `restore` (:192-196) validate rớt **toàn bộ** — đo: ring khôi phục = **0 event** dù storage có 32 event; field nội bộ `len` lọt xuống disk; **không một test nào phủ restore** (grep TELEMETRY_KEY: 0 hit trong tests). **PC-11 nửa vời**: economy.ts:66 nhận bảng qua tham số ✓ nhưng `config/ink.json` không được src/ hay tests/ nào đọc (grep "ink.json": chỉ 0 hit thật, config-caps.test.ts:26 chỉ chốt album.json+skins.starter) ⇒ sửa bảng Mực trong config **không đỏ test nào**, nguồn thật là fixture economy.test.ts:32. **PC-16**: writeSave (save.ts:43-52) không tidy/clip input ⇒ ghi blob **122.777B** và báo `ok:true` (trần 100KiB chỉ enforce lúc đọc); blob records không có `version` (encodeRecords chỉ stars/ghosts/walls). Đủ: PC-19 (i18n.ts:16-31 có 10 khoá ⊇ 9 khoá nộp; scan TC-I18-01 **không sáo rỗng** — cắm `'Please Choose A Skin First'` vào file mới trong bản sao /tmp ⇒ bắt được 2 dòng, chỉ i18n.ts được miễn); PC-12 caps đối chiếu config thật (config-caps.test.ts:56); worst-case save 17.092B ≤100KB |
+| C7 | PASS | grep 9 file B1c (Math.random\|Date.now\|performance.now\|document\|window\|fetch\|any\|@ts-ignore\|console.log\|NOT_IMPLEMENTED) = 0 hit; cả 8 module require chạy trong node trần, không DOM |
+| C8 | PASS | `tsc --noEmit` sạch; không `any`/`@ts-ignore` trong src/logic; `@ts-expect-error` chỉ xuất hiện ở tests cho `node:fs` |
+| C9 | **FAIL** | OK: `parseSave('')`→corrupt_json; `version:999`→fromFuture=true vẫn giữ lvl5/ink7 (version ghi ngược 999); thiếu `skins_owned`→filled+default; KV ném read/write/removeItem→`kv_unavailable`/`kv_error`/`repaired:false`; skin giá 0→`ok` (ink 0), ink −5→`insufficient_ink`; `t` giảm→reject, ring không đổi; capBytes 0/NaN→về 100KiB; event thừa key vẫn bị normalize còn name/t/data. **Vỡ**: (a) `streakNext(NaN,true)=NaN` (records.ts:127 — `Math.max(0,NaN)`=NaN) ⇒ NaN sống vĩnh viễn trong streak; (b) `writeRecords(kv,{stars,ghosts:{}})` và `{}` **NÉM TypeError `list.map is not a function`** (recordsStore.ts:36 → records.ts:142) trái đúng hợp đồng "KHÔNG ném (ERR-01)" ghi ở recordsStore.ts:7-8 |
+| C10 | PASS (2 nit) | 0 console.log/TODO/NOT_IMPLEMENTED trong 9 file. Nit: `TELEMETRY_KEY` (telemetry.ts:43) nằm ngoài `SAVE_KEYS` trong khi saveSchema.ts:15-18 tự khai save.ts là "CHỦ DUY NHẤT của không gian khoá" ⇒ lời khai sai; snapshot rò `len`. Nit lớn hơn: `loadSave/writeSave/applyWrite/inkAward/buySkin/awardBadge/addAlbumItems/createTelemetry` có **0 call site trong src/** (grep; main.ts 27 dòng chỉ nối `recordsStore`) |
+| C11 | PASS | `shareCode(7,2031)` ×100 ⇒ 1 giá trị `GAP-XRMYC-2031`; không đồng hồ/random |
+| C12 | PASS (ngoài phạm vi B1c) | generator-10000: 10000/10000 distinct, punchCountBad=0; generator.test.ts PC-03/PC-04 (minPairDistance ≥6, 120 màn) xanh |
+
+ĐIỂM NGHI NGỜ:
+- Không đọc `specs/` theo luật ⇒ không đối chiếu được văn bản §4/§6 gốc; C5 chỉ kết luận được THỨ TỰ main→good→fresh+wardrobe đúng như khai trong save.ts:108 và test, còn chi tiết "wardrobe có phải khoá đúng" là suy từ config khai.
+- Ring đo ở `capBytes` tường minh; hành vi với 100KiB mặc định của nền tảng thật (quota localStorage ~5MB) chưa kiểm.
+- `writeSave` có nên tidy input không là quyết định thiết kế — tôi chỉ ghi nhận trần 100KB **không** bị chặn ở đường ghi (đo 122.777B).
+
+3 RỦI RO LỚN NHẤT:
+1) **Telemetry mất toàn bộ dữ liệu qua lần tải lại trang**: vòng persist/restore chưa từng chạy đúng (đo: 0 event khôi phục) và không có test ⇒ PC-15 chỉ đúng trong RAM; mọi báo cáo funnel sẽ thiếu/im lặng.
+2) **Toàn bộ B1c chưa nối dây production**: không `loadSave`/`writeSave` ở boot ⇒ thang cứu hộ 3 tầng (thứ bảo vệ tiến trình người chơi) chưa từng chạy, và `config/ink.json` không được đọc ở đâu cả ⇒ kinh tế Mực/skin đang nằm trong test fixture, đổi config là game lệch số mà không đỏ test.
+3) **Hai chỗ crash/lanh tinh trên đường đi của dữ liệu bẩn**: `writeRecords` ném TypeError (sập call chain UI thay vì trả `{ok:false}`) và `streakNext(NaN)` nhân bản NaN vào công thức thưởng PC-11.
+
+[result] is_error=False num_turns=39 duration_ms=554253 cost_usd=1.57188425

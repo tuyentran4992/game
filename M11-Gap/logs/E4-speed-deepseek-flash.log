@@ -1,0 +1,6 @@
+
+[tool] Bash: {'command': 'grep -rn "layers" src/logic --include=*.ts | grep -E "at|layers" | head -30', 'description': 'Grep layers field in src/logic'}
+
+[tool] Bash: {'command': 'ls src/logic && cat package.json | head -20', 'description': 'List logic files and package scripts'}
+
+[result] is_error=True num_turns=2 duration_ms=2235 cost_usd=0.025189999999999997

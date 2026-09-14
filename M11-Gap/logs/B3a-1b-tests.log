@@ -1,0 +1,8 @@
+
+[tool] Bash: {'command': 'ls /data/youtube-playables/M11-Gap/game/src/render 2>/dev/null; echo "---"; ls /data/youtube-playables/M11-Gap/game/src; echo "---"; ls /data/youtube-playables/M11-Gap
+
+[tool] Bash: {'command': "sed -n '1,80p' /data/youtube-playables/M11-Gap/specs/1-paper-crease/E2E-TESTS.md", 'description': 'Read E2E tests spec first 80 lines'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/specs/1-paper-crease/E2E-TESTS.md'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/helpers.ts'}

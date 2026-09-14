@@ -55,3 +55,7 @@ Trạng thái: **B1a — bước 1 (viết test) đang chạy 13/09**.
 
 Quy ước: test & review = swarm (mỗi con 1 hướng, không đụng nhau) · code = 1 con (một tác giả) · B4/B5 không tách test vì cổng là art-QA/package-gate của Hermes.
 Kế hoạch 3 bước ban đầu (1 test + 1 code + 2 review) đã đổi thành **swarm**: 2 test + 1 code + 3 review cho các batch lõi.
+
+## Quy ước đẩy code (anh chốt 13/09)
+**Không push lắt nhắt.** Làm hết các vòng fix + gate + review, **khi xong mới push 1 lần** (kèm báo cáo review trong cùng commit).
+Nhánh làm việc: `m11/b1a-core-geometry`. Không đẩy thẳng `main` khi worktree M10 còn thay đổi chưa commit.

@@ -1,102 +1,76 @@
 
-[tool] Bash: {'command': 'ls src/logic/ tests/logic/ && echo "---WC---" && wc -l src/logic/*.ts tests/logic/*.test.ts', 'description': 'List logic and test files with line counts'}
+[tool] Bash: {'command': 'ls src/logic/ tests/logic/ && echo "---" && npm run typecheck 2>&1 | tail -20', 'description': 'List logic/test files and run typecheck'}
 
-[tool] Bash: {'command': 'npm run typecheck 2>&1 | tail -15', 'description': 'Run typecheck gate'}
+[tool] Bash: {'command': 'wc -l src/logic/*.ts tests/logic/*.ts', 'description': 'Count lines in logic and test files'}
 
-[tool] Bash: {'command': 'npm run test:logic 2>&1 | tail -35', 'description': 'Run logic test suite'}
+[tool] Bash: {'command': 'npm run test:logic 2>&1 | tail -30', 'description': 'Run logic test suite'}
 
-[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/rational.ts'}
+[tool] Bash: {'command': 'grep -nE "Math.random|Date.now|performance.now|document|window|fetch|: *any|@ts-ignore|console\\.log|NOT_IMPLEMENTED" src/logic/*.ts | head -40; echo "=== IMPORTS ==="
 
 [tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/types.ts'}
 
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/rational.ts'}
+
 [tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/foldRules.ts'}
 
-[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/generator.ts'}
+[tool] Bash: {'command': 'python3 /data/shared-board-agent-waves/game-gap-giay/code/g01_fold_sim.py 2>&1 | tail -40', 'description': 'Run Python geometry oracle'}
 
 [tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/validator.ts'}
 
-[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/helpers.ts'}
-
 [tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/fold-unfold.test.ts'}
 
-[tool] Bash: {'command': 'python3 /data/shared-board-agent-waves/game-gap-giay/code/g01_fold_sim.py 2>&1 | head -60', 'description': 'Run Python geometry ground truth'}
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/generator.ts', 'limit': 330}
 
-[tool] Bash: {'command': 'grep -nE "Math.random|Date.now|performance.now|document|window|fetch|any|@ts-ignore|console.log|NOT_IMPLEMENTED" src/logic/*.ts; echo "EXIT=$?"; echo "---IMPORTS---"; 
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/generator.ts', 'limit': 330, 'offset': 330}
 
-[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/generator.test.ts'}
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/generator.ts', 'offset': 659}
+
+[tool] Bash: {'command': 'grep -nE "toBeDefined|toBeTruthy|not\\.toThrow|toBeTypeOf|toBeGreaterThan\\(0\\)|expect\\(true|>= *0|toBeUndefined" tests/logic/*.test.ts | head -40; echo "=== it() co
+
+[tool] Bash: {'command': 'grep -rnE "TODO|FIXME|NOT_IMPLEMENTED|console\\.log|as any|: any|@ts-ignore|@ts-nocheck|xit\\(|describe\\.skip|it\\.skip" src/ tests/logic/ | head -20; echo "== exit $
+
+[tool] Bash: {'command': 'cd /tmp && rm -rf rev && mkdir -p rev && npx tsc /data/youtube-playables/M11-Gap/game/src/logic/*.ts --outDir /tmp/rev --module esnext --target es2022 --moduleResoluti
+
+[tool] Bash: {'command': 'mkdir -p /tmp/rev && npx tsc src/logic/rational.ts src/logic/types.ts src/logic/foldRules.ts src/logic/validator.ts src/logic/generator.ts --outDir /tmp/rev --module e
+
+[tool] Bash: {'command': 'mkdir -p /tmp/revC1/src && npx tsc src/logic/rational.ts src/logic/types.ts src/logic/foldRules.ts src/logic/validator.ts src/logic/generator.ts --outDir /tmp/revC1 --
+
+[tool] Bash: {'command': 'ls -la /tmp/revC1 /tmp/revC1/src 2>&1 | head -20; head -3 /tmp/revC1/generator.js', 'description': 'Inspect compiled output layout'}
+
+[tool] Bash: {'command': 'grep -n "chapters\\|holes_max\\|levels\\|action\\|folds" tests/logic/helpers.ts | head -40', 'description': 'Find chapter config table in test helpers'}
+
+[tool] Bash: {'command': 'grep -n "layers\\|holes_min\\|chapter:" tests/logic/level-config.test.ts | head -30; echo "=== TABLES in generator.test ==="; grep -n "const [A-Z_]* *=\\|makeChapters\
+
+[tool] Bash: {'command': 'sed -n 55,80p tests/logic/level-config.test.ts', 'description': 'Read chapter table fixture lines'}
+
+[tool] Bash: {'command': "cat > /tmp/revC1/fuzz.mjs <<'EOF'\nimport { levelSpec, levelConfigFor, shareCode } from './generator.js';\nimport { validateSpec } from './validator.js';\nimport { rat
+
+[tool] Bash: {'command': 'cd /tmp/revC1 && sed -i "s|from \'\\./\\([a-zA-Z]*\\)\'|from \'./\\1.js\'|g" *.js && node fuzz.mjs 2>&1 | tail -30', 'description': 'Fix import extensions and run fuzz
+
+[tool] Bash: {'command': "cat > /tmp/revC1/fuzz2.mjs <<'EOF'\nimport { levelSpec } from './generator.js';\nimport { validateSpec } from './validator.js';\nimport fs from 'fs';\nconst chains = [
+
+[tool] Bash: {'command': 'sed -n 1,60p /data/shared-board-agent-waves/game-gap-giay/code/g01_fold_sim.py', 'description': 'Read Python oracle fold model'}
+
+[tool] Bash: {'command': "cat > /tmp/revC1/cross.py <<'EOF'\nimport json\nfrom fractions import Fraction as F\ndef make_layers(folds, size=(F(1),F(1))):\n    w,h=size\n    layers=[(F(1),F(0),F(
+
+[tool] Bash: {'command': 'cd /tmp/revC1 && python3 - <<\'EOF\'\nimport re,io\nsrc=open(\'cross.py\').read()\nsrc=src.replace("""def P(flat): return {(F(n,dd),F(n2,d2)) for (n,dd),(n2,d2) in zip
+
+[tool] Bash: {'command': 'python3 - <<\'EOF\'\np=\'/tmp/revC1/cross.py\'; s=open(p).read()\ns=s.replace("""    punch=[(x,y) for x,y in zip(sp[\'punch\'][0::2], sp[\'punch\'][1::2])]""",\n"""   
+
+[tool] Bash: {'command': "cat > /tmp/revC1/f2f3.mjs <<'EOF'\nimport { levelSpec, shareCode } from './generator.js';\nimport { validateSpec } from './validator.js';\nimport { rat, key, toPoints,
+
+[tool] Bash: {'command': 'python3 - <<\'EOF\'\np=\'/tmp/revC1/f2f3.mjs\'; s=open(p).read()\ns=s.replace("import { rat, key, toPoints, unfoldHoles } from \'./rational.js\';","import { rat, key, 
 
 [tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/generator-10000.test.ts'}
 
-[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/validator.test.ts'}
+[tool] Bash: {'command': 'grep -ohE "PC-[0-9]+" src/logic/*.ts | sort -u | tr \'\\n\' \' \'; echo; grep -ohE "PC-[0-9]+" tests/logic/*.test.ts | sort -u | tr \'\\n\' \' \'; echo', 'description'
 
-[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/level-config.test.ts'}
+[tool] Bash: {'command': "cat > /tmp/revC1/perf.mjs <<'EOF'\nimport { levelSpec, levelConfigFor } from './generator.js';\nfunction tbl(){const c=[];for(let k=1;k<=8;k++){const l=[];for(let i=1;
 
-[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/fold-rules.test.ts'}
+[tool] Bash: {'command': 'sed -n 200,250p tests/logic/chain-config.test.ts; echo "=== share-code ==="; sed -n 1,77p tests/logic/share-code.test.ts', 'description': 'Inspect chain-config and sha
 
-[tool] Bash: {'command': 'grep -oE "PC-[0-9]{2}" src/logic/*.ts tests/logic/*.ts | sort | uniq -c | sort -k2', 'description': 'Count PC rule code references'}
+[tool] Bash: {'command': 'grep -n "from \'../../src" tests/logic/*.test.ts | sed \'s/.*src\\/logic\\///\' | sort | uniq -c | sort -rn | head; echo "=== ceiling oracle ==="; sed -n 175,200p test
 
-[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/rational.test.ts'}
+[tool] Bash: {'command': 'grep -nE "^import|from \'" tests/logic/helpers.ts | head; echo "=== handLayers body ==="; sed -n 349,412p tests/logic/helpers.ts', 'description': 'Verify test helper o
 
-[tool] Bash: {'command': "mkdir -p /tmp/rev && cat > /tmp/rev/vitest.config.ts <<'EOF'\nimport { defineConfig } from 'vitest/config'\nexport default defineConfig({\n  root: '/tmp/rev',\n  test:
-
-[tool] Bash: {'command': "cd /tmp/rev && ln -sfn /data/youtube-playables/M11-Gap/game/node_modules node_modules && cat > vitest.config.ts <<'EOF'\nexport default {\n  root: '/tmp/rev',\n  test:
-
-[tool] Bash: {'command': "cat > /tmp/rev/fuzz.spec.ts <<'EOF'\nimport { describe, it, expect } from 'vitest'\nimport { levelSpec } from '/data/youtube-playables/M11-Gap/game/src/logic/generator
-
-[tool] Bash: {'command': 'cat > /tmp/rev/fuzz.spec.ts <<\'EOF\'\nimport { describe, it, expect } from \'vitest\'\nimport { levelSpec } from \'/data/youtube-playables/M11-Gap/game/src/logic/gene
-
-[tool] Bash: {'command': 'sed -n \'1,80p\' /data/shared-board-agent-waves/game-gap-giay/code/g01_fold_sim.py | grep -n "" | sed -n \'1,80p\'', 'description': 'Inspect Python fold simulation sou
-
-[tool] Bash: {'command': 'echo "--- toBeDefined/toBeTypeOf-only it() ---"; grep -cn "toBeDefined\\|toBeTruthy\\|not.toThrow()" tests/logic/*.test.ts; echo "--- console.log in tests ---"; grep -
-
-[tool] Bash: {'command': 'cat > /tmp/rev/oracle.spec.ts <<\'EOF\'\nimport { describe, it, expect } from \'vitest\'\nimport { levelSpec, DISTRACTOR_RULES } from \'/data/youtube-playables/M11-Gap
-
-[tool] Bash: {'command': 'grep -rn "cellKeyOf\\|unfoldPointsWithCount\\|packetSize\\|shareCode" --include=*.ts src tests | grep -v node_modules; echo "---"; ls src/ 2>/dev/null', 'description':
-
-[tool] Bash: {'command': 'npm run typecheck && npm run test:logic 2>&1 | tail -18', 'description': 'Run combined gate command'}
-```
-KẾT LUẬN: FAIL
-```
-
-| mục | phán quyết | bằng chứng (file:dòng hoặc số đo) |
-|---|---|---|
-| C1 | PASS | `npm run typecheck && npm run test:logic` → `tsc --noEmit` sạch; `Test Files 7 passed (7)` / `Tests 127 passed (127)`; không case skip/todo (grep `.skip|.todo` = 0) |
-| C2 | PASS (1 case yếu) | đa số assert giá trị cụ thể (vd rational.test.ts:60-64 so 1/2^53 vs 1/(2^53+1); validator.test.ts:106-108 hamming=2/12/16). Yếu: validator.test.ts:113 `minPairDistance == pairwiseMin()` mà pairwiseMin (dòng 39-44) tính lại bằng đúng bitmapOf+hamming ⇒ tự tham chiếu, lỗi ghép cặp không đỏ được |
-| C3 | PASS | generator-10000.test.ts:150-153 khoá `batch.total===10000` + `perChapter===1250×8`; stdout thật: `[B1a][TC-GEN-05] generated=10000/10000 distinctSpecs=10000 elapsedMs=8921` |
-| C4 | PASS | probe /tmp: gọi `levelSpec('DET-7',55,…)` 100 lần, xen giữa 300 đề khác ⇒ `same=100/100`; generator.test.ts:62-70 và 302-307 khoá cùng hành vi (cache module-level ở generator.ts:122-124 không đổi output) |
-| C5 | PASS cho punch / KHÔNG có oracle cho cut | `python3 g01_fold_sim.py` in 4/2/1/8/3/6 + D(0.25,0.6)=2, D(0.3,0.3)=1, DV=4, DV-crease=3 — khớp nguyên văn 22 dòng TRUTH tests/logic/fold-unfold.test.ts:24-165. NGƯNG: generator.ts:252 dựng đáp án "cắt góc" bằng MỘT điểm góc, còn `corner_cut()` của g01 cho 24/13/18 cluster ⇒ không dòng test nào đối chiếu cut với chân lý |
-| C6 | KHÔNG KIỂM CHỨNG ĐƯỢC (một phần FAIL) | grep PC- trong src/logic chỉ ra PC-01,02,03,04,08,18; PC-05..07, 09..17, 19, 20 **không có dấu vết** (cấm đọc specs ⇒ không biết rule nào thuộc B1a). Rule được khai thì cài thật: SPEC_RULES validator.ts:96-173, cổng raster generator.ts:391. Riêng PC-01 **FAIL có số**: generator.ts:110-116 `chainFor` âm thầm trả `CHAIN_ROWS[0]=['H']` khi cfg.foldCount không có dòng hợp lệ → đo `foldCount=0/4/5/-2 ⇒ folds=["H"], validateSpec=true` |
-| C7 | PASS | grep src/logic: 0 `document/window/fetch/phaser`; 3 dòng chứa "Math.random" đều là comment (generator.ts:4,52,81). Toàn bộ fuzz 6000 đề chạy trong vitest `environment: node` (không jsdom) vẫn OK |
-| C8 | PASS | `tsc --noEmit` sạch với noUnusedLocals/noUnusedParameters; grep `any`/`@ts-ignore` trong src/logic = 0 |
-| C9 | FAIL | Lề đúng: `levelConfigFor` throw cho 0/-1/4/1e6/1.5/NaN; `levelSpec` không crash với levelIndex 0/-5/1e6/2^31. Lề SAI: foldCount 0/4/5/-2 bị bẻ thành 1 nếp không ai bắt (số ở C6); `punchCount=5, foldCount=2` ⇒ chỉ 2 điểm đục, im lặng (mâu thuẫn chính doc generator.ts:219-220); 5/120 màn chiến dịch có đáp án đúng 1 lỗ (đo hist `holes1:5`) |
-| C10 | FAIL (nhẹ) | `cellKeyOf` validator.ts:182 export không dùng ở đâu (grep src+tests chỉ 1 dòng khai). 2/5 DISTRACTOR_RULES không bao giờ chạy: đo 3600 đề × 3 ô = 10800 ô nhiễu → `displace 10126 | wrong-axis 362 | raw-count 312 | forget-last-fold 0 | crease-flip 0`. Comment "NOT_IMPLEMENTED" cũ còn ở helpers.ts:8, rational.test.ts:5,11; `console.log` duy nhất ở tests/logic/generator-10000.test.ts:141 (src/logic = 0) |
-| C11 | KHÔNG KIỂM CHỨNG ĐƯỢC | generator.ts:450 shareCode **không có test nào** (grep tests = 0) ⇒ vi phạm S1 của batch. Đo ngoài: 50 lần gọi cùng input ra `GAP-K043O-4800` y hệt, 5000 cặp (level,score) → 5000 code phân biệt; nhưng score nằm plaintext sau dấu `-`, record B1c không phát hiện được sửa điểm |
-| C12 | PASS | fuzz 6000 đề / 6 seed ngoại lai (ALPHA, BETA-42, gamma_99, 'x'×100, seed tiếng Trung, seed của tác giả): `bad=0`, mỗi đề đúng 1 ô khớp answerHoles, 4 ô là 4 tập phân biệt, options[correctIndex] khớp, `minPairDistance min=6 avg=6.01` (đúng ngưỡng validator.ts:20) |
-
-Output gate thật:
-```
-> tsc --noEmit
- ✓ tests/logic/generator.test.ts (24 tests) 1734ms
- ✓ tests/logic/fold-unfold.test.ts (30 tests) 61ms
- ✓ tests/logic/validator.test.ts (28 tests) 95ms
-[B1a][TC-GEN-05] generated=10000/10000 distinctSpecs=10000 elapsedMs=8921
- ✓ tests/logic/generator-10000.test.ts (7 tests) 8948ms
- ✓ tests/logic/fold-rules.test.ts (15 tests) 24ms
- ✓ tests/logic/level-config.test.ts (6 tests) 55ms
- ✓ tests/logic/rational.test.ts (17 tests) 15ms
- Test Files  7 passed (7)
-      Tests  127 passed (127)
-```
-
-**ĐIỂM NGHI NGỜ**
-- PC-05..PC-20: không chấm được vì luật phiên cấm đọc `specs/` — src/logic không có một tham chiếu nào, không rõ chúng thuộc batch sau hay bị bỏ.
-- Config chương đến từ fixture dựng tay (level-config.test.ts:43-73); `chapters.json` thật chưa tồn tại ⇒ mọi kết luận về dải foldCount/punchCount chỉ đúng với bảng giả này.
-- Độ "nhìn giống thật" của ô nhiễu `displace` (93.8% ô nhiễu) không thể đo bằng máy — file tự nhận ở generator.ts:16-18, cần vision QA.
-- `levelConfigFor` đọc `folds` từ config rồi **vứt**, chỉ dùng `folds.length` (generator.ts:531 → chainFor generator.ts:109) ⇒ designer chốt chuỗi nếp cho một màn cụ thể sẽ không được tôn trọng; không kiểm chứng được ý đồ này đúng spec hay không.
-
-**3 RỦI RO LỚN NHẤT**
-1. `chainFor` âm thầm thay cfg bằng `['H']` khi foldCount ∉ bảng (0/4/5) — validator không có rule so spec-vs-cfg nên đề sai độ khó vẫn `ok=true` và đi thẳng vào manifest/replay khi `chapters.json` khai 4 nếp không chéo.
-2. Đáp án "cắt góc" chỉ là 1 điểm góc, lệch hoàn toàn `corner_cut()` của g01 (4 điểm vs 24 cluster) — chương 4-8 là chương bán chạy nhất của cơ chế mới mà không có dòng oracle nào; nếu chủ file sau render hình cắt theo điểm, người chơi thấy "cắt một góc mà giấy chỉ thủng 1 chấm ở mỗi gốc".
-3. Hai rule nhiễu dạy học chủ chốt (`forget-last-fold`, `crease-flip`) đóng góp 0/10800 ô ⇒ 94% phương án sai là "rải ô ngẫu nhiên", xấp xỉ fallback; bài kiểm tra suy luận giấy gấp thực chất bị loãng, và `shareCode` không có test nên toàn bộ chuỗi record B1c đang đứng trên API chưa được khoá.
-
-[result] is_error=False num_turns=29 duration_ms=588389 cost_usd=1.65369525
+[result] is_error=True num_turns=31 duration_ms=444259 cost_usd=1.5169075000000005

@@ -1,0 +1,285 @@
+{
+  "module": "M11-Gap",
+  "game": "Paper Crease",
+  "generator": "scripts/gen_assets_m11.py",
+  "palette": {
+    "ink": "#17324D",
+    "crease": "#9FB3C8",
+    "primary": "#1F6FEB",
+    "accent": "#F5B301",
+    "paper": "#FFFFFF",
+    "cream": "#FFF7E8"
+  },
+  "files": {
+    "skin_default": {
+      "file": "game/public/assets/skin_default.png",
+      "kind": "skin",
+      "note": "Giấy trắng mịn",
+      "w": 512,
+      "h": 512,
+      "bytes": 1222,
+      "sha256": "234887507f00890c"
+    },
+    "skin_cream": {
+      "file": "game/public/assets/skin_cream.png",
+      "kind": "skin",
+      "note": "Giấy kem ấm",
+      "w": 512,
+      "h": 512,
+      "bytes": 51560,
+      "sha256": "a6b10210ab2ade0f"
+    },
+    "skin_grid": {
+      "file": "game/public/assets/skin_grid.png",
+      "kind": "skin",
+      "note": "Ô ly xanh",
+      "w": 512,
+      "h": 512,
+      "bytes": 1982,
+      "sha256": "21cb867956323e7b"
+    },
+    "skin_dots": {
+      "file": "game/public/assets/skin_dots.png",
+      "kind": "skin",
+      "note": "Chấm bi mực",
+      "w": 512,
+      "h": 512,
+      "bytes": 1893,
+      "sha256": "09d466ebab69868b"
+    },
+    "skin_ruled": {
+      "file": "game/public/assets/skin_ruled.png",
+      "kind": "skin",
+      "note": "Giấy kẻ dòng",
+      "w": 512,
+      "h": 512,
+      "bytes": 2086,
+      "sha256": "8ebd6f39c97eb883"
+    },
+    "skin_kraft": {
+      "file": "game/public/assets/skin_kraft.png",
+      "kind": "skin",
+      "note": "Kraft nhạt",
+      "w": 512,
+      "h": 512,
+      "bytes": 56963,
+      "sha256": "7943f3916e6a06e8"
+    },
+    "skin_mizu": {
+      "file": "game/public/assets/skin_mizu.png",
+      "kind": "skin",
+      "note": "Mực loang",
+      "w": 512,
+      "h": 512,
+      "bytes": 12004,
+      "sha256": "94dfaf32c51633e6"
+    },
+    "skin_origami": {
+      "file": "game/public/assets/skin_origami.png",
+      "kind": "skin",
+      "note": "Nếp gấp chéo",
+      "w": 512,
+      "h": 512,
+      "bytes": 59137,
+      "sha256": "0aaa016015c3972d"
+    },
+    "album_01": {
+      "file": "game/public/assets/album_01.png",
+      "kind": "album",
+      "note": "Mẫu giấy 1/14 (skin_grid, bước 24)",
+      "w": 512,
+      "h": 512,
+      "bytes": 2091,
+      "sha256": "978f3ef1417819ca"
+    },
+    "album_02": {
+      "file": "game/public/assets/album_02.png",
+      "kind": "album",
+      "note": "Mẫu giấy 2/14 (skin_dots, bước 28)",
+      "w": 512,
+      "h": 512,
+      "bytes": 5097,
+      "sha256": "30e0c0955c6a5590"
+    },
+    "album_03": {
+      "file": "game/public/assets/album_03.png",
+      "kind": "album",
+      "note": "Mẫu giấy 3/14 (skin_ruled, bước 28)",
+      "w": 512,
+      "h": 512,
+      "bytes": 2055,
+      "sha256": "0b42a1321f29801b"
+    },
+    "album_04": {
+      "file": "game/public/assets/album_04.png",
+      "kind": "album",
+      "note": "Mẫu giấy 4/14 (skin_origami, bước 40)",
+      "w": 512,
+      "h": 512,
+      "bytes": 55443,
+      "sha256": "047e04d05982048c"
+    },
+    "album_05": {
+      "file": "game/public/assets/album_05.png",
+      "kind": "album",
+      "note": "Mẫu giấy 5/14 (skin_grid, bước 48)",
+      "w": 512,
+      "h": 512,
+      "bytes": 7516,
+      "sha256": "ff34c99299afa8d0"
+    },
+    "album_06": {
+      "file": "game/public/assets/album_06.png",
+      "kind": "album",
+      "note": "Mẫu giấy 6/14 (skin_dots, bước 56)",
+      "w": 512,
+      "h": 512,
+      "bytes": 1658,
+      "sha256": "398672d97d724051"
+    },
+    "album_07": {
+      "file": "game/public/assets/album_07.png",
+      "kind": "album",
+      "note": "Mẫu giấy 7/14 (skin_mizu, bước 26)",
+      "w": 512,
+      "h": 512,
+      "bytes": 20277,
+      "sha256": "57fe8d71397be2fd"
+    },
+    "album_08": {
+      "file": "game/public/assets/album_08.png",
+      "kind": "album",
+      "note": "Mẫu giấy 8/14 (skin_origami, bước 72)",
+      "w": 512,
+      "h": 512,
+      "bytes": 52610,
+      "sha256": "4507917dff83cffe"
+    },
+    "album_09": {
+      "file": "game/public/assets/album_09.png",
+      "kind": "album",
+      "note": "Mẫu giấy 9/14 (skin_ruled, bước 64)",
+      "w": 512,
+      "h": 512,
+      "bytes": 8092,
+      "sha256": "36d62983cfc86986"
+    },
+    "album_10": {
+      "file": "game/public/assets/album_10.png",
+      "kind": "album",
+      "note": "Mẫu giấy 10/14 (skin_grid, bước 16)",
+      "w": 512,
+      "h": 512,
+      "bytes": 1930,
+      "sha256": "2e8d6c050ae5c73c"
+    },
+    "album_11": {
+      "file": "game/public/assets/album_11.png",
+      "kind": "album",
+      "note": "Mẫu giấy 11/14 (skin_dots, bước 20)",
+      "w": 512,
+      "h": 512,
+      "bytes": 2299,
+      "sha256": "dcf670cf0b5cb799"
+    },
+    "album_12": {
+      "file": "game/public/assets/album_12.png",
+      "kind": "album",
+      "note": "Mẫu giấy 12/14 (skin_mizu, bước 34)",
+      "w": 512,
+      "h": 512,
+      "bytes": 17289,
+      "sha256": "63d95f59b03261b3"
+    },
+    "album_13": {
+      "file": "game/public/assets/album_13.png",
+      "kind": "album",
+      "note": "Mẫu giấy 13/14 (skin_origami, bước 32)",
+      "w": 512,
+      "h": 512,
+      "bytes": 39841,
+      "sha256": "223f32a346914e68"
+    },
+    "album_14": {
+      "file": "game/public/assets/album_14.png",
+      "kind": "album",
+      "note": "Mẫu giấy 14/14 (skin_kraft, bước 40)",
+      "w": 512,
+      "h": 512,
+      "bytes": 51550,
+      "sha256": "5e31e6a79bcfc14a"
+    },
+    "badge_01": {
+      "file": "game/public/assets/badge_01.png",
+      "kind": "badge",
+      "note": "Chương 1 — nếp thẳng",
+      "w": 512,
+      "h": 512,
+      "bytes": 48456,
+      "sha256": "da92aaa6c23655e2"
+    },
+    "badge_02": {
+      "file": "game/public/assets/badge_02.png",
+      "kind": "badge",
+      "note": "Chương 2 — lỗ trên nếp",
+      "w": 512,
+      "h": 512,
+      "bytes": 46035,
+      "sha256": "c2a428ac5b05e490"
+    },
+    "badge_03": {
+      "file": "game/public/assets/badge_03.png",
+      "kind": "badge",
+      "note": "Chương 3 — lỗ ở mép",
+      "w": 512,
+      "h": 512,
+      "bytes": 47265,
+      "sha256": "42f7fedde7282837"
+    },
+    "badge_04": {
+      "file": "game/public/assets/badge_04.png",
+      "kind": "badge",
+      "note": "Chương 4 — cắt góc",
+      "w": 512,
+      "h": 512,
+      "bytes": 47780,
+      "sha256": "5a4458e2b21d9ddc"
+    },
+    "badge_05": {
+      "file": "game/public/assets/badge_05.png",
+      "kind": "badge",
+      "note": "Chương 5 — 8 lớp",
+      "w": 512,
+      "h": 512,
+      "bytes": 51916,
+      "sha256": "c6201d46ab6cd608"
+    },
+    "badge_06": {
+      "file": "game/public/assets/badge_06.png",
+      "kind": "badge",
+      "note": "Chương 6-8 — tổ hợp",
+      "w": 512,
+      "h": 512,
+      "bytes": 49189,
+      "sha256": "2eba2307a9eff7e6"
+    },
+    "icon_512": {
+      "file": "game/public/assets/icon_512.png",
+      "kind": "icon",
+      "note": "Icon nộp kênh (tờ giấy + nếp + lỗ đục)",
+      "w": 512,
+      "h": 512,
+      "bytes": 1324,
+      "sha256": "d37c47c14d34980b"
+    },
+    "thumb_512": {
+      "file": "game/public/assets/thumb_512.png",
+      "kind": "thumb",
+      "note": "Ảnh preview nộp kênh 512×512",
+      "w": 512,
+      "h": 512,
+      "bytes": 1426,
+      "sha256": "b224ea04e379e6d6"
+    }
+  }
+}

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Chạy 1 bước Claude Code theo HARNESS.yaml + ghi metrics. In ra: METRICS {...}"""
-import argparse, json, os, shlex, subprocess, sys, time, datetime
+import argparse, json, os, shlex, subprocess, sys, threading, time, datetime
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GAME = os.path.join(BASE, "game")
 TEXT_KEYS = ("text",)
@@ -78,33 +78,47 @@ def main():
     res = {}          # dòng 'result': nguồn số CHÍNH (usage luỹ kế, num_turns, cost, ttft)
     turn_ctx = []     # ngữ cảnh mỗi lượt (input_tokens của từng assistant msg)
     rc = None; err = None
+    def handle(o, tf):
+        """Ghi text người-đọc-được + tích luỹ số đo từ 1 event JSON."""
+        nonlocal turns, res
+        if not isinstance(o, dict): return
+        m = o.get("message")
+        if not isinstance(m, dict): m = {}
+        us = m.get("usage") if isinstance(m.get("usage"), dict) else {}
+        if us and o.get("type") == "assistant":
+            turns += 1
+            turn_ctx.append(us.get("input_tokens", 0) or 0)
+        cont = m.get("content")
+        if isinstance(cont, list):
+            for c in cont:
+                if not isinstance(c, dict): continue
+                if c.get("type") == "text" and str(c.get("text", "")).strip():
+                    tf.write(str(c["text"]).strip() + "\n"); tf.flush()
+                elif c.get("type") == "tool_use":
+                    tf.write(f"\n[tool] {c.get('name')}: {str(c.get('input'))[:180]}\n"); tf.flush()
+        if o.get("type") == "result":
+            res = o
+            tf.write(f"\n[result] is_error={o.get('is_error')} num_turns={o.get('num_turns')} "
+                     f"duration_ms={o.get('duration_ms')} cost_usd={o.get('total_cost_usd')}\n"); tf.flush()
+
     with open(stream_p, "w", encoding="utf-8") as sf, open(text_p, "w", encoding="utf-8") as tf:
-        pr = subprocess.Popen(cmd, cwd=GAME, stdout=sf, stderr=subprocess.STDOUT, env=env, start_new_session=True)
+        pr = subprocess.Popen(cmd, cwd=GAME, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              env=env, start_new_session=True, text=True, errors="replace", bufsize=1)
+
+        def reader():
+            for line in pr.stdout:                      # đọc theo dòng ⇒ log hiện NGAY khi phiên chạy
+                sf.write(line); sf.flush()
+                try: handle(json.loads(line), tf)
+                except Exception: pass
+
+        th = threading.Thread(target=reader, daemon=True); th.start()
         try:
             rc = pr.wait(timeout=float(os.environ.get("STEP_TIMEOUT", 3600)))
         except subprocess.TimeoutExpired:
             os.killpg(pr.pid, 9); rc = 124; err = "timeout"
+        th.join(timeout=10)
         dur = time.time() - t0
-    # parse stream: usage từng lượt + text người đọc được
-    with open(stream_p, encoding="utf-8", errors="replace") as sf, open(text_p, "w", encoding="utf-8") as tf:
-        for line in sf:
-            try: o = json.loads(line)
-            except Exception: continue
-            m = o.get("message") or {}
-            us = m.get("usage") or {}
-            if us and o.get("type") == "assistant":
-                turns += 1
-                turn_ctx.append(us.get("input_tokens", 0) or 0)
-            for c in (m.get("content") or []) if isinstance(m.get("content"), list) else []:
-                if c.get("type") == "text" and c.get("text", "").strip():
-                    tf.write(c["text"].strip() + "\n")
-                elif c.get("type") == "tool_use":
-                    tf.write(f"\n[tool] {c.get('name')}: {str(c.get('input'))[:180]}\n")
-            if o.get("type") == "result":
-                res = o
-                tf.write(f"\n[result] is_error={o.get('is_error')} num_turns={o.get('num_turns')} "
-                         f"duration_ms={o.get('duration_ms')} cost_usd={o.get('total_cost_usd')}\n")
-    ru = (res.get("usage") or {})
+    ru = res.get("usage") if isinstance(res.get("usage"), dict) else {}
     if ru:
         u = dict(input_tokens=ru.get("input_tokens", 0) or 0,
                  output_tokens=ru.get("output_tokens", 0) or 0,

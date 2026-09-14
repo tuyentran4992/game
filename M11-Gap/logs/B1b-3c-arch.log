@@ -1,0 +1,90 @@
+
+[tool] Bash: {'command': 'ls src/logic/ tests/logic/ && ls ../harness/packs/ 2>/dev/null', 'description': 'List logic, test, and pack files'}
+
+[tool] Bash: {'command': 'grep -nE "^import" src/logic/levelState.ts src/logic/progression.ts; echo "---wc---"; wc -l src/logic/levelState.ts src/logic/progression.ts', 'description': 'Show imp
+
+[tool] Bash: {'command': 'npm run gate 2>&1 | tail -40', 'description': 'Run the repo gate command', 'timeout': 600000}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/harness/packs/b1b.md'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/levelState.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/progression.ts'}
+
+[tool] Bash: {'command': 'grep -nE "^import|^export (const|function|type)" src/logic/stars.ts src/logic/chapters.ts | head -60; echo "=== TRANSITIONS usage ==="; grep -rn "TRANSITIONS\\|LEVEL_P
+
+[tool] Bash: {'command': 'git diff --stat HEAD -- tools/gate-allow.json; echo "--- gate-allow content ---"; cat tools/gate-allow.json 2>/dev/null | head -40; echo "--- git status of file ---"; 
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/progression.test.ts'}
+
+[tool] Bash: {'command': 'wc -l tests/logic/level-state.test.ts tests/logic/hint-undo.test.ts tests/logic/stars.test.ts tests/logic/progression.test.ts; echo "=== test imports of src ==="; grep
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/level-state.test.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/hint-undo.test.ts'}
+
+[tool] Bash: {'command': 'echo "=== consumers of CAMPAIGN columns ==="; grep -rn "\\.layers\\|\\.unlockNeed\\|\\.ruleId\\|\\.vocabId\\|\\.theme\\b" src tools --include=*.ts --include=*.json | g
+
+[tool] Bash: {'command': 'set -e\nrm -rf /tmp/a5 && mkdir -p /tmp/a5 && cd /tmp/a5\ncp /data/youtube-playables/M11-Gap/game/src/logic/progression.ts .\ncp /data/youtube-playables/M11-Gap/game/s
+
+[tool] Bash: {'command': 'sed -n \'1,40p\' src/logic/chapters.ts; echo "=== stars.ts 40-125 ==="; sed -n \'40,125p\' src/logic/stars.ts', 'description': 'Inspect chapters table and stars module
+
+[tool] Bash: {'command': 'mkdir -p /tmp/a5rev && cd /tmp/a5rev && cp /data/youtube-playables/M11-Gap/game/src/logic/progression.ts /data/youtube-playables/M11-Gap/game/src/logic/levelState.ts /
+
+[tool] Bash: {'command': 'cd /tmp/a5rev && python3 - <<\'PY\'\np=\'progression.ts\'; s=open(p).read()\ns=s.replace("| \'fold-h\' | \'fold-v\'","| \'origami-grid\' | \'fold-h\' | \'fold-v\'")\ns
+
+[tool] Bash: {'command': 'cd /tmp/a5rev && cp /data/youtube-playables/M11-Gap/game/src/logic/progression.ts prog_pristine.ts && python3 - <<\'PY\'\np=\'prog_pristine.ts\'; s=open(p).read()\n# c
+
+[tool] Bash: {'command': 'echo "=== 120 / 8 / 15 hardcoded trong src/logic ==="; grep -rn "\\b120\\b\\|\\bCHAPTER_COUNT\\b\\|\\b8\\b" src/logic/generator.ts src/logic/shareCode.ts src/logic/val
+```
+LỆNH ĐÃ CHẠY (output thật)
+$ npm run gate   →  Test Files 15 passed (15) · Tests 267 passed (267) · Duration 94.19s
+                    ✓ tests/logic/level-state.test.ts (17) 106ms · ✓ hint-undo.test.ts (11) 39ms
+                    ✓ tests/logic/stars.test.ts (13) 34ms · ✓ progression.test.ts (13) 121ms
+                    KẾT QUẢ: PASS (0 vi phạm thật) — GATE V2: 19 file src/logic, max-lines=250
+$ grep -nE "^import" src/logic/levelState.ts src/logic/progression.ts
+  levelState.ts:7: import type { FoldKind, LevelSpec, Rat } from './types';
+  levelState.ts:8: import { pointKey, toPoints } from './rational';
+  (progression.ts: 0 dòng import)
+$ wc -l src/logic/levelState.ts src/logic/progression.ts → 239 / 171
+Thí nghiệm A5 (/tmp/a5rev, copy 4 file, repo không đổi): vá chương 9 + phase 'paused' → `tsc --noEmit` exit=0;
+  thêm RIÊNG dòng chương 9 mà không tăng CAMPAIGN_LEVELS → `IMPORT THROW: CAMPAIGN: tong so man sai`
+```
+
+KẾT LUẬN: **FAIL**
+
+| mục | phán quyết | bằng chứng (file:dòng hoặc số đo) |
+|---|---|---|
+| A1 | PASS | `levelState.ts:7-8` chỉ `./types`+`./rational`; `progression.ts` 0 import ⇒ `levelState ↔ progression` không touching; consumer duy nhất của progression là `stars.ts:6` (1 chiều); `grep ': any\|document\|window\|fetch\|console\.'` 2 file = 0; gate-smell PASS |
+| A2 | PASS | `levelState.ts:234` `inkEarned: 0` hằng số, không import stars/progression ⇒ không tính sao; `grep -i phase progression.ts` = 0 ⇒ không giữ phase. (Nợ: 5/13 hàm hợp đồng §3 bị đặt ở `stars.ts:51-124`) |
+| A3 | **FAIL** | Máy thật sự đọc `ACTIONS:26-35` qua `guard():101-105`, NHƯNG bảng mang tên đồ thị là `TRANSITIONS:16-18` **không được guard dùng và không có ai nhập** (grep `TRANSITIONS` trong src+tests = 0 consumer) ⇒ 2 bản sao cùng một đồ thị, bản chuẩn là bảng trưng bày; `CAMPAIGN:44-61` là bảng dòng-chương thật nhưng sai §6.1 (xem A15/ghi chú) |
+| A4 | **FAIL** | `progression.ts:161-167` `isChapterUnlocked` = 3 nhánh `typeof a/typeof b/typeof c` dispatch thay vì một chữ ký; cùng bệnh `stars.ts:62-70,89-101,118-122`. `levelState.ts` sạch: 11 `if` đều 2 nhánh, 0 switch, mọi chuyển pha đi qua `ACTIONS` |
+| A5 | **FAIL** (đo thật) | (i) chương 9 = **3 vị trí** trong `progression.ts` (`FoldVocabId:9-10`, dòng bảng `:44-61`, `CAMPAIGN_LEVELS:37` hằng không dẫn xuất) + registry chương thật của generator ở `chapters.ts` (bảng riêng, không đọc CAMPAIGN) + `progression.test.ts:42-54` ⇒ ≥3 file cũ. (ii) phase 'paused' = 4 vị trí trong `levelState.ts:10,13,17,39` + 1 dòng `ACTIONS` + export `pause()` (6 vị trí, 1 file) **và vẫn phải sửa 2 file test** (`level-state.test.ts:36`, `hint-undo.test.ts:102,104,106`) vì test chép tay danh sách phase |
+| A6 | **FAIL** | `TRANSITIONS:16`, `ChapterRow.layers/unlockNeed/ruleId:23-31` không consumer nào ngoài `progression.test.ts` (grep `.layers\|.unlockNeed\|.ruleId` trong src = 0 hit ngoài file chấm); `checkCampaign():67-80` tự kiểm tra chính bảng mình bằng công thức tự sinh ⇒ 0 giá trị thông tin |
+| A7 | **FAIL** | Đúng là có hằng số tên (`:35-41`) NHƯNG `FREE_HINT_GAP:41` bị bỏ rơi — chỗ tiêu thụ thật hardcode lại: `stars.ts:15` `hintGap: 2`; `unlockNeed: 46-60` vừa hardcode 0/12/27/42… vừa bị `checkCampaign:71` suy lại bằng công thức ⇒ số có 2 nguồn |
+| A8 | **FAIL** | 120/15/12/2 đều có tên+nguồn (`:35-41`), nhưng **sai nghĩa**: `GATE_STARS:39` được dùng làm *số màn đã chạm* (`:71,74` `end-(LEVELS_PER_CHAPTER-GATE_STARS)`), không phải tổng sao như PC-07; `CAMPAIGN_LEVELS` đáng ra `= LEVELS_PER_CHAPTER * CAMPAIGN.length` (chứng minh: import throw khi lệch) |
+| A9 | **FAIL** | Hai registry chương song song mang cùng field nhưng giá trị mâu thuẫn: `chapters.ts:29-34` `CFG_DEFAULTS.layers = 4` vs `progression.ts:45-60` `layers: 2,3,3,4,4,4,5,6`; đồ thị pha 2 bản (`TRANSITIONS` vs `ACTIONS`); hintGap 2 bản; `win/sumStars/applyResult/markSkip/freeHintAvailable` (§3) nằm `stars.ts` trong khi `GATE_STARS/FREE_HINT_GAP` nằm `progression.ts` |
+| A10 | **FAIL** | `levelState.ts` thuần thật (không `let` cấp module, `spec` chỉ đọc `:132` `?.holes ?? []`, không mutate — test `level-state.test.ts:259-269` khoá). Nhưng `progression.ts:80` gọi `checkCampaign()` **lúc import** = side-effect ẩn khi load module, không phải hàm |
+| A11 | **FAIL** | Lỗi rõ ràng có tên transition (`:104,163,218`) ✓, NHƯNG lock/buffer đặt sai tầng: pack §2 dòng 32-37 chốt `resolve/retry/nextLevel/useHint/useUndo` "phase khác ⇒ nguyên trạng", code `guard()` ném (`:168,182,188,194,206`) + `useUndo` ném cả khi `undoUsed`/`misses===0` (`:207-208`) ⇒ UI (B2) phải try/catch từng cú bấm nhầm. Test còn **chủ động chốt hành vi lệch**: `level-state.test.ts:14`, `hint-undo.test.ts:12` |
+| A12 | PASS | `phase` là field duy nhất (`:67`), không boolean rời suy ra phase; `hintUsed/undoUsed` là tài nguyên tiêu dùng được pack §2 yêu cầu; `picked:83` là buffer input, không phải phase ẩn; mọi cổng vào đi qua `ACTIONS.from` |
+| A13 | PASS | grep title/url/API/DOM/Phaser trong 2 file = 0; `explainKey`/`theme` là id (`:46`, `:29`) |
+| A14 | **FAIL** | Không import const nội bộ ✓, không test số dòng ✓, NHƯNG chép tay chi tiết nội bộ làm oracle: `level-state.test.ts:36` `PHASE_TABLE` (comment "CẤM dẫn xuất từ LEVEL_PHASES"), `hint-undo.test.ts:102-106`, và `progression.test.ts:42-54` — 10 mảng cột CAMPAIGN **tự đặt giá trị** rồi gọi là "chép TAY từ pack" (`:18`); so thực tế: pack §6.1 = `face-hole/crease-hole/edge-hole/corner-cut/eight-layers/diagonal-fold/multi-hole/combo-folds`, `revealLevel 2,2,2,2,2,3,3,3`, `layers 4\|8` — code+test ghi `fold-h/fold-v/punch-one…`, `revealLevel 7,20,35,50,65,80,95,110`, `layers 2..6`, theme `kraft/washi/tissue/…` trong khi pack §4 ghi rõ "3 theme cuối chưa đặt tên, **cấm bịa**" ⇒ cam kết PC-01/07 bị khoá ngược bởi test xanh |
+| A15 | **FAIL** | Thước đo: thêm **1 skin/theme** = 1 dòng `CAMPAIGN` (0 file cũ khác, `theme` chưa có consumer) — điểm sáng duy nhất; thêm **1 chương** = `progression.ts` (3 vị trí) + bảng chương của `chapters.ts`/config + `progression.test.ts` (+chuỗi save 120 ký tự ở B1c) ⇒ ≥3 file cũ; thêm **1 phase** = 1 file src (6 vị trí) + 2 file test. `tools/gate-allow.json` = `{}` (`git status`: untracked, không đổi so với B1a) ⇒ không có nợ khai — nhưng cũng không có khoản nào được *miễn*, mọi vi phạm trên là nợ thật |
+
+**GHI NHẬN TỪ B1a LAN SANG:** không thấy. `levelState` không import `generator/foldRules` (đúng pack §1), chỉ dùng `rational.pointKey/toPoints` conventions FLAT (`levelState.ts:107-115` `holeDiff` dedupe theo `pointKey`) — khớp AMBIGUITY-01.
+
+**3 NỢ KIẾN TRÚC TRẢ SỚM NHẤT**
+1. **`TRANSITIONS` chết + `CAMPAIGN` lệch §6.1** (`levelState.ts:16` / `progression.ts:44-61` + `progression.test.ts:42-54`): một bên là đồ thị chuẩn không ai đọc, một bên là registry chuẩn bị chép sai (vocab/revealLevel/layers/theme bịa) và được test xanh khoá lại. Để sang B1c/B2 là thành nợ dữ liệu save + nội dung i18n, sửa được nhưng đắt.
+2. **Chữ ký hai-nghĩa-via-`typeof`** (`progression.ts:161-167`, `stars.ts:62,90,118`): 4 hàm overload vì test và code bất đồng với pack; đến B1c (save/telemetry) và B2 (UI) sẽ là chỗ sinh bug im lặng.
+3. ** Ranh giới progression/stars + hằng số 2 nguồn** (`progression.ts:41` vs `stars.ts:15`, `:37` vs `checkCampaign:71`, `chapters.ts:30` vs `CAMPAIGN.layers`): PC-07/PC-08 (ngưỡng sao, cooldown hint) hiện không có chủ sở hữu duy nhất; B1c sẽ đọc cả hai.
+
+**1 ĐỀ XUẤT NHỎ LÀM GỌN HƠN**
+Bỏ hẳn `TRANSITIONS` ở levelState (hoặc đổi `guard()` sang đọc `TRANSITIONS` để nó thành nguồn duy nhất, xoá `ACTIONS.to`), và đổi `CAMPAIGN_LEVELS = LEVELS_PER_CHAPTER * CAMPAIGN.length` + `GATE_STARS` thành `GATE_LEVELS_TOUCHED` đúng nghĩa — 3 sửa đổi nhỏ, xoá 1 bảng trùng và 1 lớp sai nghĩa hằng số, không đụng hợp đồng hình học.
+
+**ĐIỂM NGHI NGỜ**
+- Không kiểm chứng được: `paperTheme`/`vocabId` có khớp asset B4 hay không (asset map chưa tồn tại); `inkEarned` có đúng cặp với B1c economy hay không (B1c chưa code) — chỉ xác nhận được là **id hợp lệ, không phải chuỗi hiển thị**.
+- `LevelResult.ms`/`elapsedMs` không có trần: pack §5 nói timer 5s/màn nhưng state không giữ `timerSec` ⇒ không đánh giá được PC-01 ở tầng máy trạng thái.
+- Bỏ dở: không chạy fuzz F1-F8 (phiên này phạm vi A; chỉ chạy gate 1 lần + thí nghiệm A5 trong /tmp).
+- Không xác định được ai quyết định lệch pack §2/§3 (code hay test trước) — cả 2 test file B1b đều ghi chú "pack chưa nói, suy ra (†)" ở những chỗ thực tế pack **đã** nói rõ (`level-state.test.ts:17`, `hint-undo.test.ts:14`).
+
+[result] is_error=False num_turns=20 duration_ms=460391 cost_usd=0.9261952499999999

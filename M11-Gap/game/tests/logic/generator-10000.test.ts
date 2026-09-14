@@ -3,8 +3,11 @@
 // Phủ TC-GEN-05 (10.000 đề liên tiếp), TC-GEN-06, TC-GEN-07, và phần PC-03/PC-04 của
 // TC-GEN-04 trên dải tổng hợp.
 //
-//   · Dải: levelIndex 0..9999 với seed CỐ ĐỊNH (GAME_SEED) + cfg biến thiên theo chương
-//     (TC-GEN-05 ghi rõ "dải seed tổng hợp, không phải 120 màn chính").
+//   · Dải: levelIndex 1..10000 với seed CỐ ĐỊNH (GAME_SEED) + cfg biến thiên theo chương
+//     (TC-GEN-05 ghi rõ "dải seed tổng hợp, không phải 120 màn chính"). Điểm 1 là đáy dải
+//     hợp lệ: levelSpec đã chặn input bẩn 0 / âm / số thực / 1e6 (vòng fix B2).
+//     validateSpec.ok KHÔNG là cổng duy nhất — ca quét còn đếm bằng Ô RASTER VIẾT TAY
+//     (helpers.handCells) và đối chiếu thẳng cfg.punchCount vào action.points (vòng fix B3).
 //   · Ngưỡng: validateSpec.ok (PC-03 + PC-04) VÀ minPairDistance(spec, 16) >= 6
 //     (ngưỡng ghi trong header validator.ts, gốc g08_verify.py "bitmap + hamming >= 6").
 //   · Mọi bộ đếm vi phạm phải = 0 ⇒ tại thời điểm bàn giao batch, đống test này phải XANH
@@ -12,6 +15,7 @@
 // ============================================================================
 import { describe, it, expect, beforeAll } from 'vitest'
 import { levelSpec } from '../../src/logic/generator'
+import type { ChapterLevelConfig } from '../../src/logic/generator'
 import { minPairDistance, validateSpec } from '../../src/logic/validator'
 import {
   CHAPTERS,
@@ -21,8 +25,13 @@ import {
   STRESS_COUNT,
   cfgSweep,
   diffHoles,
+  handAnswerKeys,
+  handCells,
+  handPairwiseMinOf,
   holeCount,
+  holeSet,
   insideSheet,
+  punchPointsOf,
   sameSet,
   serializeSpec,
 } from './helpers'
@@ -49,6 +58,8 @@ type Batch = {
   pairwise: Bucket
   distance: Bucket
   coords: Bucket
+  punchCount: Bucket
+  raster: Bucket
 }
 
 const batch: Batch = {
@@ -66,6 +77,8 @@ const batch: Batch = {
   pairwise: bucket(),
   distance: bucket(),
   coords: bucket(),
+  punchCount: bucket(),
+  raster: bucket(),
 }
 
 const why = (e: unknown): string => (e instanceof Error ? e.message : String(e))
@@ -73,7 +86,7 @@ const why = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 beforeAll(() => {
   const seen = new Set<string>()
   const t0 = Date.now()
-  for (let i = 0; i < STRESS_COUNT; i++) {
+  for (let i = 1; i <= STRESS_COUNT; i++) {
     let spec
     try {
       spec = levelSpec(GAME_SEED, i, cfgSweep(i))
@@ -98,6 +111,19 @@ beforeAll(() => {
       add(batch.decode, tag + ' khong decode duoc toa do: ' + why(e))
     }
     if (!ok) continue
+
+    // B1: cfg.punchCount là ĐỊNH LUẬT — đếm thẳng vào action.points, không tin cổng validator.
+    if (spec.action.kind === 'punch' && punchPointsOf(spec).length !== cfgSweep(i).punchCount) {
+      add(batch.punchCount, tag + ' punchCount=' + cfgSweep(i).punchCount + ' sinh ' + punchPointsOf(spec).length + ' diem duc')
+    }
+    // B3: ô raster tính bằng công thức VIẾT TAY (handCells) — hai lỗ chìm trong MỘT ô ảnh
+    // là đề mờ mà bitmapOf+hamming của src vẫn có thể gọi là "đạt ngưỡng".
+    if (handCells(spec.answerHoles, GRID).size !== holeCount(spec.answerHoles)) {
+      add(batch.raster, tag + ' dap an co 2 loi roi vung cung 1 o raster')
+    }
+    for (const o of spec.options) {
+      if (handCells(o.holes, GRID).size !== holeCount(o.holes)) add(batch.raster, tag + ' o ' + o.id + ' co 2 loi roi cung 1 o raster')
+    }
 
     try {
       const res = validateSpec(spec)
@@ -141,12 +167,14 @@ beforeAll(() => {
   console.log(
     '[B1a][TC-GEN-05] generated=' + batch.total + '/' + STRESS_COUNT +
       ' distinctSpecs=' + batch.distinctSpecs +
+      ' punchCountBad=' + batch.punchCount.n +
+      ' rasterBad=' + batch.raster.n +
       ' elapsedMs=' + batch.elapsedMs,
   )
 }, 600000)
 
 describe('TC-GEN-05 · đếm bằng máy trên 10.000 đề liên tiếp (PC-03, PC-04)', () => {
-  it('PC-02 + PC-03: ca quét phải SINH ĐỦ 10.000 đề levelIndex 0..9999 (seed cố định) không exception — chống "xanh rỗng"', () => {
+  it('PC-02 + PC-03: ca quét phải SINH ĐỦ 10.000 đề levelIndex 1..10000 (seed cố định) không exception — chống "xanh rỗng"', () => {
     expect(batch.generation.n, 'de throw: ' + batch.generation.samples.join(' || ')).toBe(0)
     expect(batch.total).toBe(STRESS_COUNT)
     // Mọi biến thể cfg của 8 chương đều phải được chạy thật (không phải chỉ 1 kiểu đề lặp lại).
@@ -178,12 +206,64 @@ describe('TC-GEN-05 · đếm bằng máy trên 10.000 đề liên tiếp (PC-03
     expect(batch.distance.n, 'duoi nguong khac biet: ' + batch.distance.samples.join(' || ')).toBe(0)
   })
 
+  it('B1/F-1 · PC-01: 10.000/10.000 đề có SỐ ĐIỂM ĐỤC đúng bằng cfg.punchCount (không màn nào thiếu)', () => {
+    expect(batch.punchCount.n, 'punchCount khong duoc ton trong: ' + batch.punchCount.samples.join(' || ')).toBe(0)
+  })
+
+  it('B3/F-8 · PC-04: cổng ĐỘC LẬP bằng ô raster viết tay — không hai lỗ nào chìm trong một ô ảnh', () => {
+    expect(batch.raster.n, 'o raster trung nhau (handCells): ' + batch.raster.samples.join(' || ')).toBe(0)
+  })
+
   it('PC-02: chạy lại ca quét lần 2 trên cùng (seed, dải levelIndex) cho đúng cùng số đề và cùng số đề khác nhau', () => {
     const once = new Set<string>()
-    for (const i of [0, 1, 7, 23, 88, 991, 4999, 9999]) once.add(serializeSpec(levelSpec(GAME_SEED, i, cfgSweep(i))))
+    for (const i of [1, 7, 23, 88, 991, 4999, 9999, STRESS_COUNT]) once.add(serializeSpec(levelSpec(GAME_SEED, i, cfgSweep(i))))
     const twice = new Set<string>()
-    for (const i of [0, 1, 7, 23, 88, 991, 4999, 9999]) twice.add(serializeSpec(levelSpec(GAME_SEED, i, cfgSweep(i))))
+    for (const i of [1, 7, 23, 88, 991, 4999, 9999, STRESS_COUNT]) twice.add(serializeSpec(levelSpec(GAME_SEED, i, cfgSweep(i))))
     expect([...twice]).toEqual([...once])
     expect(once.size).toBeGreaterThan(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// B3/F-8 — "bảng chân lý hình học" viết TAY (helpers.handLayers/handAnswerKeys), không
+// callsrc/logic. Trước đây ca quét chỉ tin validateSpec.ok ⇒ lỗi chung của generator VÀ
+// validator (hai bên cùng suy ra từ một công thức) lọt qua. Ở đây 24 seed khác nhau được
+// đối chiếu lỗ của đáp án với quỹ đạo mở bung tính bằng affine số nguyên lưới 1/8.
+// ---------------------------------------------------------------------------
+describe('B3/F-8 · đối chiếu độc lập 24 seed với mô hình hình học viết tay', () => {
+  const SAMPLE = 24
+  const checked = (() => {
+    const bad: string[] = []
+    let n = 0
+    for (let k = 0; k < SAMPLE; k++) {
+      const level = 1 + k * 417 // rải khắp dải 1..10000 ⇒ đổi cả chương lẫn levelInChapter
+      const cfg: ChapterLevelConfig = { ...cfgSweep(level), useCut: false }
+      const spec = levelSpec('B3-SEED-' + k, level, cfg)
+      if (spec.action.kind !== 'punch') {
+        bad.push('level ' + level + ' khong phai punch du useCut=false')
+        continue
+      }
+      n += 1
+      const tag = 'level ' + level + ' (ch' + spec.chapter + ', ' + spec.folds.join('') + ')'
+      // (1) số điểm đục == cfg.punchCount (B1).
+      if (punchPointsOf(spec).length !== cfg.punchCount) bad.push(tag + ' punchCount=' + cfg.punchCount + ' -> ' + punchPointsOf(spec).length + ' diem')
+      // (2) đáp án == union quỹ đạo của chính các điểm đục, tính bằng affine viết tay.
+      const truth = handAnswerKeys(spec.folds, spec.action.points)
+      if (truth === null) bad.push(tag + ' diem duc ngoai luoi 1/8 (mo tay khong do duoc)')
+      else if (truth.join(';') !== holeSet(spec.answerHoles).join(';')) bad.push(tag + ' tap loi khong khop mo tay: tay=' + truth.length + ' gen=' + holeCount(spec.answerHoles))
+      else if (truth.length > 2 ** spec.folds.length) bad.push(tag + ' so loi ' + truth.length + ' vuot tran 2^' + spec.folds.length)
+      // (3) khác biệt raster đo bằng handPairwiseMinOf (không dùng hamming/bitmapOf của src).
+      const d = handPairwiseMinOf(spec.options.map((o) => o.holes), GRID)
+      if (d < MIN_PAIR_DISTANCE) bad.push(tag + ' handPairwiseMin=' + d + ' < ' + MIN_PAIR_DISTANCE)
+    }
+    return { n, bad }
+  })()
+
+  it('24 seed phải thật sự được kiểm (không phải vòng lặp rỗng)', () => {
+    expect(checked.n).toBeGreaterThanOrEqual(20)
+  })
+
+  it('mọi seed mẫu: đáp án khớp mở bung viết tay + đủ punchCount + đạt ngưỡng raster', () => {
+    expect(checked.bad, checked.bad.slice(0, 5).join(' || ')).toEqual([])
   })
 })

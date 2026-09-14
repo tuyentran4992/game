@@ -1,0 +1,11 @@
+{
+  "_note": "⚠️ PLACEHOLDER — gia skin PC-12. Loai tien te duy nhat la Muc (ink); khong co truong nao lien quan tien bac that (E5 cam ten nhu vay trong module economy).",
+  "_doc": "Bang nay duoc tang cho buySkin(inv, skinId, prices) o src/logic/economy.ts; id phai khop skin trong wardrobe UI.",
+  "currency": "ink",
+  "starter": "skin_classic",
+  "prices": [
+    { "id": "skin_classic", "ink": 0 },
+    { "id": "skin_origami", "ink": 40 },
+    { "id": "skin_foil", "ink": 120 }
+  ]
+}

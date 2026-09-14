@@ -1,0 +1,9 @@
+
+[tool] Bash: {'command': 'grep -rn "layers" src/logic --include=*.ts | head -30', 'description': 'Search for layers references in logic files'}
+
+[tool] Bash: {'command': 'ls src/logic tests/logic && cat package.json | tail -20', 'description': 'List logic and test files, show scripts'}
+1. `cd /data/youtube-playables/M11-Gap/game && npm run typecheck && npm run test:logic`
+2. `tests/logic/*.test.ts`, import tương đối `../../src/logic/<file>`, helper chung `./helpers`.
+3. `unfoldPointsWithCount` (`src/logic/foldRules.ts:145`) và `unfoldHolesWithCount` (`src/logic/foldRules.ts:161`) — cùng trả `{ at: RatPoint; layers: number }[]`.
+
+[result] is_error=False num_turns=3 duration_ms=7756 cost_usd=0.0745025

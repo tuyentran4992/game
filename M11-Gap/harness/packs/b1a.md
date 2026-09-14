@@ -19,3 +19,19 @@
 
 ## Lệnh
 `cd /data/youtube-playables/M11-Gap/game && npm run typecheck && npm run test:logic`
+
+## SPEC §7.5 — CẮT GÓC là VÙNG (chốt 13/09/2026, thay cách làm cũ "1 điểm")
+- Cắt góc = **vùng tam giác vuông** tại 1 góc của **packet**, 2 cạnh góc vuông = `size`.
+- `size ∈ {1/16, 1/8, 1/4}` × **cạnh NGẮN** của packet. Cấm cỡ < 1/16 (trên lưới 16×16 hai cỡ khác nhau sẽ ra cùng bitmap ⇒ đề vô nghĩa).
+- Đáp án đề `cut` = **tập ô raster 16×16 bị vùng cắt phủ sau khi mở bung** (dùng `bitmapOf`), KHÔNG dùng `unfoldPoints` cho 1 điểm.
+- So đáp án với 3 ô nhiễu của đề `cut` bằng **bitmap + hamming ≥ MIN_RASTER_DISTANCE** (giống đề punch).
+- Phân loại tổn thương (theo `g01_fold_sim.py:55-83`): cụm có BOTH chiều > 3×`size` ⇒ `full-hole-ish`; ngược lại `edge-notch` — dùng để SINH NHIỄU.
+- Chương 4+: cho phép 1-2 nhát cắt, mỗi nhát 1 góc khác nhau.
+
+## QUY ƯỚC LÀM TEST (bước 1) — bắt buộc
+- Test ở `tests/logic/<chủ-đề>.test.ts`, import tương đối `../../src/logic/<file>`, helper chung `./helpers` (KHÔNG tạo helper mới).
+- **Cấm lấy hàm trong `src/` làm oracle cho chính nó**: assert bằng số/bảng chân lý hardcode hoặc công thức viết tay trong test.
+- Cấm khoá chi tiết nội bộ (số dòng registry, bản sao bảng `CHAIN_ROWS`, danh sách `FOLD_KIND_ALL` hardcode).
+- Mỗi `it()` phải assert **giá trị cụ thể** (không `toBeDefined`/`not.toThrow` suông). Số case mục tiêu: 15-30/nhóm chủ đề.
+- Chứng minh RED: trước khi có code, test phải đỏ; nếu test xanh khi code chưa có ⇒ test vô nghĩa.
+- Lệnh: `cd /data/youtube-playables/M11-Gap/game && npm run gate` (typecheck + test:logic + gate-smell).

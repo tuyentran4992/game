@@ -320,3 +320,176 @@ export function outOfBoundsSpec(): LevelSpec {
 export function nearDuplicateSpec(): LevelSpec {
   return mkSpec([FIX_ANSWER, FIX_NEAR, FIX_D1, FIX_D2], 0)
 }
+
+// ---------------------------------------------------------------------------
+// MÔ HÌNH HÌNH HỌC + RASTER "VIẾT TAY" (VÒNG FIX B — review F-8: bỏ oracle tự tham chiếu).
+// Vì sao phải dựng lại ở đây: rule PC-04 của validator đo bằng bitmapOf+hamming, và test cũ
+// cũng đo bằng đúng 2 hàm đó ⇒ một công thức sai ở cả hai phía không bao giờ bị phát hiện.
+// Toàn bộ mục này KHÔNG gọi src/logic (không bitmapOf/cellOf/hamming/unfoldPoints):
+// affine được dựng bằng SỐ NGUYÊN trên lưới 1/8 — cùng định luật với g01_fold_sim.py
+// (mỗi nếp = phản chiếu qua giữa packet HIỆN HÀNH; D = hoán vị trục; không đổi kích thước).
+// ---------------------------------------------------------------------------
+
+/** Một đơn vị tờ giấy = E phần tử ⇒ mọi toạ độ của generator nằm trên lưới 1/8. */
+const E = 8
+
+/** Affine nguyên 2 trục: X = a*x + b*y + e ; Y = c*x + d*y + f (hệ số theo lưới 1/8). */
+export type HandMap = { readonly a: number; readonly b: number; readonly c: number; readonly d: number; readonly e: number; readonly f: number }
+
+const handCompose = (o: HandMap, r: HandMap): HandMap => ({
+  a: o.a * r.a + o.b * r.c,
+  b: o.a * r.b + o.b * r.d,
+  c: o.c * r.a + o.d * r.c,
+  d: o.c * r.b + o.d * r.d,
+  e: o.a * r.e + o.b * r.f + o.e,
+  f: o.c * r.e + o.d * r.f + o.f,
+})
+
+/**
+ * Danh sách lớp + kích thước packet (đơn vị 1/8) sau `folds`, dựng lại từ định luật gấp.
+ * Đ3 (review F8 + VÒNG FIX D1): mô hình viết tay PHẢI ĐỘC LẬP VÀ ĐÚNG — nếp chéo D phản xạ
+ * qua đường chéo x=y nên chỉ thực hiện được khi packet còn VUÔNG. Bản cũ copy nguyên giả
+ * định "D = swap vô điều kiện" của src ⇒ oracle cùng sai với src nên không bao giờ bắt được
+ * đề có lỗ ngoài tờ. Chuỗi sai ⇒ NÉM (src cũng phải ném — đó là điều kiện test được).
+ */
+export function handLayers(folds: readonly FoldKind[]): { maps: HandMap[]; w: number; h: number } {
+  let w = E
+  let h = E
+  let maps: HandMap[] = [{ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }]
+  folds.forEach((k, i) => {
+    if (k === 'D' && w !== h) {
+      throw new Error('handLayers: nếp D ở vị trí ' + (i + 1) + ' cần packet VUÔNG, lúc đó packet ' + w + 'x' + h + ' (đơn vị 1/' + E + ') — chuỗi ' + folds.join('') + ' không gấp được')
+    }
+    const r: HandMap =
+      k === 'H' ? { a: -1, b: 0, c: 0, d: 1, e: w, f: 0 }
+        : k === 'V' ? { a: 1, b: 0, c: 0, d: -1, e: 0, f: h }
+          : { a: 0, b: 1, c: 1, d: 0, e: 0, f: 0 }
+    maps = maps.map((m) => handCompose(m, r)).concat(maps)
+    if (k === 'H') w = w / 2
+    if (k === 'V') h = h / 2
+  })
+  return { maps, w, h }
+}
+
+/** Ảnh của một điểm packet (đơn vị 1/8) qua một lớp, ở đúng định dạng khoá của holeSet(). */
+function handImage(m: HandMap, x: number, y: number): string {
+  return pk({ x: R(BigInt(m.a * x + m.b * y + m.e), BigInt(E)), y: R(BigInt(m.c * x + m.d * y + m.f), BigInt(E)) })
+}
+
+/** Tập vị trí lỗ khi mở bung MỘT điểm đục (đã dedupe, sorted). */
+function handOrbitOf(maps: readonly HandMap[], x: number, y: number): string[] {
+  return [...new Set(maps.map((m) => handImage(m, x, y)))].sort()
+}
+
+/** Toàn bộ quỹ đạo đôi một khác nhau của lưới 1/8 nằm trong packet, sắp theo kích thước. */
+export function handOrbitSizes(folds: readonly FoldKind[]): number[] {
+  const { maps, w, h } = handLayers(folds)
+  const sets = new Set<string>()
+  for (let i = 0; i <= w; i++) for (let j = 0; j <= h; j++) sets.add(handOrbitOf(maps, i, j).join(';'))
+  return [...sets].map((s) => s.split(';').length).sort((a, b) => a - b)
+}
+
+/**
+ * Trần số điểm đục của một chuỗi nếp, tính TAY: quỹ đạo của các điểm đục rời nhau từng đôi
+ * một, nên cực đại hoá số điểm = cộng dồn quỹ đạo NHỎ NHẤT sao cho tổng vị trí lỗ ≤ 2^số nếp.
+ */
+export function handCapacity(folds: readonly FoldKind[]): number {
+  let used = 0
+  let n = 0
+  for (const s of handOrbitSizes(folds)) {
+    if (used + s > 2 ** folds.length) break
+    used += s
+    n += 1
+  }
+  return n
+}
+
+/** Bội số 1/8 của một Rat (null nếu ngoài lưới — tức generator đã sinh điểm lạ). */
+function eighths(a: Rat): number | null {
+  const v = R(a.n, a.d)
+  const num = v.n * BigInt(E)
+  if (num % v.d !== 0n) return null
+  return Number(num / v.d)
+}
+
+/**
+ * "Bảng chân lý" của một đề punch: tập lỗ thu được khi mở bung chính các điểm đục
+ * của action (Rat[] FLAT). null ⇒ có điểm đục ngoài lưới 1/8, không đo được bằng mô hình.
+ */
+export function handAnswerKeys(folds: readonly FoldKind[], punch: readonly Rat[]): string[] | null {
+  const { maps } = handLayers(folds)
+  const out = new Set<string>()
+  for (let i = 0; i + 1 < punch.length; i += 2) {
+    const x = eighths(punch[i])
+    const y = eighths(punch[i + 1])
+    if (x === null || y === null) return null
+    for (const k of handOrbitOf(maps, x, y)) out.add(k)
+  }
+  return [...out].sort()
+}
+
+/** Ô raster (x:y) của một toạ độ — ⌊a*grid⌋ bằng bigint + clamp 0..grid-1, tự viết. */
+function handCell(a: Rat, grid: number): number {
+  const v = R(a.n, a.d)
+  const i = Number((v.n * BigInt(grid)) / v.d)
+  return i < 0 ? 0 : i > grid - 1 ? grid - 1 : i
+}
+
+/** Tập ô sáng của một phương án — thay cho bitmapOf() của validator. */
+export function handCells(coords: readonly Rat[], grid: number): Set<string> {
+  const out = new Set<string>()
+  for (let i = 0; i + 1 < coords.length; i += 2) out.add(handCell(coords[i], grid) + ':' + handCell(coords[i + 1], grid))
+  return out
+}
+
+/** Số ảnh phân biệt của MỘT GÓC packet khi mở bung = số CỤM tổn thương một nhát cắt vùng
+ *  góc đó phải để lại (§7.5 — oracle g01 đếm cụm). Mô hình số nguyên 1/8, KHÔNG gọi src. */
+export function handCornerImages(folds: readonly FoldKind[], corner: 'BL' | 'BR' | 'TL' | 'TR'): number {
+  const { maps, w, h } = handLayers(folds)
+  const at: Record<'BL' | 'BR' | 'TL' | 'TR', [number, number]> = { BL: [0, 0], BR: [w, 0], TL: [0, h], TR: [w, h] }
+  const [x, y] = at[corner]
+  return handOrbitOf(maps, x, y).length
+}
+
+/** Gom tập ô "col:row" thành cụm 8-lân-cận — định nghĩa VIẾT TAY của "một vệt tổn thương". */
+export function handCellClusters(cells: ReadonlySet<string>): string[][] {
+  const left = new Set(cells)
+  const out: string[][] = []
+  while (left.size > 0) {
+    const start = [...left][0] as string
+    left.delete(start)
+    const group = [start]
+    const queue = [start]
+    while (queue.length > 0) {
+      const [c, r] = (queue.pop() as string).split(':').map(Number)
+      for (let dc = -1; dc <= 1; dc++)
+        for (let dr = -1; dr <= 1; dr++) {
+          if (dc === 0 && dr === 0) continue
+          const k = c + dc + ':' + (r + dr)
+          if (!left.has(k)) continue
+          left.delete(k)
+          group.push(k)
+          queue.push(k)
+        }
+    }
+    out.push(group.sort())
+  }
+  return out.sort((a, b) => a[0].localeCompare(b[0]))
+}
+
+/** Khoảng cách raster của 2 phương án = số ô lệch (|A Δ B|) — thay cho hamming(). */
+export function handDistance(a: readonly Rat[], b: readonly Rat[], grid: number): number {
+  const sa = handCells(a, grid)
+  const sb = handCells(b, grid)
+  let n = 0
+  for (const k of sa) if (!sb.has(k)) n += 1
+  for (const k of sb) if (!sa.has(k)) n += 1
+  return n
+}
+
+/** Khoảng cách nhỏ nhất của mọi cặp phương án — phiên bản viết tay của minPairDistance. */
+export function handPairwiseMinOf(sets: readonly (readonly Rat[])[], grid: number): number {
+  let min = Number.POSITIVE_INFINITY
+  for (let i = 0; i < sets.length; i++) for (let j = i + 1; j < sets.length; j++) min = Math.min(min, handDistance(sets[i], sets[j], grid))
+  return sets.length < 2 ? 0 : min
+}

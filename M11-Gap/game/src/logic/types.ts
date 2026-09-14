@@ -22,11 +22,41 @@ export type RatPoint = Point & Rat;
 
 export type FoldKind = 'H' | 'V' | 'D';
 
+/** Bốn góc packet (BL = góc gốc toạ độ). Khoá của bảng PACKET_CORNERS (foldRules.ts). */
+export type CutCorner = 'BL' | 'BR' | 'TL' | 'TR';
+
+/**
+ * MỘT nhát cắt góc — SPEC §7.5: cắt là MỘT VÙNG, không phải một điểm:
+ * tam giác vuông tại `corner`, hai cạnh góc vuông dài `size` (đơn vị tờ giấy).
+ */
+export type CutSnip = { readonly corner: CutCorner; readonly size: Rat };
+
 export type PunchAction = { readonly kind: 'punch'; readonly points: Rat[] };
-export type CutAction = { readonly kind: 'cut'; readonly corner: 'BL' | 'BR' | 'TL' | 'TR'; readonly size: Rat };
+/** `extra` = nhát cắt THỨ HAI (chương 4+, mỗi nhát một góc khác nhau — SPEC §7.5). */
+export type CutAction = CutSnip & { readonly kind: 'cut'; readonly extra?: CutSnip };
 export type SheetAction = PunchAction | CutAction;
 
 export type Option = { readonly id: number; readonly holes: Rat[] };
+
+/**
+ * Cấu hình MỘT màn mà tầng QA/manifest truyền vào generator (DATA-MODEL §3.1).
+ * Đặt ở data contract vì cả rng (khoá dòng chảy), chainTable (guard dải input), chapters
+ * (parser bảng chương) và generator đều tiêu thụ — không ai được định nghĩa lại.
+ */
+export type ChapterLevelConfig = {
+  readonly chapter: number;
+  readonly levelInChapter: number;
+  readonly foldCount: number;
+  readonly punchCount: number;
+  readonly useCut: boolean;
+  readonly useDiagonal: boolean;
+  readonly timerOn: boolean;
+  /**
+   * Chuỗi nếp config KHAI (DATA-MODEL §3.1 `folds`). Khai thì generator PHẢI dùng đúng
+   * chuỗi này; không khai thì mới suy từ bảng CHAIN_ROWS theo foldCount (review F-1).
+   */
+  readonly folds?: readonly FoldKind[];
+};
 
 export type LevelSpec = {
   readonly seed: string;
