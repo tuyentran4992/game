@@ -75,7 +75,7 @@ export class ShopScene extends Phaser.Scene {
 
   create(): void {
     this.session = readSession(this.game.registry);
-    this.kit = openFrame(this, makeTestidHook(this.game.canvas, () => cameraSize(this.cameras.main)));
+    this.kit = openFrame(this, makeTestidHook(this, this.game.canvas, () => cameraSize(this.cameras.main)));
     this.head = this.add.text(0, 0, '', textStyle('title', this.tint().ink)).setOrigin(0, 0.5);
     this.purse = this.add.existing(new InkBadge(this, ZERO, this.tint()));
     // Nút nền do `makeButton` của ui/button.ts dựng (PC-U-06): container phải được gắn lên

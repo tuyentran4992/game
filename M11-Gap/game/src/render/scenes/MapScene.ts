@@ -92,7 +92,7 @@ export class MapScene extends Phaser.Scene {
 
   create(): void {
     this.session = readSession(this.game.registry);
-    this.kit = openFrame(this, makeTestidHook(this.game.canvas, () => cameraSize(this.cameras.main)));
+    this.kit = openFrame(this, makeTestidHook(this, this.game.canvas, () => cameraSize(this.cameras.main)));
     this.pool.clear();
     this.sheet = this.add.existing(new PanelArt(this));
     this.rebuild();

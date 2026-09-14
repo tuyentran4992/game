@@ -7,7 +7,7 @@
 
 import Phaser from 'phaser';
 import { t } from '../../logic/i18n';
-import { markCanvas, registerTestid } from '../../ui/testids';
+import { makeTestidHook, markCanvas } from '../../ui/testids';
 import { loadSfx } from '../audio/sfx';
 import { layoutOf } from '../layout';
 import { readSession } from '../session';
@@ -48,7 +48,14 @@ export class BootScene extends Phaser.Scene {
     };
     this.load.on('progress', paintBar);
     paintBar(0);
-    registerTestid('testid-loading-bar', bar.x, bar.y, bar.w, bar.h);
+    // Rect thanh tiến trình đi qua CỬA CHUNG của ui/testids (V4): Boot có TÊN trong registry
+    // chủ học thì lúc Boot tắt, `testid-loading-bar` biến mất — để QA không đọc nó thành vùng
+    // bấm của màn Title đang chạy (nó nằm ngay khe giữa chữ và nút PLAY).
+    const hook = makeTestidHook(this, this.game.canvas, () => {
+      const c = this.cameras.main;
+      return { width: c.width, height: c.height };
+    });
+    hook('testid-loading-bar', bar);
     // Thiếu file là LỖI NỀN TẢNG, không phải chuyện để người chơi chịu: ghi tên khoá + đường
     // dẫn thật ra console (QA đọc console — PC-B-01) chứ không âm thầm chạy thiếu hình.
     this.load.on('loaderror', (file: { key?: string; url?: string }) => {

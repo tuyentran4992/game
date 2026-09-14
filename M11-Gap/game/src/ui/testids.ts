@@ -24,6 +24,17 @@ export type ViewTransform = {
 
 export const TESTIDS: Record<string, TestidRect> = {};
 
+/**
+ * Ai ghi rect CUỐI của từng id (Việc 2c). Vì sao cần: hai scene dùng CHUNG một id ở cùng một
+ * chỗ ngồi (`testid-btn-sound` của HUD), nên "scene cũ dọn hết id của mình" chỉ đúng khi biết
+ * ai là người viết cuối — xoá bừa là ăn mất rect mà scene MỚI vừa đăng ký, để lại vùng bấm
+ * không có trong registry (PC-U-05 đảo ngược).
+ */
+const WRITER: Record<string, string> = {};
+
+/** Chủ nhân của id chưa màn nào giới thiệu — KHÔNG màn nào được dọn theo tên rỗng này. */
+const NO_OWNER = '';
+
 /** Chiều chạm tối thiểu 44px — nhỏ hơn là nắn lại ở đây để QA không bấm hụt (PC-U-05). */
 export function registerTestid(id: string, x: number, y: number, w: number, h: number): void {
   const ww = Math.max(TAP_MIN, Math.round(w));
@@ -34,6 +45,18 @@ export function registerTestid(id: string, x: number, y: number, w: number, h: n
 /** Nút bị ẩn thì xoá rect — để lại vùng vô hình là "ảo giác nút" (PC-U-05). */
 export function clearTestid(id: string): void {
   delete TESTIDS[id];
+  delete WRITER[id];
+}
+
+/**
+ * Dọn HẾT phần của MỘT scene khi nó shutdown (V4, vòng này): chỉ xoá những id mà chính `scope`
+ * ghi lần cuối, nên "Title vừa tắt" không thể ăn mất rect mà PlayScene vừa đăng ký cho cùng một
+ * chỗ ngồi HUD. `scope` rỗng = KHÔNG dọn gì: đó là id chưa có chủ (Boot dựng rect trước khi có
+ * tên màn), xoá bừa theo từng id một là xoá nhầm phần của màn đang chạy.
+ */
+export function clearTestidsOf(scope: string): void {
+  if (scope === NO_OWNER) return;
+  for (const id of Object.keys(WRITER)) if (WRITER[id] === scope) clearTestid(id);
 }
 
 /** Bộ đổi toạ độ thế giới -> px trang. `canvas` lấy từ game, `w`/`h` là kích thước camera
@@ -51,18 +74,34 @@ export function viewTransform(
 export type Hook = (id: string, b: Box) => void;
 
 /**
- * Dựng CỬA đăng ký rect cho một scene (A9: PlayScene và TitleScene không copy lại phép đổi
- * toạ độ). `size()` là hàm đọc camera hiện hành — resize thì rect tính lại, không bắt
- * scene phải nhân sx/sy ở hai nơi.
+ * Phần của một scene mà CỬA hook cần: TÊN (chủ của mọi id nó đăng) và EventBus để nghe
+ * `shutdown`. Khai hình dạng tối thiểu thay vì import Phaser ⇒ module này test được trong node
+ * (scene thật thừa hai thứ đó, truyền `this` là đủ).
+ */
+export type SceneScope = {
+  readonly scene: { readonly key: string };
+  readonly events: { once(event: string, callback: () => void): unknown };
+};
+
+/**
+ * Dựng CỬA đăng ký rect cho một màn (A9: PlayScene và TitleScene không copy lại phép đổi toạ
+ * độ) và gắn LUẬT DỌN DỆT vào cùng một chỗ (V4): `owner` lấy từ CHÍNH scene nên không có cảnh
+ * "đăng một tên, dọn một tên khác", và khi scene shutdown thì mọi id nó ghi lần cuối bị xoá —
+ * registry không còn rect của màn đã tắt để phép kiểm chồng lấn của QA đọc nhầm.
+ * `size()` là hàm đọc camera hiện hành ⇒ resize thì rect tính lại, scene không nhân sx/sy ở hai nơi.
  */
 export function makeTestidHook(
+  scope: SceneScope,
   canvas: { getBoundingClientRect(): { x: number; y: number; width: number; height: number } },
   size: () => { width: number; height: number },
 ): Hook {
+  const owner = scope.scene.key;
+  scope.events.once('shutdown', () => clearTestidsOf(owner));
   return (id, b) => {
     const cam = size();
     const vt = viewTransform(canvas, cam.width, cam.height);
     registerTestid(id, vt.ox + b.x * vt.sx, vt.oy + b.y * vt.sy, b.w * vt.sx, b.h * vt.sy);
+    WRITER[id] = owner;
   };
 }
 

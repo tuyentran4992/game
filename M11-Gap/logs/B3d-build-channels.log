@@ -1,0 +1,101 @@
+===== 1/5 cổng gate (typecheck + test:logic + gate-smell) =====
+
+> paper-crease@0.1.0 typecheck
+> tsc --noEmit
+
+
+> paper-crease@0.1.0 test:logic
+> vitest run tests/logic tests/platform
+
+
+ RUN  v2.1.9 /data/youtube-playables/M11-Gap/game
+
+ ✓ tests/logic/view-b3b-states.test.ts (30 tests) 44ms
+ ✓ tests/logic/view-b3a-timing.test.ts (62 tests) 79ms
+ ✓ tests/logic/view-b3b-contract.test.ts (22 tests) 50ms
+ ✓ tests/logic/generator.test.ts (29 tests) 3533ms
+   ✓ generator.levelSpec — PC-01 tham số chương là DỮ LIỆU, không hardcode > TC-GEN-11 · PC-03 + PC-01: dải chương 4..8 CÓ xuất hiện "cắt 1 góc chéo" hợp lệ; chương 1..3 chỉ đục lỗ 303ms
+   ✓ B1/F-1 · cfg.punchCount được tôn trọng tuyệt đối trên bảng chương thật 8×15 > (b) 200 seed × HV/HVH/HHV × punchCount 3..4 ⇒ hoặc đủ, hoặc NÉM nêu chain + punchCount 497ms
+ ❯ tests/logic/layout.test.ts (43 tests | 1 failed) 359ms
+   × TEMP do cham > stats 281ms
+     → n min/max = 1/48
+norm x 0.000..1.000  y 0.000..1.000
+holes side = 162.31 paper side = 191.52
+maxR = 8.93  minPairPx = 7.17 at lv35 card3 n=4
+ ✓ tests/logic/chain-config.test.ts (27 tests) 1201ms
+   ✓ A1/F-1 · chainFor cấm nuốt foldCount ngoài bảng > 200 seed liên tiếp: mọi chuỗi tuân luật, tất định, và bảng không bị hẹp đến mức chỉ ra 1 chuỗi 877ms
+ ✓ tests/logic/view-b3b-mapmodel.test.ts (24 tests) 45ms
+ ✓ tests/logic/view-b3a-contract.test.ts (16 tests) 31ms
+ ✓ tests/logic/fold-rules.test.ts (27 tests) 127ms
+ ✓ tests/logic/save.test.ts (23 tests) 35ms
+ ✓ tests/logic/view-b3a-geometry.test.ts (19 tests) 45ms
+ ✓ tests/logic/validator.test.ts (32 tests) 79ms
+ ✓ tests/logic/records.test.ts (19 tests) 75ms
+ ✓ tests/logic/generator-10000.test.ts (11 tests) 25120ms
+ ✓ tests/logic/level-state.test.ts (17 tests) 47ms
+ ✓ tests/logic/i18n.test.ts (8 tests) 45ms
+ ✓ tests/logic/economy.test.ts (18 tests) 27ms
+ ✓ tests/logic/fold-unfold.test.ts (30 tests) 46ms
+ ✓ tests/logic/rational.test.ts (26 tests) 31ms
+ ✓ tests/logic/progression.test.ts (13 tests) 50ms
+ ✓ tests/logic/hint-undo.test.ts (11 tests) 22ms
+ ✓ tests/logic/records-store.test.ts (13 tests) 40ms
+ ✓ tests/platform/debug.test.ts (19 tests) 43ms
+ ✓ tests/platform/playgama-adapter.test.ts (11 tests) 26ms
+ ✓ tests/platform/ad-mock.test.ts (8 tests) 223ms
+ ✓ tests/platform/ytgame-adapter.test.ts (8 tests) 20ms
+ ✓ tests/logic/telemetry.test.ts (9 tests) 156ms
+ ✓ tests/platform/network-ban.test.ts (8 tests) 106ms
+ ✓ tests/platform/host-shape.test.ts (10 tests) 17ms
+stdout | tests/logic/scene-boot.test.ts > PlayScene khi boot (F2: hết test dò đường) > boot headless => đăng đủ rect HUD + 4 ô, số hữu hạn và không nhỏ hơn trần chạm
+Phaser v4.2.1 (Headless | No Audio) https://phaser.io/v4021
+
+stderr | tests/logic/scene-boot.test.ts > PlayScene khi boot (F2: hết test dò đường) > boot headless => đăng đủ rect HUD + 4 ô, số hữu hạn và không nhỏ hơn trần chạm
+[sheet] thieu texture giay "skin_kraft" (BootScene nap tu manifest - xem console [boot])
+
+stdout | tests/logic/scene-boot.test.ts > PlayScene khi boot (F2: hết test dò đường) > bốn ô đáp án không đè nhau trên màn hình (PC-03: bốn câu hỏi riêng)
+Phaser v4.2.1 (Headless | No Audio) https://phaser.io/v4021
+
+stderr | tests/logic/scene-boot.test.ts > PlayScene khi boot (F2: hết test dò đường) > bốn ô đáp án không đè nhau trên màn hình (PC-03: bốn câu hỏi riêng)
+[sheet] thieu texture giay "skin_kraft" (BootScene nap tu manifest - xem console [boot])
+
+stdout | tests/logic/scene-boot.test.ts > PlayScene khi boot (F2: hết test dò đường) > shutdown thì rect của màn chơi bị xoá khỏi registry (không còn vùng bấm vô hình)
+Phaser v4.2.1 (Headless | No Audio) https://phaser.io/v4021
+
+stderr | tests/logic/scene-boot.test.ts > PlayScene khi boot (F2: hết test dò đường) > shutdown thì rect của màn chơi bị xoá khỏi registry (không còn vùng bấm vô hình)
+[sheet] thieu texture giay "skin_kraft" (BootScene nap tu manifest - xem console [boot])
+
+ ✓ tests/logic/scene-boot.test.ts (4 tests) 299ms
+ ✓ tests/logic/level-config.test.ts (6 tests) 49ms
+ ✓ tests/logic/view-b3a-holes.test.ts (7 tests) 128ms
+ ✓ tests/logic/stars.test.ts (13 tests) 19ms
+ ✓ tests/platform/null-adapter.test.ts (10 tests) 14ms
+ ✓ tests/logic/refactor-contract.test.ts (9 tests) 228ms
+ ✓ tests/platform/standalone-full-loop.test.ts (6 tests) 17ms
+ ✓ tests/platform/registry.test.ts (8 tests) 15ms
+ ✓ tests/logic/validator-action.test.ts (9 tests) 72ms
+ ✓ tests/logic/config-caps.test.ts (4 tests) 9ms
+ ✓ tests/logic/share-code.test.ts (7 tests) 17ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/logic/layout.test.ts > TEMP do cham > stats
+Error: n min/max = 1/48
+norm x 0.000..1.000  y 0.000..1.000
+holes side = 162.31 paper side = 191.52
+maxR = 8.93  minPairPx = 7.17 at lv35 card3 n=4
+ ❯ tests/logic/layout.test.ts:476:11
+    474|     lines.push('holes side = ' + cardArt(L2.options[0]).holes.w.toFixe…
+    475|     lines.push('maxR = ' + maxR.toFixed(2) + '  minPairPx = ' + minPai…
+    476|     throw new Error(lines.join('\n'))
+       |           ^
+    477|   })
+    478| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed | 39 passed (40)
+      Tests  1 failed | 675 passed (676)
+   Start at  13:29:10
+   Duration  57.68s (transform 7.63s, setup 0ms, collect 10.83s, tests 32.59s, environment 15ms, prepare 4.66s)
+

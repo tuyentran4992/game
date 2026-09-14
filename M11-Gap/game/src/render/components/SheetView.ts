@@ -10,7 +10,7 @@ import { toNumber } from '../../logic/rational';
 import type { FoldKind, Point } from '../../logic/types';
 import { DUR, MAX_LAYERS, type BreathPlan, type EaseName, type HolePop, type UnfoldLayer } from '../anim/unfoldPlan';
 import { shakeSteps } from '../anim/juicePlan';
-import { holeRadius } from '../holeView';
+import { closestPair, holeRadius } from '../holeView';
 import type { Box } from '../layout';
 import { parseHex, type PaperTheme, type SkinAsset } from '../theme/paperTheme';
 import { HolePool } from './HolePool';
@@ -278,10 +278,11 @@ export class SheetView extends Phaser.GameObjects.Container {
 
   /** Rect thật của lỗ đầu tiên (QA cần vùng nhìn thấy của cái lỗ — PC-U-04). */
   holeBox(box: Box): Box {
-    const r = holeRadius('sheet', this.lastPoints.length, this.side);
-    const p = this.lastPoints[0];
-    const cx = box.x + (p ? toNumber(p.x) : 0.5) * this.side;
-    const cy = box.y + (p ? toNumber(p.y) : 0.5) * this.side;
+    const units = this.lastPoints.map((p) => ({ x: toNumber(p.x), y: toNumber(p.y) }));
+    const r = holeRadius('sheet', units.length, this.side, closestPair(units, this.side));
+    const p = units[0];
+    const cx = box.x + (p ? p.x : 0.5) * this.side;
+    const cy = box.y + (p ? p.y : 0.5) * this.side;
     return { x: cx - r, y: cy - r, w: r * 2, h: r * 2 };
   }
 

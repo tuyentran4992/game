@@ -74,7 +74,7 @@ export class TitleScene extends Phaser.Scene {
   create(): void {
     const session = readSession(this.game.registry);
     this.session = session;
-    this.hook = makeTestidHook(this.game.canvas, () => {
+    this.hook = makeTestidHook(this, this.game.canvas, () => {
       const cam = this.cameras.main;
       return { width: cam.width, height: cam.height };
     });

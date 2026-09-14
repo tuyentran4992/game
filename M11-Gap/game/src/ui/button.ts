@@ -100,9 +100,15 @@ export type SlotFlags = {
   readonly adsAbsent: boolean;
 };
 
-/** Một chỗ ngồi trong hàng nút dưới: id QA + ô + hình + khoá từ điển + khi nào hiện. */
+/** Một chỗ ngồi trong hàng nút dưới: id QA + hàng + ô + hình + khoá từ điển + khi nào hiện. */
 export type SlotRow = {
   readonly id: string;
+  /**
+   * HÀNG của nút — CHỮ, không phải chỉ số: hai nút cùng hàng loại trừ nhau thì layout được
+   * phép dời khe đơn độc về trục cột (`layout.slotBoxes`). Nút HUD dùng hàng riêng vì cả hai
+   * luôn sáng nên §4.1 giữ nguyên.
+   */
+  readonly row: string;
   readonly box: (l: Layout) => Box;
   readonly glyph: string | null;
   /** Khoá từ điển; null = nút CHỈ hình (icon HUD — PC-O-02 "tắt chữ vẫn hiểu"). */
@@ -118,31 +124,31 @@ export type SlotRow = {
  */
 export const PLAY_SLOTS: readonly SlotRow[] = [
   {
-    id: 'testid-btn-hint', box: (l) => l.hint, glyph: 'hint', labelKey: 'hud.hint', primary: false,
+    id: 'testid-btn-hint', row: 'tools', box: (l) => l.hint, glyph: 'hint', labelKey: 'hud.hint', primary: false,
     on: (f) => f.phase === 'ready' && !f.hintUsed,
   },
   {
-    id: 'testid-btn-undo', box: (l) => l.undo, glyph: 'undo', labelKey: 'hud.undo', primary: false,
+    id: 'testid-btn-undo', row: 'tools', box: (l) => l.undo, glyph: 'undo', labelKey: 'hud.undo', primary: false,
     on: (f) => f.undoLeft && f.adsAbsent,
   },
   {
-    id: 'testid-btn-undo-ad', box: (l) => l.undoAd, glyph: 'undo', labelKey: 'hud.undo', primary: false,
+    id: 'testid-btn-undo-ad', row: 'tools', box: (l) => l.undoAd, glyph: 'undo', labelKey: 'hud.undo', primary: false,
     on: (f) => f.undoLeft && !f.adsAbsent,
   },
   {
-    id: 'testid-btn-retry', box: (l) => l.retry, glyph: null, labelKey: 'hud.retry', primary: false,
+    id: 'testid-btn-retry', row: 'result', box: (l) => l.retry, glyph: null, labelKey: 'hud.retry', primary: false,
     on: (f) => f.phase === 'wrong',
   },
   {
-    id: 'testid-btn-unfold', box: (l) => l.unfold, glyph: 'unfold', labelKey: 'hud.next', primary: true,
+    id: 'testid-btn-unfold', row: 'result', box: (l) => l.unfold, glyph: 'unfold', labelKey: 'hud.next', primary: true,
     on: (f) => f.phase === 'correct',
   },
   {
-    id: 'testid-btn-menu', box: (l) => l.menu, glyph: 'menu', labelKey: null, primary: false,
+    id: 'testid-btn-menu', row: 'hud', box: (l) => l.menu, glyph: 'menu', labelKey: null, primary: false,
     on: () => true,
   },
   {
-    id: 'testid-btn-sound', box: (l) => l.sound, glyph: 'sound', labelKey: null, primary: false,
+    id: 'testid-btn-sound', row: 'hud', box: (l) => l.sound, glyph: 'sound', labelKey: null, primary: false,
     on: () => true,
   },
 ];

@@ -47,13 +47,49 @@ const RADIUS_RULE: Readonly<Record<PoolRole, { readonly ratio: number }>> = {
 };
 
 /**
- * Bán kính một lỗ khi `count` lỗ phải nằm gọn trong ô cạnh `side`:
- *   · thưa (cả dải chiến dịch) ⇒ giữ đúng tỷ lệ DS từng vẽ, hình không đổi;
- *   · dày ⇒ co theo 1/sqrt(count) vì lỗ xếp thành lưới sqrt(count)×sqrt(count),
- *     sàn 1px để không bao giờ có lỗ vô hình.
+ * Độ dày của MỘT chấm (đơn vị thiết kế trên cạnh ô) — DỮ LIỆU, không phải chữ số viết trong
+ * vòng lặp: `clear` là khe tối thiểu giữa HAI MÉP chấm, `min` là sàn bán kính.
  */
-export function holeRadius(role: PoolRole, count: number, side: number): number {
+const DOT = { clear: 6, min: 1 } as const;
+
+/** Điểm đã chuẩn hoá 0..1 — cùng hình dạng mà HolePool nhận, nhưng ở hệ px thì nhân `side`. */
+export type HoleUnit = { readonly x: number; readonly y: number };
+
+/** Khoảng cách GIỮA HAI TÂM ngắn nhất của một bộ điểm, quy về px của cạnh `side` (1 điểm ⇒ ∞). */
+export function closestPair(units: readonly HoleUnit[], side: number): number {
+  let best = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < units.length; i += 1) {
+    for (let j = i + 1; j < units.length; j += 1) {
+      const d = Math.hypot(units[i].x - units[j].x, units[i].y - units[j].y) * side;
+      if (d < best) best = d;
+    }
+  }
+  return best;
+}
+
+/**
+ * Bán kính một lỗ khi `count` lỗ phải nằm gọn trong ô cạnh `side`, với `pair` = khoảng cách tâm
+ * gần nhất của CHÍNH bộ điểm đang vẽ:
+ *   · thưa (cả dải chiến dịch) ⇒ giữ đúng tỷ lệ DS từng vẽ, hình không đổi;
+ *   · dày ⇒ co theo 1/sqrt(count) vì lỗ xếp thành lưới sqrt(count)×sqrt(count);
+ *   · hai lỗ GẦN NHAU ⇒ co để giữa hai MÉP chấm còn `DOT.clear` — ảnh chụp thật Việc 3 có card
+ *     bốn lỗ mà hai lỗ cách nhau 7,5 đơn vị: mật độ không phát hiện ra, phải đo từng cặp điểm.
+ * Sàn `DOT.min` px để không bao giờ có lỗ vô hình.
+ */
+export function holeRadius(
+  role: PoolRole, count: number, side: number, pair: number = Number.POSITIVE_INFINITY,
+): number {
   const rule = RADIUS_RULE[role] ?? RADIUS_RULE.sheet;
   const room = (side * 0.45) / Math.sqrt(Math.max(1, count));
-  return Math.max(1, Math.min(side * rule.ratio, room));
+  const clear = (pair - DOT.clear) / 2;
+  return Math.max(DOT.min, Math.min(side * rule.ratio, room, clear));
+}
+
+/**
+ * Trần bán kính của ô cạnh `side`: giá trị `holeRadius` đạt được khi bộ điểm THƯA NHẤT
+ * (một lỗ, không cặp nào để co). `layout.dotFieldSide` đọc đúng cửa này để chừa đệm cho ô đáp
+ * án — bán kính mà khai thêm lần nữa ở tầng bố cục là hai sự thật của một hình tròn.
+ */
+export function maxDotRadius(role: PoolRole, side: number): number {
+  return holeRadius(role, 1, side);
 }

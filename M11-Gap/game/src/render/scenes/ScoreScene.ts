@@ -78,7 +78,7 @@ export class ScoreScene extends Phaser.Scene {
 
   create(): void {
     this.session = readSession(this.game.registry);
-    this.kit = openFrame(this, makeTestidHook(this.game.canvas, () => cameraSize(this.cameras.main)));
+    this.kit = openFrame(this, makeTestidHook(this, this.game.canvas, () => cameraSize(this.cameras.main)));
     const theme = sceneTheme(this.session);
     // `theme` dựng trước vì mọi đối tượng chữ bên dưới lấy màu từ nó; `model` cũng dựng MỘT lần
     // ở create (PC-R-04: resize chỉ vẽ lại, không đụng tiến trình).

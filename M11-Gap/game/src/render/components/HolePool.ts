@@ -9,7 +9,7 @@
 import type { Point } from '../../logic/types';
 import Phaser from 'phaser';
 import { toNumber } from '../../logic/rational';
-import { holeRadius, MAX_HOLES, type PoolRole } from '../holeView';
+import { closestPair, holeRadius, MAX_HOLES, type PoolRole } from '../holeView';
 
 /** Màu của bộ lỗ: `ring = null` là không viền (ô đáp án thu nhỏ). */
 export type HoleStyle = { readonly fill: number; readonly ring: number | null };
@@ -49,18 +49,21 @@ export class HolePool {
   /**
    * Đặt bộ lỗ vào `points` (0..1) trong ô cạnh `side`, gốc ở (ox, oy) tại hệ toạ độ của host.
    * Lỗ thừa của lần vẽ trước bị ẨN, không xoá — pool tái sử dụng giữa 4 ô và mỗi lần resize.
+   * Bán kính do MỘT cửa duy nhất (`holeView.holeRadius`) và được đo trên CHÍNH bộ điểm đang vẽ:
+   * mật độ (bao nhiêu lỗ) không phát hiện nổi hai lỗ gần trùng nhau — Việc 3 vòng layout 2.
    */
   place(points: readonly Point[], side: number, ox: number, oy: number, role: PoolRole, style: HoleStyle): void {
     this.grow(points.length);
-    const r = holeRadius(role, points.length, side);
+    const units = points.map((p) => ({ x: toNumber(p.x), y: toNumber(p.y) }));
+    const r = holeRadius(role, units.length, side, closestPair(units, side));
     this.items.forEach((hole, i) => {
-      const p = points[i];
-      if (!p) {
+      const u = units[i];
+      if (!u) {
         hole.setVisible(false);
         return;
       }
       hole.setVisible(true).setRadius(r).setScale(1);
-      hole.setPosition(ox + toNumber(p.x) * side, oy + toNumber(p.y) * side);
+      hole.setPosition(ox + u.x * side, oy + u.y * side);
       hole.setFillStyle(style.fill, 1);
       if (style.ring === null) hole.setStrokeStyle(0, 0);
       else hole.setStrokeStyle(Math.max(1, r * 0.18), style.ring);

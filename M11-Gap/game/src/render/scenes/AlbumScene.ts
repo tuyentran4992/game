@@ -74,7 +74,7 @@ export class AlbumScene extends Phaser.Scene {
 
   create(): void {
     this.session = readSession(this.game.registry);
-    this.kit = openFrame(this, makeTestidHook(this.game.canvas, () => cameraSize(this.cameras.main)));
+    this.kit = openFrame(this, makeTestidHook(this, this.game.canvas, () => cameraSize(this.cameras.main)));
     const theme = this.palette();
     this.art = this.add.graphics();
     this.head = this.add.text(0, 0, '', textStyle('title', theme.ink)).setOrigin(0, 0.5);

@@ -339,3 +339,39 @@ METRICS {"ts": "2026-09-14T12:59:24Z", "variant": "v1-harness", "batch": "B3c", 
 tổng dọn: 0
 [2026-09-14 13:00:55] LAYOUT-FIX xong
 [2026-09-14 13:04:20] ĐÁNH BÓNG LAYOUT 2 bắt đầu…
+METRICS {"ts": "2026-09-14T13:27:50Z", "variant": "v1-harness", "batch": "B3d", "step": "layout-polish2", "model": "qwen3.8-flash", "max_turns": 90, "turns": 91, "duration_s": 1410.5, "api_ms": 1392855, "ttft_ms": null, "cost_usd": 6.1757, "session_id": "2a108be3-7f0b-40ef-b1b1-f89b57955d04", "resume_from": null, "ctx_per_turn_avg": 4062, "ctx_per_turn_max": 4080, "syspack": "B3d-syspack.md", "exit": 1, "timeout": null, "input_tokens": 540, "output_tokens": 76732, "cache_read": 6527122, "cache_creation": 155913}
+[B3d/layout-polish2] 91 lượt · 1410.5s · vào 540 · cache 6,527,122 · ra 76,732 · $6.1757 · ok
+[2026-09-14 13:27:53] layout.test: FAIL
+[2026-09-14 13:28:58] B3d cổng: FAIL
+[2026-09-14 13:30:08] build-channels FAIL
+tổng dọn: 0
+[2026-09-14 13:30:08] ĐÁNH BÓNG LAYOUT 2 xong
+[2026-09-14 13:30:41] DỌN TEST TẠM + xác nhận layout bắt đầu…
+METRICS {"ts": "2026-09-14T13:42:59Z", "variant": "v1-harness", "batch": "B3d", "step": "2b-fix-temp", "model": "qwen3.8-flash", "max_turns": 60, "turns": 61, "duration_s": 737.9, "api_ms": 668773, "ttft_ms": null, "cost_usd": 3.2667, "session_id": "8ae4947d-5304-4719-82d0-65194eef214e", "resume_from": null, "ctx_per_turn_avg": 3786, "ctx_per_turn_max": 3790, "syspack": "B3d-syspack.md", "exit": 1, "timeout": null, "input_tokens": 360, "output_tokens": 36813, "cache_read": 3549567, "cache_creation": 89185}
+[B3d/2b-fix-temp] 61 lượt · 737.9s · vào 360 · cache 3,549,567 · ra 36,813 · $3.2667 · ok
+[2026-09-14 13:43:03] layout.test PASS
+[2026-09-14 13:44:14] cổng FAIL
+[2026-09-14 13:45:24] build-channels FAIL
+[2026-09-14 13:45:24] check standalone PASS
+[2026-09-14 13:45:24] check ytgame PASS
+[2026-09-14 13:45:25] check playgama PASS
+tổng dọn: 0
+[2026-09-14 13:45:25] DỌN TEST TẠM xong
+[2026-09-14 13:49:50] VÒNG CUỐI (G1/G3/registry/chấm) bắt đầu…
+METRICS {"ts": "2026-09-14T14:05:31Z", "variant": "v1-harness", "batch": "B3d", "step": "2c-final", "model": "qwen3.8-flash", "max_turns": 70, "turns": 71, "duration_s": 940.8, "api_ms": 924977, "ttft_ms": null, "cost_usd": 5.0659, "session_id": "1c08e6bd-7044-4629-b774-12e0796a3599", "resume_from": null, "ctx_per_turn_avg": 4135, "ctx_per_turn_max": 4142, "syspack": "B3d-syspack.md", "exit": 1, "timeout": null, "input_tokens": 420, "output_tokens": 58905, "cache_read": 5732870, "cache_creation": 113135}
+[B3d/2c-final] 71 lượt · 940.8s · vào 420 · cache 5,732,870 · ra 58,905 · $5.0659 · ok
+[2026-09-14 14:05:34] layout.test PASS
+[2026-09-14 14:05:46] BUGFIX HOẠT CẢNH (gấp/mở bung) bắt đầu…
+thiếu prompt: /data/youtube-playables/M11-Gap/prompts/BUGFIX-ANIM.md
+[2026-09-14 14:07:00] cổng PASS
+[2026-09-14 14:07:16] cổng PASS
+[2026-09-14 14:10:04] build-channels OK
+--- KIỂM ĐỘ MỚI (mtime phải > 1789393790):
+    OK  dist/index.html mới (14:10:03)
+    OK  build/ytgame/index.html mới (14:09:16)
+    OK  build/playgama/index.html mới (14:09:47)
+[2026-09-14 14:10:04] check standalone PASS
+[2026-09-14 14:10:04] check ytgame PASS
+[2026-09-14 14:10:04] check playgama PASS
+tổng dọn: 0
+[2026-09-14 14:10:04] VÒNG CUỐI xong

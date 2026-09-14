@@ -1,0 +1,87 @@
+===== 1/5 cổng gate (typecheck + test:logic + gate-smell) =====
+
+> paper-crease@0.1.0 typecheck
+> tsc --noEmit
+
+
+> paper-crease@0.1.0 test:logic
+> vitest run tests/logic tests/platform
+
+
+ RUN  v2.1.9 /data/youtube-playables/M11-Gap/game
+
+ ✓ tests/logic/view-b3b-states.test.ts (30 tests) 34ms
+ ✓ tests/logic/view-b3a-timing.test.ts (62 tests) 90ms
+ ✓ tests/logic/view-b3b-contract.test.ts (22 tests) 43ms
+ ✓ tests/logic/layout.test.ts (44 tests) 469ms
+   ✓ V7 cham lo tren 120 man that: tron trong vung an toan, tam cach nhau >= 6, hai dia khong de nhau > moi cham con nguyen trong innerRect(card, PAD_MIN); moi cap >= 6 px va 2r <= khoang tam 375ms
+ ✓ tests/logic/generator.test.ts (29 tests) 3955ms
+   ✓ generator.levelSpec — PC-01 tham số chương là DỮ LIỆU, không hardcode > TC-GEN-11 · PC-03 + PC-01: dải chương 4..8 CÓ xuất hiện "cắt 1 góc chéo" hợp lệ; chương 1..3 chỉ đục lỗ 328ms
+   ✓ B1/F-1 · cfg.punchCount được tôn trọng tuyệt đối trên bảng chương thật 8×15 > (b) 200 seed × HV/HVH/HHV × punchCount 3..4 ⇒ hoặc đủ, hoặc NÉM nêu chain + punchCount 520ms
+ ✓ tests/logic/chain-config.test.ts (27 tests) 1274ms
+   ✓ A1/F-1 · chainFor cấm nuốt foldCount ngoài bảng > 200 seed liên tiếp: mọi chuỗi tuân luật, tất định, và bảng không bị hẹp đến mức chỉ ra 1 chuỗi 915ms
+ ✓ tests/logic/view-b3b-mapmodel.test.ts (24 tests) 50ms
+ ✓ tests/logic/view-b3a-contract.test.ts (16 tests) 33ms
+ ✓ tests/logic/fold-rules.test.ts (27 tests) 137ms
+ ✓ tests/logic/save.test.ts (23 tests) 30ms
+ ✓ tests/logic/view-b3a-geometry.test.ts (19 tests) 48ms
+ ✓ tests/logic/validator.test.ts (32 tests) 58ms
+ ✓ tests/logic/records.test.ts (19 tests) 63ms
+ ✓ tests/logic/generator-10000.test.ts (11 tests) 23627ms
+ ✓ tests/logic/level-state.test.ts (17 tests) 43ms
+ ✓ tests/logic/i18n.test.ts (8 tests) 47ms
+ ✓ tests/logic/economy.test.ts (18 tests) 20ms
+ ✓ tests/logic/fold-unfold.test.ts (30 tests) 41ms
+ ✓ tests/logic/rational.test.ts (26 tests) 32ms
+ ✓ tests/logic/progression.test.ts (13 tests) 40ms
+ ✓ tests/logic/hint-undo.test.ts (11 tests) 21ms
+ ✓ tests/logic/records-store.test.ts (13 tests) 37ms
+ ✓ tests/platform/debug.test.ts (19 tests) 35ms
+ ✓ tests/platform/playgama-adapter.test.ts (11 tests) 31ms
+ ✓ tests/platform/ad-mock.test.ts (8 tests) 218ms
+ ✓ tests/platform/ytgame-adapter.test.ts (8 tests) 20ms
+ ✓ tests/logic/telemetry.test.ts (9 tests) 160ms
+ ✓ tests/platform/network-ban.test.ts (8 tests) 114ms
+ ✓ tests/platform/host-shape.test.ts (10 tests) 21ms
+stdout | tests/logic/scene-boot.test.ts > PlayScene khi boot (F2: hết test dò đường) > boot headless => đăng đủ rect HUD + 4 ô, số hữu hạn và không nhỏ hơn trần chạm
+Phaser v4.2.1 (Headless | No Audio) https://phaser.io/v4021
+
+stderr | tests/logic/scene-boot.test.ts > PlayScene khi boot (F2: hết test dò đường) > boot headless => đăng đủ rect HUD + 4 ô, số hữu hạn và không nhỏ hơn trần chạm
+[sheet] thieu texture giay "skin_kraft" (BootScene nap tu manifest - xem console [boot])
+
+stdout | tests/logic/scene-boot.test.ts > PlayScene khi boot (F2: hết test dò đường) > bốn ô đáp án không đè nhau trên màn hình (PC-03: bốn câu hỏi riêng)
+Phaser v4.2.1 (Headless | No Audio) https://phaser.io/v4021
+
+stderr | tests/logic/scene-boot.test.ts > PlayScene khi boot (F2: hết test dò đường) > bốn ô đáp án không đè nhau trên màn hình (PC-03: bốn câu hỏi riêng)
+[sheet] thieu texture giay "skin_kraft" (BootScene nap tu manifest - xem console [boot])
+
+stdout | tests/logic/scene-boot.test.ts > PlayScene khi boot (F2: hết test dò đường) > shutdown thì rect của màn chơi bị xoá khỏi registry (không còn vùng bấm vô hình)
+Phaser v4.2.1 (Headless | No Audio) https://phaser.io/v4021
+
+stderr | tests/logic/scene-boot.test.ts > PlayScene khi boot (F2: hết test dò đường) > shutdown thì rect của màn chơi bị xoá khỏi registry (không còn vùng bấm vô hình)
+[sheet] thieu texture giay "skin_kraft" (BootScene nap tu manifest - xem console [boot])
+
+ ✓ tests/logic/scene-boot.test.ts (4 tests) 229ms
+ ✓ tests/logic/level-config.test.ts (6 tests) 41ms
+ ✓ tests/logic/view-b3a-holes.test.ts (7 tests) 105ms
+ ✓ tests/logic/stars.test.ts (13 tests) 18ms
+ ✓ tests/platform/null-adapter.test.ts (10 tests) 13ms
+ ✓ tests/logic/refactor-contract.test.ts (9 tests) 252ms
+ ✓ tests/platform/standalone-full-loop.test.ts (6 tests) 13ms
+ ✓ tests/platform/registry.test.ts (8 tests) 15ms
+ ✓ tests/logic/validator-action.test.ts (9 tests) 81ms
+ ✓ tests/logic/config-caps.test.ts (4 tests) 14ms
+ ✓ tests/logic/share-code.test.ts (7 tests) 23ms
+
+ Test Files  40 passed (40)
+      Tests  677 passed (677)
+   Start at  13:44:26
+   Duration  56.65s (transform 7.39s, setup 0ms, collect 10.48s, tests 31.59s, environment 15ms, prepare 4.72s)
+
+GATE V2 — 68 file trong src/logic, src/render, src/platform · trần: {"src/logic":250,"src/render":350,"src/platform":250} · dup-lines=6
+  NỢ ĐÃ KHAI (tools/gate-allow.json — phải trả, không tính là fail): 2
+    ~ G1 src/render/scenes/PlayScene.ts = 487 dòng > 350 (tách trách nhiệm hoặc khai báo là file dữ liệu)
+    ~ G1 src/platform/sdkAdapter.ts = 251 dòng > 250 (tách trách nhiệm hoặc khai báo là file dữ liệu)
+KẾT QUẢ: FAIL (2 vi phạm thật)
+  ✗ G1 src/render/layout.ts = 361 dòng > 350 (tách trách nhiệm hoặc khai báo là file dữ liệu)
+  ✗ G3 giá trị 12 được đặt tên GATE_STARS / SAFE_PAD ở src/logic/progression.ts + src/render/layout.ts — nghi cùng một luật, 2 hằng

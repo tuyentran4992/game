@@ -5,7 +5,8 @@
 
 import Phaser from 'phaser';
 import { STAR_SCALE } from '../../logic/progression';
-import { RATIOS, type Box } from '../layout';
+import { RATIOS, iconRow, type Box } from '../layout';
+import { centerOf } from './fitText';
 import { parseHex, type PaperTheme } from '../theme/paperTheme';
 
 /**
@@ -13,8 +14,6 @@ import { parseHex, type PaperTheme } from '../theme/paperTheme';
  * khai lại con số 3 (review F1/G3: hằng thứ hai cùng giá trị ở hai file là hai sự thật).
  */
 const SLOTS: number = STAR_SCALE.max;
-/** Cỡ sao so với ô — DỮ LIỆU bố cục nằm ở layout.RATIOS, không phải số thô trong vòng lặp. */
-const STAR_RATIO = RATIOS.star.ratio;
 
 export class StarRow extends Phaser.GameObjects.Container {
   private readonly marks: Phaser.GameObjects.Arc[] = [];
@@ -40,12 +39,20 @@ export class StarRow extends Phaser.GameObjects.Container {
   /** Tô lại theo theme + xếp lại 3 ô khi đổi kích thước camera. */
   retint(theme: PaperTheme, box: Box): void {
     this.inkColor = parseHex(theme.ink);
-    const r = Math.min(box.h, box.w / SLOTS) * STAR_RATIO;
-    const step = box.w / SLOTS;
+    // Container ngồi tại GỐC ô (quy ước như mọi component khác) — đổi camera là phải dời luôn.
+    this.x = box.x;
+    this.y = box.y;
+    // Đường kính sao = `ratio` cạnh hàng, doubled lên thành ô vuông; `iconRow` giữ cả hàng
+    // TRONG vùng an toàn, chiếc đầu áp mép trái ⇒ chung trục dọc với nhãn HUD (Việc 2).
+    const cells = iconRow(box, SLOTS, box.h * RATIOS.star.ratio * 2);
+    const side = cells.length > 0 ? cells[0].w : 0;
     this.marks.forEach((mark, i) => {
+      const cell = cells[i];
+      if (!cell) return;
       mark.setStrokeStyle(Math.max(2, box.h * 0.06), parseHex(theme.crease));
-      mark.setPosition(step * (i + 0.5), box.h / 2);
-      mark.setRadius(r);
+      const at = centerOf(cell);
+      mark.setPosition(at.x - box.x, at.y - box.y);
+      mark.setRadius(side / 2);
     });
   }
 }

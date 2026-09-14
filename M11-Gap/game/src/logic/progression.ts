@@ -36,6 +36,8 @@ export const LEVELS_PER_CHAPTER = 15;
 /** Tong so man cua chien dich (PC-01) — do dai duy nhat hop le cua chuoi stars. */
 export const CAMPAIGN_LEVELS = 120;
 /** NGUONG ~12/15 man da cham trong chuong truoc de mo chuong ke (PC-07). */
+// KHONG PHAI cung mot luat voi dem hinh hoc 12 o src/render/layoutTable.ts (PADS.safe): day la
+// SO SAO cua chien dich, doi o day khong dong den to ve nao va nguoc lai (gate G3 nghi ngong).
 export const GATE_STARS = 12;
 /** Cooldown 2 man giua 2 lan cho hint mien phi (PC-08) — tieu thu o stars.freeHintAvailable. */
 export const FREE_HINT_GAP = 2;

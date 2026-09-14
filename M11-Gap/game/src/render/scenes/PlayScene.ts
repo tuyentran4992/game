@@ -35,7 +35,7 @@ import { OptionCard } from '../components/OptionCard';
 import { SheetView } from '../components/SheetView';
 import { StarRow } from '../components/StarRow';
 import type { Box, Layout } from '../layout';
-import { creaseBand, layoutOf } from '../layout';
+import { creaseBand, layoutOf, slotBoxes } from '../layout';
 import { openLevelSource, readSession, type GameSession, type LevelSource } from '../session';
 import { playFx } from '../audio/sfx';
 import { parseHex, sheetSkinOf, themeFor, textStyle } from '../theme/paperTheme';
@@ -97,7 +97,7 @@ export class PlayScene extends Phaser.Scene {
   create(init: { level?: number }): void {
     this.session = readSession(this.game.registry);
     this.source = openLevelSource(this.session);
-    this.hook = makeTestidHook(this.game.canvas, () => {
+    this.hook = makeTestidHook(this, this.game.canvas, () => {
       const cam = this.cameras.main;
       return { width: cam.width, height: cam.height };
     });
@@ -437,11 +437,17 @@ export class PlayScene extends Phaser.Scene {
       undoLeft: this.canUndo(),
       adsAbsent: this.adsAbsent,
     };
-    for (const slot of this.slots) {
+    // Hàng nút: khe ĐƠN ĐỘC trong hàng phải về TRỤC CỘT (Việc 2 — luật ở layout.slotBoxes,
+    // không phải một nhánh if trong scene: thêm hàng mới là thêm một dòng `row` trong bảng).
+    const places = this.slots.map((slot) => ({
+      id: slot.row.id, row: slot.row.row, box: slot.row.box(l), shown: slot.row.on(flags),
+    }));
+    const boxes = slotBoxes(places, l.cx);
+    this.slots.forEach((slot, i) => {
       if (slot.row.on(flags)) slot.view.show();
       else slot.view.hide();
-      slot.view.retint(theme, slot.row.box(l));
-    }
+      slot.view.retint(theme, boxes[i]);
+    });
     for (const row of PLAY_HOOKS) {
       const b = row.rect(this, l);
       if (b) this.hook(row.id, b);

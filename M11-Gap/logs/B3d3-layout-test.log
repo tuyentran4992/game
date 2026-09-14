@@ -1,0 +1,11 @@
+
+ RUN  v2.1.9 /data/youtube-playables/M11-Gap/game
+
+ ✓ tests/logic/layout.test.ts (45 tests) 464ms
+   ✓ V7 cham lo tren 120 man that: tron trong vung an toan, tam cach nhau >= 6, hai dia khong de nhau > moi cham con nguyen trong innerRect(card, PAD_MIN); moi cap >= 6 px va 2r <= khoang tam 369ms
+
+ Test Files  1 passed (1)
+      Tests  45 passed (45)
+   Start at  14:05:32
+   Duration  1.51s (transform 504ms, setup 0ms, collect 649ms, tests 464ms, environment 0ms, prepare 106ms)
+

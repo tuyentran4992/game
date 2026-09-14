@@ -16,10 +16,14 @@ import { describe, it, expect } from 'vitest'
 import {
   CAMERA, layoutOf, TAP_MIN, SAFE_PAD, MIN_FONT_PX,
   innerRect, cardArt, holeField, buttonFace, inkFace, pressShift,
+  dotFieldSide, frameStroke,
   fitFontSize, textWidthPx, textHeightPx, type Box, type Layout,
 } from '../../src/render/layout'
-import { holeRadius, MAX_HOLES } from '../../src/render/holeView'
+import { holeRadius, maxDotRadius, closestPair, MAX_HOLES } from '../../src/render/holeView'
 import { basePx } from '../../src/render/components/fitText'
+import { levelSpec } from '../../src/logic/generator'
+import { toNumber, toPoints } from '../../src/logic/rational'
+import { CAMPAIGN_LEVELS, cfgCampaign, GAME_SEED } from './helpers'
 
 // --- So lieu MOCKUP, chep nguyen van §4.1/§4.2 (don vi = cot 720x1420) --------
 const COL_W = 720
@@ -30,6 +34,14 @@ const EDGE = 16
 const OPTION_GAP = 24
 /** V6.1/V6.2: padding TOI THIEU noi dung -> vien cua mot o (so chot, khong phai cua layout). */
 const PAD_MIN = 12
+/**
+ * V3 vong nay (san QA doc tu anh chup that): MOI cham, o 120 man phai cach VIEN TRONG it nhat
+ * 2 px — "nam trong o" la chua du, vi cham nam BEN TAI o tam van co the de len net vien.
+ * La so CUA TEST, khong import tu layout: lay hang doi cua layout do chinh no thi test xanh gia.
+ */
+const DOT_EDGE = 2
+/** Nghi thuc cua `dotFieldSide` la dang max()/ty le nen so hoc trong test co the lech 1 ulp. */
+const EPS = 1e-9
 /** V6.4: khe doc giua to giay va hang o dap an dau tien / khe ngang giua hai card. */
 const ROW_GAP = 24
 const COL_GAP = 16
@@ -332,18 +344,34 @@ describe('V6.1/V6.2 vung an TOAN trong o dap an: nhan so va cham lo khong de vie
     }
   })
 
-  it('moi cham lo (tam + ban kinh THAT cua holeView) con nguyen trong card, cach vien >= 12', () => {
+  it('moi cham lo (tam + ban kinh THAT cua holeView) con nguyen trong card, cach vien >= 2', () => {
     for (const [i, card] of L.options.entries()) {
       const art = cardArt(card)
+      // Vien MA NHIN THAY: net cua khung giay ve theo tam nen an vao trong mot nua net.
+      const frame = innerRect(art.paper, frameStroke(art.paper.w) / 2)
       for (const n of HOLE_COUNTS) {
         const r = holeRadius('card', n, art.holes.w)
         expect(r, 'option-' + i + ' lo vo hinh').toBeGreaterThanOrEqual(1)
         const dots = box(art.holes.x - r, art.holes.y - r, art.holes.w + 2 * r, art.holes.h + 2 * r)
-        expectInside(dots, innerRect(card, PAD_MIN), 'option-' + i + ' bo ' + n + ' lo')
-        // Va nam TRONG vien cua thumbnail (khong phai DE LEN vien cua no).
-        expect(r, 'option-' + i + ': cham lo tron ra ngoai o giay thu nho')
-          .toBeLessThanOrEqual((art.paper.w - art.holes.w) / 2)
+        expectInside(dots, innerRect(card, PAD_MIN), 'option-' + i + ' bo ' + n + ' lo', DOT_EDGE - EPS)
+        // Ca hai bien: vung an toan cua O va vien DA VE cua thumbnail (V3: cham dung vien la loi).
+        expectInside(dots, frame, 'option-' + i + ' bo ' + n + ' lo cham khung giay', DOT_EDGE - EPS)
       }
+    }
+  })
+
+  it('dem cham la PHUONG TRINH, khong phai ty le ty do: pad = ban kinh max + khe >= 2', () => {
+    for (const card of L.options) {
+      const art = cardArt(card)
+      const pad = (art.paper.w - art.holes.w) / 2
+      expect(pad, 'o tam loi phai nho hon khung giay').toBeGreaterThan(0)
+      expect(pad - maxDotRadius('card', art.holes.w), 'khe con lai sau tru ban kinh cham')
+        .toBeGreaterThanOrEqual(DOT_EDGE - EPS)
+      expect(dotFieldSide(art.paper.w), 'dotFieldSide phai = canh o tam loi').toBeCloseTo(art.holes.w, 9)
+      // Mot cham o SAT MEN duoi cung cua o tam loi van cach vien da ve dung cai khe da hua.
+      const r = maxDotRadius('card', art.holes.w)
+      const worst = box(art.holes.x - r, art.holes.y + art.holes.h - r, 2 * r, 2 * r)
+      expectInside(worst, innerRect(art.paper, frameStroke(art.paper.w) / 2), 'cham sat me duoi', DOT_EDGE - EPS)
     }
   })
 
@@ -433,5 +461,66 @@ describe('V6.3/V6.5 chu trong nut va trong hop Muc (khong de vong sao thu ba)', 
     }
     const face = buttonFace(off.hint, basePx('label'), 'Hint', true)
     expectInside(face.label, innerRect(off.hint, PAD_MIN), 'cam lech: nhan nut')
+  })
+})
+
+// ===========================================================================
+// V7 — CHẤM LỖ TRÊN TOÀN BỘ CHIẾN DỊCH: ba bất đẳng thức + một danh sách vi phạm.
+// Ba con số của lần đo tạm được CHUYỂN THÀNH khẳng định (không còn throw để in số):
+//   · nhỏ nhất của khoảng cách hai tâm = 7,17 (màn 35, ô 3, 4 chấm) ⇒ chốt sàn 6 px;
+//   · bán kính lớn nhất = 8,93 = 0,055 x cạnh ô chấm 162,31 ⇒ vẫn lọt trong khe 14,6
+//     giữa ô chấm và thumbnail (paper 191,52) mà V6.1 đã neo ở khối trên;
+//   · số chấm mỗi ô chạy 1..48 ⇒ phải đo MẬT ĐỘ DÀY NHẤT, mẫu vài ô không bao giờ đỏ.
+// Vì sao quét cả 120 màn: mật độ chấm là hàm của seed — màn xấu nhất (35) không nằm trong
+//   10 màn đầu, nên mọi mẫu nhỏ đều xanh giả tạo (bài học "suite xanh, ảnh chụp đỏ").
+// Vì sao message có lv + card + n: lần đỏ sau không phải viết test tạm để đo lại từ đầu.
+// ===========================================================================
+
+/** Sàn khoảng cách GIỮA HAI TÂM của hai chấm — nguồn: holeView `DOT.clear`. */
+const DOT_PAIR_MIN = 6
+/** Sàn bán kính "còn đọc được" — nguồn: holeView `DOT.min`. */
+const DOT_RADIUS_MIN = 1
+
+describe('V7 cham lo tren 120 man that: tron trong vung an toan, tam cach nhau >= 6, hai dia khong de nhau', () => {
+  it('quet that du 120 man x 4 o (vong lap khong duoc im lang chay rong)', () => {
+    expect(CAMPAIGN_LEVELS).toBe(120)
+  })
+
+  it('moi cham con nguyen trong innerRect(card, PAD_MIN); moi cap >= 6 px va 2r <= khoang tam', () => {
+    const bad: string[] = []
+    let cards = 0
+    let capped = 0
+    for (let lv = 1; lv <= CAMPAIGN_LEVELS; lv += 1) {
+      const spec = levelSpec(GAME_SEED, lv, cfgCampaign(lv))
+      for (let i = 0; i < spec.options.length; i += 1) {
+        const units = toPoints(spec.options[i].holes).map((p) => ({ x: toNumber(p.x), y: toNumber(p.y) }))
+        const card = L.options[i]
+        const art = cardArt(card)
+        const inner = innerRect(card, PAD_MIN)
+        const side = art.holes.w
+        const tag = 'lv' + lv + ' card' + i + ' n=' + units.length
+        // CUNG mot cong thuc ma HolePool dung luc ve: hypot(dx,dy) * canh o cham.
+        const pair = closestPair(units, side)
+        const r = holeRadius('card', units.length, side, pair)
+        cards += 1
+        if (units.length > MAX_HOLES) bad.push(tag + ': nhieu hon tran ve ' + MAX_HOLES)
+        if (r < DOT_RADIUS_MIN) bad.push(tag + ': ban kinh ' + r.toFixed(2) + ' < san ' + DOT_RADIUS_MIN)
+        if (units.length > 1) {
+          capped += 1
+          if (pair < DOT_PAIR_MIN) bad.push(tag + ': hai cham cach nhau ' + pair.toFixed(2) + ' < ' + DOT_PAIR_MIN)
+          // Hai DIA cham (khong phai hai tam) khong duoc chong len nhau.
+          if (2 * r > pair) bad.push(tag + ': 2r=' + (2 * r).toFixed(2) + ' > khoang tam ' + pair.toFixed(2))
+        }
+        for (const u of units) {
+          const dot = box(art.holes.x + u.x * side - r, art.holes.y + u.y * side - r, 2 * r, 2 * r)
+          for (const [edge, gap] of Object.entries(insetOf(dot, inner))) {
+            if (gap < 0) bad.push(tag + ': cham tran mep ' + edge + ' (' + gap.toFixed(2) + ')')
+          }
+        }
+      }
+    }
+    expect(cards, 'phai do du bon o cua moi man').toBe(CAMPAIGN_LEVELS * 4)
+    expect(capped, 'phai co it nhat mot cap cham de do khoang cach').toBeGreaterThan(0)
+    expect(bad, 'vi pham cham lo (' + bad.length + '): ' + bad.slice(0, 12).join(' | ')).toEqual([])
   })
 })

@@ -24,15 +24,87 @@ import { parseHex, themeFor, type PaperTheme } from '../theme/paperTheme';
  */
 export const RESIZE_EVENT = 'resize';
 
-/** Nền gradient hai đầu + cột nội dung 720 của B3a (`l.field`), vẽ lại mỗi lần đổi cỡ cửa sổ. */
-export class Backdrop extends Phaser.GameObjects.Graphics {
+/**
+ * Số của MỘT cái bàn giấy (Việc 1, vòng layout 2). DỮ LIỆU ở đây vì scene chỉ gọi `paint`:
+ *  · `tile`  — cạnh ảnh texture (asset giấy 512×512 của manifest): nền được LÁT bằng ảnh thật,
+ *              không kéo giãn một tấm lên cả camera (kéo giãn là ra đúng cái "ảnh bị thu nhỏ"
+ *              mà ảnh chụp thật tố).
+ *  · `grain` — độ đậm của lớp texture, cùng tỷ lệ SheetView đang dùng cho tờ giấy.
+ *  · `rings` — số vòng của vignette; `start` là tỷ lệ bán kính bắt đầu tối (trong hơn nữa thì
+ *              giữ nguyên màu giấy); `dark` là alpha ở góc. Vòng tròn ĐỒNG TÂM quanh TÂM camera
+ *              ⇒ bốn góc tối như nhau, không còn vệt sáng chéo bất đối xứng của gradient góc.
+ *  · `shadow`— alpha của bóng mép cột; `band` là bề rộng tối đa của dải bóng.
+ */
+const DESK = { tile: 512, grain: 0.35, rings: 12, start: 0.55, dark: 0.3, band: 40, shadow: 0.16 } as const;
+
+/**
+ * Nền của CẢ CAMERA: bàn giấy (texture + gradient hai đầu), cột nội dung nổi lên bằng bóng hai
+ * mép, và vignette tròn đối xứng tối dần đều bốn góc. Vì sao nằm ở tầng vẽ chứ không phải CSS:
+ * bản Scale.FIT để hai dải HTML nằm NGOÀI canvas ⇒ mép cột cắt cứng, điện thoại 480×900 lộ hai
+ * dải 12px khác màu; main.ts nay dựng Scale.RESIZE (canvas kín màn hình) nên đúng MỘT chỗ vẽ
+ * được nền liền mạch từ cột ra tới mép màn hình.
+ */
+export class Backdrop extends Phaser.GameObjects.Container {
+  /** Lớp dưới: gradient hai đầu của theme. */
+  private readonly base: Phaser.GameObjects.Graphics;
+
+  /** Lớp giữa: các ô texture giấy lát kín camera (rỗng khi nền tảng chưa có ảnh). */
+  private readonly desk: Phaser.GameObjects.Container;
+
+  /** Lớp trên: cột giấy + bóng mép + vignette. */
+  private readonly art: Phaser.GameObjects.Graphics;
+
+  constructor(scene: Phaser.Scene) {
+    super(scene, 0, 0);
+    this.base = scene.add.graphics();
+    this.desk = scene.add.container(0, 0);
+    this.art = scene.add.graphics();
+    this.add([this.base, this.desk, this.art]);
+  }
+
+  /** Vẽ lại toàn bộ nền theo camera + theme hiện hành (`column`: có nổi cột giấy lên không). */
   paint(l: Layout, theme: PaperTheme, column: boolean): void {
-    this.clear();
-    this.fillGradientStyle(parseHex(theme.bg.top), parseHex(theme.bg.top), parseHex(theme.bg.bottom), parseHex(theme.bg.bottom), 1);
-    this.fillRect(0, 0, l.w, l.h);
-    if (!column) return;
-    this.fillStyle(parseHex(theme.paper), 0.35);
-    this.fillRect(l.field.x, 0, l.field.w, l.h);
+    const ink = parseHex(theme.ink);
+    this.base.clear();
+    this.base.fillGradientStyle(parseHex(theme.bg.top), parseHex(theme.bg.top), parseHex(theme.bg.bottom), parseHex(theme.bg.bottom), 1);
+    this.base.fillRect(0, 0, l.w, l.h);
+    this.tile(theme.grain, parseHex(theme.bg.bottom), l.w, l.h);
+    this.art.clear();
+    if (column) {
+      const w = Math.min(DESK.band, Math.max(4, l.field.x));
+      this.art.fillStyle(parseHex(theme.paper), 0.35);
+      this.art.fillRect(l.field.x, 0, l.field.w, l.h);
+      this.art.fillGradientStyle(ink, ink, ink, ink, 0, DESK.shadow, 0, DESK.shadow);
+      this.art.fillRect(l.field.x - w, 0, w, l.h);
+      this.art.fillGradientStyle(ink, ink, ink, ink, DESK.shadow, 0, DESK.shadow, 0);
+      this.art.fillRect(l.field.x + l.field.w, 0, w, l.h);
+    }
+    this.vignette(ink, l);
+  }
+
+  /** Lát ảnh texture giấy kín camera; nền tảng thiếu ảnh thì để nguyên gradient, không ném. */
+  private tile(key: string, tint: number, w: number, h: number): void {
+    const has = this.scene.textures.exists(key);
+    const want = has ? Math.ceil(w / DESK.tile) * Math.ceil(h / DESK.tile) : 0;
+    const cols = has ? Math.ceil(w / DESK.tile) : 1;
+    while (this.desk.length > want) this.desk.list[this.desk.length - 1]?.destroy();
+    while (this.desk.length < want) {
+      this.desk.add(this.scene.add.image(0, 0, key).setOrigin(0, 0).setAlpha(DESK.grain));
+    }
+    this.desk.list.forEach((obj, i) => {
+      (obj as Phaser.GameObjects.Image).setTexture(key).setTint(tint)
+        .setPosition((i % cols) * DESK.tile, Math.floor(i / cols) * DESK.tile);
+    });
+  }
+
+  /** Vignette: `rings` vòng ĐỒNG TÂM quanh tâm camera, alpha tăng dần từ `start` ra tới góc. */
+  private vignette(ink: number, l: Layout): void {
+    const step = Math.hypot(l.w, l.h) / 2 / DESK.rings;
+    for (let i = 1; i <= DESK.rings; i += 1) {
+      const at = (i / DESK.rings - DESK.start) / (1 - DESK.start);
+      this.art.lineStyle(step, ink, DESK.dark * Math.max(0, at) ** 2);
+      this.art.strokeCircle(l.cx, l.h / 2, step * i);
+    }
   }
 }
 

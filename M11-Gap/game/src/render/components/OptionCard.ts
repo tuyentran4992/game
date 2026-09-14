@@ -11,7 +11,7 @@ import type { Point } from '../../logic/types';
 import { DUR, TOUCH } from '../anim/unfoldPlan';
 import { HolePool } from './HolePool';
 import { centerOf, fittedStyle } from './fitText';
-import { cardArt, pressShift, type Box } from '../layout';
+import { cardArt, frameStroke, pressShift, type Box } from '../layout';
 import { parseHex, type PaperTheme } from '../theme/paperTheme';
 
 export class OptionCard extends Phaser.GameObjects.Container {
@@ -115,10 +115,11 @@ export class OptionCard extends Phaser.GameObjects.Container {
     const paper = local(art.paper);
     const holes = local(art.holes);
     this.plate.setSize(box.w, box.h);
-    this.plate.setStrokeStyle(Math.max(2, box.h * 0.02), parseHex(this.theme.crease));
+    // Nét viền DO LAYOUT quyết (frameStroke) — chính nét mà `dotFieldSide` đã trừ vào đệm chấm.
+    this.plate.setStrokeStyle(frameStroke(box.h), parseHex(this.theme.crease));
     this.plate.setInteractive({ useHandCursor: true });
     this.paper.setSize(paper.w, paper.h).setPosition(paper.x, paper.y);
-    this.paper.setStrokeStyle(Math.max(2, paper.w * 0.02), parseHex(this.theme.crease));
+    this.paper.setStrokeStyle(frameStroke(paper.w), parseHex(this.theme.crease));
     this.side = holes.w;
     this.holeX = holes.x;
     this.holeY = holes.y;

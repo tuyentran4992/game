@@ -1,0 +1,32 @@
+
+ RUN  v2.1.9 /data/youtube-playables/M11-Gap/game
+
+ ❯ tests/logic/layout.test.ts (43 tests | 1 failed) 431ms
+   × TEMP do cham > stats 353ms
+     → n min/max = 1/48
+norm x 0.000..1.000  y 0.000..1.000
+holes side = 162.31 paper side = 191.52
+maxR = 8.93  minPairPx = 7.17 at lv35 card3 n=4
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/logic/layout.test.ts > TEMP do cham > stats
+Error: n min/max = 1/48
+norm x 0.000..1.000  y 0.000..1.000
+holes side = 162.31 paper side = 191.52
+maxR = 8.93  minPairPx = 7.17 at lv35 card3 n=4
+ ❯ tests/logic/layout.test.ts:476:11
+    474|     lines.push('holes side = ' + cardArt(L2.options[0]).holes.w.toFixe…
+    475|     lines.push('maxR = ' + maxR.toFixed(2) + '  minPairPx = ' + minPai…
+    476|     throw new Error(lines.join('\n'))
+       |           ^
+    477|   })
+    478| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 42 passed (43)
+   Start at  13:27:51
+   Duration  1.38s (transform 480ms, setup 0ms, collect 557ms, tests 431ms, environment 0ms, prepare 111ms)
+

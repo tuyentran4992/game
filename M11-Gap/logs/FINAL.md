@@ -1,0 +1,10 @@
+# VÒNG CUỐI
+ Test Files  1 passed (1)
+      Tests  45 passed (45)
+KẾT QUẢ: PASS (0 vi phạm thật, 2 mục nợ)
+    OK  dist/index.html mới (14:10:03)
+    OK  build/ytgame/index.html mới (14:09:16)
+    OK  build/playgama/index.html mới (14:09:47)
+- standalone: KẾT QUẢ: PASS (0 vi phạm)
+- ytgame: KẾT QUẢ: PASS (0 vi phạm)
+- playgama: KẾT QUẢ: PASS (0 vi phạm)

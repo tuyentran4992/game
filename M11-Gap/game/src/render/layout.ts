@@ -1,120 +1,30 @@
-// Pattern: Data Table (bố cục CỘT DỌC 720×1420)
-// TRÁCH NHIỆM: phát ra HÌNH CHỮ NHẬT thật của từng vùng vẽ. Mọi số ở đây là SỐ THIẾT KẾ
-//   trích nguyên văn mockup cột dọc (DESIGN-SPEC §4.1/§4.2, đơn vị 720×1420) — KHÔNG còn
-//   "tỷ lệ theo chiều cao camera": bản cũ nhân 0,31×h trên camera ngang nên ô đáp án ra
-//   334×172 (ngang) thay vì 240×264 (dọc) và HUD sao đè lên hũ Mực 126 đơn vị.
+// Pattern: công thức hình học (bố cục CỘT DỌC 720×1420) — SỐ nằm ở layoutTable.ts
+// TRÁCH NHIỆM: DỰNG Ô. `layoutOf` biến bảng mockup thành Box thế giới; `innerRect` / `cardArt`
+//   / `buttonFace` / `inkFace` / `iconRow` / `rowBoxes` là LUẬT ĐỆM: phát ra CHÍNH Ô VẼ để
+//   component dùng, không ai tự trừ padding ở nơi gọi (năm lỗi trong ảnh chụp thật đều do chỗ
+//   này). Toàn bộ số thiết kế đã sang `layoutTable.ts` (gate G1: file này 361/350 dòng) —
+//   đổi số = sửa bảng, đổi luật hình học = sửa đây.
 // RÀNG BUỘC: không import phaser (test node + dễ thử); một dòng = một vùng, scene không cộng
 //   trừ số lẻ ở nơi gọi; camera production CỐ ĐỊNH 720×1420 (main.ts Scale.FIT) nên
 //   layoutOf(720,1420) trả đúng từng px mockup, camera lệch chỉ THU ĐỀU + căn giữa cột.
-// VÙNG AN TOÀN TRONG Ô (V6): `innerRect` / `cardArt` / `buttonFace` / `inkFace` ở cuối file là
-//   chủ duy nhất của khoảng đệm giữa nội dung và viền — nhãn số, chấm lỗ, chữ trên nút đều lấy ô
-//   từ đây, component không được tự trừ 12 (cả ba lỗi nhìn thấy trong ảnh chụp thật là do chỗ này).
 
-export type Box = { readonly x: number; readonly y: number; readonly w: number; readonly h: number };
+import { maxDotRadius } from './holeView';
+import {
+  BUTTON, CAMERA, CARD, CARD_FRAME, MIN_FONT_PX, M, OPTION_RECTS, PADS, SAFE_PAD,
+  type Box, type Layout, type Rect,
+} from './layoutTable';
 
-/** Trần dưới của một ô chạm, tính bằng px thế giới của cột thiết kế 720×1420. */
-export const TAP_MIN = 44;
-
-/**
- * Tỷ lệ riêng của từng COMPONENT vẽ (DỮ LIỆU — một bảng duy nhất). Bài học gate G3: bốn hằng
- * `FIT/BAND/SWATCH/STAR_RATIO` khai rời ở bốn file là bốn sự thật song song, đổi một chỗ là
- * lệch chỗ khác. Thêm hình mới = thêm một dòng ở đây, component chỉ tra.
- */
-export const RATIOS = {
-  star: { ratio: 0.32, band: 0.34 },
-  badge: { disc: 0.88, ring: 0.82 },
-  skinCard: { swatch: 0.56 },
-} as const;
-
-/** Camera CHỐT của bản dựng (DESIGN-SPEC §4): một cột dọc 720×1420 + Scale.FIT. */
-const DESIGN = { w: 720, h: 1420 } as const;
-
-/** Camera CHỐT — main.ts dựng Phaser.Game ĐÚNG cỡ này (một nguồn số, không khai lại ở nơi khác). */
-export const CAMERA = { width: DESIGN.w, height: DESIGN.h } as const;
-
-/** Một ô mockup: [x, y, w, h] tính bằng ĐƠN VỊ CỦA CỘT 720×1420 (không phải px màn hình). */
-type Rect = readonly [number, number, number, number];
-
-/**
- * BẢNG SỐ §4.1/§4.2 — nguồn sự thật duy nhất. Hai nút loại trừ nhau dùng CHUNG một dòng
- * (undoAd ≡ undo) nên rect đăng cho QA luôn là ô của nút ĐANG hiện.
- */
-const M = {
-  /** HUD hàng 1 (y 16, cao 64). */
-  level: [16, 16, 300, 64],
-  sound: [560, 16, 64, 64],
-  menu: [640, 16, 64, 64],
-  /** HUD hàng 2 (y 88, cao 64): sao bám mép trái, mực bám mép phải — không chung hàng với nhau. */
-  stars: [16, 88, 240, 64],
-  ink: [560, 88, 144, 64],
-  /** Tờ giấy 480×480 + dải chữ báo sai ngay dưới mép giấy. */
-  sheet: [120, 170, 480, 480],
-  banner: [60, 690, 600, 60],
-  /** Hàng nút kết quả (ngay dưới ô đáp án): retry trái, next phải. */
-  retry: [108, 1256, 240, 48],
-  unfold: [372, 1256, 240, 48],
-  /** Hàng nút công cụ (y 1312, cao 72): hint trái, undo phải. */
-  hint: [108, 1312, 240, 72],
-  undo: [372, 1312, 240, 72],
-  /** Title §4.2: giấy demo 560×560, chữ Paper Crease, PLAY, SHOP. */
-  titleSheet: [80, 180, 560, 560],
-  titleWord: [60, 780, 600, 160],
-  play: [240, 980, 240, 88],
-  shop: [240, 1096, 240, 72],
-  /** Thanh tiến trình Boot (nằm giữa chữ Title và nút PLAY của màn sau). */
-  progress: [120, 1000, 480, 24],
-} as const satisfies Record<string, Rect>;
-
-/** Lưới 2×2 của bốn ô đáp án §4.1: ô 240×264, gap 24, hàng/cột do số liệu dựng ra. */
-const OPTION_GRID = { x: 108, y: 700, w: 240, h: 264, gap: 24, cols: 2, count: 4 } as const;
-
-/** Bốn ô của lưới (tính từ gốc + bước ô — thêm hàng/cột là sửa OPTION_GRID, không thêm dòng). */
-const OPTION_RECTS: readonly Rect[] = Array.from({ length: OPTION_GRID.count }, (_, i) => {
-  const c = i % OPTION_GRID.cols;
-  const r = Math.floor(i / OPTION_GRID.cols);
-  return [
-    OPTION_GRID.x + c * (OPTION_GRID.w + OPTION_GRID.gap),
-    OPTION_GRID.y + r * (OPTION_GRID.h + OPTION_GRID.gap),
-    OPTION_GRID.w,
-    OPTION_GRID.h,
-  ] as const;
-});
+// Bảng số + tỷ lệ component sống ở layoutTable.ts; layout.ts là MẶT TIỀN của tầng bố cục nên
+// giữ nguyên bộ tên mà main.ts / ui/* / mọi component đang import (không phá hợp đồng cũ).
+export {
+  CAMERA, MIN_FONT_PX, RATIOS, SAFE_PAD, TAP_MIN,
+  type Box, type Layout, type Rect,
+} from './layoutTable';
 
 /** Đơn vị thiết kế -> thế giới: THU ĐỀU theo `k` rồi dời về gốc cột đã căn giữa camera. */
 const place = (r: Rect, k: number, dx: number): Box => ({
   x: dx + r[0] * k, y: r[1] * k, w: r[2] * k, h: r[3] * k,
 });
-
-export type Layout = {
-  readonly w: number;
-  readonly h: number;
-  /** 1 đơn vị thiết kế = chiều cao camera / 1420 — dùng cho nét vẽ mỏng (độ dày nếp gấp). */
-  readonly s: number;
-  readonly cx: number;
-  /** Cột chơi 720×1420 (đầy chiều ngang thiết kế) — `portrait` cùng một ô, giữ tên cho scene cũ. */
-  readonly field: Box;
-  readonly portrait: Box;
-  readonly level: Box;
-  readonly stars: Box;
-  readonly ink: Box;
-  readonly sound: Box;
-  readonly menu: Box;
-  readonly sheet: Box;
-  /** Dải chữ giải thích khi bấm sai (§4.1: 60,690,600,60). */
-  readonly banner: Box;
-  readonly options: readonly Box[];
-  readonly hint: Box;
-  readonly undo: Box;
-  readonly undoAd: Box;
-  readonly retry: Box;
-  readonly unfold: Box;
-  readonly play: Box;
-  readonly shop: Box;
-  /** Tờ giấy demo + chữ + thanh tiến trình của hai màn ngoài vòng chơi. */
-  readonly titleSheet: Box;
-  readonly titleWord: Box;
-  readonly progress: Box;
-};
 
 /**
  * Bố cục một màn. Cột 720×1420 được THU ĐỀU (k = tỷ lệ fit) và CĂN GIỮA camera: desktop rộng
@@ -122,11 +32,11 @@ export type Layout = {
  * thiết kế (720×1420 — trường hợp production) thì mọi ô trả ĐÚNG TỪNG PX mockup.
  */
 export function layoutOf(w: number, h: number): Layout {
-  const s = h / DESIGN.h;
-  const k = Math.min(w / DESIGN.w, s);
-  const dx = (w - DESIGN.w * k) / 2;
+  const s = h / CAMERA.height;
+  const k = Math.min(w / CAMERA.width, s);
+  const dx = (w - CAMERA.width * k) / 2;
   const at = (r: Rect): Box => place(r, k, dx);
-  const column: Box = { x: dx, y: 0, w: DESIGN.w * k, h: DESIGN.h * k };
+  const column: Box = { x: dx, y: 0, w: CAMERA.width * k, h: CAMERA.height * k };
   return {
     w,
     h,
@@ -179,9 +89,6 @@ export function holeField(box: Box): Box {
 // chỉ vẽ đúng ô — không ai được tự tay trừ 12 ở nơi gọi (một nguồn số duy nhất).
 // ---------------------------------------------------------------------------
 
-/** Pad tối thiểu giữa NỘI DUNG và VIỀN của một ô — đơn vị thiết kế nên tự scale theo camera. */
-export const SAFE_PAD = 12;
-
 /** Thu ô vào trong `pad` mọi phía. Ô hẹp hơn 2*pad ⇒ cạnh về 0, không bao giờ số âm. */
 export function innerRect(box: Box, pad: number): Box {
   return {
@@ -193,11 +100,31 @@ export function innerRect(box: Box, pad: number): Box {
 }
 
 /**
- * DỮ LIỆU của một ô đáp án (tỷ lệ trên ô, không phải px): cạnh badge số, khe badge→thumbnail,
- * và margin bán kính lỗ. `hole` PHẢI ≥ bán kính lỗ lớn nhất mà `holeView.RADIUS_RULE.card` cho
- * phép (0,055) — test layout soi đúng bất đẳng thức đó, không phải lời hứa trong comment.
+ * Nét viền của KHUNG GIẤY trong ô đáp án (Rectangle vẽ nét theo tâm nét nên nó ăn VÀO TRONG
+ * đúng một nửa nét): layout tính đệm và OptionCard vẽ nét cùng đọc hàm này — hai chỗ từng tự
+ * viết `max(2, cạnh * 0,02)` là hai sự thật của một nét.
  */
-const CARD = { badge: 0.18, slot: 0.04, hole: 0.06 } as const;
+export function frameStroke(side: number): number {
+  return Math.max(CARD_FRAME.floor, side * CARD_FRAME.ratio);
+}
+
+/**
+ * LUẬT ĐỆM CHẤM (V3): cạnh ô tâm lỗ = cạnh khung giấy TRỪ hai lần "bán kính chấm lớn nhất +
+ * khe PADS.dotEdge + nửa nét viền khung". Vì sao phải cộng cả ba (đo từ ảnh chụp thật): chấm
+ * sát mép dưới của khung nên chừa đúng bán kính thì HÌNH TRÒN VẪN CHẠM viền đã vẽ.
+ * Bán kính không nhân bản ở đây: hỏi `holeView.maxDotRadius` bằng cạnh KHUNG — cạnh khung ≥
+ * cạnh ô tâm lỗ và bán kính đơn điệu theo cạnh, nên đó là CHẶN TRÊN tuyệt đối: đệm trả về rộng
+ * hơn yêu cầu chứ không bao giờ hẹp hơn.
+ */
+export function dotFieldSide(paperSide: number): number {
+  const bite = maxDotRadius('card', paperSide) + PADS.dotEdge + frameStroke(paperSide) / 2;
+  return Math.max(0, paperSide - 2 * bite);
+}
+
+/** Ô cùng tâm, cạnh `side`, nằm trong `outer` — hình nào cũng vuông nên chỉ cần một cạnh. */
+const concentric = (outer: Box, side: number): Box => ({
+  x: outer.x + (outer.w - side) / 2, y: outer.y + (outer.h - side) / 2, w: side, h: side,
+});
 
 /** Ba ô của một card: nhãn số ở GÓC TRONG, thumbnail giấy, và ô chứa TÂM lỗ. */
 export type CardArt = { readonly badge: Box; readonly paper: Box; readonly holes: Box };
@@ -212,29 +139,16 @@ export function cardArt(box: Box): CardArt {
     w: inner.w,
     h: Math.max(0, inner.h - badgeSide - slot),
   };
-  const square = (shrink: number): Box => {
-    const side = Math.min(stage.w, stage.h) * shrink;
-    return { x: stage.x + (stage.w - side) / 2, y: stage.y + (stage.h - side) / 2, w: side, h: side };
-  };
+  const paper = concentric(stage, Math.min(stage.w, stage.h));
   return {
     badge: { x: inner.x, y: inner.y, w: badgeSide, h: badgeSide },
-    paper: square(1),
-    // Ô tâm lỗ hẹp hơn thumbnail đúng `hole` mỗi bên ⇒ chấm sát mép vẫn còn nguyên trong card.
-    holes: square(1 / (1 + CARD.hole * 2)),
+    paper,
+    // Lùi vào trong thumbnail đúng `đệm chấm` mỗi bên ⇒ cả hình tròn còn trong VIỀN ĐÃ VẼ.
+    holes: concentric(paper, dotFieldSide(paper.w)),
   };
 }
 
 // --- chữ trong ô: một nguồn ước lượng duy nhất --------------------------------
-
-/** DỮ LIỆU của một nút: cạnh hình so với ô trong + tỷ lệ ước lượng bề rộng/cao chữ Fraunces. */
-const BUTTON = { art: 0.8, em: 0.6, line: 1.3 } as const;
-
-/**
- * Sàn tuyệt đối của cỡ chữ (px thế giới cột thiết kế): `fitFontSize` không xuống dưới số này
- * để không bao giờ có chữ vô hình. Không phải "cỡ mong muốn" — cỡ mong muốn là `base` của
- * paperTheme.TYPE_SIZES, và chỉ bị thu khi ô thật sự chật.
- */
-export const MIN_FONT_PX = 14;
 
 /** Bề rộng / bề cao MỘT DÒNG chữ `chars` ký tự ở cỡ `px` — test đo lại đúng ô chữ sẽ dựng. */
 export const textWidthPx = (px: number, chars: number): number => px * BUTTON.em * Math.max(0, chars);
@@ -291,4 +205,67 @@ export function inkFace(box: Box): { readonly drop: Box; readonly digits: Box } 
  */
 export function pressShift(box: Box, scale: number): { readonly x: number; readonly y: number } {
   return { x: (box.w * (1 - scale)) / 2, y: (box.h * (1 - scale)) / 2 };
+}
+
+/**
+ * Dời một ô NGANG về đúng TRỤC CỘT `cx` (Việc 2, vòng layout 2): hàng nút kết quả và hàng nút
+ * công cụ có HAI khe mockup (108 + 372) nhưng hai nút loại trừ nhau nên phần lớn pha chỉ còn MỘT
+ * nút đứng — để nó bám khe trái là phá trục. Hai khe cùng hiện thì không gọi hàm này (giữ nguyên
+ * §4.1). Chỉ đổi `x`; `y/w/h` là của mockup.
+ */
+export function centerOnAxis(box: Box, cx: number): Box {
+  return { x: cx - box.w / 2, y: box.y, w: box.w, h: box.h };
+}
+
+/** Một chỗ ngồi trong hàng nút: hàng nào, ô mockup, ĐANG sáng hay không. */
+export type RowSlot = { readonly row: string; readonly box: Box; readonly shown: boolean };
+
+/**
+ * Luật TRỤC của MỘT hàng nút (Việc 2): đúng MỘT khe sáng ⇒ dời nó về `cx` (nút đơn độc phải
+ * đứng giữa cột, không bám khe trái của §4.1); HAI khe sáng (hoặc không khe nào) ⇒ giữ nguyên
+ * hai khe mockup. Trả về cùng thứ tự đầu vào để scene `retint` từng cái mà không tra lại index.
+ */
+export function rowBoxes(slots: readonly RowSlot[], cx: number): Box[] {
+  const lit = slots.filter((s) => s.shown);
+  if (lit.length !== 1) return slots.map((s) => s.box);
+  return slots.map((s) => (s === lit[0] ? centerOnAxis(s.box, cx) : s.box));
+}
+
+/** Một khe nút của một hàng: id (tra ô theo ĐÚNG thứ tự bảng) + ba mục của RowSlot. */
+export type SlotPlace = { readonly id: string } & RowSlot;
+
+/**
+ * Ô THẬT của mọi nút trong MỌI hàng của một màn: gom theo `row`, áp `rowBoxes` từng hàng, trả
+ * về theo THỨ TỰ ĐẦU VÀO (nên bảng nút xen kẽ hàng cũng không lệch ô).
+ * Vì sao luật nằm ở layout thay vì trong scene: đây là HÌNH HỌC (đâu là trục của một hàng), và
+ * hàng nút thứ ba sẽ phải thêm một dòng `row` trong bảng chứ không phải một nhánh if trong scene.
+ */
+export function slotBoxes(slots: readonly SlotPlace[], cx: number): Box[] {
+  const placed: Record<string, Box> = {};
+  for (const row of new Set(slots.map((s) => s.row))) {
+    const group = slots.filter((s) => s.row === row);
+    rowBoxes(group, cx).forEach((b, i) => {
+      const at = group[i];
+      if (at) placed[at.id] = b;
+    });
+  }
+  return slots.map((s) => placed[s.id] ?? s.box);
+}
+
+/**
+ * Hàng `count` biểu tượng đều nhau BÊN TRONG vùng an toàn của ô chứa: chiếc đầu nằm áp mép
+ * trong trái, chiếc cuối áp mép trong phải, chiếc giữa đúng tâm — hàng sao của HUD vì thế chung
+ * một trục dọc với nhãn HUD (Việc 2), thay vì dàn hết chiều ngang ô rồi tràn ra ngoài đệm.
+ * Cạnh mỗi ô con không vượt quá `size`, và không vượt quá `1/count` bề rộng an toàn.
+ */
+export function iconRow(box: Box, count: number, size: number): Box[] {
+  const inner = innerRect(box, SAFE_PAD);
+  const n = Math.max(1, Math.floor(count));
+  const side = Math.max(0, Math.min(size, inner.w / n, inner.h));
+  const step = n > 1 ? (inner.w - side) / (n - 1) : 0;
+  return Array.from({ length: n }, (_, i) => ({
+    x: n > 1 ? inner.x + step * i : inner.x + (inner.w - side) / 2,
+    y: inner.y + (inner.h - side) / 2,
+    w: side, h: side,
+  }));
 }

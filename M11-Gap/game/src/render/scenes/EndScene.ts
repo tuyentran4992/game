@@ -65,7 +65,7 @@ export class EndScene extends Phaser.Scene {
 
   create(): void {
     this.session = readSession(this.game.registry);
-    this.kit = openFrame(this, makeTestidHook(this.game.canvas, () => cameraSize(this.cameras.main)));
+    this.kit = openFrame(this, makeTestidHook(this, this.game.canvas, () => cameraSize(this.cameras.main)));
     this.model = buildMapModel(CAMPAIGN, this.session.stars(), this.session.unlockFlags());
     const theme = sceneTheme(this.session);
     this.sheet = this.add.existing(new PanelArt(this));

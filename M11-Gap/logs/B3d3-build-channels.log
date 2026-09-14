@@ -1,0 +1,281 @@
+===== 1/5 cổng gate (typecheck + test:logic + gate-smell) =====
+
+> paper-crease@0.1.0 typecheck
+> tsc --noEmit
+
+
+> paper-crease@0.1.0 test:logic
+> vitest run tests/logic tests/platform
+
+
+ RUN  v2.1.9 /data/youtube-playables/M11-Gap/game
+
+ ✓ tests/logic/view-b3b-states.test.ts (30 tests) 44ms
+ ✓ tests/logic/view-b3a-timing.test.ts (62 tests) 83ms
+ ✓ tests/logic/layout.test.ts (45 tests) 696ms
+   ✓ V7 cham lo tren 120 man that: tron trong vung an toan, tam cach nhau >= 6, hai dia khong de nhau > moi cham con nguyen trong innerRect(card, PAD_MIN); moi cap >= 6 px va 2r <= khoang tam 557ms
+ ✓ tests/logic/view-b3b-contract.test.ts (22 tests) 53ms
+ ✓ tests/logic/generator.test.ts (29 tests) 6094ms
+   ✓ generator.levelSpec — PC-02 deterministic từ seed (TC-GEN-01, TC-GEN-02) > TC-GEN-01 · PC-02: determinism giữ nguyên khi sinh hàng loạt màn khác xen giữa (không trạng thái ẩn) 416ms
+   ✓ generator.levelSpec — PC-03 đúng 1 đáp án sinh từ trạng thái mở (TC-GEN-04) > PC-03 · số lỗ phải khớp bậc số lớp: chương 1-4 (gấp làm 4) tối đa 4 lỗ, chương 5+ (8 lớp) tối đa 8 lỗ 344ms
+   ✓ generator.levelSpec — PC-04 bốn ô phân biệt, đạt ngưỡng khác biệt > PC-04 + ngưỡng: 120 màn — minPairDistance trên lưới 16 ≥ 6 và validateSpec ok cho mọi đề 425ms
+   ✓ generator.levelSpec — PC-01 tham số chương là DỮ LIỆU, không hardcode > TC-GEN-11 · PC-03 + PC-01: dải chương 4..8 CÓ xuất hiện "cắt 1 góc chéo" hợp lệ; chương 1..3 chỉ đục lỗ 623ms
+   ✓ generator.levelSpec — PC-01 tham số chương là DỮ LIỆU, không hardcode > PC-01 + PC-03: nếp chéo D chỉ vào đề từ chương 6 (cfg.useDiagonal) và có mặt thật sự trong dải 6..8 519ms
+   ✓ B1/F-1 · cfg.punchCount được tôn trọng tuyệt đối trên bảng chương thật 8×15 > (a2) cùng bảng với holes_max=2 (trong trần hình học): 120/120 màn sinh đề, đủ điểm đục 331ms
+   ✓ B1/F-1 · cfg.punchCount được tôn trọng tuyệt đối trên bảng chương thật 8×15 > (b) 200 seed × HV/HVH/HHV × punchCount 3..4 ⇒ hoặc đủ, hoặc NÉM nêu chain + punchCount 787ms
+ ✓ tests/logic/chain-config.test.ts (27 tests) 1988ms
+   ✓ A1/F-1 · chainFor cấm nuốt foldCount ngoài bảng > 200 seed liên tiếp: mọi chuỗi tuân luật, tất định, và bảng không bị hẹp đến mức chỉ ra 1 chuỗi 1430ms
+ ✓ tests/logic/view-b3b-mapmodel.test.ts (24 tests) 59ms
+ ✓ tests/logic/view-b3a-contract.test.ts (16 tests) 38ms
+ ✓ tests/logic/fold-rules.test.ts (27 tests) 191ms
+ ✓ tests/logic/save.test.ts (23 tests) 36ms
+ ✓ tests/logic/view-b3a-geometry.test.ts (19 tests) 56ms
+ ✓ tests/logic/validator.test.ts (32 tests) 99ms
+ ✓ tests/logic/records.test.ts (19 tests) 87ms
+ ✓ tests/logic/generator-10000.test.ts (11 tests) 28513ms
+ ✓ tests/logic/level-state.test.ts (17 tests) 41ms
+ ✓ tests/logic/i18n.test.ts (8 tests) 52ms
+ ✓ tests/logic/economy.test.ts (18 tests) 24ms
+ ✓ tests/logic/fold-unfold.test.ts (30 tests) 64ms
+ ✓ tests/logic/rational.test.ts (26 tests) 33ms
+ ✓ tests/logic/progression.test.ts (13 tests) 41ms
+ ✓ tests/logic/hint-undo.test.ts (11 tests) 22ms
+ ✓ tests/logic/records-store.test.ts (13 tests) 38ms
+ ✓ tests/platform/debug.test.ts (19 tests) 36ms
+ ✓ tests/platform/playgama-adapter.test.ts (11 tests) 29ms
+ ✓ tests/platform/ad-mock.test.ts (8 tests) 219ms
+ ✓ tests/platform/ytgame-adapter.test.ts (8 tests) 20ms
+ ✓ tests/logic/telemetry.test.ts (9 tests) 179ms
+ ✓ tests/platform/network-ban.test.ts (8 tests) 107ms
+ ✓ tests/platform/host-shape.test.ts (10 tests) 16ms
+stdout | tests/logic/scene-boot.test.ts > PlayScene khi boot (F2: hết test dò đường) > boot headless => đăng đủ rect HUD + 4 ô, số hữu hạn và không nhỏ hơn trần chạm
+Phaser v4.2.1 (Headless | No Audio) https://phaser.io/v4021
+
+stderr | tests/logic/scene-boot.test.ts > PlayScene khi boot (F2: hết test dò đường) > boot headless => đăng đủ rect HUD + 4 ô, số hữu hạn và không nhỏ hơn trần chạm
+[sheet] thieu texture giay "skin_kraft" (BootScene nap tu manifest - xem console [boot])
+
+stdout | tests/logic/scene-boot.test.ts > PlayScene khi boot (F2: hết test dò đường) > bốn ô đáp án không đè nhau trên màn hình (PC-03: bốn câu hỏi riêng)
+Phaser v4.2.1 (Headless | No Audio) https://phaser.io/v4021
+
+stderr | tests/logic/scene-boot.test.ts > PlayScene khi boot (F2: hết test dò đường) > bốn ô đáp án không đè nhau trên màn hình (PC-03: bốn câu hỏi riêng)
+[sheet] thieu texture giay "skin_kraft" (BootScene nap tu manifest - xem console [boot])
+
+stdout | tests/logic/scene-boot.test.ts > PlayScene khi boot (F2: hết test dò đường) > shutdown thì rect của màn chơi bị xoá khỏi registry (không còn vùng bấm vô hình)
+Phaser v4.2.1 (Headless | No Audio) https://phaser.io/v4021
+
+stderr | tests/logic/scene-boot.test.ts > PlayScene khi boot (F2: hết test dò đường) > shutdown thì rect của màn chơi bị xoá khỏi registry (không còn vùng bấm vô hình)
+[sheet] thieu texture giay "skin_kraft" (BootScene nap tu manifest - xem console [boot])
+
+ ✓ tests/logic/scene-boot.test.ts (4 tests) 299ms
+ ✓ tests/logic/level-config.test.ts (6 tests) 73ms
+ ✓ tests/logic/view-b3a-holes.test.ts (7 tests) 103ms
+ ✓ tests/logic/stars.test.ts (13 tests) 18ms
+ ✓ tests/platform/null-adapter.test.ts (10 tests) 13ms
+ ✓ tests/logic/refactor-contract.test.ts (9 tests) 252ms
+ ✓ tests/platform/standalone-full-loop.test.ts (6 tests) 24ms
+ ✓ tests/platform/registry.test.ts (8 tests) 27ms
+ ✓ tests/logic/validator-action.test.ts (9 tests) 133ms
+ ✓ tests/logic/config-caps.test.ts (4 tests) 11ms
+ ✓ tests/logic/share-code.test.ts (7 tests) 15ms
+
+ Test Files  40 passed (40)
+      Tests  678 passed (678)
+   Start at  14:07:16
+   Duration  73.95s (transform 9.68s, setup 0ms, collect 14.20s, tests 39.92s, environment 24ms, prepare 6.36s)
+
+GATE V2 — 69 file trong src/logic, src/render, src/platform · trần: {"src/logic":250,"src/render":350,"src/platform":250} · dup-lines=6
+  NỢ ĐÃ KHAI (tools/gate-allow.json — phải trả, không tính là fail): 2
+    ~ G1 src/render/scenes/PlayScene.ts = 487 dòng > 350 (tách trách nhiệm hoặc khai báo là file dữ liệu)
+    ~ G1 src/platform/sdkAdapter.ts = 251 dòng > 250 (tách trách nhiệm hoặc khai báo là file dữ liệu)
+KẾT QUẢ: PASS (0 vi phạm thật, 2 mục nợ)
+--- stamp version 0.1.0 → metadata/metadata.json + games/paper-crease.yaml
+===== 2/5 ytgame: build → copy file kênh → snapshot → check =====
+--- vite build --mode ytgame
+
+> paper-crease@0.1.0 build:ytgame
+> tsc --noEmit && vite build --mode ytgame
+
+vite v5.4.21 building for ytgame...
+transforming...
+✓ 68 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                            1.06 kB │ gzip:   0.78 kB
+dist/assets/index-834fDioj.js             96.88 kB │ gzip:  33.18 kB
+dist/assets/vendor-phaser-Dz3O88Pw.js  1,684.91 kB │ gzip: 381.36 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 15.12s
+    kênh ytgame: 0 file cấu hình thêm (scripts/channels/ytgame.files không tồn tại)
+    snapshot dist → build/ytgame (41 file, 2666150 B)
+CHECK-BUNDLE build/ytgame  channel=ytgame  submission=true
+files=41  total=2649766 B  largest=assets/vendor-phaser-Dz3O88Pw.js (1684925 B)
+raw(cả bundle, không chia vùng): ?debug=0  ?level==0  ?seed==0  ad=mock=0  fetch(=0  XMLHttpRequest=1  WebSocket=0  sendBeacon=0  https?://=1691
+  ok   debug-hook:?debug                                                  limit=             0  hits=     0
+  AUDT debug-hook:?debug@vendor                                           limit=         audit  hits=     0
+  ok   debug-hook:?level=                                                 limit=             0  hits=     0
+  AUDT debug-hook:?level=@vendor                                          limit=         audit  hits=     0
+  ok   debug-hook:?seed=                                                  limit=             0  hits=     0
+  AUDT debug-hook:?seed=@vendor                                           limit=         audit  hits=     0
+  ok   debug-hook:ad=mock                                                 limit=             0  hits=     0
+  AUDT debug-hook:ad=mock@vendor                                          limit=         audit  hits=     0
+  ok   debug-hook:debug=1                                                 limit=             0  hits=     0
+  AUDT debug-hook:debug=1@vendor                                          limit=         audit  hits=     0
+  ok   debug-surface:global(location)                                     limit=             0  hits=     0
+  AUDT debug-surface:global(location)@vendor                              limit=         audit  hits=     0
+  ok   debug-surface:.search                                              limit=             0  hits=     0
+  AUDT debug-surface:.search@vendor                                       limit=         audit  hits=     4
+         · assets/vendor-phaser-Dz3O88Pw.js @926519 ⟂ this.treeMinMax;b.minX=z.left,b.minY=z.top,b.maxX=z.right,b.maxY=z.bottom;var Q=D.physicsType===e.DYNAMIC_BODY?this.tree.search(b):this.staticTree.sea
+         · assets/vendor-phaser-Dz3O88Pw.js @926545 ⟂ eft,b.minY=z.top,b.maxX=z.right,b.maxY=z.bottom;var Q=D.physicsType===e.DYNAMIC_BODY?this.tree.search(b):this.staticTree.search(b);for(X=Q.length,Y=0;
+         · assets/vendor-phaser-Dz3O88Pw.js @935074 ⟂ 0&&(s=!0),e===void 0&&(e=!1);var i=[],r=[],n=t.treeMinMax;if(n.minX=u,n.minY=c,n.maxX=u+h,n.maxY=c+a,e&&(r=t.staticTree.search(n)),s&&t.useTree)i=t.tr
+  ok   debug-surface:URLSearchParams                                      limit=             0  hits=     0
+  AUDT debug-surface:URLSearchParams@vendor                               limit=         audit  hits=     0
+  ok   debug-surface:query-key(debug|seed)                                limit=             0  hits=     0
+  AUDT debug-surface:query-key(debug|seed)@vendor                         limit=         audit  hits=     3
+         · assets/vendor-phaser-Dz3O88Pw.js @91409 ⟂ "canvasStyle",null),this.customEnvironment=e(l,"customEnvironment",!1),this.sceneConfig=e(l,"scene",null),this.seed=e(l,"seed",[(Date.now()*Math.rando
+         · assets/vendor-phaser-Dz3O88Pw.js @916000 ⟂ _BIAS=x(U,"tileBias",16),this.forceX=x(U,"forceX",!1),this.isPaused=x(U,"isPaused",!1),this._total=0,this.drawDebug=x(U,"debug",!1),this.debugGraphic,
+         · assets/vendor-phaser-Dz3O88Pw.js @966767 ⟂ ),A=n(M,"fps",!1);A&&(M.delta=1e3/n(M,"fps",60)),this.runner=m.create(M),this.autoUpdate=o(C,"autoUpdate",!0);var R=o(C,"debug",!1);if(this.drawDebug=
+  ok   debug-surface:ad-value("mock")                                     limit=             0  hits=     0
+  AUDT debug-surface:ad-value("mock")@vendor                              limit=         audit  hits=     0
+  ok   network:fetch(                                                     limit=             0  hits=     0
+  ok   network:fetch(@vendor                                              limit=             0  hits=     0
+  ok   network:XMLHttpRequest                                             limit=             0  hits=     0
+  ok   network:XMLHttpRequest@vendor                                      limit=             1  hits=     1
+         · assets/vendor-phaser-Dz3O88Pw.js @742191 ⟂ y.from(atob(e),function(o){return o.charCodeAt(0)}).buffer}:i={responseText:atob(e)},h.onBase64Load(i);return}var r=new XMLHttpRequest;if(r.open("GET"
+  ok   network:WebSocket                                                  limit=             0  hits=     0
+  ok   network:WebSocket@vendor                                           limit=             0  hits=     0
+  ok   network:sendBeacon                                                 limit=             0  hits=     0
+  ok   network:sendBeacon@vendor                                          limit=             0  hits=     0
+  ok   network:importScripts(                                             limit=             0  hits=     0
+  ok   network:importScripts(@vendor                                      limit=             0  hits=     0
+  ok   network:new EventSource                                            limit=             0  hits=     0
+  ok   network:new EventSource@vendor                                     limit=             0  hits=     0
+  ok   remote-url:own-code                                                limit=             0  hits=     0
+  AUDT remote-url:vendor-hosts-ngoai-prefix                               limit=         audit  hits=    15
+         · http://www.w3.org/2000/svg
+         · http://www.w3.org/1999/xhtml
+         · http://steffe.se
+         · http://prunegames.com
+         · https://github.com/niklasvh/base64-arraybuffer
+  AUDT remote-url:vendor-known                                            limit=         audit  hits=  1676
+  ok   entry-dev-path                                                     limit=             0  hits=     0
+  ok   entry-refs-exist                                                   limit=             0  hits=     0  (đã kiểm 2 tham chiếu nội)
+  ok   legacy-name:GẤP                                                    limit=             0  hits=     0
+  ok   legacy-name:Gấp                                                    limit=             0  hits=     0
+  ok   size:total                                                         limit=       5242880  hits=2649766  (files=41)
+  ok   size:own-code-file                                                 limit=        524288  hits= 97203  (assets/index-834fDioj.js)
+  ok   size:engine-chunk-file                                             limit=       2097152  hits=1684925  (assets/vendor-phaser-Dz3O88Pw.js)
+  ok   vendor-shape:assets/vendor-phaser-Dz3O88Pw.js                      limit=là engine thật  hits=     1  (dấu hiệu engine: có)
+  ok   no-sourcemap                                                       limit=             0  hits=     0
+KẾT QUẢ: PASS (0 vi phạm)
+===== 3/5 playgama: build → copy file kênh → snapshot → check =====
+--- vite build --mode playgama
+
+> paper-crease@0.1.0 build:playgama
+> tsc --noEmit && vite build --mode playgama
+
+vite v5.4.21 building for playgama...
+transforming...
+✓ 68 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                            1.15 kB │ gzip:   0.82 kB
+dist/assets/index-834fDioj.js             96.88 kB │ gzip:  33.18 kB
+dist/assets/vendor-phaser-Dz3O88Pw.js  1,684.91 kB │ gzip: 381.36 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 15.92s
+    + scripts/channels/playgama/playgama-bridge-config.json → dist/playgama-bridge-config.json (779 B)
+    snapshot dist → build/playgama (42 file, 2667013 B)
+CHECK-BUNDLE build/playgama  channel=playgama  submission=true
+files=42  total=2650629 B  largest=assets/vendor-phaser-Dz3O88Pw.js (1684925 B)
+raw(cả bundle, không chia vùng): ?debug=0  ?level==0  ?seed==0  ad=mock=0  fetch(=0  XMLHttpRequest=1  WebSocket=0  sendBeacon=0  https?://=1692
+  ok   debug-hook:?debug                                                  limit=             0  hits=     0
+  AUDT debug-hook:?debug@vendor                                           limit=         audit  hits=     0
+  ok   debug-hook:?level=                                                 limit=             0  hits=     0
+  AUDT debug-hook:?level=@vendor                                          limit=         audit  hits=     0
+  ok   debug-hook:?seed=                                                  limit=             0  hits=     0
+  AUDT debug-hook:?seed=@vendor                                           limit=         audit  hits=     0
+  ok   debug-hook:ad=mock                                                 limit=             0  hits=     0
+  AUDT debug-hook:ad=mock@vendor                                          limit=         audit  hits=     0
+  ok   debug-hook:debug=1                                                 limit=             0  hits=     0
+  AUDT debug-hook:debug=1@vendor                                          limit=         audit  hits=     0
+  ok   debug-surface:global(location)                                     limit=             0  hits=     0
+  AUDT debug-surface:global(location)@vendor                              limit=         audit  hits=     0
+  ok   debug-surface:.search                                              limit=             0  hits=     0
+  AUDT debug-surface:.search@vendor                                       limit=         audit  hits=     4
+         · assets/vendor-phaser-Dz3O88Pw.js @926519 ⟂ this.treeMinMax;b.minX=z.left,b.minY=z.top,b.maxX=z.right,b.maxY=z.bottom;var Q=D.physicsType===e.DYNAMIC_BODY?this.tree.search(b):this.staticTree.sea
+         · assets/vendor-phaser-Dz3O88Pw.js @926545 ⟂ eft,b.minY=z.top,b.maxX=z.right,b.maxY=z.bottom;var Q=D.physicsType===e.DYNAMIC_BODY?this.tree.search(b):this.staticTree.search(b);for(X=Q.length,Y=0;
+         · assets/vendor-phaser-Dz3O88Pw.js @935074 ⟂ 0&&(s=!0),e===void 0&&(e=!1);var i=[],r=[],n=t.treeMinMax;if(n.minX=u,n.minY=c,n.maxX=u+h,n.maxY=c+a,e&&(r=t.staticTree.search(n)),s&&t.useTree)i=t.tr
+  ok   debug-surface:URLSearchParams                                      limit=             0  hits=     0
+  AUDT debug-surface:URLSearchParams@vendor                               limit=         audit  hits=     0
+  ok   debug-surface:query-key(debug|seed)                                limit=             0  hits=     0
+  AUDT debug-surface:query-key(debug|seed)@vendor                         limit=         audit  hits=     3
+         · assets/vendor-phaser-Dz3O88Pw.js @91409 ⟂ "canvasStyle",null),this.customEnvironment=e(l,"customEnvironment",!1),this.sceneConfig=e(l,"scene",null),this.seed=e(l,"seed",[(Date.now()*Math.rando
+         · assets/vendor-phaser-Dz3O88Pw.js @916000 ⟂ _BIAS=x(U,"tileBias",16),this.forceX=x(U,"forceX",!1),this.isPaused=x(U,"isPaused",!1),this._total=0,this.drawDebug=x(U,"debug",!1),this.debugGraphic,
+         · assets/vendor-phaser-Dz3O88Pw.js @966767 ⟂ ),A=n(M,"fps",!1);A&&(M.delta=1e3/n(M,"fps",60)),this.runner=m.create(M),this.autoUpdate=o(C,"autoUpdate",!0);var R=o(C,"debug",!1);if(this.drawDebug=
+  ok   debug-surface:ad-value("mock")                                     limit=             0  hits=     0
+  AUDT debug-surface:ad-value("mock")@vendor                              limit=         audit  hits=     0
+  ok   network:fetch(                                                     limit=             0  hits=     0
+  ok   network:fetch(@vendor                                              limit=             0  hits=     0
+  ok   network:XMLHttpRequest                                             limit=             0  hits=     0
+  ok   network:XMLHttpRequest@vendor                                      limit=             1  hits=     1
+         · assets/vendor-phaser-Dz3O88Pw.js @742191 ⟂ y.from(atob(e),function(o){return o.charCodeAt(0)}).buffer}:i={responseText:atob(e)},h.onBase64Load(i);return}var r=new XMLHttpRequest;if(r.open("GET"
+  ok   network:WebSocket                                                  limit=             0  hits=     0
+  ok   network:WebSocket@vendor                                           limit=             0  hits=     0
+  ok   network:sendBeacon                                                 limit=             0  hits=     0
+  ok   network:sendBeacon@vendor                                          limit=             0  hits=     0
+  ok   network:importScripts(                                             limit=             0  hits=     0
+  ok   network:importScripts(@vendor                                      limit=             0  hits=     0
+  ok   network:new EventSource                                            limit=             0  hits=     0
+  ok   network:new EventSource@vendor                                     limit=             0  hits=     0
+  ok   remote-url:https://bridge.playgama.com/v2/stable/playgama-bridge.js limit=        đúng 1  hits=     1
+  ok   remote-url:own-code                                                limit=             0  hits=     0
+  AUDT remote-url:vendor-hosts-ngoai-prefix                               limit=         audit  hits=    15
+         · http://www.w3.org/2000/svg
+         · http://www.w3.org/1999/xhtml
+         · http://steffe.se
+         · http://prunegames.com
+         · https://github.com/niklasvh/base64-arraybuffer
+  AUDT remote-url:vendor-known                                            limit=         audit  hits=  1676
+  ok   entry-dev-path                                                     limit=             0  hits=     0
+  ok   entry-refs-exist                                                   limit=             0  hits=     0  (đã kiểm 2 tham chiếu nội)
+  ok   legacy-name:GẤP                                                    limit=             0  hits=     0
+  ok   legacy-name:Gấp                                                    limit=             0  hits=     0
+  ok   size:total                                                         limit=       5242880  hits=2650629  (files=42)
+  ok   size:own-code-file                                                 limit=        524288  hits= 97203  (assets/index-834fDioj.js)
+  ok   size:engine-chunk-file                                             limit=       2097152  hits=1684925  (assets/vendor-phaser-Dz3O88Pw.js)
+  ok   required-file:playgama-bridge-config.json                          limit=       phải có  hits=     1
+  ok   vendor-shape:assets/vendor-phaser-Dz3O88Pw.js                      limit=là engine thật  hits=     1  (dấu hiệu engine: có)
+  ok   no-sourcemap                                                       limit=             0  hits=     0
+KẾT QUẢ: PASS (0 vi phạm)
+===== 4/5 standalone (bản dev, còn lại trong dist/, không nộp) =====
+--- vite build --mode standalone
+
+> paper-crease@0.1.0 build:standalone
+> tsc --noEmit && vite build --mode standalone
+
+vite v5.4.21 building for standalone...
+transforming...
+✓ 70 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                            1.06 kB │ gzip:   0.78 kB
+dist/assets/index-D0V3aUaA.js             98.62 kB │ gzip:  33.84 kB
+dist/assets/vendor-phaser-Dz3O88Pw.js  1,684.91 kB │ gzip: 381.36 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 15.80s
+===== 5/5 zip 2 bản nộp + đối chiếu =====
+    zip build/paper-crease-ytgame-20260914.zip = 1194567 B · diff -r zip≡build/ytgame: 0 khác lệch
+    zip build/paper-crease-playgama-20260914.zip = 1195262 B · diff -r zip≡build/playgama: 0 khác lệch
+XONG: build/ytgame + build/playgama là 2 bản nộp; dist/ = bản standalone (dev).

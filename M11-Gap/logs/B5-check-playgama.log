@@ -1,5 +1,5 @@
-CHECK-BUNDLE /tmp/pc-playgama  channel=playgama  submission=true
-files=41  total=2645364 B  largest=assets/vendor-phaser-Dz3O88Pw.js (1684925 B)
+CHECK-BUNDLE build/playgama  channel=playgama  submission=true
+files=42  total=2650629 B  largest=assets/vendor-phaser-Dz3O88Pw.js (1684925 B)
 raw(cả bundle, không chia vùng): ?debug=0  ?level==0  ?seed==0  ad=mock=0  fetch(=0  XMLHttpRequest=1  WebSocket=0  sendBeacon=0  https?://=1692
   ok   debug-hook:?debug                                                  limit=             0  hits=     0
   AUDT debug-hook:?debug@vendor                                           limit=         audit  hits=     0
@@ -53,11 +53,10 @@ raw(cả bundle, không chia vùng): ?debug=0  ?level==0  ?seed==0  ad=mock=0  f
   ok   entry-refs-exist                                                   limit=             0  hits=     0  (đã kiểm 2 tham chiếu nội)
   ok   legacy-name:GẤP                                                    limit=             0  hits=     0
   ok   legacy-name:Gấp                                                    limit=             0  hits=     0
-  ok   size:total                                                         limit=       5242880  hits=2645364  (files=41)
-  ok   size:own-code-file                                                 limit=        524288  hits= 92717  (assets/index-DNn1fZ7S.js)
+  ok   size:total                                                         limit=       5242880  hits=2650629  (files=42)
+  ok   size:own-code-file                                                 limit=        524288  hits= 97203  (assets/index-834fDioj.js)
   ok   size:engine-chunk-file                                             limit=       2097152  hits=1684925  (assets/vendor-phaser-Dz3O88Pw.js)
-  FAIL required-file:playgama-bridge-config.json                          limit=       phải có  hits=     0
-         · thiếu playgama-bridge-config.json trong bundle
+  ok   required-file:playgama-bridge-config.json                          limit=       phải có  hits=     1
   ok   vendor-shape:assets/vendor-phaser-Dz3O88Pw.js                      limit=là engine thật  hits=     1  (dấu hiệu engine: có)
   ok   no-sourcemap                                                       limit=             0  hits=     0
-KẾT QUẢ: FAIL (1 vi phạm)
+KẾT QUẢ: PASS (0 vi phạm)
