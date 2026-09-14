@@ -1,9 +1,9 @@
 // Pattern: Data Table (pure planner)
-// TRÁCH NHIỆM: mọi DỮ LIỆU ĐIỀU PHỐI của một vòng chơi ở MỘT chỗ — mở bung từng lớp (DS:120),
-//   pop lỗ (DS:121), vệt giải thích (DS:122), nếp "thở" hint (DS:124), gate input theo pha
-//   animate + bộ giữ cú bấm (PC-05), bảng mờ / scale chạm (DS:94-96, DS:127) và phần thưởng
-//   lúc chốt lượt (PC-09/PC-13). Scene chỉ VIỆC ĐỌC bảng rồi đặt tween (A2: PlayScene không
-//   ôm luật).
+// TRÁCH NHIỆM: mọi DỮ LIỆU ĐIỀU PHỐI của một vòng chơi ở MỘT chỗ — gấp vào của ĐỀ BÀI,
+//   mở bung từng lớp (DS:120), pop lỗ (DS:121), vệt giải thích (DS:122), nếp "thở" hint
+//   (DS:124), gate input theo pha animate + bộ giữ cú bấm (PC-05), bảng mờ / scale chạm
+//   (DS:94-96, DS:127) và phần thưởng lúc chốt lượt (PC-09/PC-13). Scene chỉ VIỆC ĐỌC bảng
+//   rồi đặt tween (A2: PlayScene không ôm luật).
 // RÀNG BUỘC: module THUẦN — không import phaser, không đồng hồ, không ngẫu nhiên (3 test
 //   view-b3a chạy trong node và phải tái lập sau 3 lần reload — PC-B-04). Số ms không được
 //   khai lại ở nơi khác (E2/A9).
@@ -102,6 +102,81 @@ export function unfoldPlan(layers: number): UnfoldLayer[] {
   }
   return rows;
 }
+
+// ---------------------------------------------------------------------------
+// GẤP VÀO CỦA ĐỀ BÀI (BUGFIX "mất hoạt cảnh gấp giấy"): tờ giấy hiện ra PHẢI được nhìn thấy
+// đang gập lại rồi mũi đục mới xuống lỗ — trước đây `openSpec` đặt thẳng trạng thái gấp cuối.
+// Bảng này là DỮ LIỆU: thêm nhịp mới = thêm một khoá, không rải ms vào scene.
+// ---------------------------------------------------------------------------
+
+type FoldInTable = {
+  readonly foldMs: number;
+  readonly layerDurMs: number;
+  readonly punchAt: number;
+  readonly punchDurMs: number;
+};
+
+/**
+ * Nhịp gấp vào. `foldMs` KHÔNG đổi theo số lớp (bước so le dẫn xuất ở dưới) nên đề 2 lớp lẫn
+ * 16 lớp đều gói trong cùng một nhịp; mũi đục xuống ở 80% nhịp gấp như MVP `playSetup`.
+ * Tổng = round(450*0,8) + 250 = 610ms cho MỌI đề — đúng dải 0,6-0,9s của đề bài sửa.
+ */
+const FOLD_IN: Readonly<FoldInTable> = Object.freeze({
+  foldMs: 450,
+  layerDurMs: 2 * DUR.head,
+  punchAt: 0.8,
+  punchDurMs: DUR.pop,
+});
+
+/** Một dòng lịch gấp vào của MỘT lớp (cùng khuôn với `HolePop` để scene đọc chung một cửa). */
+export type FoldStep = {
+  readonly index: number;
+  readonly startMs: number;
+  readonly durMs: number;
+  readonly endMs: number;
+};
+
+export type FoldIn = {
+  readonly rows: readonly FoldStep[];
+  readonly foldMs: number;
+  readonly punchStartMs: number;
+  readonly punchDurMs: number;
+  readonly totalMs: number;
+};
+
+/**
+ * Lịch gấp vào cho một đề có `layers` lớp: lớp NGOÀI CÙNG (index 0 của `unfoldPlan`) gập SAU
+ * CÙNG nên `startMs` của nó lớn nhất — hoạt cảnh vào màn là ảnh GƯƠNG của hoạt cảnh mở bung.
+ * Bao nhiêu lớp cũng có mốc trung gian phân biệt: bước so le = (foldMs - layerDur)/(layers-1).
+ */
+export function foldInPlan(layers: number): FoldIn {
+  const n = Math.max(1, Math.floor(layers));
+  const span = FOLD_IN.foldMs - FOLD_IN.layerDurMs;
+  const stepMs = n > 1 ? span / (n - 1) : 0;
+  const rows: FoldStep[] = [];
+  for (let i = 0; i < n; i += 1) {
+    const startMs = Math.round(span - i * stepMs);
+    rows.push({ index: i, startMs, durMs: FOLD_IN.layerDurMs, endMs: startMs + FOLD_IN.layerDurMs });
+  }
+  const punchStartMs = Math.round(FOLD_IN.foldMs * FOLD_IN.punchAt);
+  return {
+    rows,
+    foldMs: FOLD_IN.foldMs,
+    punchStartMs,
+    punchDurMs: FOLD_IN.punchDurMs,
+    totalMs: punchStartMs + FOLD_IN.punchDurMs,
+  };
+}
+
+/**
+ * Tiến trình 0..1 (CHƯA qua ease) của một bậc lịch tại mốc `ms` — cửa đọc chung để test số
+ * chốt "có mốc trung gian phân biệt" và để QA suy ra hình phải thấy ở giữa hoạt cảnh.
+ */
+export const ramp = (startMs: number, durMs: number, ms: number): number => {
+  if (durMs <= 0) return ms >= startMs ? 1 : 0;
+  const t = (ms - startMs) / durMs;
+  return t < 0 ? 0 : t > 1 ? 1 : t;
+};
 
 /** Lịch pop lỗ; 1 lỗ thì không có so le nhưng vẫn pop đủ `pop` ms (DS:121). */
 export function holePlan(holeCount: number): HolePop[] {

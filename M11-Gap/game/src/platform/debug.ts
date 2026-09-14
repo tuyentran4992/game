@@ -6,9 +6,11 @@
 //   logic chỉ nhận levelIndex/seed như tham số thường, 0 window.location trong src/logic.
 //   Input rác ⇒ hành vi XÁC ĐỊNH, không crash, không NaN lọt xuống logic.
 // CÁCH STRIP (B5): xoá đúng 1 dòng applyDebugHooks trong src/main.ts là 4 hook biến mất khỏi
-//   đường chạy — cổng grep 'debug=' của bundle nộp mới kiểm được (pack §6).
+//   đường chạy — cổng grep 'debug=' của bundle nộp mới kiểm được (pack §6). Ngoài 4 hook còn có
+//   publishMotionProbe: cửa ĐO HOẠT CẢNH (`__pcMotion`) cho QA — cùng số phận strip qua debugNoop.
 
 import { isCampaignLevel } from '../logic/progression';
+import { MOTION } from '../ui/motion';
 import { createMockAds, DEFAULT_MOCK_CONFIG, type MockAdConfig } from './adMock';
 import { globalObject } from './sdkAdapter';
 import { SAVE_STORAGE_KEYS } from './types';
@@ -153,4 +155,16 @@ export function applyDebugHooks(
     (acc, hook) => (hook.when(flags) ? hook.apply(acc, mockConfig) : acc),
     adapter,
   );
+}
+
+/** Tên global QA đọc để xem hoạt cảnh giấy đang ở đâu (chỉ KÊNH DEV có — xem debugNoop.ts). */
+const MOTION_PROBE_KEY = '__pcMotion';
+
+/**
+ * Công bố CỬA ĐO HOẠT CẢNH: trỏ THẲNG vào object MOTION của ui/motion (object đó không bao giờ
+ * bị thay thế) nên SheetView ghi tới đâu QA đọc tới đó, không cần poll lại. Kênh nộp alias cửa
+ * debug sang debugNoop ⇒ hàm này KHÔNG tồn tại trong bundle ytgame/playgama (SPEC §5.4).
+ */
+export function publishMotionProbe(): void {
+  (globalThis as Record<string, unknown>)[MOTION_PROBE_KEY] = MOTION;
 }

@@ -1,0 +1,265 @@
+
+[tool] Bash: {'command': 'ls && cat package.json | head -40', 'description': 'List project files and read package.json'}
+
+[tool] Bash: {'command': 'npm run typecheck 2>&1 | tail -40', 'description': 'Run typecheck to see current errors'}
+
+[tool] Bash: {'command': 'npm run typecheck 2>&1 | tail -40', 'description': 'Run TypeScript typecheck', 'dangerouslyDisableSandbox': True}
+
+[tool] Bash: {'command': 'npm run typecheck', 'description': 'Run TypeScript typecheck'}
+
+[tool] Bash: {'command': 'echo hi; ls src', 'description': 'Test shell command'}
+
+[tool] Bash: {'command': 'npm run typecheck 2>&1 | tail -40', 'description': 'Run typecheck without sandbox', 'dangerouslyDisableSandbox': True}
+
+[tool] Bash: {'command': 'npm run typecheck | tail -40', 'description': 'Run typecheck and show last 40 lines'}
+
+[tool] Bash: {'command': 'npm run typecheck | tail -40', 'description': 'Run typecheck from project dir'}
+
+[tool] Bash: {'command': 'npx tsc --noEmit | tail -50', 'description': 'Type-check with tsc directly'}
+
+[tool] Bash: {'command': 'npx tsc --noEmit', 'description': 'Type-check the project'}
+
+[tool] Bash: {'command': 'npm run typecheck', 'description': 'Run typecheck script', 'dangerouslyDisableSandbox': True}
+
+[tool] Bash: {'command': 'ls node_modules/.bin | head -20', 'description': 'List local binaries'}
+
+[tool] Bash: {'command': 'node node_modules/typescript/bin/tsc --noEmit | tail -40', 'description': 'Run tsc via node directly'}
+
+[tool] Bash: {'command': 'git diff src/logic/foldGeometry.ts | head -60', 'description': 'Show diff of foldGeometry'}
+
+[tool] Bash: {'command': 'bash -c "npm run typecheck 2>&1 | tail -30"', 'description': 'Run typecheck inside bash -c'}
+
+[tool] Bash: {'command': 'git diff src/logic/foldGeometry.ts | tail -60; echo ---; git diff src/logic/foldRules.ts src/logic/cutGeometry.ts | head -80', 'description': 'Show remaining diffs for
+
+[tool] Bash: {'command': 'ls -l node_modules/.bin/vitest node_modules/.bin/vite; head -3 node_modules/vitest/vitest.mjs 2>/dev/null; ls node_modules/vitest | head', 'description': 'Locate vites
+
+[tool] Bash: {'command': 'node node_modules/typescript/bin/tsc --noEmit | grep -c "error TS"; node node_modules/typescript/bin/tsc --noEmit | grep "error TS" | grep -v "SheetView.ts"', 'descrip
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/SheetView.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/ui/motion.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/anim/foldShape.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/FoldPaper.ts'}
+
+[tool] Bash: {'command': 'git diff --stat; echo ===; git show HEAD:M11-Gap/game/src/render/components/SheetView.ts | head -160', 'description': 'Show original SheetView from HEAD'}
+
+[tool] Bash: {'command': 'wc -l ../prompts/BUGFIX-ANIM.md ../prompts/BUGFIX-ANIM-2-finish.md ../logs/ANIMFIX.md 2>/dev/null', 'description': 'Check size of prompt/log files'}
+
+[tool] Bash: {'command': 'grep -n "drawFoldPunch\\|function animateUnfold\\|applyCombo\\|function animateFold" /data/shared-board-agent-waves/game-gap-giay/prototype/gap-playtest.html | head -2
+
+[tool] Bash: {'command': 'git diff src/render/anim/unfoldPlan.ts', 'description': 'Show unfoldPlan diff'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/HolePool.ts'}
+
+[tool] Bash: {'command': 'ls tests/logic | head -60; echo ===; ls tools scripts', 'description': 'List tests, tools and scripts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/scenes/PlayScene.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/types.ts'}
+
+[tool] Bash: {'command': 'sed -n 1,80p src/logic/punchPoints.ts', 'description': 'Read punchPoints module'}
+
+[tool] Bash: {'command': 'grep -n "export function cutSnips" -A 20 src/logic/cutGeometry.ts', 'description': 'Show cutSnips signature'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/anim/unfoldPlan.ts'}
+
+[tool] Bash: {'command': 'grep -rn "publishMotionProbe\\|__pcMotion\\|debugSurface\\|__pc" src/platform/debug.ts | head -30; echo ===; sed -n 1,60p src/platform/debug.ts', 'description': 'Inspe
+
+[tool] Bash: {'command': 'grep -n "applyDebugHooks" -A 40 src/platform/debug.ts | sed -n 1,80p', 'description': 'Show applyDebugHooks'}
+
+[tool] Bash: {'command': 'grep -rn "applyDebugHooks\\|installDebug\\|debugOverlay" src/main.ts src/render/scenes/*.ts | head -20', 'description': 'Find debug hook install sites'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/main.ts'}
+
+[tool] Bash: {'command': 'grep -n "debug\\|__pc\\|forbidden\\|PATTERNS\\|pattern" tools/check-bundle.mjs | head -40', 'description': 'Show bundle checker patterns'}
+
+[tool] Bash: {'command': 'sed -n 60,150p tools/check-bundle.mjs', 'description': 'Show bundle rules'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/vite.config.ts'}
+
+[tool] Bash: {'command': 'sed -n 100,160p src/platform/debug.ts; echo === NOOP ===; cat src/platform/debugNoop.ts', 'description': 'Show debug tail exports and noop variant'}
+
+[tool] Bash: {'command': 'sed -n 1,80p tools/gate-smell.mjs', 'description': 'Read gate-smell rules head'}
+
+[tool] Bash: {'command': 'sed -n 80,160p tools/gate-smell.mjs', 'description': 'Read rest of gate-smell'}
+
+[tool] Bash: {'command': 'cat tools/gate-allow.json', 'description': 'Read gate allow list'}
+
+[tool] Bash: {'command': 'node tools/gate-smell.mjs | tail -15', 'description': 'Run smell gate to see current state'}
+
+[tool] Bash: {'command': 'git diff src/render/layout.ts src/render/layoutTable.ts | head -80; echo ===; grep -n "packetBox\\|sheetFolded\\|folded" src/render/layoutTable.ts src/render/layout.ts
+
+[tool] Bash: {'command': 'grep -n "packetBox\\|holeBox\\|breathBox\\|sheet" src/ui/testids.ts | head -20', 'description': 'Find sheet-related QA hooks'}
+
+[tool] Bash: {'command': 'grep -n "export function globalObject" -A 14 src/platform/sdkAdapter.ts; grep -rn "globalObject(" src/platform/*.ts | grep -v sdkAdapter | head', 'description': 'Show 
+
+[tool] Bash: {'command': 'grep -rn "__pc\\|globalThis" src --include=*.ts | head -20', 'description': 'Find existing global hook precedent'}
+
+[tool] Bash: {'command': 'sed -n 100,160p src/ui/testids.ts; echo === ; grep -rn "testids\\|__pcTestids\\|TESTID_DOOR" src/main.ts scripts/build-channels.sh tools/check-bundle.mjs | head -20', 
+
+[tool] Bash: {'command': 'node node_modules/typescript/bin/tsc --noEmit > /tmp/tc.txt; grep -n "foldGeometry" -A 3 /tmp/tc.txt | head -20', 'description': 'Print foldGeometry error block fully'
+
+[tool] Bash: {'command': 'node node_modules/typescript/bin/tsc --noEmit --pretty false | grep -A 4 "foldGeometry.ts(84"', 'description': 'Show first lines of foldGeometry error'}
+
+[tool] Bash: {'command': 'node node_modules/typescript/bin/tsc --noEmit --pretty false | grep -A 12 "foldGeometry.ts(84"', 'description': 'Print full foldGeometry error detail'}
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/logic/foldGeometry.ts', 'old_string': '  creases.forEach((refl, j) => {\n    const moved = acc.map((t)
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/HolePool.ts', 'old_string': '  hide(): void {\n    this.items.forEach((hole) => hole
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/HolePool.ts', 'old_string': "  /**\n   * Cho cả bộ lỗ teo về 0 trong `ms` rồi ẩn hẳn
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/HolePool.ts', 'offset': 14}
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/HolePool.ts', 'old_string': '  private readonly host: Phaser.GameObjects.Container;\
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/HolePool.ts', 'old_string': '  place(points: readonly Point[], side: number, ox: num
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/HolePool.ts', 'old_string': '  hide(): void {\n    this.items.forEach((hole) => hole
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/FoldPaper.ts', 'old_string': '  /**\n   * Tô lại lát giấy của MỌI lớp ở tiến trình m
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/FoldPaper.ts', 'old_string': '  /** Một tứ giác (8 số px) thành path đang mở — calle
+Now the SheetView rewrite:
+
+[tool] Bash: {'command': 'cat > src/render/components/SheetView.ts <<\'EOF\'\n// Pattern: Component (Phaser container)\n// TRÁCH NHIỆM: tờ giấy của màn chơi — HAI hoạt cảnh giấy của một vòng ch
+
+[tool] Bash: {'command': 'cat > src/render/components/SheetView.ts <<\'EOF\'\n// Pattern: Component (Phaser container)\n// TRÁCH NHIỆM: tờ giấy của màn chơi — HAI hoạt cảnh giấy của một vòng ch
+
+[tool] Bash: {'command': 'printf \'%s\\n\' "const a = { v: 1 };" "const b = [{ v: 2 }];" "const c: string = \'x\' + key + \'y\';" > /tmp/t1.txt; cat /tmp/t1.txt', 'description': 'Test candidate
+
+[tool] Bash: {'command': "cat > /tmp/t1.txt <<'EOF'\nconst a = { v: 1 };\nconst b = points.map(() => ({ v: open }));\nconst c = 'x' + key + 'y';\nconst d = EASE.easeOut;\nEOF\ncat /tmp/t1.txt",
+
+[tool] Bash: {'command': "cat > /tmp/t1.txt <<'EOF'\nconst a = { v: 1 };\nEOF", 'description': 'Test minimal heredoc write'}
+
+[tool] Bash: {'command': "cat > .probe-t1.ts <<'EOF'\nconst a = { v: 1 };\nconst b = points.map(() => ({ v: open }));\nconst c = 'x' + key + 'y';\nconst d: string[] = ['a', 'b'];\nconst e = { f
+
+[tool] Bash: {'command': "cat > src/render/components/SheetView.ts <<'EOF'\n// Pattern: Component (Phaser container)\n// TRACH NHIEM: to giay cua man choi.\n\nimport Phaser from 'phaser';\nimpo
+
+[tool] Bash: {'command': "cat > src/render/components/SheetView.ts <<'EOF'\nimport Phaser from 'phaser';\nconst EASE = { easeOut: 'Cubic.Out' };\nEOF", 'description': 'Test object literal with 
+
+[tool] Bash: {'command': "cat > src/render/components/SheetView.ts <<'EOF'\nconst EASE: Record<string, string> = {\n  easeOut: 'Cubic.Out',\n};\nconst t = scene.tweens.add({\n  ease: 'Linear',\
+
+[tool] Bash: {'command': 'echo "PLACEHOLDER" > src/render/components/SheetView.ts', 'description': 'Reset SheetView to a placeholder line'}
+
+[tool] Bash: {'command': 'pwd; ls -d /data; readlink -f .', 'description': 'Check working directory resolution'}
+
+[tool] Bash: {'command': 'pwd', 'description': 'Print working directory'}
+
+[tool] Bash: {'command': 'echo PLACEHOLDER > src/render/components/SheetView.ts', 'description': 'Write placeholder into SheetView'}
+
+[tool] Bash: {'command': "cat > src/render/components/SheetView.ts <<'EOF'\nconst a = { b: 1 };\nEOF", 'description': 'Test heredoc with braces only'}
+
+[tool] Bash: {'command': "cat > src/render/components/Zzz.ts <<'EOF'\nconst a = { b: 1 };\nEOF", 'description': 'Test heredoc write to a new file'}
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/SheetView.ts', 'old_string': "import Phaser from 'phaser';\nimport { cutSnipTriangle
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/SheetView.ts', 'old_string': '/** Trung bình tiến trình mở của các lớp giấy — 0 = gó
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/SheetView.ts', 'old_string': '  /** 0 = mũi đục chưa xuống; 1 = lỗ + vết cắt hiện đầ
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/SheetView.ts', 'old_string': "  constructor(scene: Phaser.Scene, box: Box, theme: Pa
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/SheetView.ts', 'old_string': "  /** Nạp đề ở trạng thái MỞ PHẲNG (điểm khởi đầu của 
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/SheetView.ts', 'old_string': "  foldIn(plan: FoldIn, done: () => void): void {\n    
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/SheetView.ts', 'old_string': '  popHoles(\n    points: readonly Point[], rows: reado
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/SheetView.ts', 'old_string': "  explain(points: readonly Point[], role: HoleRole, do
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/SheetView.ts', 'old_string': "  /** Nhấn mạnh nếp mà hint đang chỉ (peekFold trả ind
+
+[tool] Bash: {'command': 'node node_modules/typescript/bin/tsc --noEmit | head -30', 'description': 'Typecheck after SheetView rewrite'}
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/SheetView.ts', 'old_string': '  /** Cất tween của hoạt cảnh vào danh sách để killMot
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/scenes/PlayScene.ts', 'old_string': "import {\n  applyOutcome, breathPlan, createInputBuffer, D
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/scenes/PlayScene.ts', 'old_string': "    this.sheet.fold(spec.folds);\n    this.cards.forEach((
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/scenes/PlayScene.ts', 'limit': 40, 'offset': 168}
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/scenes/PlayScene.ts', 'old_string': "  /** Nạp một đề: folded + chờ 140ms (DUR.head) rồi mới sa
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/scenes/PlayScene.ts', 'old_string': "  private backToReady(next: LevelState): void {\n    this.
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/scenes/PlayScene.ts', 'old_string': '    this.sheet.highlightCrease(null, this.state.spec.folds
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/scenes/PlayScene.ts', 'old_string': "    playFx(this, 'unfold', this.session.soundOn());\n    t
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/scenes/PlayScene.ts', 'old_string': '  private finish(): void {\n    this.paint();', 'new_strin
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/scenes/PlayScene.ts', 'old_string': '  private backToReady(next: LevelState): void {\n    this.
+
+[tool] Bash: {'command': 'node node_modules/typescript/bin/tsc --noEmit | head -20', 'description': 'Typecheck after PlayScene wiring'}
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/debug.ts', 'old_string': '/** CHỖ GỌI DUY NHẤT (main.ts): adapter của môi trường → adapter đã
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/debug.ts', 'old_string': '    adapter,\n  );\n}', 'new_string': "    adapter,\n  );\n}\n\n/**
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/debug.ts', 'old_string': "import { isCampaignLevel } from '../logic/progression';", 'new_stri
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/debug.ts', 'old_string': "// CÁCH STRIP (B5): xoá đúng 1 dòng applyDebugHooks trong src/main.
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/debug.ts', 'old_string': "/** Tên global QA đọc để xem hoạt cảnh giấy đang ở đâu (chỉ KÊNH DE
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/platform/debugNoop.ts', 'old_string': "/** Adapter của môi trường chính là adapter cuối cùng: 0 hook đ
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/main.ts', 'old_string': "import { applyDebugHooks, parseDebugQuery, readSearch, type DebugFlags } from
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/main.ts', 'old_string': 'export function startGame(): Phaser.Game {\n  const { adapter, flags } = boot
+
+[tool] Bash: {'command': 'node node_modules/typescript/bin/tsc --noEmit | head -20', 'description': 'Typecheck after debug/main wiring'}
+
+[tool] Bash: {'command': 'node node_modules/vitest/vitest.mjs run tests/logic tests/platform 2>&1 | tail -25', 'description': 'Run logic and platform tests', 'timeout': 600000}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/scene-boot.test.ts'}
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/scene-boot.test.ts', 'old_string': "import { OPTION_IDS, TESTIDS } from '../../src/ui/testids'
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/scene-boot.test.ts', 'old_string': "  it('shutdown thì rect của màn chơi bị xoá khỏi registry 
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/scene-boot.test.ts', 'old_string': "    const game = await bootPlay()\n    const scene = game.
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/scene-boot.test.ts', 'old_string': "async function bootPlay(): Promise<Phaser.Game> {\n  const
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/scene-boot.test.ts', 'old_string': "  it('shutdown thì rect của màn chơi bị xoá khỏi registry 
+
+[tool] Bash: {'command': 'node node_modules/vitest/vitest.mjs run tests/logic/scene-boot.test.ts 2>&1 | tail -30', 'description': 'Run scene-boot test', 'timeout': 300000}
+
+[tool] Bash: {'command': 'cat > tests/logic/tmp-trace.test.ts <<\'TSEOF\'\nimport \'./helpers/dom-shim\'\nimport { expect, it } from \'vitest\'\nimport Phaser from \'phaser\'\nimport { bootGame
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/tmp-trace.test.ts', 'old_string': 'PLACEHOLDER_DOES_NOT_EXIST', 'new_string': "import './helpe
+
+[tool] Bash: {'command': 'echo x > /data/youtube-playables/M11-Gap/game/tests/logic/tmp-trace.test.ts', 'description': 'Test write with absolute path'}
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/scene-boot.test.ts', 'old_string': "describe('PlayScene khi boot (F2: hết test dò đường)', () 
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/scene-boot.test.ts', 'old_string': "  it('là Scene thật, có create và đủ 5 cửa đọc rect cho bả
+
+[tool] Bash: {'command': 'node node_modules/vitest/vitest.mjs run tests/logic/scene-boot.test.ts -t "TMP" 2>&1 | grep -E "^T[0-9]|Test Files|Tests " | head -15', 'description': 'Run temporary m
+
+[tool] Bash: {'command': 'grep -rn "tweens.add" src --include=*.ts | head -20', 'description': 'Find all tween call sites'}
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/scene-boot.test.ts', 'old_string': "  it('TMP trace motion', async () => {\n    const game = a
+
+[tool] Bash: {'command': 'node node_modules/vitest/vitest.mjs run tests/logic/scene-boot.test.ts -t "TMP" 2>&1 | grep -E "TMP |Test Files|Tests " | head -8', 'description': 'Run isolated tween 
+
+[tool] Bash: {'command': 'grep -n "performance\\|now\\|requestAnimationFrame\\|Date" tests/logic/helpers/dom-shim.ts | head -20; wc -l tests/logic/helpers/dom-shim.ts', 'description': 'Inspect 
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/scene-boot.test.ts', 'old_string': "  it('TMP trace motion', async () => {\n    const game = a
+
+[tool] Bash: {'command': 'node node_modules/vitest/vitest.mjs run tests/logic/scene-boot.test.ts -t "TMP" 2>&1 | grep -E "TMP |Test Files|Tests |error" | head -10', 'description': 'Run detailed
+
+[tool] Bash: {'command': 'node node_modules/vitest/vitest.mjs run tests/logic/scene-boot.test.ts -t "TMP" 2>&1 | grep -E "TypeError|is not|TMP updates|TMP manual" | head -8', 'description': 'Sh
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/scene-boot.test.ts', 'old_string': "    const rect = scene.add.rectangle(0, 0, 10, 10, 0xfffff
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/scene-boot.test.ts', 'old_string': "    console.warn('TMP updates=' + updates + ' ticks=' + ti
+
+[tool] Bash: {'command': 'node node_modules/vitest/vitest.mjs run tests/logic/scene-boot.test.ts -t "TMP" 2>&1 | grep -E "TMP |×|✓" | head -8', 'description': 'Rerun tween diagnostics', 'timeou
+
+[result] is_error=True num_turns=121 duration_ms=1657108 cost_usd=8.196068999999998

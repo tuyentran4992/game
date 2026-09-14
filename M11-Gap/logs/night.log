@@ -375,3 +375,24 @@ thiếu prompt: /data/youtube-playables/M11-Gap/prompts/BUGFIX-ANIM.md
 [2026-09-14 14:10:04] check playgama PASS
 tổng dọn: 0
 [2026-09-14 14:10:04] VÒNG CUỐI xong
+[2026-09-14 14:10:16] build-channels OK
+    OK  dist/index.html mới
+    OK  build/ytgame/index.html mới
+    OK  build/playgama/index.html mới
+[2026-09-14 14:10:16] check standalone PASS
+[2026-09-14 14:10:16] check ytgame PASS
+[2026-09-14 14:10:16] check playgama PASS
+tổng dọn: 0
+[2026-09-14 14:10:16] BUGFIX HOẠT CẢNH xong
+[2026-09-14 14:11:12] BUGFIX HOẠT CẢNH (gấp/mở bung) bắt đầu…
+METRICS {"ts": "2026-09-14T14:42:23Z", "variant": "v1-harness", "batch": "B3e", "step": "animfix", "model": "qwen3.8-flash", "max_turns": 90, "turns": 91, "duration_s": 1871.1, "api_ms": 1810334, "ttft_ms": null, "cost_usd": 9.2396, "session_id": "3518cd31-a57f-48e2-9dd4-ce3e6928c4e3", "resume_from": null, "ctx_per_turn_avg": 4078, "ctx_per_turn_max": 4078, "syspack": "B3e-syspack.md", "exit": 1, "timeout": null, "input_tokens": 540, "output_tokens": 101110, "cache_read": 10726570, "cache_creation": 212345}
+[B3e/animfix] 91 lượt · 1871.1s · vào 540 · cache 10,726,570 · ra 101,110 · $9.2396 · ok
+[2026-09-14 14:42:23] LỖI: phiên B3e KHÔNG chạy (rc=1, stream=logs/B3e-animfix.stream.jsonl) — DỪNG chuỗi, KHÔNG chạy cổng/build
+[2026-09-14 14:43:13] HOÀN TẤT HOẠT CẢNH (vòng nối) bắt đầu…
+METRICS {"ts": "2026-09-14T15:10:52Z", "variant": "v1-harness", "batch": "B3e", "step": "animfix2", "model": "qwen3.8-flash", "max_turns": 120, "turns": 121, "duration_s": 1658.9, "api_ms": 1471298, "ttft_ms": null, "cost_usd": 8.1961, "session_id": "fd70864a-b034-446c-98be-97a4240ac4fb", "resume_from": null, "ctx_per_turn_avg": 3854, "ctx_per_turn_max": 3857, "syspack": "B3e-syspack.md", "exit": 1, "timeout": null, "input_tokens": 720, "output_tokens": 83269, "cache_read": 10308888, "cache_creation": 150196}
+[B3e/animfix2] 121 lượt · 1658.9s · vào 720 · cache 10,308,888 · ra 83,269 · $8.1961 · ok
+[2026-09-14 15:10:52] DỪNG CHUỖI: phiên có chạy nhưng chưa xong sạch (rc=1) — không chạy cổng/build trên trạng thái dở
+[2026-09-14 15:13:17] ANIM VÒNG 3 (vẽ theo khung) bắt đầu…
+METRICS {"ts": "2026-09-14T15:38:45Z", "variant": "v1-harness", "batch": "B3e", "step": "animfix3", "model": "qwen3.8-flash", "max_turns": 70, "turns": 71, "duration_s": 1527.3, "api_ms": 1441920, "ttft_ms": null, "cost_usd": 5.6767, "session_id": "f45a6db0-c0b7-4213-ab3e-c9a6d553ba8a", "resume_from": null, "ctx_per_turn_avg": 4374, "ctx_per_turn_max": 4410, "syspack": "B3e-syspack.md", "exit": 1, "timeout": null, "input_tokens": 420, "output_tokens": 76366, "cache_read": 5748625, "cache_creation": 139586}
+[B3e/animfix3] 71 lượt · 1527.3s · vào 420 · cache 5,748,625 · ra 76,366 · $5.6767 · ok
+[2026-09-14 15:38:45] DỪNG CHUỖI: phiên chạy nhưng chưa xong sạch (rc=1)

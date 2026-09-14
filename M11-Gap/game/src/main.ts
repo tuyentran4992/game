@@ -29,7 +29,7 @@ import type { KV, Save } from './logic/save';
 import { applyResult, win } from './logic/stars';
 import type { ChapterLevelConfig, LevelSpec } from './logic/types';
 import { createAdapter } from './platform';
-import { applyDebugHooks, parseDebugQuery, readSearch, type DebugFlags } from './platform/debug';
+import { applyDebugHooks, parseDebugQuery, publishMotionProbe, readSearch, type DebugFlags } from './platform/debug';
 import type { PlatformAdapter, PlatformStorage, RewardedPlacement } from './platform/types';
 import { SESSION_KEY, type GameSession } from './render/session';
 import { CAMERA } from './render/layout';
@@ -242,6 +242,8 @@ export function makeSession(adapter: PlatformAdapter, flags: DebugFlags): GameSe
 /** Dựng Phaser.Game thật — index.html là nơi duy nhất gọi (xem cuối file). */
 export function startGame(): Phaser.Game {
   const { adapter, flags } = bootGame();
+  // Cửa đo hoạt cảnh cho QA — dev/standalone mới có thật (kênh nộp: bản Null Object rỗng).
+  publishMotionProbe();
   const session = makeSession(adapter, flags);
   const game = new Phaser.Game({
     type: Phaser.AUTO,

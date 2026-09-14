@@ -10,7 +10,7 @@
 // THÊM KIỂU NẾP MỚI = 1 NHÓC trong types.ts (FoldKind) + 1 DÒNG ở FOLD_RULES ⇒ đúng 2 file.
 // NGUỒN HÌNH HỌC: /data/shared-board-agent-waves/game-gap-giay/code/g01_fold_sim.py (make_layers/img)
 //   — bảng chân lý 22 dòng ở tests/logic/fold-unfold.test.ts chính là output của bản Python đó.
-import { buildPacket, holeKey, unfoldVia } from './foldGeometry';
+import { buildPacket, holeKey, layerTracks, unfoldVia } from './foldGeometry';
 import type { Affine, Packet, SheetSize } from './foldGeometry';
 import { cmp, flatPoints, mul, rat, ratPoint, toPoints } from './rational';
 import type { FoldKind, Point, Rat, RatPoint } from './types';
@@ -103,6 +103,16 @@ function nextSize(sheet: SheetSize, rule: FoldRule): SheetSize {
  * kiểu nếp ⇒ ma trận phản chiếu, nhờ bảng FOLD_RULES.
  */
 export function makeLayers(folds: FoldKind[], size: Rat): Packet {
+  const run = creaseRun(folds, size);
+  return buildPacket(run.creases, run.final);
+}
+
+/**
+ * Ma trận phản chiếu của TỪNG nếp, theo thứ tự gấp (nếp sau dựng trên kích thước packet
+ * của nếp trước) + kích thước packet CUỐI. Đây là vòng duy nhất đi qua bảng FOLD_RULES ⇒
+ * `makeLayers`, `creaseMatrices`, `layerCrossings` không thể lệch nhau.
+ */
+function creaseRun(folds: FoldKind[], size: Rat): { creases: Affine[]; final: SheetSize } {
   let sheet: SheetSize = { w: size, h: size };
   const creases: Affine[] = [];
   for (const kind of folds) {
@@ -110,7 +120,20 @@ export function makeLayers(folds: FoldKind[], size: Rat): Packet {
     creases.push(rule.crease(sheet));
     sheet = nextSize(sheet, rule);
   }
-  return buildPacket(creases, sheet);
+  return { creases, final: sheet };
+}
+
+/** Ma trận của TỪNG nếp một (hệ packet TẠI thời điểm nếp đó gấp) — dữ liệu cho hoạt cảnh. */
+export function creaseMatrices(folds: FoldKind[], size: Rat): Affine[] {
+  return creaseRun(folds, size).creases;
+}
+
+/**
+ * nếp mà TỪNG lớp đi qua, theo ĐÚNG thứ tự `makeLayers(...).layers` (chỉ số nếp tăng dần).
+ * Hoạt cảnh gấp/mở lật từng nếp của một lớp nên cần lịch sử này, không chỉ ma trận tổng.
+ */
+export function layerCrossings(folds: FoldKind[], size: Rat): readonly (readonly number[])[] {
+  return layerTracks(creaseRun(folds, size).creases).map((t) => t.crossed);
 }
 
 /**

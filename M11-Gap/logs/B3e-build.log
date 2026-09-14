@@ -263,3 +263,17 @@ vite v5.4.21 building for standalone...
 transforming...
 ✓ 70 modules transformed.
 rendering chunks...
+computing gzip size...
+dist/index.html                            1.06 kB │ gzip:   0.78 kB
+dist/assets/index-D0V3aUaA.js             98.62 kB │ gzip:  33.84 kB
+dist/assets/vendor-phaser-Dz3O88Pw.js  1,684.91 kB │ gzip: 381.36 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 12.07s
+===== 5/5 zip 2 bản nộp + đối chiếu =====
+    zip build/paper-crease-ytgame-20260914.zip = 1194567 B · diff -r zip≡build/ytgame: 0 khác lệch
+    zip build/paper-crease-playgama-20260914.zip = 1195262 B · diff -r zip≡build/playgama: 0 khác lệch
+XONG: build/ytgame + build/playgama là 2 bản nộp; dist/ = bản standalone (dev).

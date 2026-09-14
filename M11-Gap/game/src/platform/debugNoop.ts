@@ -45,10 +45,16 @@ export function applyDebugHooks(
   return adapter;
 }
 
+/** Bundle nộp KHÔNG công bố cửa đo hoạt cảnh nào — không global, không thiết bị nào để đọc. */
+export function publishMotionProbe(): void {
+  // Không có gì: toàn bộ thân của mặt đo (object + khoá) đã bị alias loại khỏi graph.
+}
+
 /** Bằng chứng hợp đồng: MỌI export giá trị của debug.ts phải có ở đây với đúng cùng kiểu. */
 export const STRIPPED_DEBUG_API: typeof import('./debug') = {
   readSearch,
   parseDebugQuery,
   withEphemeralSave,
   applyDebugHooks,
+  publishMotionProbe,
 };

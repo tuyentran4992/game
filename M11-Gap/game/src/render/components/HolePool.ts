@@ -21,6 +21,9 @@ export class HolePool {
 
   private readonly host: Phaser.GameObjects.Container;
 
+  /** Nhịp mờ đang dở của CHÍNH pool này — `place`/`hide` phải cắt được nó. */
+  private fadeTween: Phaser.Tweens.Tween | null = null;
+
   constructor(scene: Phaser.Scene, host: Phaser.GameObjects.Container) {
     this.scene = scene;
     this.host = host;
@@ -53,6 +56,7 @@ export class HolePool {
    * mật độ (bao nhiêu lỗ) không phát hiện nổi hai lỗ gần trùng nhau — Việc 3 vòng layout 2.
    */
   place(points: readonly Point[], side: number, ox: number, oy: number, role: PoolRole, style: HoleStyle): void {
+    this.stopFade();
     this.grow(points.length);
     const units = points.map((p) => ({ x: toNumber(p.x), y: toNumber(p.y) }));
     const r = holeRadius(role, units.length, side, closestPair(units, side));
@@ -71,6 +75,42 @@ export class HolePool {
   }
 
   hide(): void {
+    this.stopFade();
     this.items.forEach((hole) => hole.setVisible(false));
+  }
+
+  /** Số lỗ ĐANG nhìn thấy (scale > 0) — cửa đếm cho hoạt cảnh pop và cho QA. */
+  shown(): number {
+    return this.items.filter((hole) => hole.visible && hole.scaleX > 0).length;
+  }
+
+  /**
+   * Cho cả bộ lỗ teo về 0 trong `ms` rồi ẩn hẳn — vết đục thuộc về lúc giấy CÒN gập, nên
+   * khi tờ giấy mở bung nó đi theo giấy chứ không nằm trơ trên tờ phẳng. `place()` giết nhịp
+   * này nên một bộ lỗ không bao giờ bị hai hoạt cảnh giành nhau.
+   */
+  fade(ms: number): void {
+    this.stopFade();
+    const live = this.items.filter((hole) => hole.visible);
+    if (live.length === 0) return;
+    this.fadeTween = this.scene.tweens.add({
+      targets: live,
+      scaleX: 0,
+      scaleY: 0,
+      duration: ms,
+      ease: 'Cubic.Out',
+      onComplete: () => {
+        this.fadeTween = null;
+        live.forEach((hole) => {
+          if (hole.scaleX === 0) hole.setVisible(false); // lỗ đã được đặt lại thì không đụng
+        });
+      },
+    });
+  }
+
+  /** Huỷ nhịp mờ đang dở (hoạt cảnh mới nạp đề phải thấy bộ lỗ thật, không thấy cái đang biến mất). */
+  private stopFade(): void {
+    if (this.fadeTween !== null) this.fadeTween.stop();
+    this.fadeTween = null;
   }
 }

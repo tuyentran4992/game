@@ -71,6 +71,19 @@ export function cutRegionPoints(folds: FoldKind[], sheet: Rat, snip: CutSnip): P
   return out;
 }
 
+/**
+ * HÌNH của một nhát cắt trên packet: tam giác vuông tại góc packet, hai cạnh góc vuông dài
+ * `size` (hệ packet, cùng khung với `cutRegionPoints`). Tầng vẽ dùng đúng tam giác này để
+ * show "góc giấy đã bị cắt đi" trên gói giấy — không tự suy hướng từ tên góc (E2).
+ */
+export function cutSnipTriangle(packet: { w: Rat; h: Rat }, snip: CutSnip): Point[] {
+  const at = PACKET_CORNERS[snip.corner](packet);
+  const sign = CORNER_SIGNS[snip.corner];
+  const dx = mul(rat(sign.sx), snip.size);
+  const dy = mul(rat(sign.sy), snip.size);
+  return [at, point(add(at.x, dx), at.y), point(at.x, add(at.y, dy))];
+}
+
 /** Phân loại một CỤM tổn thương của vùng cắt (định luật oracle §7.5). */
 export type NotchKind = 'full-hole' | 'edge-notch';
 /** Số Ô RASTER tối thiểu mà một cụm phải phủ theo mỗi chiều để trông như LỖ TRÒN (D2). */

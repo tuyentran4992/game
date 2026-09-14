@@ -67,21 +67,38 @@ function wrap(affine: Affine, packet: SheetSize): Layer {
 }
 
 /**
+ * Một lớp KÈM LỊCH SỬ GẤP: `crossed` = chỉ số nếp mà lớp đó đi qua, theo thứ tự gấp tăng dần.
+ * Hoạt cảnh gấp/mở (render/anim/foldShape) cần từng nếp riêng chứ không chỉ ma trận tổng,
+ * và MỘT nguồn duy nhất của cặp (affine, crossed) là vòng nhân đôi lớp ở `layerTracks`.
+ */
+export type Tracked = { readonly affine: Affine; readonly crossed: readonly number[] };
+
+/**
+ * Danh sách lớp sau `creases` nếp, kèm tập nếp của từng lớp: mỗi nếp NHÂN ĐÔI số lớp và lớp
+ * mới chính là lớp cũ ∘ phản chiếu của nếp đó (đúng thứ tự append của `buildPacket`).
+ */
+export function layerTracks(creases: readonly Affine[]): Tracked[] {
+  let acc: Tracked[] = [{ affine: IDENTITY, crossed: [] }];
+  creases.forEach((refl, j) => {
+    const prev = acc;
+    const moved: Tracked[] = prev.map((t) => ({ affine: composeAffine(t.affine, refl), crossed: [...t.crossed, j] }));
+    acc = [...moved, ...prev]; // đúng thứ tự append cũ: mọi lớp MỚI đứng trước mọi lớp CŨ
+  });
+  return acc;
+}
+
+/**
  * Dựng packet từ danh sách nếp (theo thứ tự gấp) đã được tầng registry tính ma trận trước.
  * Mỗi nếp NHÂN ĐÔI số lớp: lớp mới = lớp cũ ∘ phép phản chiếu qua nếp giữa.
  * `final` = kích thước packet SAU cùng ⇒ mọi lát cắt tham chiếu về packet cuối.
  */
 export function buildPacket(creases: readonly Affine[], final: SheetSize): Packet {
-  let layers: Affine[] = [IDENTITY];
-  for (const refl of creases) {
-    const moved = layers.map((L) => composeAffine(L, refl));
-    layers = moved.concat(layers);
-  }
+  const tracks = layerTracks(creases);
   return {
     packetSize: cmp(final.w, final.h) <= 0 ? final.w : final.h,
     w: final.w,
     h: final.h,
-    layers: layers.map((L) => wrap(L, final)),
+    layers: tracks.map((t) => wrap(t.affine, final)),
   };
 }
 

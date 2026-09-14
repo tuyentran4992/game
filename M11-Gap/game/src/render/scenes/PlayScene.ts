@@ -27,9 +27,10 @@ import {
 // CỬA ĐĂNG KÝ RECT QA của scene này là this.hook (makeTestidHook -> registerTestid trong
 // ui/testids.ts); gọi thẳng registerTestid ở đây là copy lại phép đổi toạ độ (A9) — cấm.
 import {
-  applyOutcome, breathPlan, createInputBuffer, DUR, holeBudget, holePlan, isOpenPhase,
-  optionEnabledByState, RENDER_BY_PHASE, TOUCH, unfoldPlan, unfoldTimeline, type RenderPhase,
+  applyOutcome, breathPlan, createInputBuffer, DUR, holeBudget, isOpenPhase,
+  optionEnabledByState, RENDER_BY_PHASE, TOUCH, unfoldTimeline, type RenderPhase,
 } from '../anim/unfoldPlan';
+import { MOTION_PHASE, setMotionPhase } from '../../ui/motion';
 import { InkBadge } from '../components/InkBadge';
 import { OptionCard } from '../components/OptionCard';
 import { SheetView } from '../components/SheetView';
@@ -166,14 +167,13 @@ export class PlayScene extends Phaser.Scene {
     });
   }
 
-  /** Nạp một đề: folded + chờ 140ms (DUR.head) rồi mới sang `ready` (loading -> ready). */
+  /** Nạp một đề: tờ giấy MỞ -> hoạt cảnh gập vào + mũi đục -> chờ 140ms (DUR.head) rồi `ready`. */
   private openSpec(spec: LevelSpec): void {
     this.state = initialLevelState(spec);
     this.phase = 'unfolding';
     this.held.reset();
     const theme = themeFor(spec.chapter);
     const l = layoutOf(this.cameras.main.width, this.cameras.main.height);
-    this.sheet.fold(spec.folds);
     this.cards.forEach((card, i) => {
       card.retint(theme, l.options[i]);
       card.setPoints(toPoints(spec.options[i].holes));
@@ -183,8 +183,34 @@ export class PlayScene extends Phaser.Scene {
     this.explainText.setText('');
     this.restartClock(spec);
     this.arrange();
-    this.time.delayedCall(DUR.head, () => this.go(markReady(this.state)));
+    // BUGFIX "mất hoạt cảnh gấp giấy": tờ giấy PHẢI hiện ra ĐANG gập vào rồi mũi đục mới xuống
+    // (như `drawFoldPunch` của MVP) — bản cũ đặt thẳng tư thế gấp cuối nên không có gì để xem.
+    this.sheet.spread(spec.folds, spec.action);
+    this.foldIn();
   }
+
+  /**
+   * Nhịp vào đề: gập từng lớp theo `foldInPlan` -> đục lỗ của ĐỀ -> chờ thêm `DUR.head` mới
+   * sang `ready`. Suốt nhịp này máy ở pha `loading` nên bảng GATE đã khoá chạm (buffer=1).
+   */
+  private foldIn(): void {
+    setMotionPhase(MOTION_PHASE.folding);
+    this.sheet.foldIn(() => {
+      setMotionPhase(MOTION_PHASE.folded);
+      this.time.delayedCall(DUR.head, () => this.go(markReady(this.state)));
+    });
+  }
+
+  /**
+   * TRÁI TIM của tầng vẽ: mỗi khung hình đưa delta cho đồng hồ hoạt cảnh của tờ giấy và tờ giấy
+   * VẼ LẠI từ giá trị hiện tại của nó (SheetView.tick -> SheetView.draw(frame)). Không có đường
+   * "vẽ lại khi đổi pha" — đó chính là lỗi khiến mắt không thấy chuyển động (hình đứng im tới
+   * lúc kết thúc), và cũng không dùng tween: xem anim/motionTrack.ts.
+   */
+  override update(_time: number, delta: number): void {
+    if (this.sheet) this.sheet.tick(delta);
+  }
+
 
   /** MỘT cửa đổi state: máy quyết, scene chỉ vẽ lại (PC-16). */
   private go(next: LevelState): void {
@@ -247,11 +273,18 @@ export class PlayScene extends Phaser.Scene {
     if (budget.hidden > 0) this.report({ reason: 'holes-clipped', level: st.spec.levelIndex, hidden: budget.hidden });
     if (plan === null) this.report({ reason: 'no-timeline', level: st.spec.levelIndex, layers });
     playFx(this, 'unfold', this.session.soundOn());
-    this.sheet.unfold(unfoldPlan(layers), () => {
-      if (wrong) this.sheet.explain(points, 'picked', () => this.finish());
-      else this.sheet.popHoles(points, holePlan(budget.shown), 'answer', () => this.finish());
+    setMotionPhase(MOTION_PHASE.unfolding);
+    this.sheet.unfold(() => {
+      if (wrong) {
+        setMotionPhase(MOTION_PHASE.explaining);
+        this.sheet.explain(points, 'picked', () => this.finish());
+      } else {
+        setMotionPhase(MOTION_PHASE.holes);
+        this.sheet.popHoles(points, 'answer', () => this.finish());
+      }
     });
   }
+
 
   /** Báo bất thường của tầng vẽ cho scene cha (QA nối vào event này — không im lặng cắt số). */
   private report(detail: Record<string, number | string>): void {
@@ -262,6 +295,7 @@ export class PlayScene extends Phaser.Scene {
 
   /** Hoạt cảnh kết thúc: vẽ pha thật của máy + chơi phần thưởng của bảng OUTCOME. */
   private finish(): void {
+    setMotionPhase(MOTION_PHASE.result);
     this.paint();
     applyOutcome(this.state, {
       fx: (key) => playFx(this, key, this.session.soundOn()),
@@ -286,7 +320,8 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private backToReady(next: LevelState): void {
-    this.sheet.fold(this.state.spec.folds);
+    this.sheet.fold(this.state.spec.folds, this.state.spec.action);
+    setMotionPhase(MOTION_PHASE.folded);
     this.go(next);
   }
 
@@ -295,7 +330,7 @@ export class PlayScene extends Phaser.Scene {
     const next = useHint(this.state);
     if (next === this.state) return;
     this.go(next);
-    this.sheet.highlightCrease(peekFold(this.state), this.state.spec.folds);
+    this.sheet.highlightCrease(peekFold(this.state));
     this.sheet.breath(breathPlan());
     playFx(this, 'punch', this.session.soundOn());
   }
@@ -387,7 +422,7 @@ export class PlayScene extends Phaser.Scene {
 
   private stopBreath(): void {
     this.sheet.stopBreath();
-    this.sheet.highlightCrease(null, this.state.spec.folds);
+    this.sheet.highlightCrease(null);
   }
 
   private clearTimers(): void {
