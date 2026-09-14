@@ -68,7 +68,7 @@ python M11-Gap\tools\qa_motion_probe.py http://localhost:8080
 | 1 | **Cổng smell 3 vi phạm**: `SheetView.ts` **415 dòng** > 350 · khối 6 dòng trùng `FoldPaper.ts:56 ↔ SheetHoles.ts:27` · hằng `0` mang 3 tên `FLASH_PEAK / GRAIN_ALPHA / BAND_WIDTH` | `node tools/gate-smell.mjs` |
 | 2 | **B1c: 10 mục review FAIL** — nặng nhất **mất dữ liệu khi migrate save v0→v1** (`ghosts/walls` bị xoá sạch, `writeSave` ghi bản trống), **save không trần byte** (blob 6,15MB vẫn `ok`, PC-16 đòi <3MB), i18n lọt `{n}` ra UI, `t(key,null)` ném TypeError, bộ kiểm kiểu chép 3 lần, 6 test tự lấy `defaultSave()` làm oracle | `logs/NIGHT-B1c-NEEDS-HUMAN.md` |
 | 3 | **B3b: 26 khối 6 dòng trùng** giữa các scene (header/dựng panel/nối nút) → gom helper chung | `logs/B3b-gate.log` |
-| 4 | **2 file quá dài** (nợ đã khai): `PlayScene.ts` 487 · `sdkAdapter.ts` 251 | `game/tools/gate-allow.json` |
+| 4 | **2 file quá dài** (nợ đã khai trong `gate-allow.json`): `PlayScene.ts` **522** · `sdkAdapter.ts` 251 | `node tools/gate-smell.mjs` |
 | 5 | **2 vênh DATA-MODEL**: nhịp P1-04 (16 archetype > 15 màn/chương) · P1-02 vs P4-02 | `specs/1-paper-crease/DATA-MODEL.md` §9 |
 | 6 | 2 mục retention `unverified` (số skin "đủ 2-3 tuần", đường ống đo offline) | `M11-Gap/retention/` |
 
