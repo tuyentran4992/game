@@ -1,0 +1,80 @@
+
+[tool] Bash: {'command': 'ls && echo "--- logic ---" && ls src/logic && echo "--- tests ---" && ls tests/logic && echo "--- build dirs ---" && ls -d build/* 2>/dev/null; ls dist 2>/dev/null | h
+
+[tool] Bash: {'command': 'cat package.json && echo "=== vitest.config ===" && cat vitest.config.ts', 'description': 'Read package.json and vitest config'}
+
+[tool] Bash: {'command': 'npm run typecheck 2>&1 | tail -15 && echo "=== TEST ===" && npm run test:logic 2>&1 | tail -30', 'description': 'Run typecheck and logic tests gate', 'timeout': 600000
+
+[tool] Bash: {'command': 'cat index.html && echo "=== VITE ===" && cat vite.config.ts', 'description': 'Read index.html and vite config'}
+
+[tool] Bash: {'command': 'ls -R build | head -40; echo "=== dist ==="; ls dist dist/assets 2>/dev/null | head -40; echo "=== sizes ==="; du -sb build/* dist 2>/dev/null; echo "=== zip? ==="; ls
+
+[tool] Bash: {'command': 'wc -l src/main.ts src/platform/*.ts src/logic/save.ts src/logic/cache.ts src/logic/recordsStore.ts && ls scripts tools config metadata public | head -60', 'description
+
+[tool] Bash: {'command': 'cat scripts/build-channels.sh; echo "=== check-bundle ==="; cat tools/check-bundle.mjs; echo "=== dist/index.html ==="; cat dist/index.html', 'description': 'Read chan
+
+[tool] Bash: {'command': 'grep -nEo "https?://[a-zA-Z0-9./_-]+" dist/assets/*.js | sed \'s/:.*\\/\\// -> /\\//\' | sort | uniq -c | sort -rn | head -20; echo "=== network primitives in our code
+
+[tool] Bash: {'command': 'cat src/main.ts', 'description': 'Read main entry'}
+
+[tool] Bash: {'command': 'mkdir -p /tmp/b5-stress && rsync -a --exclude node_modules --exclude dist --exclude build /data/youtube-playables/M11-Gap/game/ /tmp/b5-stress/repo/ && ln -sfn /data/y
+
+[tool] Bash: {'command': 'mkdir -p /tmp/b5-stress/repo && tar -C /data/youtube-playables/M11-Gap/game -cf - --exclude=node_modules --exclude=dist --exclude=build --exclude=.git . | tar -C /tmp/
+
+[tool] Bash: {'command': 'grep -c "URLSearchParams\\|location.search\\|applyDebugHooks" dist/assets/index-*.js; echo "--- keys ---"; grep -oE "\\"(debug|seed|level|ad|mock)\\"" dist/assets/inde
+
+[tool] Bash: {'command': 'cd /tmp/b5-stress/repo && node node_modules/vite/bin/vite.js build --mode ytgame 2>&1 | tail -12 && rm -rf /tmp/b5-stress/ytgame && cp -r dist /tmp/b5-stress/ytgame &&
+
+[tool] Bash: {'command': 'cd /tmp/b5-stress/repo && node node_modules/vite/bin/vite.js build --mode ytgame 2>&1 | tail -8; mkdir -p /tmp/b5-stress/ytgame && cp -a dist/. /tmp/b5-stress/ytgame/ 
+
+[tool] Bash: {'command': 'cd /tmp/b5-stress/repo && node node_modules/vite/bin/vite.js build --mode playgama 2>&1 | tail -4; mkdir -p /tmp/b5-stress/playgama && cp -a dist/. /tmp/b5-stress/play
+
+[tool] Bash: {'command': 'cd /tmp/b5-stress/repo && for ch in ytgame playgama standalone; do echo "########## $ch"; node tools/check-bundle.mjs /tmp/b5-stress/$ch --channel $ch 2>&1 | tail -40;
+
+[tool] Bash: {'command': 'cd /tmp/b5-stress/repo && node tools/check-bundle.mjs /tmp/b5-stress/ytgame --channel ytgame 2>&1 | grep -E "FAIL|KẾT QUẢ|raw\\(|^CHECK|files="', 'description': 'List 
+
+[tool] Bash: {'command': 'cat src/platform/debug.ts; echo "=== index.ts ==="; cat src/platform/index.ts', 'description': 'Read debug hook and platform factory'}
+
+[tool] Bash: {'command': 'cd /tmp/b5-stress && sha256sum ytgame/assets/index-*.js playgama/assets/index-*.js standalone/assets/index-*.js | awk \'{print $1, $2}\'; echo "--- diff own chunk ytga
+
+[tool] Bash: {'command': 'cat src/logic/save.ts && echo "=== nullAdapter ===" && cat src/platform/nullAdapter.ts', 'description': 'Read save logic and null adapter'}
+
+[tool] Bash: {'command': 'grep -rn "faults" src --include=*.ts | grep -v "src/logic/save.ts\\|src/platform/debug.ts" | head -20; echo "=== SAVE_KEYS ==="; grep -n "SAVE_KEYS\\s*=" -A 10 src/log
+
+[tool] Bash: {'command': 'grep -n "export type LevelResult" -A 12 src/logic/levelState.ts; grep -n "type GameSession" -A 30 src/render/session.ts | head -45', 'description': 'Read LevelResult a
+
+[tool] Bash: {'command': 'cat > /tmp/b5-stress/repo/tests/logic/b5-review.test.ts <<\'TS\'\nimport { describe, expect, it, beforeEach } from \'vitest\';\nimport { bootGame, makeSession, seedFor
+
+[tool] Bash: {'command': 'head -40 tests/logic/scene-boot.test.ts; echo "=== helpers dir ==="; ls tests/logic/helpers; head -50 tests/logic/helpers/*.ts | head -80', 'description': 'Inspect how
+
+[tool] Bash: {'command': 'cd /tmp/b5-stress/repo && sed -i "1i import \'./helpers/dom-shim\'" tests/logic/b5-review.test.ts && node node_modules/vitest/vitest.mjs run tests/logic/b5-review.test
+
+[tool] Bash: {'command': 'cd /tmp/b5-stress/repo && node node_modules/vitest/vitest.mjs run tests/logic/b5-review.test.ts 2>&1 | grep -E "✓|×|FAIL .*>|AssertionError|Expected|Received|Error:" |
+
+[tool] Bash: {'command': 'cd /tmp/b5-stress/repo && python3 - <<\'PY\'\nimport re\np=\'tests/logic/b5-review.test.ts\'\ns=open(p).read()\ns=s.replace("""    const r = loadSave(kv);\n    expect(
+
+[tool] Bash: {'command': 'sed -n \'1,60p\' src/render/scenes/BootScene.ts; echo "=== loaderror/onerror/noscript ==="; grep -rn "loaderror\\|onerror\\|noscript\\|addEventListener(\'error\'\\|err
+
+[tool] Bash: {'command': 'sed -n \'60,120p\' src/render/scenes/BootScene.ts; echo "=== asset count ==="; grep -c "key:" src/render/generated/assetList.ts; grep -oE "\\"[a-z0-9_]+\\.wav\\"|\'[a-
+
+[tool] Bash: {'command': 'ls /data/shared-board-agent-waves/game-gap-giay/code/ 2>/dev/null | head; python3 /data/shared-board-agent-waves/game-gap-giay/code/g01_fold_sim.py 2>&1 | tail -25', '
+
+[tool] Bash: {'command': 'cat > /tmp/b5-stress/repo/tests/logic/b5-fuzz.test.ts <<\'TS\'\nimport \'./helpers/dom-shim\'\nimport { describe, expect, it } from \'vitest\'\nimport { levelSpec } fr
+
+[tool] Bash: {'command': 'cd /tmp/b5-stress/repo && node node_modules/vitest/vitest.mjs run tests/logic/b5-fuzz.test.ts 2>&1 | grep -E "Error|error|❯|✗|not exported|does not" | head -15; echo "
+
+[tool] Bash: {'command': 'grep -n "buildPacket\\|unfoldVia\\|Folds\\|foldsOf\\|import" tests/logic/fold-unfold.test.ts | head -25; echo "=== holes test ==="; grep -n "buildPacket\\|unfoldVia\\|
+
+[tool] Bash: {'command': 'cd /tmp/b5-stress/repo && python3 - <<\'PY\'\np=\'tests/logic/b5-fuzz.test.ts\'\ns=open(p).read()\nhead = s.split("describe(\'C5/F6")[0]\nhead = head.replace("""import
+
+[tool] Bash: {'command': 'sed -n \'100,150p\' src/logic/foldRules.ts; echo "=== helpers rk/pk/R ==="; grep -n "export const R\\|export const pk\\|export const rk\\|export const p =\\|export fun
+
+[tool] Bash: {'command': 'grep -n "unfoldHoles(\\|unfoldHolesWithCount(\\|R(1n\\|flatPts\\|holeSet(" tests/logic/fold-unfold.test.ts | head -20; echo "=== helpers R/p/flatPts defs ==="; grep -n
+
+[tool] Bash: {'command': 'python3 /data/shared-board-agent-waves/game-gap-giay/code/g01_fold_sim.py 2>&1 | head -8; echo "=== LevelSpec ==="; grep -n "export type LevelSpec" -A 20 src/logic/typ
+
+[tool] Bash: {'command': 'cat > /tmp/b5-stress/repo/tests/logic/b5-fuzz.test.ts <<\'TS\'\nimport \'./helpers/dom-shim\'\nimport { describe, expect, it } from \'vitest\'\nimport { levelSpec } fr
+
+[tool] Bash: {'command': 'cd /tmp/b5-stress/repo && python3 - <<\'PY\'\np=\'tests/logic/b5-fuzz.test.ts\'\ns=open(p).read()\ns=s.replace("""      const keys = new Set(spec.options.map((o) => ne
+
+[result] is_error=True num_turns=31 duration_ms=527944 cost_usd=1.6000242500000004

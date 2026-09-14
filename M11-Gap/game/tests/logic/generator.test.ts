@@ -372,8 +372,6 @@ function scanTable(table: unknown): Scan {
 describe('B1/F-1 · cfg.punchCount được tôn trọng tuyệt đối trên bảng chương thật 8×15', () => {
   it('(a) 120 màn: không màn nào sinh ÍT điểm đục hơn config, không màn nào ném oan', () => {
     const r = scanTable(chaptersTable(3))
-    console.log('[B1] bảng holes_max=3: punch đủ=' + r.punched + ' cắt=' + r.cut +
-      ' ném đúng lý do hình học=' + r.overAsk.length + ' :: ' + r.overAsk.slice(0, 3).join(' | '))
     expect(r.short, 'sinh thiếu điểm đục: ' + r.short.join(' || ')).toEqual([])
     expect(r.badThrow, 'ném sai lý do: ' + r.badThrow.join(' || ')).toEqual([])
     expect(r.punched + r.cut).toBe(CAMPAIGN_LEVELS - r.overAsk.length)

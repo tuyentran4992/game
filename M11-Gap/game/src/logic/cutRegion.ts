@@ -39,8 +39,11 @@ const CUT_SNIP_LIMIT: readonly { readonly fromChapter: number; readonly snips: n
   { fromChapter: 4, snips: 1 },
   { fromChapter: 1, snips: 0 },
 ];
-/** Trần nhát cắt của bảng = số nhát lớn nhất (dẫn xuất, không khai hằng thứ hai). */
-const CUT_MAX_SNIPS = CUT_SNIP_LIMIT.reduce((m, r) => Math.max(m, r.snips), 0);
+/**
+ * Trần nhát cắt của bảng = số nhát lớn nhất (dẫn xuất, không khai hằng thứ hai).
+ * Tầng vẽ đọc nó để tính trần số lỗ phải vẽ nổi (review F1) — xem src/render/holeView.ts.
+ */
+export const CUT_MAX_SNIPS = CUT_SNIP_LIMIT.reduce((m, r) => Math.max(m, r.snips), 0);
 export const snipLimitFor = (chapter: number): number =>
   CUT_SNIP_LIMIT.find((r) => chapter >= r.fromChapter)?.snips ?? 0;
 /** Số nhát cắt thật sự của một action (độ khó §6.1 đếm theo NHÁT, không theo điểm). */

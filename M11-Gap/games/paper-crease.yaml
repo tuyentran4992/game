@@ -1,0 +1,165 @@
+# Hồ sơ nộp Paper Crease — schema theo mẫu M1 (games/buzz-blitz.yaml).
+# version + metadata.title/short_desc được stamps lại từ game/package.json bởi
+# game/scripts/build-channels.sh ⇒ SỐ DUY NHẤT nằm trong package.json, không khai ở nơi khác.
+# Mọi con số nghiệp vụ dưới đây CHÉP từ nguồn thật: src/logic/progression.ts (CAMPAIGN, GATE_STARS,
+# STAR_SCALE), config/ink.json, config/skins.json, src/render/theme/paperTheme.ts,
+# src/render/generated/assetList.ts, src/platform/types.ts (placement quảng cáo).
+name: paper-crease
+version: 0.1.0
+
+metadata:
+  title: "Paper Crease — Fold, Punch, Unfold"
+  short_desc: "Fold the sheet, punch a hole, then picture what the unfolded paper looks like. 120 logic puzzles across 8 chapters, one tap each."
+  genre: ["Puzzle", "Casual"]
+  theme: "paper pastel, origami flat"
+  style: "giấy pastel ấm, nếp gấp xanh mực, nền gradient tối thiểu, chữ Fraunces"
+  flag_movie: false
+
+assets:
+  # 8 texture giấy procedural (B4) — khoá texture cũng là `grain` của palette chương.
+  - key: skin_default
+    type: png
+    description: "Giấy nền mặc định, tileABLE, assets/skin_default.png (1.2 KB)"
+    _size_kb: 1
+    _usage_scenes: [Play, Title]
+  - key: skin_kraft
+    type: png
+    description: "Giấy kraft chương 1 — assets/skin_kraft.png (57.0 KB)"
+    _size_kb: 56
+    _usage_scenes: [Play]
+  - key: skin_origami
+    type: png
+    description: "Giấy origami (skin mua 40 Mực) — assets/skin_origami.png (59.1 KB)"
+    _size_kb: 58
+    _usage_scenes: [Play, Shop]
+  - key: skin_mizu
+    type: png
+    description: "Giấy mizu chương 3 — assets/skin_mizu.png (12.0 KB)"
+    _size_kb: 12
+    _usage_scenes: [Play]
+  - key: skin_ruled
+    type: png
+    description: "Giấy kẻ line chương 4 — assets/skin_ruled.png (2.1 KB)"
+    _size_kb: 2
+    _usage_scenes: [Play]
+  - key: skin_grid
+    type: png
+    description: "Giấy ô vuông chương 5 — assets/skin_grid.png (2.0 KB)"
+    _size_kb: 2
+    _usage_scenes: [Play]
+  - key: skin_dots
+    type: png
+    description: "Giấy chấm bi chương 6 — assets/skin_dots.png (1.9 KB)"
+    _size_kb: 2
+    _usage_scenes: [Play]
+  - key: skin_cream
+    type: png
+    description: "Giấy kem chương 8 / foil — assets/skin_cream.png (51.6 KB)"
+    _size_kb: 50
+    _usage_scenes: [Play]
+  # 14 tranh album (treo khi sưu tầm) + 6 huy hiệu chương.
+  - key: album_01
+    type: png
+    description: "Album 01..14 — assets/album_01.png … album_14.png, tổng 225.5 KB"
+    _size_kb: 221
+    _usage_scenes: [Album]
+  - key: badge_01
+    type: png
+    description: "Huy hiệu 01..06 — assets/badge_01.png … badge_06.png, tổng 290.6 KB"
+    _size_kb: 284
+    _usage_scenes: [Album, End]
+  - key: icon_512
+    type: png
+    description: "Icon kênh 512x512 — assets/icon_512.png (1.3 KB)"
+    _size_kb: 1
+    _usage_scenes: [Boot]
+  # 8 tiếng numpy-synth (B4), tổng 119.8 KB.
+  - key: fold
+    type: audio
+    description: "SFX gấp giấy <0.4s — sfx/fold.wav (15.0 KB)"
+    _size_kb: 15
+    _usage_scenes: [Play]
+  - key: unfold
+    type: audio
+    description: "SFX mở giấy — sfx/unfold.wav (22.1 KB)"
+    _size_kb: 22
+    _usage_scenes: [Play]
+  - key: punch
+    type: audio
+    description: "SFX đục lỗ — sfx/punch.wav (5.3 KB)"
+    _size_kb: 5
+    _usage_scenes: [Play]
+  - key: correct
+    type: audio
+    description: "SFX đáp án đúng — sfx/correct.wav (26.5 KB)"
+    _size_kb: 26
+    _usage_scenes: [Score]
+  - key: wrong
+    type: audio
+    description: "SFX đáp án sai — sfx/wrong.wav (15.0 KB)"
+    _size_kb: 15
+    _usage_scenes: [Score]
+  - key: star
+    type: audio
+    description: "SFX nhận sao — sfx/star.wav (18.6 KB)"
+    _size_kb: 18
+    _usage_scenes: [Score]
+  - key: click
+    type: audio
+    description: "SFX bấm nút — sfx/click.wav (2.7 KB)"
+    _size_kb: 3
+    _usage_scenes: [UI]
+  - key: counter
+    type: audio
+    description: "SFX đếm ngược (chương 7-8 có timer) — sfx/counter.wav (13.3 KB)"
+    _size_kb: 13
+    _usage_scenes: [Play]
+
+mechanics:
+  campaign:
+    chapters: 8
+    levels_per_chapter: 15
+    levels_total: 120
+    gate_stars: 12          # chương kế mở khi chạm ~12/15 màn đã chấm (PC-07)
+    free_hint_gap: 2        # cooldown 2 màn giữa 2 lần hint miễn phí (PC-08)
+    star_scale: { min: 0, max: 3, slots: 120 }
+  puzzle:
+    fold_rules: [H, V, D, cut, snip, stack, mirror]   # ruleId từng chương 1..8
+    max_layers: 6
+    punch_max: 2
+    cut_from_chapter: 4
+    diagonal_from_chapter: 6
+  ink:                       # đơn vị tiền trong game — KHÔNG có tiền thật (PC-12)
+    base_by_stars: [1, 2, 3, 5]
+    streak_bonus:
+      - { at: 3, bonus: 2 }
+      - { at: 5, bonus: 4 }
+      - { at: 8, bonus: 8 }
+  skins:
+    currency: ink
+    starter: skin_classic
+    prices:
+      - { id: skin_classic, ink: 0 }
+      - { id: skin_origami, ink: 40 }
+      - { id: skin_foil, ink: 120 }
+  ad:
+    rewarded_placements: [undo, hint, continue, ink_x2]
+    interstitial: true       # sau màn, qua session.showInterstitial() của tầng platform
+  progression:
+    milestone_interval: 12   # = GATE_STARS: mốc mở chương
+    combo_per: 3             # = streak mốc đầu (ink.streak_bonus[0].at)
+    combo_bonus: 2           # = ink.streak_bonus[0].bonus
+    palettes:
+      - { key: kraft,      level: 1,  paper: "#FFFFFF", crease: "#9FB3C8", ink: "#17324D", bg_top: "#FFF7E8", bg_bottom: "#EADFC4", grain: skin_kraft }
+      - { key: washi,      level: 2,  paper: "#FBF6EC", crease: "#A7B8A0", ink: "#233A2E", bg_top: "#F3F7EC", bg_bottom: "#D8E3C9", grain: skin_origami }
+      - { key: tissue,     level: 3,  paper: "#FDFDFB", crease: "#C9C2D6", ink: "#2C2140", bg_top: "#F6F2FA", bg_bottom: "#DCD3E8", grain: skin_mizu }
+      - { key: newsprint,  level: 4,  paper: "#F4F1EA", crease: "#B7B3A8", ink: "#24221D", bg_top: "#EFEBE0", bg_bottom: "#CFC7B6", grain: skin_ruled }
+      - { key: rice,       level: 5,  paper: "#FCFBF4", crease: "#8FA9B8", ink: "#1D2B4A", bg_top: "#F7FAF2", bg_bottom: "#DDE7D2", grain: skin_default }
+      - { key: glassine,   level: 6,  paper: "#EFF3F6", crease: "#7E93A3", ink: "#16303C", bg_top: "#E7F0F4", bg_bottom: "#C3D3DC", grain: skin_grid }
+      - { key: foil,       level: 7,  paper: "#E9EDF2", crease: "#9AA3B0", ink: "#22262E", bg_top: "#DCE3EC", bg_bottom: "#AEB8C6", grain: skin_dots }
+      - { key: gold-leaf,  level: 8,  paper: "#F8E9C4", crease: "#B9913B", ink: "#3A2A0B", bg_top: "#FBEFCB", bg_bottom: "#D8B75E", grain: skin_origami }
+
+publisher:
+  name: "ExcelToApp Games"
+  contact_email: "games@exceltoapp.vn"
+  website: ""

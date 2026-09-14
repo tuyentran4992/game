@@ -3,7 +3,6 @@ Bạn là REVIEWER ĐỘC LẬP cho batch B3a — TẤN CÔNG/STRESS. **CẤM S�
 Luật phiên + checklist F1-F8 + gói ngữ cảnh B3a đã nằm trong system prompt — đọc phần đó trước, KHÔNG cần mở file nào thêm.
 Đọc thêm đúng: `game/src/render/**`, `game/src/ui/**`, `game/tests/logic/view-b3a-*.test.ts`.
 
-F1-F8 hiểu theo bối cảnh render (F1-F7 fuzz logic đã có người chấm ở B1a; bạn chấm phần TƯƠNG TÁC). Bắt buộc dựng bằng chứng thật: `cd /data/youtube-playables/M11-Gap/game && npm run build:standalone && npx vite preview --port 4313 &` rồi bắn browser nếu máy có playwright/puppeteer (`node -e "require('playwright')"` hoặc `npx playwright --version`); KHÔNG có browser ⇒ chuyển sang phân tích tĩnh + mô phỏng event qua module test trong /tmp và ghi **KHÔNG KIỂM CHỨNG ĐƯỢC** kèm lý do — cấm đoán mò PASS.
 
 **4 kịch bản stress bắt buộc (đây là trọng tâm batch render):**
 - **S1 — bấm nút nhanh**: spam `testid-option-*` + `testid-btn-hint` + `testid-btn-undo` liên tục <50ms/cú (kể cả spam Enter/1-4 bàn phím). Kỳ vọng: đúng 1 lượt được tính (PC-05); cú bấm rơi vào lúc animate bị buffer, KHÔNG mất lượt, KHÔNG 2 lượt, KHÔNG uncaught error; HUD stars/ink không nhảy sai (E2E PC-L-05).
@@ -14,3 +13,6 @@ F1-F8 hiểu theo bối cảnh render (F1-F7 fuzz logic đã có người chấm
 Mỗi mục 1 dòng: `| mã | PASS/FAIL/KHÔNG KIỂM CHỨNG ĐƯỢC | bằng chứng file:dòng hoặc số đo |` — dán số đo thật (ms giữa 2 cú bấm, số error console, kích thước rect trước/sau resize).
 Thêm 2 mục phụ: **S5 — reload 3 lần liên tiếp** vào title: 0 exception, 0 white flash >1 frame (PC-B-04) · **S6 — network tab**: lọc ngoài localhost ⇒ 0 request (PC-15/E2E PC-B-03).
 Tin nhắn CUỐI của bạn PHẢI là bảng kết luận + "ĐIỂM NGHI NGỜ" + "3 RỦI RO LỚN NHẤT". Ngắn nhất có thể. Xong trong ≤25 lượt; thiếu thời gian ⇒ chấm S1-S4 trước.
+
+## GIỚI HẠN BẮT BUỘC (anh chốt 14/09/2026)
+**CẤM mở browser / Playwright / CDP / vite preview / npm run dev.** Chỉ kiểm ở TẦNG CODE: đọc file, grep, chạy `vitest`, viết script **node hoặc python trong /tmp** gọi thẳng hàm để fuzz/đo số rồi dán số thật. Việc mở game bằng browser là của Hermes/anh ở mốc kết quả — nếu không kiểm được bằng code thì ghi "KHÔNG KIỂM CHỨNG ĐƯỢC BẰNG CODE" (không tính là FAIL, nhưng phải nêu rõ giả định).

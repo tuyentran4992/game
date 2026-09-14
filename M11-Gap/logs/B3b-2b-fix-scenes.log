@@ -1,0 +1,138 @@
+
+[tool] Bash: {'command': 'wc -l src/render/scenes/*.ts src/render/viewmodel/*.ts src/main.ts src/logic/*.ts src/ui/*.ts 2>/dev/null | tail -50', 'description': 'List scene/viewmodel/logic file 
+
+[tool] Bash: {'command': 'ls tests/logic tests/logic/helpers 2>/dev/null && echo "---" && ls tests/ -R | head -60', 'description': 'List test files'}
+
+[tool] Bash: {'command': 'cat tests/logic/view-b3b-contract.test.ts', 'description': 'Read b3b contract test'}
+
+[tool] Bash: {'command': 'cat tests/logic/view-b3b-states.test.ts', 'description': 'Read b3b states test'}
+
+[tool] Bash: {'command': "sed -n '1,140p' tests/logic/view-b3b-states.test.ts", 'description': 'Read states test part 1'}
+
+[tool] Bash: {'command': "sed -n '140,360p' tests/logic/view-b3b-states.test.ts", 'description': 'Read states test part 2'}
+
+[tool] Bash: {'command': "sed -n '360,560p' tests/logic/view-b3b-states.test.ts", 'description': 'Read states test part 3'}
+
+[tool] Bash: {'command': "sed -n '560,720p' tests/logic/view-b3b-states.test.ts", 'description': 'Read states test part 4'}
+
+[tool] Bash: {'command': 'find src/render src/ui -type f | sort && echo "--- config:" && ls config && echo "--- gate:" && cat package.json | head -40', 'description': 'List render/ui files and 
+
+[tool] Bash: {'command': 'cat tests/logic/scene-boot.test.ts', 'description': 'Read scene-boot test'}
+
+[tool] Bash: {'command': 'wc -l src/render/components/*.ts src/render/*.ts src/render/theme/*.ts src/render/anim/*.ts src/ui/*.ts', 'description': 'Sizes of components and helpers'}
+
+[tool] Bash: {'command': 'cat src/ui/testids.ts', 'description': 'Read testids registry'}
+
+[tool] Bash: {'command': 'cat src/main.ts', 'description': 'Read main.ts'}
+
+[tool] Bash: {'command': 'cat src/render/session.ts; echo "=====LAYOUT"; cat src/render/layout.ts', 'description': 'Read session and layout'}
+
+[tool] Bash: {'command': 'timeout 600 npx vitest run tests/logic/view-b3b-states.test.ts 2>&1 | tail -70', 'description': 'Run b3b states test'}
+
+[tool] Bash: {'command': 'npx vitest run tests/logic/view-b3b-states.test.ts 2>&1 | tail -80', 'description': 'Run b3b states test'}
+
+[tool] Bash: {'command': 'npx vitest run tests/logic/view-b3b-states.test.ts --reporter=basic', 'description': 'Run b3b states test with basic reporter'}
+
+[tool] Bash: {'command': 'node_modules/.bin/vitest run tests/logic/view-b3b-states.test.ts --reporter=basic 2>&1 | tail -80', 'description': 'Run b3b states test via local vitest'}
+
+[tool] Bash: {'command': 'npx vitest run tests/logic/view-b3b-states.test.ts', 'description': 'Run b3b states test'}
+
+[tool] Bash: {'command': 'npx vitest run tests/logic/view-b3b-states.test.ts 2>&1 | tail -60', 'description': 'Run b3b states test', 'dangerouslyDisableSandbox': True}
+
+[tool] Bash: {'command': 'npx vitest run tests/logic/view-b3b-states.test.ts --reporter=dot', 'description': 'Run b3b states test dot reporter', 'dangerouslyDisableSandbox': True}
+
+[tool] Bash: {'command': 'npm run typecheck', 'description': 'Run TypeScript typecheck'}
+
+[tool] Bash: {'command': 'cat tools/gate-allow.json', 'description': 'Read gate allowlist'}
+
+[tool] Bash: {'command': 'echo hello', 'description': 'Echo test'}
+
+[tool] Bash: {'command': 'ls -la /tmp | head -5', 'description': 'List tmp'}
+
+[tool] Bash: {'command': 'npm run test:logic', 'description': 'Run logic test suite'}
+
+[tool] Bash: {'command': 'npm run typecheck', 'description': 'Typecheck without sandbox', 'dangerouslyDisableSandbox': True}
+
+[tool] Bash: {'command': 'node --version', 'description': 'Check node version'}
+
+[tool] Bash: {'command': 'tsc --version', 'description': 'Check tsc version'}
+
+[tool] Bash: {'command': 'node node_modules/typescript/bin/tsc --noEmit', 'description': 'Typecheck via local tsc'}
+
+[tool] Bash: {'command': 'ls node_modules/vitest/*.mjs node_modules/.bin/vitest', 'description': 'Locate vitest entry'}
+
+[tool] Bash: {'command': 'node node_modules/vitest/vitest.mjs run tests/logic/view-b3b-states.test.ts --reporter=dot', 'description': 'Run b3b states test via node'}
+
+[tool] Bash: {'command': 'node node_modules/vitest/vitest.mjs run tests/logic/view-b3b-contract.test.ts --reporter=dot', 'description': 'Run b3b contract test', 'dangerouslyDisableSandbox': Tru
+
+[tool] Bash: {'command': 'cat src/render/scenes/MapScene.ts', 'description': 'Read MapScene'}
+
+[tool] Bash: {'command': 'for f in src/render/components/PaperPanel.ts src/render/components/StarRow.ts src/render/components/SkinCard.ts src/render/components/MapNode.ts src/render/components/
+
+[tool] Bash: {'command': 'cat src/render/components/PaperPanel.ts src/render/components/StarRow.ts src/render/components/SkinCard.ts', 'description': 'Read PaperPanel StarRow SkinCard'}
+
+[tool] Bash: {'command': 'cat src/render/components/MapNode.ts src/render/components/BadgeIcon.ts src/render/theme/progressTheme.ts src/render/theme/paperTheme.ts', 'description': 'Read MapNode
+
+[tool] Bash: {'command': 'cat src/logic/i18n.ts src/render/viewmodel/albumModel.ts', 'description': 'Read i18n and albumModel'}
+
+[tool] Bash: {'command': 'cat src/render/viewmodel/mapModel.ts src/render/scenes/TitleScene.ts', 'description': 'Read mapModel and TitleScene'}
+
+[tool] Bash: {'command': 'cat src/ui/button.ts src/render/viewmodel/gridModel.ts', 'description': 'Read button and gridModel'}
+
+[tool] Bash: {'command': 'cat tools/gate-smell.mjs', 'description': 'Read gate-smell script'}
+
+[tool] Bash: {'command': 'grep -n "Shop\\|Album\\|End\\|Score\\|GameOver\\|badge\\|skin" ../specs/1-paper-crease/DESIGN-SPEC.md | head -40; echo "=== 95-125"; sed -n \'95,125p\' ../specs/1-pape
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/specs/1-paper-crease/DESIGN-SPEC.md', 'limit': 40, 'offset': 92}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/specs/1-paper-crease/DESIGN-SPEC.md', 'limit': 16, 'offset': 137}
+
+[tool] Bash: {'command': 'cat src/logic/economy.ts src/logic/master.ts', 'description': 'Read economy and master logic'}
+
+[tool] Bash: {'command': 'cat config/skins.json config/album.json', 'description': 'Read skins and album config'}
+
+[tool] Bash: {'command': 'cat src/render/anim/unfoldPlan.ts | head -60', 'description': 'Read unfoldPlan head for DUR/TOUCH'}
+
+[tool] Bash: {'command': 'node node_modules/vitest/vitest.mjs run tests/logic --reporter=dot 2>&1 | tail -40', 'description': 'Run full logic suite baseline', 'dangerouslyDisableSandbox': True}
+
+[tool] Bash: {'command': 'node node_modules/vitest/vitest.mjs run tests/logic --reporter=dot 2>&1 | grep -E "^ *×|FAIL  tests" | head -30', 'description': 'List failing test names', 'dangerousl
+
+[tool] Bash: {'command': 'node node_modules/vitest/vitest.mjs run tests/logic/view-b3a-contract.test.ts --reporter=dot 2>&1 | grep -A12 "sai định dạng\\|Expected:" | head -30', 'description': '
+
+[tool] Bash: {'command': "sed -n '150,200p' tests/logic/view-b3a-contract.test.ts", 'description': 'Read b3a testid naming rule'}
+
+[tool] Bash: {'command': "sed -n '1,150p' tests/logic/view-b3a-contract.test.ts", 'description': 'Read b3a contract test head'}
+
+[tool] Bash: {'command': "sed -n '196,300p' tests/logic/view-b3a-contract.test.ts", 'description': 'Read rest of b3a contract test'}
+
+[tool] Bash: {'command': "sed -n '300,420p' tests/logic/view-b3a-contract.test.ts", 'description': 'Read tail of b3a contract test'}
+
+[tool] Bash: {'command': 'grep -n "SCENE\\|walkTs\\|ALL_RAW\\|UNITS\\s*=\\|expect(" tests/logic/view-b3a-geometry.test.ts | head -40', 'description': 'Check b3a geometry scan scope'}
+
+[tool] Bash: {'command': 'grep -ln "scenes/\\|src/ui\\|src/render" tests/logic/*.test.ts', 'description': 'Find tests scanning render sources'}
+
+[tool] Bash: {'command': 'grep -n "collectUsedKeys\\|maxOrphans\\|orphan" tests/logic/i18n.test.ts | head -20', 'description': 'Check i18n key coverage test'}
+
+[tool] Bash: {'command': 'cat src/render/components/InkBadge.ts src/render/sfx.ts; grep -n "export" src/logic/progression.ts | head -30', 'description': 'Read InkBadge, sfx, progression exports
+
+[tool] Bash: {'command': 'grep -n "scene.start\\|END_LEVEL\\|Map\'\\|Score\'\\|End\'" src/render/scenes/PlayScene.ts', 'description': 'Check PlayScene navigation'}
+
+[tool] Bash: {'command': 'grep -n "init\\|data" src/render/scenes/PlayScene.ts | head -20; grep -n "STAR_SCALE\\s*=" -A6 src/logic/progression.ts', 'description': 'Check PlayScene init and STAR
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/scenes/ShopScene.ts'}
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/ui/testids.ts', 'old_string': '/** Gắn data-testid cho canvas và công bố registry cho devtools/QA. */'
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/PaperPanel.ts', 'old_string': '/** Hình dạng mà `makeTestidHook` cần để đổi toạ độ t
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/PaperPanel.ts', 'old_string': "import Phaser from 'phaser';\nimport type { Hook } fr
+
+[tool] Edit: {'replace_all': False, 'file_path': '/data/youtube-playables/M11-Gap/game/src/render/viewmodel/shopModel.ts', 'old_string': '// placeholder', 'new_string': '// Pattern: View Model 
+
+[tool] Bash: {'command': 'printf \'%s\\n\' "// placeholder" > src/render/viewmodel/shopModel.ts && wc -l src/render/viewmodel/shopModel.ts', 'description': 'Create empty viewmodel file'}
+
+[tool] Bash: {'command': 'touch src/render/viewmodel/shopModel.ts; ls -la src/render/viewmodel/', 'description': 'Create viewmodel file with touch'}
+
+[tool] Bash: {'command': 'pwd -P; ls -ld /data/youtube-playables', 'description': 'Show physical working directory'}
+
+[tool] Bash: {'command': 'pwd -P', 'description': 'Show physical working directory'}

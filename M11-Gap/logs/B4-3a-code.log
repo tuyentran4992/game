@@ -1,0 +1,155 @@
+
+[tool] Bash: {'command': 'ls -la src/render tests/render 2>&1 | head -40; echo "---ASSETS---"; ls /data/youtube-playables/M11-Gap/assets | head -30', 'description': 'List render sources and ass
+
+[tool] Bash: {'command': 'npm run typecheck 2>&1 | tail -15', 'description': 'Run typecheck'}
+
+[tool] Bash: {'command': 'find src/render -type f | sort; echo "---LINES---"; find src/render -type f -name \'*.ts\' | xargs wc -l | sort -n | tail -30; echo "---TESTS---"; find tests -type f |
+
+[tool] Bash: {'command': 'cd /data/youtube-playables/M11-Gap/assets && ls -laR | head -60; echo "=== manifest keys ==="; python3 -c "\nimport json\nm=json.load(open(\'manifest.json\')); print(t
+
+[tool] Bash: {'command': 'cd /data/youtube-playables/M11-Gap/assets && python3 - <<\'EOF\'\nimport json\nm=json.load(open(\'manifest.json\'))\nprint("top keys:", list(m))\nfiles=m[\'files\']\np
+
+[tool] Bash: {'command': 'ls -la public/assets 2>&1 | head -40; echo "=== du ==="; du -sh public 2>/dev/null', 'description': 'List public assets folder'}
+
+[tool] Bash: {'command': 'ls public/sfx 2>&1; echo "=== assetList.ts ==="; cat -n src/render/generated/assetList.ts', 'description': 'List sfx folder and read assetList'}
+
+[tool] Bash: {'command': 'cat -n src/render/audio/sfx.ts', 'description': 'Read sfx renderer module'}
+
+[tool] Bash: {'command': 'npm run test:logic 2>&1 | tail -30', 'description': 'Run logic test suite'}
+
+[tool] Bash: {'command': 'grep -rn "playFx\\|sfxOf\\|armAudio\\|loadSfx" src --include=*.ts | grep -v "src/render/audio/sfx.ts"', 'description': 'Find sfx call sites'}
+
+[tool] Bash: {'command': 'cat -n src/render/scenes/BootScene.ts; echo "=== PaperPanel ==="; cat -n src/render/components/PaperPanel.ts', 'description': 'Read BootScene and PaperPanel'}
+
+[tool] Bash: {'command': 'grep -n "fx(\\|playFx\\|\'fold\'\\|\'correct\'\\|\'wrong\'\\|\'star\'\\|\'counter\'\\|\'tap\'\\|\'buy\'" src/render/components/*.ts src/render/scenes/*.ts src/render/f
+
+[tool] Bash: {'command': 'cat -n src/render/anim/juicePlan.ts', 'description': 'Read juicePlan'}
+
+[tool] Bash: {'command': 'cat -n src/render/anim/unfoldPlan.ts', 'description': 'Read unfoldPlan'}
+
+[tool] Bash: {'command': 'ls /data/youtube-playables/M11-Gap/specs/1-paper-crease/ 2>/dev/null; echo "==="; grep -rn "120\\|110\\|250\\|60ms\\|500\\|1,2s\\|shake\\|rung" /data/youtube-playables
+
+[tool] Bash: {'command': 'grep -rn "B4\\|juice\\|SFX\\|sfx\\|8 hành động\\|counter" /data/youtube-playables/M11-Gap/specs/1-paper-crease/*.md | head -40; echo "=== packs/prompts B4 ==="; ls /da
+
+[tool] Bash: {'command': 'ls /data/youtube-playables/M11-Gap/prompts | grep -i "b4"; echo "==="; sed -n \'1,120p\' /data/youtube-playables/M11-Gap/prompts/B4-2-code.md 2>/dev/null || true', 'de
+
+[tool] Bash: {'command': 'python3 -c "\nimport json;p=json.load(open(\'package.json\'));print(json.dumps(p.get(\'scripts\'),indent=1))\n"; echo "=== vitest config ==="; cat -n vitest.config.ts'
+
+[tool] Bash: {'command': 'grep -rln "render/" tests | sort; echo "=== per-file imports of render in tests ==="; grep -rhn "from \'.*render/[^\']*\'" tests | sed -E "s/.*render\\///;s/\'.*//" | 
+
+[tool] Bash: {'command': 'cat -n src/render/theme/paperTheme.ts; echo "=== progressTheme ==="; cat -n src/render/theme/progressTheme.ts', 'description': 'Read theme files'}
+
+[tool] Bash: {'command': 'cat -n src/render/fx/starBurst.ts; echo "=== HolePool ==="; cat -n src/render/components/HolePool.ts; echo "=== SkinCard ==="; cat -n src/render/components/SkinCard.ts
+
+[tool] Bash: {'command': 'grep -rn "albumAssetOf\\|badgeAssetOf\\|sheetSkinOf\\|skinAssetOf\\|SKIN_ASSETS\\|ALBUM_ASSETS\\|BADGE_ASSETS\\|imagePathOf\\|textures.exists\\|setTexture\\|add.image\
+
+[tool] Bash: {'command': 'grep -rn "grain\\|skin_" src/render/components/SheetView.ts | head -30; echo "=== count of skin asset keys used elsewhere ==="; for k in skin_default skin_cream skin_g
+
+[tool] Bash: {'command': 'cat -n src/render/components/BadgeIcon.ts; echo "=== StarRow ==="; cat -n src/render/components/StarRow.ts; echo "=== InkBadge ==="; cat -n src/render/components/InkBa
+
+[tool] Bash: {'command': "sed -n '1,140p' src/render/scenes/AlbumScene.ts | cat -n | sed -n '30,140p'", 'description': 'Read AlbumScene body'}
+
+[tool] Bash: {'command': 'cat -n src/render/session.ts; echo "=== grep icon/thumb/equipped ==="; grep -rn "icon_512\\|thumb_512\\|equipped\\|skinOf\\|equip" src --include=*.ts | grep -v src/log
+
+[tool] Bash: {'command': "cat -n src/render/components/SheetView.ts | sed -n '30,120p'", 'description': 'Read SheetView head'}
+
+[tool] Bash: {'command': 'mkdir -p /tmp/b4rev && cat > /tmp/b4rev/assetcheck.py <<\'EOF\'\nimport json,re,os,hashlib\nroot=\'/data/youtube-playables/M11-Gap\'\ngame=os.path.join(root,\'game\')\
+
+[tool] Bash: {'command': 'echo "=== network / runtime asset creation ==="; grep -rnE "fetch\\(|XMLHttpRequest|https?://|cdn|import\\(|loadurl|Base64|data:image|new Image\\(|document\\.createEle
+
+[tool] Bash: {'command': 'python3 - <<\'EOF\'\nimport re,json,os\nroot=\'/data/youtube-playables/M11-Gap\'; game=os.path.join(root,\'game\')\nman=json.load(open(os.path.join(root,\'assets/manif
+
+[tool] Bash: {'command': 'grep -rn "albumAssetOf\\|badgeAssetOf\\|SKIN_ASSETS\\|ALBUM_ASSETS\\|BADGE_ASSETS\\|imagePathOf\\|audioPathOf\\|skinAssetOf\\|DEFAULT_SKIN_ID\\|idleBreathPlan\\|sparkB
+
+[tool] Bash: {'command': 'grep -rn "juicePlan\\|JUICE\\|starBurst\\|Spark\\|breath" src --include=*.ts | grep -v "^src/render/anim/\\|^src/render/fx/starBurst.ts"; echo "=== albumModel head ===
+
+[tool] Bash: {'command': 'cat -n src/render/scenes/TitleScene.ts', 'description': 'Read TitleScene'}
+
+[tool] Bash: {'command': 'sed -n \'120,180p;230,320p;340,400p\' src/render/scenes/PlayScene.ts | cat -n | head -0; awk \'NR>=125&&NR<=150\' src/render/scenes/PlayScene.ts | cat -n; echo "=== 23
+
+[tool] Bash: {'command': 'grep -rn "playFx(this\\|touchFx(\\|\\.fx(" src/render --include=*.ts | sed -n \'1,40p\'; echo "--- explicit actions used ---"; grep -rhoE "playFx\\(this, \'[a-z]+\'|ac
+
+[tool] Bash: {'command': 'grep -rn "star\'\\|\'fold\'" src/render --include=*.ts | grep -v unfold | head', 'description': 'Check star and fold action call sites'}
+
+[tool] Bash: {'command': "mkdir -p /tmp/b4rev && cat > /tmp/b4rev/juice.test.ts <<'EOF'\nimport { describe, it, expect } from 'vitest';\nconst G = '/data/youtube-playables/M11-Gap/game/src/rend
+
+[tool] Bash: {'command': 'grep -rn "SKIN_ASSETS\\|ALBUM_IDS\\|BADGE_IDS\\|sheetSkinOf\\|juice\\|sfx\\|starBurst\\|optionPop" tests --include=*.ts | head -20; echo "=== count assertions per rend
+
+[tool] Bash: {'command': 'echo "=== C8/C10 grep (allowed pattern, extended to render) ==="; grep -nE "Math.random|Date.now|performance.now|document|window|fetch|: any|as any|@ts-ignore|console\
+
+[tool] Bash: {'command': 'npx vitest run tests/logic/generator-10000.test.ts 2>&1 | tail -12; echo "=== C5 python truth ==="; timeout 300 python3 /data/shared-board-agent-waves/game-gap-giay/co
+
+[tool] Bash: {'command': 'sed -n \'1,60p\' tests/logic/view-b3a-timing.test.ts | cat -n; echo "=== 10k test head ==="; sed -n \'1,45p\' tests/logic/generator-10000.test.ts', 'description': 'Ins
+
+[tool] Bash: {'command': 'timeout 300 python3 /data/shared-board-agent-waves/game-gap-giay/code/g01_fold_sim.py 2>&1 | head -22', 'description': 'Show head of python geometry sim'}
+
+[tool] Bash: {'command': 'grep -rn "g01\\|fold_sim\\|python" tests/logic/*.test.ts | head -15; echo "=== tests asserting hole counts 4/2/1/8/3 ==="; grep -rn "\\[4, 2, 1, 8, 3\\]\\|4,2,1,8,3\\|
+
+[tool] Bash: {'command': 'grep -n "0.25, 0.25\\|4 holes\\|8 holes\\|1 hole\\|3 holes\\|toEqual(4)\\|toEqual(2)\\|toEqual(1)\\|toEqual(8)\\|toEqual(3)\\|length).toBe" tests/logic/fold-unfold.tes
+
+[tool] Bash: {'command': "sed -n '150,235p' tests/logic/fold-unfold.test.ts | cat -n", 'description': 'Read fold-unfold geometry assertions'}
+
+[tool] Bash: {'command': 'awk \'NR>=88 && NR<=130\' src/render/scenes/PlayScene.ts; echo "=== armAudio consumers ==="; grep -rn "armAudio\\|lifecycle" src/render --include=*.ts | grep -v "audio
+
+[tool] Bash: {'command': 'echo "=== import graph src/render (phaser / cross-layer) ==="; grep -rn "^import" src/render/*/*.ts src/render/*.ts | grep -E "phaser|logic/|platform/|ui/" | awk -F: \
+
+[tool] Bash: {'command': 'ls scripts/ 2>/dev/null; echo "=== gen-asset-list exists? ==="; test -f scripts/gen-asset-list.mjs && echo YES || echo NO; echo "=== index.html icon/thumb ==="; grep -
+
+[tool] Bash: {'command': 'grep -rn "Fraunces\\|font-family\\|@font-face\\|fonts" index.html src/main.ts src/render/theme/paperTheme.ts src/ui/*.ts public/*.css 2>/dev/null | head -12; echo "===
+
+[tool] Bash: {'command': 'npm run typecheck 2>&1 | tail -4 && npm run test:logic 2>&1 | grep -E "Test Files|Tests |Duration|FAIL|✗|failed" | tail -8', 'description': 'Run combined gate commands
+```
+KẾT LUẬN: FAIL
+```
+
+| mục | phán quyết | bằng chứng (file:dòng hoặc số đo) |
+|---|---|---|
+| C1 | PASS (suite) / FAIL (phạm vi B4) | `npm run typecheck` sạch; `npm run test:logic` → `Test Files 39 passed (39) / Tests 633 passed (633)` (paste thật dưới). NHƯNG `tests/render/` **trống 0 file** (ls) và `package.json` scripts.`test:logic` = `vitest run tests/logic tests/platform` → code B4 (sfx/juice/starBurst/asset registry) **không có test nào** |
+| C2 | PASS | các test render-touching đều so giá trị cụ thể: view-b3a-timing 48 `it()`/126 `expect()`, geometry 20/68, b3b-contract 30/36; fixture xấu thật ở generator-10000.test.ts:30-40 (`handCells`, `minPairDistance>=6`) |
+| C3 | PASS | `npx vitest run tests/logic/generator-10000.test.ts` → `11 passed, 23.5s` (dải levelIndex 1..10000, mọi bộ đếm vi phạm = 0) |
+| C4 | PASS | fold-unfold.test.ts:178 (thuần, 2 lần cùng input); script tạm `/tmp/b4rev/juice.test.ts`: `shakeSteps`+`sparkBurst` cùng seed gọi 100 lần ⇒ `new Set(...).size === 1` |
+| C5 | PASS | Python g01: HV(0.25,0.25)=4 · HV(0.5,0.25)=2 · HV(0.5,0.5)=1 · HVH(0.125,0.375)=8 · HVH(0.5,0.5)=3; khớp fold-unfold.test.ts:170 (`holeCount=4`), :186 (`=2`), :194 (`length=1, layers=4`), :214 (`byPos 3 vị trí, 2+4+2=8`) |
+| C6 | **FAIL** | PC-17 không cài thật: `armAudio` (audio/sfx.ts:90-117) **0 consumer**; PlayScene.ts:124 `this.sound.setMute(on)` bỏ qua `session.soundOn()` ⇒ mute nền tảng ghi đè lựa chọn của người chơi (đảo TC-PSE-02); 6 scene kia không arm lifecycle/`unlock` gì cả. PC-B-04: particle sao + "thở" Title **không tồn tại** (xem C10) |
+| C7 | PASS | import graph `src/render`: thuần chỉ import `logic/*`+`platform/types`(type) là `anim/*`, `theme/*`, `viewmodel/*`, `holeView`, `layout`, `audio/sfx` (chỉ `import type { Scene }`); chứng minh chạy được trong node: 9 test ở `/tmp/b4rev` import thẳng 3 module này, `environment: node`, 0 DOM |
+| C8 | PASS | `tsc --noEmit` 0 lỗi; grep `: any|as any|@ts-ignore` trong `src/logic/*.ts` + `src/render` = 0 hit |
+| C9 | PASS | edge juice đo bằng script tạm: `shakeSteps(seed,0|-1)` → `[]`, `count=100` vẫn ≤ `TOUCH.shakeMaxPx=4` mỗi trục, seed rỗng/200 ký tự không ném, `sparkBurst('',50)` mọi `nx` hữu hạn; edge logic: config-caps(4), level-config(6), validator-action(9) xanh |
+| C10 | **FAIL** | Code chết hàng loạt: `src/render/fx/starBurst.ts` **cả file** (54 dòng, 0 consumer); `JUICE`(juicePlan.ts:16), `sparkBurst`(:88), `juiceSeedOf`(:69), `idleBreathPlan`(:109), `optionPop`(:114) — duy nhất `shakeSteps` được dùng (SheetView.ts:188); `SKIN_ASSETS/ALBUM_ASSETS/BADGE_ASSETS/albumAssetOf/badgeAssetOf/skinAssetOf` (paperTheme.ts:138-165) và `imagePathOf/audioPathOf` (assetList.ts:71,74) không scene nào gọi. Bù lại không có `console.log`/`Math.random`/`Date.now` (0 hit), `console.error` chỉ ở 3 chỗ báo thiếu asset |
+| C11 | PASS | share-code.test.ts 7 test xanh trong gate (mã nén, không phụ thuộc B4) |
+| C12 | PASS | generator.test.ts + generator-10000.test.ts: `validateSpec.ok` và `minPairDistance >= 6` trên 10.000 đề, 0 cặp ô trùng |
+| (a) đường dẫn asset khớp manifest | **PASS** (trên đường dẫn) / FAIL (trên việc dùng) | script `/tmp/b4rev/assetcheck.py`: `manifest image keys: 28 / assetList keys: 28 / missing: [] / extra: []`; `sfx manifest` 8 == `AUDIO_ASSETS` 8, `diff: []`; **30/30 file đĩa khớp cả bytes lẫn `sha256[:16]` → `PATH/INTEGRITY PROBLEMS: 0`**; `SKIN_IDS 8 == manifest: True`, `ALBUM_IDS 14 True`, `BADGE_IDS 6 True`. Mặt trái: `UNUSED asset keys: 21` = 14 album + 6 badge + `skin_cream` (BootScene.ts:59 tải về, không một dòng nào `add.image` với khoá đó; album/badge vẽ bằng Graphics — AlbumScene.ts:53-54, BadgeIcon.ts:24-27, SkinCard.ts:114) |
+| (b) không tạo asset trong code / không tải mạng | PASS (mạng) / CÓ 1 ngoại lệ | grep `fetch(|XMLHttpRequest|https?://|data:image|Base64|document|window` trong `src/render src/ui src/main.ts` = 0 hit (chỉ `phaser.io` trong log đầu ra test); asset toàn bộ là đường dẫn tương đối `assets/*.png`, `sfx/*.wav` (assetList.ts:24-63). Ngoại lệ: `fx/starBurst.ts:21 bake.generateTexture(...)` tự nung texture 12px không có trong manifest (chính file thừa nhận ở dòng 3) — module này hiện đang chết nên không vào build runtime |
+| (c) map SFX đủ 8 hành động | **FAIL** | Map đủ: `SFX_BY_ACTION` (sfx.ts:27-30) 8 khoá `click,correct,counter,fold,punch,star,unfold,wrong`, mỗi khoá trỏ đúng file manifest (test tạm: `sfxOf` 8/8 + alias `tap→click`, `buy→counter`, lạ→`null`). Nhưng **2/8 không bao giờ kêu**: grep 24 điểm gọi `playFx/touchFx` chỉ ra `click`(7) · `unfold`(1) · `punch`(1) · `correct`/`wrong`(qua OUTCOME_BY_PHASE, unfoldPlan.ts:259-260) · `counter`(ShopScene.ts:95); chuỗi `'fold'`/`'star'` chỉ xuất hiện ở sfx.ts:29 + assetList.ts:58,60 — không có ở bất kỳ scene/component nào |
+
+```
+TYPECHECK + TEST THAT (output thật, nguyên văn):
+> paper-crease@0.1.0 typecheck
+> tsc --noEmit
+
+ Test Files  39 passed (39)
+      Tests  633 passed (633)
+   Duration  103.23s (transform 31.21s, setup 0ms, collect 38.24s, tests 35.74s, environment 18ms, prepare 10.12s)
+
+ Generator 10k (rieng le):
+ ✓ tests/logic/generator-10000.test.ts (11 tests) 23542ms
+ Test Files  1 passed (1)      Tests  11 passed (11)
+
+ Cross-check asset (python /tmp/b4rev/assetcheck.py):
+ manifest image keys: 28  assetList keys: 28  missing in list: []  extra: []
+ sfx manifest keys: [click,correct,counter,fold,punch,star,unfold,wrong]  diff: []
+ SKIN_IDS count 8 == manifest: True | ALBUM_IDS count 14 True | BADGE_IDS count 6 True
+ PATH/INTEGRITY PROBLEMS: 0
+ UNUSED asset keys: ['icon_512','skin_cream','skin_default','skin_dots','skin_grid','skin_kraft','skin_mizu','skin_ruled','thumb_512'] (+14 album_*, +6 badge_* khong draw)
+
+ Scatch vitest /tmp/b4rev (9 passed) — determinism 100x, bien shake, DUR 140/110/250/60, explainMs 700, breath 1200/5000, map SFX 8, playFx thieu file bao 1 lan.
+```
+
+ĐIỂM NGHI NGỜ:
+- Không chạy `vite build`/`npm run gate` (cấm lái browser + ngoài 4 nhóm lệnh) ⇒ chưa đo được **số asset thật + tổng KB trong `dist/`** mà pack B4 mục 6 yêu cầu; `public/` hiện 932K/38 file, trong đó ~600K (album+badge PNG) nhiều khả năng vào bundle mà không ai vẽ.
+- `icon_512.png`/`thumb_512.png` không có trong `IMAGE_ASSETS` (script lọc `kind ∈ skin|album|badge`) và `index.html` không tham chiếu nào — chưa xác định được chúng dùng cho bước nộp (M4/M5) hay bị quên; không kết luận được.
+- `paperTheme.ts:75 FAMILY='Fraunces'`: không có file font trong `public/`, không `@font-face`, không preload trong `index.html`, mà tải mạng bị cấm ⇒ mọi Text nhiều khả năng rơi về font kế thừa của trình duyệt. Chỉ kết luận được "token font không có nguồn" — muốn biết chữ thật hiển thị ra gì phải nhìn browser (việc của MỐC kết quả).
+- `sheetSkinOf` được gọi ở PlayScene.ts:137 nhưng không test nào dựng PlayScene có save `equipped` khác `skin_default`, nên không kiểm được "skin đang đeo có hiện trong màn chơi hay không" từ test — suy ra từ nguồn: `inventory().equipped` chỉ ShopScene.ts:55 đọc.
+- Test output in `stderr: [sheet] thieu texture giay "skin_kraft"` ở 2 it() của scene-boot.test.ts ⇒ đường "thiếu asset là BÁO" đang kích hoạt ngay trong môi trường test; chưa rõ đó là chủ đích (headless không nạp ảnh) hay asset registry nối sai khoá.
+
+3 RỦI RO LỚN NHẤT: 1) **Toàn bộ art đã sinh không vào màn hình**: 20/28 ảnh (14 album + 6 badge, ~600KB) được BootScene.ts:59 tải rồi bỏ không; Album/Shop/HUD vẽ lại bằng Graphics + màu palette (AlbumScene.ts:53, BadgeIcon.ts:24, SkinCard.ts:114) — game chạy vẫn "xanh như bản B3a", tức batch B4 chưa đạt mục tiêu ghép asset, và `albumModel.ts:26-33` còn chép tay lại danh mục manifest thành nguồn sự thật thứ hai (thêm 1 album = sửa 2 file). 2) **Tầng juice chưa nối dây**: `starBurst` (particle vàng khi nhận sao) và `idleBreathPlan` (giấy thở 1,2s/idle 5s ở Title) không được gọi từ bất kỳ file nào — TitleScene.ts cả file không có dòng tween/idle nào; PlayScene.ts:131 gọi `sheet.shake(state.spec.seed)` thẳng, bỏ `juiceSeedOf` nên **hai lượt sai liên tiếp rung y hệt nhau**, đúng cái comment juicePlan.ts:66-67 cam kết ngược lại. 3) **Âm thanh vừa không đủ vừa sai luật mute**: `fold` và `star` không bao giờ phát (6/8 hành động tới tai người chơi), `armAudio` chết nên không có `unlock()` theo cú chạm đầu và không có `pauseAll` khi mất focus, trong khi PlayScene.ts:124 `setMute(on)` có thể **bật lại tiếng cho người đã tắt** — cộng thêm 0 test B4 (`tests/render` trống, `test:logic` không glob thư mục đó) nên mọi hồi quy ở đây lọt lưới hoàn toàn.
+
+[result] is_error=False num_turns=51 duration_ms=653277 cost_usd=1.7169095

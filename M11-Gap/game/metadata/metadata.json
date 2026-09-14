@@ -1,0 +1,24 @@
+{
+  "title": "Paper Crease — Fold, Punch, Unfold",
+  "short_desc": "Fold the sheet, punch a hole, then picture what the unfolded paper looks like. 120 logic puzzles across 8 chapters, one tap each.",
+  "how_to_play": "Tap an edge to fold the paper, tap the sheet to punch a hole, then pick the pattern you see after unfolding. Hints cost ink; stars open chapters.",
+  "genre": [
+    "Puzzle",
+    "Casual"
+  ],
+  "theme": "paper pastel, origami flat",
+  "version": "0.1.0",
+  "publisher": {
+    "name": "ExcelToApp Games",
+    "contact_email": "games@exceltoapp.vn"
+  },
+  "thumbnails": {
+    "1:1": "thumbnail_1x1.png",
+    "5:7": "thumbnail_5x7.png",
+    "9:16": "thumbnail_9x16.png",
+    "16:9": "thumbnail_16x9.png"
+  },
+  "preview_video": {
+    "16:9": "preview_16x9.mp4"
+  }
+}

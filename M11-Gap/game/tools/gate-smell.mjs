@@ -10,7 +10,7 @@
  *  G3. Hằng số/số bị khai trùng ở ≥2 file (cùng tên khác giá trị, hoặc cùng giá trị khác tên trong 2 file)
  *  G4. Cấm trong src/logic: Math.random  Date.now  performance.now  console.log  any  @ts-ignore  document/window  fetch
  */
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, basename } from 'node:path';
 
 const args = process.argv.slice(2);
@@ -18,9 +18,28 @@ const getArg = (n, d) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1
 const MAX_LINES = Number(getArg('--max-lines', 250));
 const DUP_LINES = Number(getArg('--dup-lines', 6));
 const DATA_FILE_RE = new RegExp(getArg('--data-files', '^(themes|chapters|dictionary)\\.ts$'));
-const SRC = 'src/logic';
+// Quét CẢ src (bài học B3a: chỉ quét src/logic nên src/render lọt trần dòng & console.log)
+const SRC_DIRS = ['src/logic', 'src/render', 'src/platform'];
+const LINE_LIMIT = { 'src/logic': 250, 'src/render': 350, 'src/platform': 250 };
 
-const files = readdirSync(SRC).filter((f) => f.endsWith('.ts')).map((f) => join(SRC, f));
+const files = [];
+for (const dir of SRC_DIRS) {
+  if (!existsSync(dir)) continue;
+  for (const f of walk(dir)) if (f.endsWith('.ts')) files.push(f);
+}
+function walk(dir) {
+  const out = [];
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) out.push(...walk(p));
+    else out.push(p);
+  }
+  return out;
+}
+function limitFor(file) {
+  for (const d of SRC_DIRS) if (file.startsWith(d)) return LINE_LIMIT[d] || MAX_LINES;
+  return MAX_LINES;
+}
 const rel = (p) => p.replace(process.cwd() + '/', '');
 /** Bỏ comment KHỐI và DÒNG nhưng GIỮ nguyên số dòng (thay bằng khoảng trắng) — bài học: bản đầu bắt oan
  *  "Math.random" nằm trong JSDoc của generator.ts:85. */
@@ -38,9 +57,10 @@ const notes = [];
 // ---------- G1: giới hạn dòng ----------
 for (const f of files) {
   const n = stripComments(readFileSync(f, 'utf8')).split('\n').length;
-  if (n > MAX_LINES) {
+  const lim = limitFor(f);
+  if (n > lim) {
     if (DATA_FILE_RE.test(basename(f))) notes.push(`G1 miễn (bảng dữ liệu): ${rel(f)} ${n} dòng`);
-    else fails.push(`G1 ${rel(f)} = ${n} dòng > ${MAX_LINES} (tách trách nhiệm hoặc khai báo là file dữ liệu)`);
+    else fails.push(`G1 ${rel(f)} = ${n} dòng > ${lim} (tách trách nhiệm hoặc khai báo là file dữ liệu)`);
   }
 }
 
@@ -106,7 +126,7 @@ const real = fails.filter((f) => !isAllowed(f));
 if (allowed.length) for (const a of allowed) allowHit.push(a);
 
 // ---------- in ----------
-console.log(`GATE V2 — ${files.length} file trong ${SRC} · max-lines=${MAX_LINES} · dup-lines=${DUP_LINES}`);
+console.log(`GATE V2 — ${files.length} file trong ${SRC_DIRS.join(', ')} · trần: ${JSON.stringify(LINE_LIMIT)} · dup-lines=${DUP_LINES}`);
 for (const n of notes) console.log(`  (miễn) ${n}`);
 if (allowHit.length) {
   console.log(`  NỢ ĐÃ KHAI (tools/gate-allow.json — phải trả, không tính là fail): ${allowHit.length}`);

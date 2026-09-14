@@ -1,0 +1,105 @@
+
+> paper-crease@0.1.0 gate
+> npm run typecheck && npm run test:logic && node tools/gate-smell.mjs
+
+
+> paper-crease@0.1.0 typecheck
+> tsc --noEmit
+
+
+> paper-crease@0.1.0 test:logic
+> vitest run tests/logic tests/platform
+
+
+ RUN  v2.1.9 /data/youtube-playables/M11-Gap/game
+
+ ✓ tests/logic/view-b3b-states.test.ts (30 tests) 43ms
+ ✓ tests/logic/view-b3a-timing.test.ts (62 tests) 66ms
+ ✓ tests/logic/view-b3b-contract.test.ts (22 tests) 40ms
+ ✓ tests/logic/generator.test.ts (29 tests) 4889ms
+   ✓ generator.levelSpec — PC-04 bốn ô phân biệt, đạt ngưỡng khác biệt > PC-04 + ngưỡng: 120 màn — minPairDistance trên lưới 16 ≥ 6 và validateSpec ok cho mọi đề 465ms
+   ✓ generator.levelSpec — PC-01 tham số chương là DỮ LIỆU, không hardcode > TC-GEN-11 · PC-03 + PC-01: dải chương 4..8 CÓ xuất hiện "cắt 1 góc chéo" hợp lệ; chương 1..3 chỉ đục lỗ 527ms
+   ✓ generator.levelSpec — PC-01 tham số chương là DỮ LIỆU, không hardcode > PC-01 + PC-03: nếp chéo D chỉ vào đề từ chương 6 (cfg.useDiagonal) và có mặt thật sự trong dải 6..8 355ms
+   ✓ B1/F-1 · cfg.punchCount được tôn trọng tuyệt đối trên bảng chương thật 8×15 > (b) 200 seed × HV/HVH/HHV × punchCount 3..4 ⇒ hoặc đủ, hoặc NÉM nêu chain + punchCount 661ms
+ ✓ tests/logic/chain-config.test.ts (27 tests) 1957ms
+   ✓ A1/F-1 · chainFor cấm nuốt foldCount ngoài bảng > 200 seed liên tiếp: mọi chuỗi tuân luật, tất định, và bảng không bị hẹp đến mức chỉ ra 1 chuỗi 1360ms
+ ✓ tests/logic/view-b3b-mapmodel.test.ts (24 tests) 61ms
+ ✓ tests/logic/view-b3a-contract.test.ts (16 tests) 63ms
+ ✓ tests/logic/fold-rules.test.ts (27 tests) 166ms
+ ✓ tests/logic/save.test.ts (23 tests) 41ms
+ ✓ tests/logic/view-b3a-geometry.test.ts (19 tests) 55ms
+ ✓ tests/logic/validator.test.ts (32 tests) 84ms
+ ✓ tests/logic/records.test.ts (19 tests) 144ms
+ ✓ tests/logic/generator-10000.test.ts (11 tests) 23960ms
+ ✓ tests/logic/level-state.test.ts (17 tests) 42ms
+ ✓ tests/logic/i18n.test.ts (8 tests) 47ms
+ ✓ tests/logic/economy.test.ts (18 tests) 29ms
+ ✓ tests/logic/fold-unfold.test.ts (30 tests) 62ms
+ ✓ tests/logic/rational.test.ts (26 tests) 29ms
+ ✓ tests/logic/progression.test.ts (13 tests) 38ms
+ ✓ tests/logic/hint-undo.test.ts (11 tests) 21ms
+ ✓ tests/logic/records-store.test.ts (13 tests) 35ms
+ ✓ tests/platform/debug.test.ts (19 tests) 55ms
+ ✓ tests/platform/playgama-adapter.test.ts (11 tests) 27ms
+ ✓ tests/platform/ad-mock.test.ts (8 tests) 218ms
+ ✓ tests/platform/ytgame-adapter.test.ts (8 tests) 17ms
+ ✓ tests/logic/telemetry.test.ts (9 tests) 137ms
+ ✓ tests/platform/network-ban.test.ts (8 tests) 78ms
+ ✓ tests/platform/host-shape.test.ts (10 tests) 25ms
+stdout | tests/logic/scene-boot.test.ts > PlayScene khi boot (F2: hết test dò đường) > boot headless => đăng đủ rect HUD + 4 ô, số hữu hạn và không nhỏ hơn trần chạm
+Phaser v4.2.1 (Headless | No Audio) https://phaser.io/v4021
+
+stdout | tests/logic/scene-boot.test.ts > PlayScene khi boot (F2: hết test dò đường) > bốn ô đáp án không đè nhau trên màn hình (PC-03: bốn câu hỏi riêng)
+Phaser v4.2.1 (Headless | No Audio) https://phaser.io/v4021
+
+stdout | tests/logic/scene-boot.test.ts > PlayScene khi boot (F2: hết test dò đường) > shutdown thì rect của màn chơi bị xoá khỏi registry (không còn vùng bấm vô hình)
+Phaser v4.2.1 (Headless | No Audio) https://phaser.io/v4021
+
+ ✓ tests/logic/scene-boot.test.ts (4 tests) 193ms
+ ✓ tests/logic/level-config.test.ts (6 tests) 46ms
+ ✓ tests/logic/view-b3a-holes.test.ts (7 tests) 81ms
+ ✓ tests/logic/stars.test.ts (13 tests) 17ms
+ ✓ tests/platform/null-adapter.test.ts (10 tests) 18ms
+ ✓ tests/logic/refactor-contract.test.ts (9 tests) 190ms
+ ✓ tests/platform/standalone-full-loop.test.ts (6 tests) 13ms
+ ✓ tests/platform/registry.test.ts (8 tests) 18ms
+ ✓ tests/logic/validator-action.test.ts (9 tests) 47ms
+ ✓ tests/logic/config-caps.test.ts (4 tests) 8ms
+ ✓ tests/logic/share-code.test.ts (7 tests) 15ms
+
+ Test Files  39 passed (39)
+      Tests  633 passed (633)
+   Start at  09:39:36
+   Duration  57.08s (transform 7.26s, setup 0ms, collect 10.39s, tests 33.07s, environment 15ms, prepare 4.31s)
+
+GATE V2 — 63 file trong src/logic, src/render, src/platform · trần: {"src/logic":250,"src/render":350,"src/platform":250} · dup-lines=6
+  NỢ ĐÃ KHAI (tools/gate-allow.json — phải trả, không tính là fail): 2
+    ~ G1 src/render/scenes/PlayScene.ts = 481 dòng > 350 (tách trách nhiệm hoặc khai báo là file dữ liệu)
+    ~ G1 src/platform/sdkAdapter.ts = 251 dòng > 250 (tách trách nhiệm hoặc khai báo là file dữ liệu)
+KẾT QUẢ: FAIL (26 vi phạm thật)
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/AlbumScene.ts:92 ↔ src/render/scenes/EndScene.ts:91
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/AlbumScene.ts:93 ↔ src/render/scenes/EndScene.ts:92
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/EndScene.ts:7 ↔ src/render/scenes/MapScene.ts:7
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/EndScene.ts:8 ↔ src/render/scenes/MapScene.ts:8
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/EndScene.ts:53 ↔ src/render/scenes/MapScene.ts:69
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/EndScene.ts:55 ↔ src/render/scenes/MapScene.ts:71
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/EndScene.ts:56 ↔ src/render/scenes/MapScene.ts:72
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/EndScene.ts:57 ↔ src/render/scenes/MapScene.ts:73
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/EndScene.ts:58 ↔ src/render/scenes/MapScene.ts:74
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/EndScene.ts:53 ↔ src/render/scenes/ScoreScene.ts:66
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/EndScene.ts:55 ↔ src/render/scenes/ScoreScene.ts:68
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/EndScene.ts:56 ↔ src/render/scenes/ScoreScene.ts:69
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/EndScene.ts:57 ↔ src/render/scenes/ScoreScene.ts:70
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/EndScene.ts:58 ↔ src/render/scenes/ScoreScene.ts:71
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/EndScene.ts:65 ↔ src/render/scenes/ScoreScene.ts:80
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/EndScene.ts:66 ↔ src/render/scenes/ScoreScene.ts:81
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/MapScene.ts:131 ↔ src/render/scenes/ScoreScene.ts:109
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/EndScene.ts:117 ↔ src/render/scenes/ScoreScene.ts:142
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/MapScene.ts:302 ↔ src/render/scenes/ScoreScene.ts:166
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/EndScene.ts:169 ↔ src/render/scenes/ScoreScene.ts:187
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/MapScene.ts:193 ↔ src/render/scenes/ScoreScene.ts:191
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/MapScene.ts:194 ↔ src/render/scenes/ScoreScene.ts:192
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/AlbumScene.ts:92 ↔ src/render/scenes/ShopScene.ts:88
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/AlbumScene.ts:93 ↔ src/render/scenes/ShopScene.ts:89
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/AlbumScene.ts:129 ↔ src/render/scenes/ShopScene.ts:117
+  ✗ G2 khối 6 dòng trùng: src/render/scenes/ScoreScene.ts:188 ↔ src/render/scenes/ShopScene.ts:175

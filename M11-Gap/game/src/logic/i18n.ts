@@ -22,6 +22,43 @@ const UI_COPY: Dict = {
   'hud.next': 'Next',
 };
 
+/**
+ * Copy của VÒNG TIẾN TRÌNH (B3b: map/score/shop/album/end + modal Settings). Vẫn là DỮ LIỆU từ
+ * điển — scene chỉ tra key qua t() (PC-19), không được viết chuỗi hiển thị trong scene.
+ * Thêm màn mới = thêm một dòng ở đây, không sửa scene.
+ */
+const PROGRESS_COPY: Dict = {
+  'map.title': 'Chapter Map',
+  'map.chapter': 'Chapter {n}',
+  'map.gate': 'Locked — need {need}/{total} ★',
+  'map.play': 'Play level {n}',
+  'map.settings': 'Settings',
+  'map.sound': 'Sound',
+  'map.mute': 'Mute',
+  'map.reset': 'Reset progress',
+  'map.confirm': 'Tap again to erase progress',
+  'map.close': 'Close',
+  'score.title': 'Chapter complete',
+  'score.stars': '{n} ★',
+  'score.next': 'Next chapter',
+  'score.map': 'View map',
+  'shop.title': 'Ink Shop',
+  'shop.price': '{n} ink',
+  'shop.buy': 'Buy',
+  'shop.use': 'Use',
+  'shop.owned': 'Owned',
+  'shop.equipped': 'In use',
+  'shop.locked': 'Locked',
+  'album.title': 'Fold Album',
+  'album.badges': 'Badges',
+  'end.title': 'You unfolded all 120',
+  'end.total': 'Total {n}/{all} ★',
+  'end.master': 'Master round',
+  'end.map': 'View map',
+  'end.menu': 'Title',
+  'back.title': 'Back',
+};
+
 /** Bảng giải thích một thao tác sai — id lấy thẳng từ union ExplainKey của levelState. */
 const EXPLAIN_COPY: Record<ExplainKey, string> = {
   'fold-axis-swapped': 'A cross fold swaps both axes',
@@ -43,7 +80,7 @@ export const DEFAULT_LOCALE: Locale = 'en';
  * thêm ngôn ngữ). `t`/`lookup` KHÔNG biết tên locale nào ⇒ thêm dictVi = THÊM MỘT DÒNG ở đây.
  */
 export const DICTIONARIES: Record<Locale, Dict> = {
-  en: { ...UI_COPY, ...prefixed('explain.', EXPLAIN_COPY) },
+  en: { ...UI_COPY, ...PROGRESS_COPY, ...prefixed('explain.', EXPLAIN_COPY) },
 };
 
 /** Từ điển EN của bản nộp — giữ nguyên tên cũ cho caller đã dùng. */

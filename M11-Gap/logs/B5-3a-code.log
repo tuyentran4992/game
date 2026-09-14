@@ -1,0 +1,87 @@
+
+[tool] Bash: {'command': 'ls -la && echo "--- build ---" && ls -la build 2>/dev/null; echo "--- dist ---"; ls -la dist 2>/dev/null; echo "--- metadata ---"; ls -la metadata; echo "--- scripts -
+
+[tool] Bash: {'command': 'cd /data/youtube-playables/M11-Gap && ls -la && echo "--- parent ---" && ls -la .. | head -40', 'description': 'List parent dirs'}
+
+[tool] Bash: {'command': 'echo "=== find build zips ===" && find /data/youtube-playables/M11-Gap -maxdepth 4 -name "*.zip" -printf "%p %s\\n" 2>/dev/null; echo "=== build/_probe ==="; cat build
+
+[tool] Bash: {'command': 'cat package.json; echo "=== metadata.json ==="; cat metadata/metadata.json; echo "=== games/paper-crease.yaml ==="; cat ../games/paper-crease.yaml', 'description': 'Re
+
+[tool] Bash: {'command': 'ls -la tools/ && echo "=== check-bundle.mjs ===" && cat tools/check-bundle.mjs', 'description': 'Read check-bundle tool'}
+
+[tool] Bash: {'command': 'cat vite.config.ts; echo "=== dist/index.html ==="; cat dist/index.html; echo "=== dist/raw ==="; ls -la dist/raw | head; echo "=== find zips repo-wide ==="; find /dat
+
+[tool] Bash: {'command': 'for m in ytgame playgama standalone; do echo "=== check-bundle dist --channel $m ==="; node tools/check-bundle.mjs dist --channel $m 2>&1 | tail -45; echo "EXIT=$?"; d
+
+[tool] Bash: {'command': 'ls -la /data/youtube-playables/scripts/*.sh /data/youtube-playables/scripts/*.py 2>/dev/null | head; echo "=== pipeline module ==="; find /data -maxdepth 4 -name "pipe
+
+[tool] Bash: {'command': 'cd /data/youtube-playables/M11-Gap/game; for m in ytgame playgama standalone; do node tools/check-bundle.mjs dist --channel $m > /tmp/cb-$m.log 2>&1; echo "dist/$m EXI
+
+[tool] Bash: {'command': 'wc -l /data/youtube-playables/scripts/verify_game.sh; echo "=== head 80 ==="; sed -n \'1,80p\' /data/youtube-playables/scripts/verify_game.sh', 'description': 'Read ve
+
+[tool] Bash: {'command': 'sed -n \'80,116p\' /data/youtube-playables/scripts/verify_game.sh; echo "=== gitignore ==="; cat /data/youtube-playables/M11-Gap/.gitignore; cd /data/youtube-playables
+
+[tool] Bash: {'command': 'ls -la /data/youtube-playables/packages/pipeline | head -30; echo "=== validate cmd ==="; grep -rn "network\\|size\\|512\\|1677721\\|1_677_721" /data/youtube-playables
+
+[tool] Bash: {'command': 'cp -a dist /tmp/dist-BEFORE-review && (cd dist && find . -type f | sort | xargs md5sum > /tmp/dist-md5-before.txt) && du -sb /tmp/dist-BEFORE-review && wc -l /tmp/dist
+
+[tool] Bash: {'command': 'find /data/youtube-playables/packages/pipeline -type f -name "*.py" | head -20; echo "=== pyproject ==="; cat /data/youtube-playables/packages/pipeline/pyproject.toml;
+
+[tool] Bash: {'command': 'sed -n \'1,70p\' /data/youtube-playables/packages/pipeline/src/pipeline/__main__.py; echo "=== validate.py head ==="; sed -n \'1,120p\' /data/youtube-playables/package
+
+[tool] Bash: {'command': 'cd /data/youtube-playables && PYTHONPATH=/data/youtube-playables/packages/pipeline/src python3 -m pipeline validate --game-dir M11-Gap > /tmp/pipeline-validate.json 2>
+
+[tool] Bash: {'command': 'python3 - <<\'PY\'\nimport json\nm=json.load(open(\'metadata/metadata.json\'))\npkg=json.load(open(\'package.json\'))\nfor k in (\'title\',\'short_desc\',\'how_to_play
+
+[tool] Bash: {'command': 'cat scripts/build-channels.sh', 'description': 'Read build-channels.sh'}
+
+[tool] Bash: {'command': 'cd /data/youtube-playables/M11-Gap/game\necho "### C2 debug hook grep tren build/ytgame build/playgama:"; grep -rE "\\?debug|debug=" build/ytgame build/playgama 2>&1 |
+
+[tool] Bash: {'command': 'rm -rf /tmp/cbtest && cp -a dist /tmp/cbtest && node -e \'\nconst fs=require("node:fs");const p="/tmp/cbtest/assets/index-BPTtOGlx.js";\nlet t=fs.readFileSync(p,"utf8"
+
+[tool] Bash: {'command': 'node -e \'\nconst fs=require("fs"),path=require("path");\nconst ROOT="dist";\nconst html=fs.readFileSync(path.join(ROOT,"index.html"),"utf8");\nconsole.log("/src/ occu
+
+[tool] Bash: {'command': 'set -e; T=$(mktemp -d /tmp/cb8.XXXXXX); cp -a dist "$T/bundle"; node -e \'\nconst fs=require("node:fs");const p=process.argv[1]+"/assets/index-BPTtOGlx.js";\nfs.writeF
+
+[tool] Bash: {'command': 'cat > /tmp/inject-url.cjs <<\'EOF\'\nconst fs=require("node:fs");const p=process.argv[2]+"/index.html";\nfs.writeFileSync(p,fs.readFileSync(p,"utf8").replace("</body>"
+
+[tool] Bash: {'command': 'T3=$(mktemp -d /tmp/cb8c.XXXXXX); cp -a dist "$T3/bundle"; node /tmp/inject-url.cjs "$T3/bundle"\nnode tools/check-bundle.mjs "$T3/bundle" --channel ytgame > "$T3/out.
+
+[tool] Bash: {'command': 'cd /data/youtube-playables && timeout 580 bash scripts/verify_game.sh M11-Gap > /tmp/verify-m11.log 2>&1; echo "VERIFY_EXIT=$?"; grep -vE "^\\s*$" /tmp/verify-m11.log 
+
+[tool] Bash: {'command': 'ls -R public | head -20; echo "=== build playgama ==="; npx vite build --mode playgama 2>&1 | tail -3; cp -a dist /tmp/snap-playgama; echo "--- index.html head ---"; h
+
+[tool] Bash: {'command': 'cd /data/youtube-playables/M11-Gap/game; G=/tmp/zipc12; mkdir -p $G; python3 - "$PWD/dist" "$G/paper-crease.zip" <<\'PY\'\nimport os,sys,zipfile\nsrc,dst=sys.argv[1],s
+
+[tool] Bash: {'command': 'cd /data/youtube-playables/M11-Gap/game; echo "=== diff.txt (zip sau-rebuild vs dist TRUOC-review) ==="; cat /tmp/zipc12/diff.txt; echo "=== dist/index.html HIỆN TẠI (
+
+[tool] Bash: {'command': 'cd /data/youtube-playables/M11-Gap/game\necho "=== VN strings trong own chunk (mau) ==="; grep -oP \'"[^"]*[àáảãạăâêôơưđ][^"]*"\' dist/assets/index-BPTtOGlx.js | head 
+KẾT LUẬN: **FAIL**
+
+| mục | phán quyết | bằng chứng (số đo / grep count / file:dòng) |
+|---|---|---|
+| C1 | **FAIL** | `build/` chỉ chứa 1 file `_probe.txt` (2 B, `ok`). `build/ytgame/` + `build/playgama/` **không tồn tại**: `node tools/check-bundle.mjs build/ytgame --channel ytgame` → `EXIT=2 :: LỖI: không phải thư mục: /data/youtube-playables/M11-Gap/game/build/ytgame` (playgama likewise). `find M11-Gap -name "*.zip"` = 0. Chỉ có `dist/` = 41 file / 2.662.684 B, 1 bản duy nhất (không phân kênh) — `vite.config.ts:34 outDir:'dist'` cho cả 3 mode, snapshot `dist→build/<mode>` (`scripts/build-channels.sh:65`) chưa hề chạy. |
+| C2 | **FAIL** | `grep -rE "\?debug\|debug=" build/ytgame build/playgama` → `matches=0` **vô nghĩa** (2 thư mục không tồn tại, grep báo `No such file or directory`). Trên bản thật sẽ được snapshot: literal `?debug`=0 nhưng **parser hook còn nguyên** trong own chunk: `("location")`=1, `.search`=2, `"debug"|"seed"`=2, `"mock"`=1 (`dist/assets/index-BPTtOGlx.js @34334 @34361 @34387 @35145`) ⇒ `check-bundle --channel ytgame` = **FAIL (5 vi phạm) exit 1**. |
+| C3 | **FAIL** | `grep -roE '\?(level\|seed\|ad)=\|ad=mock' dist` = **0 match** — nhưng đó là pass hình thức: khoá query vẫn còn `oe={debug:"debug",level:"level",seed:"seed",ad:"ad"},nr="1",ir="mock"` (sample @34361) ⇒ `?level=3&seed=7&ad=mock` vẫn hoạt động trên bundle nộp. raw probe: `?level==0 ?seed==0 ad=mock=0` còn `debug-surface` FAIL. |
+| C4 | **FAIL** (own mạng PASS, cấu hình kênh FAIL) | own code (`index-*.js`+`index.html`): `fetch(`=0 · `XMLHttpRequest`=0 · `WebSocket`=0 · `sendBeacon`=0 · `import(`=0 · URL `https?://`=0. vendor: XMLHttpRequest=1 (FileLoader). Bản playgama tôi build lại (`npx vite build --mode playgama`): `grep -oE 'https?://…' index.html` → **đúng 1** `https://bridge.playgama.com/v2/stable/playgama-bridge.js` ✓. NHƯNG `playgama-bridge-config.json` **không có** trong bundle (`required-file:playgama-bridge-config.json limit=phải có hits=0 FAIL`) ⇒ check-bundle playgama **FAIL (7 khi chạy trên dist cũ, 6 khi chạy trên snapshot đúng mode), exit 1**. Vendor còn 15 URL ngoài prefix (`http://www.w3.org/2000/svg`, `…/xhtml`, `http://steffe.se`) → `remote-url:vendor-hosts-ngoai-prefix FAIL`. |
+| C5 | **FAIL** (1 trong 3 chỉ tiêu) | `du -sb dist`=2.662.684 B; tổng file check-bundle đo `size:total hits=2646300 limit=5242880 ok`; zip `stat -c%s`=**1.192.850 B ≤ 1.677.721** ok; `stat` file to nhất: `vendor-phaser-Dz3O88Pw.js 1684925 B` = **1645,4 KiB > 512 KiB** ⇒ FAIL luật "mỗi file ≤512KB". Tool tự nới bằng `SIZE_BUDGET.vendorFileBytes=2_097_152` (`tools/check-bundle.mjs:~66`) nên tự cho qua — `size:engine-chunk-file ok` mâu thuẫn `pipeline validate: warn file_individual 1645.4 KiB`. own-file to nhất 94.248 B ok. |
+| C6 | **PASS** | Script /tmp tự parse: `/src/` trong `dist/index.html` = **0**; 2/2 tham chiếu resolve tới file thật: `./assets/index-BPTtOGlx.js`→94.248 B, `./assets/vendor-phaser-Dz3O88Pw.js`→1.684.925 B (missing=0). Mở rộng: 36 literal `assets/…png|sfx/…wav` nhúng trong JS, **missing=0**. |
+| C7 | **PASS** (tool chạy được) / nội dung 2 kênh nộp FAIL | `dist --channel ytgame` → `KẾT QUẢ: FAIL (5 vi phạm)` **EXIT=1**; `--channel playgama` → `FAIL (7 vi phạm)` **EXIT=1**; `--channel standalone` → `PASS (0 vi phạm)` **EXIT=0**. Thư mục thiếu → EXIT=2, `--channel foo` → EXIT=2. Nhỏ: `--help` in USAGE nhưng **EXIT=2** (đọc `--help` ở vị trí flag `--channel` nên không rơi vào nhánh exit 0). |
+| C8 | **PASS** (cổng không vô nghĩa) | /tmp copy + chèn `fetch("http://x");` đầu own chunk → `FAIL network:fetch( limit=0 hits=1`, `raw: fetch(=1`, `KẾT QUẢ: FAIL (7 vi phạm)` **EXIT1=1**. /tmp copy + chèn `<script src="https://evil.example.com/a.js">` vào index.html → `FAIL remote-url:own-code hits=1 · https://evil.example.com/a.js`, **FAIL (6 vi phạm) EXIT3=1**. |
+| C9 | **FAIL** | `bash scripts/verify_game.sh M11-Gap` **VERIFY_EXIT=1**: ①a `✓ type check PASS` · ①b `Test Files 39 passed (39) / Tests 633 passed (633)` `✓ logic tests PASS` · ② `✓ build PASS` · ④ `✓ tất cả asset load keys đều có file` nhưng kèm `(quét 0 asset keys từ code vs raw files)` ⇒ **rào xanh vì quét 0 đối tượng** (pattern `this.load.image('k','file')` không khớp code thật) · ③ `✓ zip size OK: 1192811 B ≤ 1677721 B` rồi `scripts/verify_game.sh: line 104: unzip: command not found` → `✗ BUNDLE GATE FAIL — giải nén zip lỗi`, **không chỉ được file nào** (lỗi toolchain của gate, không phải lỗi bundle). |
+| C10 | **PASS** | `python3 -m pipeline validate --game-dir M11-Gap` → `overall: PASS`, `n_fail_fields: 0`. Network/size: `pass no_external_network`, `pass bundle_initial 0.01 MiB`, `pass bundle_total 2.12 MiB`. 1 `warn file_individual 1645.4 KiB` — thuộc batch **B5/C5** (file vượt target 512 KiB) và `warn` chứ không FAIL. |
+| C11 | **PASS có tì vết** | `title` 34/50 ✓; `short_desc` 129/150, ASCII-EN ✓; `how_to_play` 145/150, ASCII-EN ✓; `version` `0.1.0` == `package.json` ✓. `grep -o "GẤP\|Gấp" dist metadata ../games` = **0**. Tì vết: own chunk bundle nộp còn **27 chuỗi tiếng Việt (176 ký tự có dấu)**, toàn thông điệp exception nội bộ (`"rational.toPoints: mảng toạ độ dài lẻ ("`, `"— tăng foldCount hoặc hạ holes_max, không sinh thiếu"`, `"levelSpec: cfg phải là object ChapterLevelConfig…"`); vendor = 0. |
+| C12 | **FAIL** | Không có zip nộp nào (`find /data -name "paper-crease*.zip"` = 0) và **0 dòng** `M11\|Paper Crease\|paper-crease` trong `docs/SUBMISSIONS.md` ⇒ không có tên zip + md5 + byte trong hồ sơ. Zip tôi tự dựng để đo: `1.192.850 B`, md5 `48c26b43a5347c1c2e30a25cb23356c4`; `diff -r dist unzipped` = **1 khác lệch: `Only in dist: raw`** — thư mục rỗng `dist/raw/` luôn bị zip bỏ ⇒ ràng buộc "zip ≡ dist, giữ raw/ (REPACK-2)" **không thể đạt 0 khác lệch** bằng code `zip_channel()`/`verify_game.sh` hiện tại. |
+
+**ĐIỂM NGHI NGỜ**
+- Không kiểm chứng được C1–C4 trên "bản nộp thật" của tác giả vì snapshot不存在: mọi số liệu kênh (bridge URL, config, exit code) là từ bundle **tôi tự build lại** (`npx vite build --mode playgama` / snapshot `/tmp/snap-playgama`), không phải artefact bàn giao. Hệ quả: `build/_probe.txt` (2 B) là rác duy nhất còn lại — không loại trừ khả năng snapshot từng tồn tại rồi bị xoá; không có bằng chứng provenance.
+- `dist/` được giao sẵn **khác** fresh build: md5 chỉ lệch đúng `index.html` (`cd140d05…` trước → `7a83933b…` sau, 40/41 asset trùng hash), bản cũ bị nén 1 dòng `<head>` ⇒ index.html bàn giao đã bị sửa tay hoặc do bước khác ⇒ không xác định được bản nào sẽ lên kênh.
+- Cấm browser ⇒ không xác định được playgama có `game_ready` hay chết vì thiếu `playgama-bridge-config.json` (án lệ M8 G8b/R2).
+- Không kiểm được ý đồ tác giả tree-shake debug hook (không có `define`/dead-code theo mode trong `vite.config.ts`), nên không kết luận được C2/C3 là "quên gate build" hay "quên xoá hook".
+
+**3 RỦI RO LỚN NHẤT**
+1) **Debug hook vẫn sống trong bundle nộp** (`?level/?seed/?ad=mock` parse được ở cả ytgame lẫn playgama): reviewer/CEO bấm nút nộp là phát hành bản có đường chỉnh level + giả quảng cáo + đổi seed từ URL — check-bundle đã bắt đúng (FAIL 5/6/7) nhưng **không có bước nào trong `build-channels.sh` chặn** vì script dừng ở `set -e` ngay `check ytgame`, tức 2 snapshot chưa từng tồn tại hợp lệ.
+2) **Cổng tự mâu thuẫn và tự nới**: `vendorFileBytes=2_097_152` trong tool cho qua file 1.645 KiB trong khi SPEC/validate đặt trần 512 KiB cho *mỗi file*; `verify_game.sh` rào ④ quét **0** asset keys (xanh giả) và rào ③ sập vì `unzip` không có; zip cơ học mất thư mục rỗng `raw/` nên `diff -r zip≡dist` **luôn ≥1 khác lệch** → cả 3 "bảo chứng" kích thước/đóng gói đều không đáng tin.
+3) **Không có hồ sơ nộp**: 0 zip, 0 md5, 0 dòng M11 trong `docs/SUBMISSIONS.md`, thiếu `playgama-bridge-config.json` + 15 URL vendor ngoài prefix — nghĩa là B5 mới tới "script build tồn tại", chưa tới "bản nộp tồn tại"; nếu batch sau lấy `dist/` hiện hữu làm bản nộp thì sẽ nộp nhầm bản standalone/dev (đang có `?level` hook và không có bridge script).
+
+[result] is_error=False num_turns=30 duration_ms=501899 cost_usd=1.057839

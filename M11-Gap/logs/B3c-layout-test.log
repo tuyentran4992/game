@@ -1,0 +1,10 @@
+
+ RUN  v2.1.9 /data/youtube-playables/M11-Gap/game
+
+ ✓ tests/logic/layout.test.ts (42 tests) 107ms
+
+ Test Files  1 passed (1)
+      Tests  42 passed (42)
+   Start at  12:59:26
+   Duration  1.11s (transform 338ms, setup 0ms, collect 448ms, tests 107ms, environment 0ms, prepare 168ms)
+

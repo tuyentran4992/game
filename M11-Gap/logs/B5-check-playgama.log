@@ -1,0 +1,63 @@
+CHECK-BUNDLE /tmp/pc-playgama  channel=playgama  submission=true
+files=41  total=2645364 B  largest=assets/vendor-phaser-Dz3O88Pw.js (1684925 B)
+raw(cả bundle, không chia vùng): ?debug=0  ?level==0  ?seed==0  ad=mock=0  fetch(=0  XMLHttpRequest=1  WebSocket=0  sendBeacon=0  https?://=1692
+  ok   debug-hook:?debug                                                  limit=             0  hits=     0
+  AUDT debug-hook:?debug@vendor                                           limit=         audit  hits=     0
+  ok   debug-hook:?level=                                                 limit=             0  hits=     0
+  AUDT debug-hook:?level=@vendor                                          limit=         audit  hits=     0
+  ok   debug-hook:?seed=                                                  limit=             0  hits=     0
+  AUDT debug-hook:?seed=@vendor                                           limit=         audit  hits=     0
+  ok   debug-hook:ad=mock                                                 limit=             0  hits=     0
+  AUDT debug-hook:ad=mock@vendor                                          limit=         audit  hits=     0
+  ok   debug-hook:debug=1                                                 limit=             0  hits=     0
+  AUDT debug-hook:debug=1@vendor                                          limit=         audit  hits=     0
+  ok   debug-surface:global(location)                                     limit=             0  hits=     0
+  AUDT debug-surface:global(location)@vendor                              limit=         audit  hits=     0
+  ok   debug-surface:.search                                              limit=             0  hits=     0
+  AUDT debug-surface:.search@vendor                                       limit=         audit  hits=     4
+         · assets/vendor-phaser-Dz3O88Pw.js @926519 ⟂ this.treeMinMax;b.minX=z.left,b.minY=z.top,b.maxX=z.right,b.maxY=z.bottom;var Q=D.physicsType===e.DYNAMIC_BODY?this.tree.search(b):this.staticTree.sea
+         · assets/vendor-phaser-Dz3O88Pw.js @926545 ⟂ eft,b.minY=z.top,b.maxX=z.right,b.maxY=z.bottom;var Q=D.physicsType===e.DYNAMIC_BODY?this.tree.search(b):this.staticTree.search(b);for(X=Q.length,Y=0;
+         · assets/vendor-phaser-Dz3O88Pw.js @935074 ⟂ 0&&(s=!0),e===void 0&&(e=!1);var i=[],r=[],n=t.treeMinMax;if(n.minX=u,n.minY=c,n.maxX=u+h,n.maxY=c+a,e&&(r=t.staticTree.search(n)),s&&t.useTree)i=t.tr
+  ok   debug-surface:URLSearchParams                                      limit=             0  hits=     0
+  AUDT debug-surface:URLSearchParams@vendor                               limit=         audit  hits=     0
+  ok   debug-surface:query-key(debug|seed)                                limit=             0  hits=     0
+  AUDT debug-surface:query-key(debug|seed)@vendor                         limit=         audit  hits=     3
+         · assets/vendor-phaser-Dz3O88Pw.js @91409 ⟂ "canvasStyle",null),this.customEnvironment=e(l,"customEnvironment",!1),this.sceneConfig=e(l,"scene",null),this.seed=e(l,"seed",[(Date.now()*Math.rando
+         · assets/vendor-phaser-Dz3O88Pw.js @916000 ⟂ _BIAS=x(U,"tileBias",16),this.forceX=x(U,"forceX",!1),this.isPaused=x(U,"isPaused",!1),this._total=0,this.drawDebug=x(U,"debug",!1),this.debugGraphic,
+         · assets/vendor-phaser-Dz3O88Pw.js @966767 ⟂ ),A=n(M,"fps",!1);A&&(M.delta=1e3/n(M,"fps",60)),this.runner=m.create(M),this.autoUpdate=o(C,"autoUpdate",!0);var R=o(C,"debug",!1);if(this.drawDebug=
+  ok   debug-surface:ad-value("mock")                                     limit=             0  hits=     0
+  AUDT debug-surface:ad-value("mock")@vendor                              limit=         audit  hits=     0
+  ok   network:fetch(                                                     limit=             0  hits=     0
+  ok   network:fetch(@vendor                                              limit=             0  hits=     0
+  ok   network:XMLHttpRequest                                             limit=             0  hits=     0
+  ok   network:XMLHttpRequest@vendor                                      limit=             1  hits=     1
+         · assets/vendor-phaser-Dz3O88Pw.js @742191 ⟂ y.from(atob(e),function(o){return o.charCodeAt(0)}).buffer}:i={responseText:atob(e)},h.onBase64Load(i);return}var r=new XMLHttpRequest;if(r.open("GET"
+  ok   network:WebSocket                                                  limit=             0  hits=     0
+  ok   network:WebSocket@vendor                                           limit=             0  hits=     0
+  ok   network:sendBeacon                                                 limit=             0  hits=     0
+  ok   network:sendBeacon@vendor                                          limit=             0  hits=     0
+  ok   network:importScripts(                                             limit=             0  hits=     0
+  ok   network:importScripts(@vendor                                      limit=             0  hits=     0
+  ok   network:new EventSource                                            limit=             0  hits=     0
+  ok   network:new EventSource@vendor                                     limit=             0  hits=     0
+  ok   remote-url:https://bridge.playgama.com/v2/stable/playgama-bridge.js limit=        đúng 1  hits=     1
+  ok   remote-url:own-code                                                limit=             0  hits=     0
+  AUDT remote-url:vendor-hosts-ngoai-prefix                               limit=         audit  hits=    15
+         · http://www.w3.org/2000/svg
+         · http://www.w3.org/1999/xhtml
+         · http://steffe.se
+         · http://prunegames.com
+         · https://github.com/niklasvh/base64-arraybuffer
+  AUDT remote-url:vendor-known                                            limit=         audit  hits=  1676
+  ok   entry-dev-path                                                     limit=             0  hits=     0
+  ok   entry-refs-exist                                                   limit=             0  hits=     0  (đã kiểm 2 tham chiếu nội)
+  ok   legacy-name:GẤP                                                    limit=             0  hits=     0
+  ok   legacy-name:Gấp                                                    limit=             0  hits=     0
+  ok   size:total                                                         limit=       5242880  hits=2645364  (files=41)
+  ok   size:own-code-file                                                 limit=        524288  hits= 92717  (assets/index-DNn1fZ7S.js)
+  ok   size:engine-chunk-file                                             limit=       2097152  hits=1684925  (assets/vendor-phaser-Dz3O88Pw.js)
+  FAIL required-file:playgama-bridge-config.json                          limit=       phải có  hits=     0
+         · thiếu playgama-bridge-config.json trong bundle
+  ok   vendor-shape:assets/vendor-phaser-Dz3O88Pw.js                      limit=là engine thật  hits=     1  (dấu hiệu engine: có)
+  ok   no-sourcemap                                                       limit=             0  hits=     0
+KẾT QUẢ: FAIL (1 vi phạm)

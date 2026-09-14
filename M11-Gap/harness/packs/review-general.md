@@ -1,5 +1,9 @@
 # GÓI REVIEW — checklist + lệnh + định dạng output (không cần đọc file nào thêm)
 
+## CẤM LÁI BROWSER (anh chốt 14/09/2026)
+Reviewer CHỈ kiểm CODE. **CẤM**: mở browser, Playwright/Puppeteer/CDP, `vite preview`, `npm run dev`, chụp ảnh, điều khiển UI thật — những việc đó **tốn rất nhiều thời gian và là việc của Hermes/anh ở MỐC kết quả**, không phải của phiên review.
+Được phép: đọc file, `grep`, chạy `vitest`, viết **script node/python trong `/tmp`** để gọi thẳng hàm (fuzz, đo số) — tất cả ở tầng CODE.
+
 ## Lệnh được phép chạy (đúng 4 nhóm này)
 - `cd /data/youtube-playables/M11-Gap/game && npm run typecheck && npm run test:logic` (dán output thật)
 - `grep -nE "Math.random|Date.now|performance.now|document|window|fetch|any|@ts-ignore|console.log|NOT_IMPLEMENTED" src/logic/*.ts`

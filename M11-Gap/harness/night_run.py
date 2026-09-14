@@ -63,6 +63,15 @@ def step_parallel(jobs, timeout=3000):
         last = [l for l in out.splitlines() if l.startswith("[")]
         log(f"  {name}: rc={pr.returncode} " + (last[-1][:160] if last else ""))
 
+def cleanup_tmp():
+    """Dọn script tạm mồ côi sau mỗi phiên review (bài học: fz*.js thoát ra ngoài ăn CPU 12h)."""
+    try:
+        subprocess.run(["bash", "harness/cleanup-tmp-scripts.sh"], cwd=BASE,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
+    except Exception:
+        pass
+
+
 def gate(batch):
     rc, out = sh("npm run gate", cwd=GAME, timeout=900)
     with open(os.path.join(LOG, f"{batch}-gate.log"), "w", encoding="utf-8") as f:
@@ -83,6 +92,11 @@ REVIEW_SET = {
     "B4":  ["3a-code", "3b-stress"],
     "B5":  ["3a-code", "3b-stress"],
 }
+
+# Siết cho các batch cuối (anh chốt 14/09: đỡ tốn thời gian) — 1 vòng sửa, KHÔNG kiểm lại
+REV_FIX_MAX = {"B3b": 1, "B4": 1, "B5": 1}
+RECHECK = {"B3b": False, "B4": False, "B5": False}
+
 
 def reviews_for(batch):
     return REVIEW_SET.get(batch, ["3a-code", "3b-stress", "3c-arch"])
@@ -159,10 +173,11 @@ def night_batch(batch):
     rows = []
     if ok:
         step_parallel([(batch, n, f"{batch}-{n}.md", 30, "readonly") for n in reviews_for(batch)])
+        cleanup_tmp()
         rows = review_fails(batch)
         log(f"  review FAIL: {len(rows)} mục")
         rnd = 0
-        while rows and rnd < 2:
+        while rows and rnd < REV_FIX_MAX.get(batch, 2):
             rnd += 1
             fx = make_fix_prompt(batch, f"rev{rnd}", "review")
             log(f"  tự sửa theo review đợt {rnd}: {fx}")
@@ -172,9 +187,13 @@ def night_batch(batch):
                 fx2 = make_fix_prompt(batch, f"gate-after-rev{rnd}", "gate")
                 step(batch, f"fix-gate-after-rev{rnd}", fx2, 90)
                 gate(batch)
-            step_parallel([(batch, n, f"{batch}-{n}.md", 30, "readonly") for n in reviews_for(batch)])
-            rows = review_fails(batch)
-            log(f"  review FAIL sau đợt {rnd}: {len(rows)} mục")
+            if RECHECK.get(batch, True):
+                step_parallel([(batch, n, f"{batch}-{n}.md", 30, "readonly") for n in reviews_for(batch)])
+                rows = review_fails(batch)
+                log(f"  review FAIL sau đợt {rnd}: {len(rows)} mục")
+            else:
+                log("  (cấu hình siết) KHÔNG kiểm lại sau khi sửa — các mục trên đã sửa, chưa xác nhận")
+                break
 
     mins = (time.time() - t0) / 60
     summary = [f"# NIGHT — batch {batch}", f"- Thời gian: {mins:.1f} phút",

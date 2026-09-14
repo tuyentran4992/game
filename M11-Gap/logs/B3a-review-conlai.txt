@@ -1,0 +1,2 @@
+| C1 | FAIL | `npm run gate` đỏ: 2 failed / 557 (`scene-boot.test.ts:62`, `:99`); probe DIAG3 `scene.isBooted:false` |
+| C2 | FAIL | `scene-boot.test.ts:79-91` xanh rỗng (rect `undefined` → `forEach` `return`, `overlaps=[]`); `:47-56` chỉ `typeof ... 'function'`; `:96` xanh nhờ TESTIDS rò rỉ từ it trước |

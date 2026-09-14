@@ -63,6 +63,13 @@ const BOUNDS: Readonly<Record<GuardName, Bound>> = {
   foldCount: { min: 1, max: MAX_CHAIN_LEN, source: 'CHAIN_ROWS' },
 };
 
+/**
+ * Trần số ĐIỂM ĐỤC của một đề = BOUNDS.punchCount.max, đọc ra ngoài cho tầng vẽ.
+ * Tầng vẽ cần nó để tính "một ô phải vẽ nổi bao nhiêu lỗ" — khai số lần thứ hai ở
+ * src/render là lỗi E2 (review F1: MAX_HOLES từng bị hardcode 8 dù đề có tới 36 lỗ).
+ */
+export const MAX_PUNCH_COUNT: number = BOUNDS.punchCount.max;
+
 export function requireBound(name: GuardName, v: number): void {
   const b = BOUNDS[name];
   const where = b.source ? ' (xem ' + b.source + ')' : '';

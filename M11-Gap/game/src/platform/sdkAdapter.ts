@@ -64,6 +64,9 @@ export function outcomeFor(table: Readonly<Record<string, AdOutcome>>, event: st
   return knownOutcome(owned ? table[event] : 'failed');
 }
 
+/** Host có lệnh ghi không trả cửa chờ (ytgame `dataSave`): bỏ qua kết quả, hợp đồng là ĐỒNG BỘ. */
+export const ignoreResult = (): void => undefined;
+
 /** Bridge → Promise: callback đồng bộ ⇒ settle ở microtask; bridge ném ⇒ 'failed' (PC-20). */
 function askBridge(run: (done: (outcome: AdOutcome) => void) => void): Promise<AdOutcome> {
   return new Promise((resolve) => {
@@ -216,4 +219,32 @@ export function createSdkAdapter(sources: SdkSources, offline: PlatformAdapter =
     ads: adsPart(sources, offline.ads),
     lifecycle: lifecyclePart(sources, offline.lifecycle),
   };
+}
+
+// F4 (vòng sửa B3a): KHUNG ADAPTER CHUNG — phần "đọc bridge -> gate đủ hàm -> dịch từ vựng"
+// từng bị copy nguyên giữa playgamaAdapter và ytgameAdapter (11 dòng lệnh + 6 dòng đuôi).
+/** Một phần của host: hàm nào bắt buộc có, phần đó nằm ở đâu trong bridge, dịch ra sao. */
+export type HostPart<T, S> = {
+  readonly methods: readonly string[];
+  readonly pick: (bridge: T) => unknown;
+  readonly make: (bridge: T) => S;
+};
+/** Ba phần của một bridge — đúng ba mục của SdkSources (thêm phần là lỗi biên dịch ở host). */
+export type HostShape<T> = {
+  readonly storage: HostPart<T, SdkStorageSource>;
+  readonly ads: HostPart<T, SdkAdsSource>;
+  readonly lifecycle: HostPart<T, SdkLifecycleSource>;
+};
+/** Bridge vắng HOẶC thiếu một hàm của phần nào ⇒ đúng phần đó coi như nền tảng không có. */
+export function hostAdapter<T extends object>(read: () => T | null, shape: HostShape<T>): PlatformAdapter {
+  const live = <S>(part: HostPart<T, S>): S | null => {
+    const bridge = read();
+    return bridge !== null && hasMethods(part.pick(bridge), part.methods) ? part.make(bridge) : null;
+  };
+  const sources: SdkSources = {
+    storage: () => live(shape.storage),
+    ads: () => live(shape.ads),
+    lifecycle: () => live(shape.lifecycle),
+  };
+  return createSdkAdapter(sources);
 }

@@ -1,0 +1,6 @@
+# MANIFEST FILE CẤU HÌNH CỦA KÊNH — build-channels.sh copy MỌI dòng dưới vào GỐC bundle (dist/)
+# trước bước snapshot + check-bundle. Đường dẫn tính tương đối với scripts/channels/<kênh>/.
+# Định dạng: <tên-file>  hoặc  <tên-file>=<tên trong bundle>. Dòng '#' và dòng trống bị bỏ.
+# Kênh không có manifest ⇒ 0 file copy (không cần sửa script khi thêm kênh mới).
+# Án lệ M8 R2: thiếu playgama-bridge-config.json ⇒ rớt game_ready, cổng required-file đã chặn.
+playgama-bridge-config.json

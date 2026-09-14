@@ -1,0 +1,18 @@
+
+> paper-crease@0.1.0 build:playgama
+> tsc --noEmit && vite build --mode playgama
+
+vite v5.4.21 building for playgama...
+transforming...
+✓ 66 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                            1.15 kB │ gzip:   0.82 kB
+dist/assets/index-DNn1fZ7S.js             92.39 kB │ gzip:  31.54 kB
+dist/assets/vendor-phaser-Dz3O88Pw.js  1,684.91 kB │ gzip: 381.36 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 13.35s

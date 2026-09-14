@@ -1,0 +1,20 @@
+Bạn là dev Phaser 3 + TypeScript. **VIỆC: `ScoreScene.ts` + `EndScene.ts`** (+ panel nếu test đòi).
+
+## BỐI CẢNH (đọc trước, đừng đoán)
+- Gói ngữ cảnh B3b nằm trong system prompt (mục §3 có số đo + testid của từng scene; §5 là 14 testid; §4 là nhịp animation).
+- **Test là HỢP ĐỒNG** và chúng **QUÉT NGUỒN** (đọc file bằng `node:fs`, không mở browser): `game/tests/logic/view-b3b-contract.test.ts` và `game/tests/logic/view-b3b-states.test.ts`. ĐỌC 2 FILE NÀY TRƯỚC để biết chính xác chuỗi/testid/số đo mà test đòi.
+- Lệnh kiểm nhanh (chạy nhiều lần tuỳ ý, KHÔNG cần mở browser):
+  `cd /data/youtube-playables/M11-Gap/game && npx vitest run tests/logic/view-b3b-contract.test.ts tests/logic/view-b3b-states.test.ts`
+- **CẤM mở browser/Playwright/CDP/`vite preview`/`npm run dev`.**
+- **CẤM sửa**: `src/main.ts` (đã đăng ký sẵn 8 scene), các scene của B3a (`BootScene`, `TitleScene`, `PlayScene`), `src/logic/**`, `harness/**`, `specs/**`, `tools/gate-smell.mjs`.
+- Mỗi file ≤ **350 dòng**; khối 6 dòng trùng lặp giữa file là vi phạm cổng ⇒ gom phần chung.
+- Mọi text hiển thị qua **i18n** (không chuỗi trần) trừ khi test yêu cầu chuỗi cụ thể; mọi nút đăng ký `data-testid` + rect qua cửa hook của B3a (theo test đòi).
+- KHÔNG tự cộng/trừ sao, Mực, hay tự cấp album/badge — đọc từ logic qua **session**.
+
+## PHẠM VI FILE
+- Tạo/hoàn tất: `src/render/scenes/ScoreScene.ts` (đang là `// placeholder`) · `src/render/scenes/EndScene.ts` (đang là `// placeholder`) · panel `GameOverPanel` nếu hợp đồng test yêu cầu (kiểm tên chính xác trong pack §2/§3 và trong test).
+- Score: panel **480×560** — cụm sao chương **48px** (`testid-scorecard-stars`), thời gian chơi chương, kỷ lục cá nhân (ghost); 2 nút `testid-scorecard-next` + "View map"; **interstitial CHỈ được phép ở đây và CHỈ sau khi panel + sao animate xong** (PC-14) — cấm ở nơi khác.
+- End: tổng sao `/120` (`testid-end-total-stars`), tổng thời gian, copy **theo i18n** nhưng khớp chuỗi test đòi (test neo `"You unfolded all 120"`), nút `testid-end-master` mở vòng Master (PC-18); thoát end phải về map/menu được (PC-G-04).
+## XONG KHI
+`npx vitest run tests/logic/view-b3b-contract.test.ts tests/logic/view-b3b-states.test.ts` **xanh** (hoặc chỉ còn đỏ ở phần nhóm kia — ghi rõ), và `npx tsc --noEmit` sạch.
+BÁO CÁO: file:dòng · testid đã đăng ký · output vitest + tsc · việc không làm được.

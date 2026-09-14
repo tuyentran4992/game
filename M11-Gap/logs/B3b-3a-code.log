@@ -1,0 +1,88 @@
+
+[tool] Bash: {'command': 'ls src/render src/render/* tests/logic/view-b3b-* 2>/dev/null | head -60', 'description': 'List render files and B3b tests'}
+
+[tool] Bash: {'command': 'npm run typecheck 2>&1 | tail -20', 'description': 'Run typecheck'}
+
+[tool] Bash: {'command': 'npm run test:logic 2>&1 | tail -30', 'description': 'Run logic test suite', 'timeout': 600000}
+
+[tool] Bash: {'command': 'wc -l tests/logic/view-b3b-*.test.ts src/render/viewmodel/*.ts src/render/scenes/{Map,Score,Shop,Album,End}Scene.ts src/render/components/*.ts src/main.ts', 'descripti
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/viewmodel/mapModel.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/viewmodel/albumModel.ts'}
+
+[tool] Bash: {'command': 'grep -nE "^import|from \'" src/render/viewmodel/*.ts | grep -v "^.*://" ; echo "--- components imports:"; grep -n "^import" src/render/components/*.ts; echo "--- phase
+
+[tool] Bash: {'command': 'grep -nE "Math\\.random|Date\\.now|performance\\.now|@ts-ignore|: any|as any|NOT_IMPLEMENTED|console\\.log" src/render/viewmodel/*.ts src/render/components/*.ts src/re
+
+[tool] Bash: {'command': 'grep -n "phaser" src/render/viewmodel/*.ts; echo "=== logic purity grep in viewmodel:"; grep -nE "document|window|fetch" src/render/viewmodel/*.ts || echo NONE', 'desc
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/scenes/MapScene.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/scenes/ScoreScene.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/scenes/ShopScene.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/scenes/AlbumScene.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/scenes/EndScene.ts'}
+
+[tool] Bash: {'command': 'grep -rnE "setText\\(|setLabel\\(|\\.text = |say\\(|\\bt\\(" src/render/scenes/*.ts src/render/components/*.ts | grep -vE "copy\\(|t\\(key|say\\(this\\.session, \'[a-z
+
+[tool] Bash: {'command': 'grep -rn "showInterstitial\\|showRewarded\\|interstitial\\|rewarded" src/render src/main.ts | head -20; echo "=== testids:"; ls src/ui; sed -n 1,200p src/ui/testids.ts
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/view-b3b-contract.test.ts'}
+
+[tool] Bash: {'command': 'grep -nE "^export (function|const|type|class)" src/logic/economy.ts src/logic/master.ts src/logic/stars.ts src/logic/progression.ts | head -50', 'description': 'List l
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/viewmodel/gridModel.ts'}
+
+[tool] Bash: {'command': 'grep -rn "1F6FEB\\|PRIMARY" src/render src/ui | head; echo "=== gridModel export usage:"; for f in tabUnit stripSpan stripBox scrollMax clampScroll inStrip badgeRadius
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/MapNode.ts'}
+
+[tool] Bash: {'command': 'grep -n "tabUnit\\|stripSpan\\|stripBox\\|scrollMax\\|clampScroll\\|inStrip\\|badgeRadius\\|columnOf" src/render/viewmodel/gridModel.ts | sed -n 1,40p; echo "=== sound
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/session.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/main.ts'}
+
+[tool] Bash: {'command': 'ls config 2>/dev/null; [ -f config/skins.json ] && cat config/skins.json; echo "=== i18n keys:"; grep -oE "\'[a-z]+\\.[a-z]+\'" src/logic/i18n.ts | sort -u | tr \'\\n\
+
+[tool] Bash: {'command': 'grep -nE "end\\.title|end\\.total|map\\.gate|score\\.title|score\\.next|score\\.map|shop\\.price|album\\.badges|map\\.chapter|map\\.confirm" src/logic/i18n.ts', 'descr
+
+[tool] Bash: {'command': 'grep -c "" src/logic/i18n.ts; grep -nE "LOCALES|DEFAULT_LOCALE|export (const|function|type)" src/logic/i18n.ts | head -20', 'description': 'Check i18n structure and lo
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/view-b3b-mapmodel.test.ts'}
+
+[tool] Bash: {'command': 'grep -nE "^(import|describe|  it\\(|it\\()" tests/logic/view-b3b-states.test.ts | head -70', 'description': 'Outline states test file'}
+
+[tool] Bash: {'command': 'grep -n "describe(\\|it(" tests/logic/view-b3b-states.test.ts | sed -n 1,30p; echo "=== headless scene boot for B3b scenes:"; grep -rln "MapScene\\|ScoreScene\\|ShopSc
+
+[tool] Bash: {'command': 'mkdir -p /tmp/fz && cp -r /data/youtube-playables/M11-Gap/game/src /tmp/fz/ && ln -sfn /data/youtube-playables/M11-Gap/game/node_modules /tmp/fz/node_modules && cp /da
+
+[tool] Bash: {'command': "cat > /tmp/fz/src/fuzz.test.ts <<'EOF'\nimport { describe, it, expect } from 'vitest';\nimport { buildMapModel, chapterTab } from '../render/viewmodel/mapModel';\nimpo
+
+[tool] Bash: {'command': 'npx vitest run --root /tmp/fz 2>&1 | tail -40', 'description': 'Run fuzz via project vitest with tmp root', 'timeout': 400000}
+
+[tool] Bash: {'command': 'ls -la /tmp/fz | head; rm -f /tmp/fz/vitest.config.ts; npx vitest run --root /tmp/fz 2>&1 | tail -40', 'description': 'Retry fuzz without config file', 'timeout': 4000
+
+[tool] Bash: {'command': 'rm -rf /tmp/rv3 && mkdir -p /tmp/rv3 && cp -r /data/youtube-playables/M11-Gap/game/src /tmp/rv3/src && ln -sfn /data/youtube-playables/M11-Gap/game/node_modules /tmp/r
+
+[tool] Bash: {'command': 'mkdir -p /tmp/rev3 && cp -r /data/youtube-playables/M11-Gap/game/src /tmp/rev3/src && ln -sfn /data/youtube-playables/M11-Gap/game/node_modules /tmp/rev3/node_modules 
+
+[tool] Bash: {'command': 'npx vitest run --root /tmp/rev3 2>&1 | tail -45', 'description': 'Run fuzz suite in clean dir', 'timeout': 500000}
+
+[tool] Bash: {'command': "cat > /tmp/rev3/fuzz2.test.ts <<'EOF'\nimport { describe, it, expect } from 'vitest';\nimport { layoutOf, TAP_MIN } from './src/render/layout';\nimport { cellGrid, car
+
+[tool] Bash: {'command': 'npx vitest run --root /tmp/rev3 fuzz2 --reporter=basic 2>&1 | grep -E "✓|×|tran ra|de chong" | head -30', 'description': 'Summarize overflow failures per viewport', 't
+
+[tool] Bash: {'command': 'sed -n 80,100p src/logic/economy.ts; echo "=== badge overflow numbers:"; cat > /tmp/rev3/fuzz2.test.ts <<\'EOF\'\nimport { describe, it, expect } from \'vitest\';\nimp
+
+[tool] Bash: {'command': 'sed -n 55,80p src/logic/economy.ts; echo "=== Denial type:"; sed -n 33,45p src/logic/economy.ts', 'description': 'Read BUY_RULES table and denial reasons'}
+
+[tool] Bash: {'command': 'for id in "testid-map-chapter-" "testid-map-node-" "testid-map-locked" "testid-scorecard-stars" "testid-scorecard-next" "testid-shop-skin-" "testid-shop-price" "testid
+
+[tool] Bash: {'command': 'grep -rn "scene.start(\\|scene.launch(" src/render src/main.ts | sed -n 1,40p', 'description': 'Map scene transition graph'}
+
+[result] is_error=True num_turns=31 duration_ms=432530 cost_usd=1.5998689999999998

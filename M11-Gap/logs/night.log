@@ -149,3 +149,193 @@ free after 140s
 [2026-09-14 02:38:38] === BATCH B3a ===
 [2026-09-14 02:38:38] BƯỚC TEST: 2 con song song
 [2026-09-14 02:38:38] BƯỚC TEST: 2 con song song
+[2026-09-14 03:00:37]   1a-tests: rc=0 [B3a/1a-tests] 79 lượt · 1318.5s · vào 396 · cache 5,796,352 · ra 76,587 · $5.6554 · ok
+[2026-09-14 03:00:37]   1a-tests: rc=0 [B3a/1a-tests] 79 lượt · 1318.5s · vào 396 · cache 5,796,352 · ra 76,587 · $5.6554 · ok
+[2026-09-14 03:00:37]   1b-tests: rc=0 [B3a/1b-tests] 40 lượt · 656.8s · vào 204 · cache 1,399,618 · ra 24,672 · $1.6828 · ok
+[2026-09-14 03:00:37]   1b-tests: rc=0 [B3a/1b-tests] 40 lượt · 656.8s · vào 204 · cache 1,399,618 · ra 24,672 · $1.6828 · ok
+[2026-09-14 03:40:31]   2-code: rc=1 [B3a/2-code] 91 lượt · 2394.5s · vào 540 · cache 10,468,080 · ra 128,635 · $9.7034 · ok
+[2026-09-14 03:40:31]   2-code: rc=1 [B3a/2-code] 91 lượt · 2394.5s · vào 540 · cache 10,468,080 · ra 128,635 · $9.7034 · ok
+[2026-09-14 03:40:43]   CỔNG FAIL (rc=2)
+[2026-09-14 03:40:43]   CỔNG FAIL (rc=2)
+[2026-09-14 03:40:43]   tự sửa theo cổng đợt 1: B3a-autofix-gate-gate1.md
+[2026-09-14 03:40:43]   tự sửa theo cổng đợt 1: B3a-autofix-gate-gate1.md
+[2026-09-14 03:57:42]   fix-gate1: rc=0 [B3a/fix-gate1] 97 lượt · 1018.5s · vào 456 · cache 5,121,665 · ra 33,533 · $4.0719 · ok
+[2026-09-14 03:57:42]   fix-gate1: rc=0 [B3a/fix-gate1] 97 lượt · 1018.5s · vào 456 · cache 5,121,665 · ra 33,533 · $4.0719 · ok
+[2026-09-14 03:58:50]   CỔNG PASS (rc=0)
+[2026-09-14 03:58:50]   CỔNG PASS (rc=0)
+[2026-09-14 04:07:18]   3a-code: rc=0 [B3a/3a-code] 37 lượt · 507.7s · vào 138 · cache 902,783 · ra 19,712 · $1.3907 · ok
+[2026-09-14 04:07:18]   3a-code: rc=0 [B3a/3a-code] 37 lượt · 507.7s · vào 138 · cache 902,783 · ra 19,712 · $1.3907 · ok
+[2026-09-14 04:13:36]   3b-stress: rc=0 [B3a/3b-stress] 37 lượt · 885.0s · vào 168 · cache 1,591,888 · ra 33,997 · $2.2842 · ok
+[2026-09-14 04:13:36]   3b-stress: rc=0 [B3a/3b-stress] 37 lượt · 885.0s · vào 168 · cache 1,591,888 · ra 33,997 · $2.2842 · ok
+[2026-09-14 04:13:36]   review FAIL: 15 mục
+[2026-09-14 04:13:36]   review FAIL: 15 mục
+[2026-09-14 04:13:36]   tự sửa theo review đợt 1: B3a-autofix-review-rev1.md
+[2026-09-14 04:13:36]   tự sửa theo review đợt 1: B3a-autofix-review-rev1.md
+[2026-09-14 04:41:34]   fix-rev1: rc=1 [B3a/fix-rev1] 91 lượt · 1678.4s · vào 540 · cache 11,497,562 · ra 98,613 · $9.4902 · ok
+[2026-09-14 04:41:34]   fix-rev1: rc=1 [B3a/fix-rev1] 91 lượt · 1678.4s · vào 540 · cache 11,497,562 · ra 98,613 · $9.4902 · ok
+[2026-09-14 04:41:46]   CỔNG FAIL (rc=2)
+[2026-09-14 04:41:46]   CỔNG FAIL (rc=2)
+[2026-09-14 04:56:19]   fix-gate-after-rev1: rc=0 [B3a/fix-gate-after-rev1] 77 lượt · 873.0s · vào 408 · cache 2,084,298 · ra 21,726 · $1.9353 · ok
+[2026-09-14 04:56:19]   fix-gate-after-rev1: rc=0 [B3a/fix-gate-after-rev1] 77 lượt · 873.0s · vào 408 · cache 2,084,298 · ra 21,726 · $1.9353 · ok
+[2026-09-14 04:57:26]   CỔNG PASS (rc=0)
+[2026-09-14 04:57:26]   CỔNG PASS (rc=0)
+[2026-09-14 05:07:52]   3a-code: rc=0 [B3a/3a-code] 35 lượt · 626.2s · vào 120 · cache 1,067,963 · ra 22,962 · $1.7601 · ok
+[2026-09-14 05:07:52]   3a-code: rc=0 [B3a/3a-code] 35 lượt · 626.2s · vào 120 · cache 1,067,963 · ra 22,962 · $1.7601 · ok
+[2026-09-14 05:14:48]   3b-stress: rc=1 [B3a/3b-stress] 31 lượt · 1042.3s · vào 180 · cache 1,476,006 · ra 34,844 · $2.1943 · ok
+[2026-09-14 05:14:48]   3b-stress: rc=1 [B3a/3b-stress] 31 lượt · 1042.3s · vào 180 · cache 1,476,006 · ra 34,844 · $2.1943 · ok
+[2026-09-14 05:14:48]   review FAIL sau đợt 1: 4 mục
+[2026-09-14 05:14:48]   review FAIL sau đợt 1: 4 mục
+[2026-09-14 05:14:48]   tự sửa theo review đợt 2: B3a-autofix-review-rev2.md
+[2026-09-14 05:14:48]   tự sửa theo review đợt 2: B3a-autofix-review-rev2.md
+[2026-09-14 05:39:37]   fix-rev2: rc=1 [B3a/fix-rev2] 91 lượt · 1488.1s · vào 540 · cache 8,299,633 · ra 50,378 · $6.2994 · ok
+[2026-09-14 05:39:37]   fix-rev2: rc=1 [B3a/fix-rev2] 91 lượt · 1488.1s · vào 540 · cache 8,299,633 · ra 50,378 · $6.2994 · ok
+[2026-09-14 05:39:49]   CỔNG FAIL (rc=2)
+[2026-09-14 05:39:49]   CỔNG FAIL (rc=2)
+[2026-09-14 05:48:34]   fix-gate-after-rev2: rc=0 [B3a/fix-gate-after-rev2] 40 lượt · 523.8s · vào 210 · cache 463,461 · ra 8,862 · $0.6039 · ok
+[2026-09-14 05:48:34]   fix-gate-after-rev2: rc=0 [B3a/fix-gate-after-rev2] 40 lượt · 523.8s · vào 210 · cache 463,461 · ra 8,862 · $0.6039 · ok
+[2026-09-14 05:49:51]   CỔNG PASS (rc=0)
+[2026-09-14 05:49:51]   CỔNG PASS (rc=0)
+[2026-09-14 06:05:06]   3a-code: rc=0 [B3a/3a-code] 46 lượt · 914.5s · vào 180 · cache 1,827,408 · ra 25,004 · $2.172 · ok
+[2026-09-14 06:05:06]   3a-code: rc=0 [B3a/3a-code] 46 lượt · 914.5s · vào 180 · cache 1,827,408 · ra 25,004 · $2.172 · ok
+[2026-09-14 06:06:31] FIX B3a (4 nhóm)…
+METRICS {"ts": "2026-09-14T06:21:13Z", "variant": "v1-harness", "batch": "B3a", "step": "2f-fix", "model": "qwen3.8-flash", "max_turns": 110, "turns": 85, "duration_s": 881.9, "api_ms": null, "ttft_ms": null, "cost_usd": 0, "session_id": null, "resume_from": null, "ctx_per_turn_avg": 4176, "ctx_per_turn_max": 4200, "syspack": "B3a-syspack.md", "exit": -9, "timeout": null, "input_tokens": 0, "output_tokens": 0, "cache_read": 0, "cache_creation": 0}
+[B3a/2f-fix] 85 lượt · 881.9s · vào 0 · cache 0 · ra 0 · $0 · ok
+[2026-09-14 06:22:02] TIẾP TỤC sửa B3a (phiên trước bị ngắt)…
+[2026-09-14 06:27:13] TIẾP TỤC sửa B3a (phiên trước bị ngắt)…
+METRICS {"ts": "2026-09-14T06:59:55Z", "variant": "v1-harness", "batch": "B3a", "step": "2g-fix-cont", "model": "qwen3.8-flash", "max_turns": 110, "turns": 111, "duration_s": 1962.3, "api_ms": 1816674, "ttft_ms": null, "cost_usd": 7.0798, "session_id": "83fe6eb2-ab12-413b-8893-2375b99cc5b0", "resume_from": null, "ctx_per_turn_avg": 3513, "ctx_per_turn_max": 3513, "syspack": "B3a-syspack.md", "exit": 1, "timeout": null, "input_tokens": 660, "output_tokens": 70963, "cache_read": 8787194, "cache_creation": 142006}
+[B3a/2g-fix-cont] 111 lượt · 1962.3s · vào 660 · cache 8,787,194 · ra 70,963 · $7.0798 · ok
+[2026-09-14 07:01:07] CỔNG B3a FAIL
+[2026-09-14 07:01:07] review CODE (3a-code, KHÔNG browser)…
+METRICS {"ts": "2026-09-14T07:12:39Z", "variant": "v1-harness", "batch": "B3a", "step": "3a-code", "model": "qwen3.8-flash", "max_turns": 30, "turns": 38, "duration_s": 691.6, "api_ms": 462930, "ttft_ms": 2770, "cost_usd": 1.3829, "session_id": "f7e3b6e2-dac5-4a9c-af4e-af3887d4146f", "resume_from": null, "ctx_per_turn_avg": 4729, "ctx_per_turn_max": 4729, "syspack": "B3a-syspack.md", "exit": 0, "timeout": null, "input_tokens": 168, "output_tokens": 19726, "cache_read": 949630, "cache_creation": 63115}
+[B3a/3a-code] 38 lượt · 691.6s · vào 168 · cache 949,630 · ra 19,726 · $1.3829 · ok
+[2026-09-14 07:12:39] B3a xong (gate=FAIL, FAIL còn 2) → chạy B3b B4 B5
+[2026-09-14 07:12:39] ##### NIGHT RUN bắt đầu: ['B3b', 'B4', 'B5'] #####
+[2026-09-14 07:12:39] ##### NIGHT RUN bắt đầu: ['B3b', 'B4', 'B5'] #####
+[2026-09-14 07:12:39] === BATCH B3b ===
+[2026-09-14 07:12:39] === BATCH B3b ===
+[2026-09-14 07:12:39] BƯỚC TEST: 2 con song song
+[2026-09-14 07:12:39] BƯỚC TEST: 2 con song song
+[2026-09-14 07:13:02]   1a-tests: rc=-9 
+[2026-09-14 07:13:02]   1a-tests: rc=-9 
+[2026-09-14 07:13:02]   1b-tests: rc=-9 
+[2026-09-14 07:13:02]   1b-tests: rc=-9 
+[2026-09-14 07:13:17] SỬA HẸP B3a (2 test đỏ + test rỗng)…
+METRICS {"ts": "2026-09-14T07:22:27Z", "variant": "v1-harness", "batch": "B3a", "step": "2h-fix-narrow", "model": "qwen3.8-flash", "max_turns": 40, "turns": 41, "duration_s": 549.3, "api_ms": 492986, "ttft_ms": null, "cost_usd": 1.3113, "session_id": "89364504-ed6d-42eb-9df7-2bd88969bc37", "resume_from": null, "ctx_per_turn_avg": 3682, "ctx_per_turn_max": 3682, "syspack": "B3a-syspack.md", "exit": 1, "timeout": null, "input_tokens": 240, "output_tokens": 19806, "cache_read": 1017584, "cache_creation": 47237}
+[B3a/2h-fix-narrow] 41 lượt · 549.3s · vào 240 · cache 1,017,584 · ra 19,806 · $1.3113 · ok
+[2026-09-14 07:23:57] CỔNG B3a VẪN FAIL — xem logs/B3a-gate.log
+[2026-09-14 07:23:57] chạy tiếp B3b B4 B5
+[2026-09-14 07:23:57] ##### NIGHT RUN bắt đầu: ['B3b', 'B4', 'B5'] #####
+[2026-09-14 07:23:57] ##### NIGHT RUN bắt đầu: ['B3b', 'B4', 'B5'] #####
+[2026-09-14 07:23:57] === BATCH B3b ===
+[2026-09-14 07:23:57] === BATCH B3b ===
+[2026-09-14 07:23:57] BƯỚC TEST: 2 con song song
+[2026-09-14 07:23:57] BƯỚC TEST: 2 con song song
+[2026-09-14 07:41:57]   1a-tests: rc=0 [B3b/1a-tests] 58 lượt · 1079.4s · vào 306 · cache 2,998,973 · ra 44,773 · $3.2072 · ok
+[2026-09-14 07:41:57]   1a-tests: rc=0 [B3b/1a-tests] 58 lượt · 1079.4s · vào 306 · cache 2,998,973 · ra 44,773 · $3.2072 · ok
+[2026-09-14 07:44:40]   1b-tests: rc=0 [B3b/1b-tests] 80 lượt · 1242.7s · vào 390 · cache 5,204,740 · ra 48,868 · $4.5815 · ok
+[2026-09-14 07:44:40]   1b-tests: rc=0 [B3b/1b-tests] 80 lượt · 1242.7s · vào 390 · cache 5,204,740 · ra 48,868 · $4.5815 · ok
+[2026-09-14 08:16:10]   2-code: rc=1 [B3b/2-code] 91 lượt · 1889.9s · vào 540 · cache 9,532,544 · ra 82,252 · $7.9005 · ok
+[2026-09-14 08:16:10]   2-code: rc=1 [B3b/2-code] 91 lượt · 1889.9s · vào 540 · cache 9,532,544 · ra 82,252 · $7.9005 · ok
+[2026-09-14 08:16:20]   CỔNG FAIL (rc=2)
+[2026-09-14 08:16:20]   CỔNG FAIL (rc=2)
+[2026-09-14 08:16:20]   tự sửa theo cổng đợt 1: B3b-autofix-gate-gate1.md
+[2026-09-14 08:16:20]   tự sửa theo cổng đợt 1: B3b-autofix-gate-gate1.md
+[2026-09-14 08:47:17]   fix-gate1: rc=1 [B3b/fix-gate1] 91 lượt · 1857.5s · vào 540 · cache 9,954,736 · ra 73,419 · $7.8896 · ok
+[2026-09-14 08:47:17]   fix-gate1: rc=1 [B3b/fix-gate1] 91 lượt · 1857.5s · vào 540 · cache 9,954,736 · ra 73,419 · $7.8896 · ok
+[2026-09-14 08:47:27]   CỔNG FAIL (rc=2)
+[2026-09-14 08:47:27]   CỔNG FAIL (rc=2)
+[2026-09-14 08:47:27]   tự sửa theo cổng đợt 2: B3b-autofix-gate-gate2.md
+[2026-09-14 08:47:27]   tự sửa theo cổng đợt 2: B3b-autofix-gate-gate2.md
+[2026-09-14 08:51:23] ĐÊM KẾT THÚC
+[2026-09-14 08:51:30] HOÀN TẤT 4 scene B3b (Shop/Score/End/Album)…
+[2026-09-14 09:12:26] B3b: 2 phiên SONG SONG (Shop+Album | Score+End)…
+METRICS {"ts": "2026-09-14T09:33:29Z", "variant": "v1-harness", "batch": "B3b", "step": "2d-score-end", "model": "qwen3.8-flash", "max_turns": 110, "turns": 82, "duration_s": 1263.1, "api_ms": 837661, "ttft_ms": 2108, "cost_usd": 4.2722, "session_id": "b0fd743e-0de0-4086-94d4-4fe0bb2749e4", "resume_from": null, "ctx_per_turn_avg": 3844, "ctx_per_turn_max": 3844, "syspack": "B3b-syspack.md", "exit": 0, "timeout": null, "input_tokens": 426, "output_tokens": 36025, "cache_read": 5326526, "cache_creation": 111150}
+[B3b/2d-score-end] 82 lượt · 1263.1s · vào 426 · cache 5,326,526 · ra 36,025 · $4.2722 · ok
+METRICS {"ts": "2026-09-14T09:39:26Z", "variant": "v1-harness", "batch": "B3b", "step": "2c-shop-album", "model": "qwen3.8-flash", "max_turns": 110, "turns": 111, "duration_s": 1620.1, "api_ms": 1246941, "ttft_ms": null, "cost_usd": 8.2112, "session_id": "5c5cfe5a-5750-4ad5-8a58-345a728ec5e0", "resume_from": null, "ctx_per_turn_avg": 3858, "ctx_per_turn_max": 3858, "syspack": "B3b-syspack.md", "exit": 1, "timeout": null, "input_tokens": 660, "output_tokens": 50370, "cache_read": 11907031, "cache_creation": 157323}
+[B3b/2c-shop-album] 111 lượt · 1620.1s · vào 660 · cache 11,907,031 · ra 50,370 · $8.2112 · ok
+[2026-09-14 09:40:33] CỔNG B3b FAIL
+tổng dọn: 0
+[2026-09-14 09:40:34] review CODE B3b (không browser)…
+METRICS {"ts": "2026-09-14T09:47:47Z", "variant": "v1-harness", "batch": "B3b", "step": "3a-code", "model": "qwen3.8-flash", "max_turns": 30, "turns": 31, "duration_s": 433.7, "api_ms": 346433, "ttft_ms": null, "cost_usd": 1.5999, "session_id": "2d48287f-be77-4006-b0ac-f08c498d42d4", "resume_from": null, "ctx_per_turn_avg": 4752, "ctx_per_turn_max": 4752, "syspack": "B3b-syspack.md", "exit": 1, "timeout": null, "input_tokens": 180, "output_tokens": 14062, "cache_read": 1440703, "cache_creation": 81482}
+[B3b/3a-code] 31 lượt · 433.7s · vào 180 · cache 1,440,703 · ra 14,062 · $1.5999 · ok
+[2026-09-14 09:47:47] B3b xong (gate=FAIL) → chạy B4 B5
+[2026-09-14 09:47:47] ##### NIGHT RUN bắt đầu: ['B4', 'B5'] #####
+[2026-09-14 09:47:47] ##### NIGHT RUN bắt đầu: ['B4', 'B5'] #####
+[2026-09-14 09:47:47] === BATCH B4 ===
+[2026-09-14 09:47:47] === BATCH B4 ===
+[2026-09-14 09:47:47]   ! không có prompt test — bỏ qua bước test
+[2026-09-14 09:47:47]   ! không có prompt test — bỏ qua bước test
+[2026-09-14 10:12:01]   2-code: rc=1 [B4/2-code] 91 lượt · 1453.7s · vào 540 · cache 5,811,827 · ra 44,898 · $4.7469 · ok
+[2026-09-14 10:12:01]   2-code: rc=1 [B4/2-code] 91 lượt · 1453.7s · vào 540 · cache 5,811,827 · ra 44,898 · $4.7469 · ok
+[2026-09-14 10:12:11]   CỔNG FAIL (rc=2)
+[2026-09-14 10:12:11]   CỔNG FAIL (rc=2)
+[2026-09-14 10:12:11]   tự sửa theo cổng đợt 1: B4-autofix-gate-gate1.md
+[2026-09-14 10:12:11]   tự sửa theo cổng đợt 1: B4-autofix-gate-gate1.md
+[2026-09-14 10:32:11]   fix-gate1: rc=1 [B4/fix-gate1] 91 lượt · 1200.7s · vào 540 · cache 4,488,106 · ra 44,432 · $4.0545 · ok
+[2026-09-14 10:32:11]   fix-gate1: rc=1 [B4/fix-gate1] 91 lượt · 1200.7s · vào 540 · cache 4,488,106 · ra 44,432 · $4.0545 · ok
+[2026-09-14 10:32:21]   CỔNG FAIL (rc=2)
+[2026-09-14 10:32:21]   CỔNG FAIL (rc=2)
+[2026-09-14 10:32:21]   tự sửa theo cổng đợt 2: B4-autofix-gate-gate2.md
+[2026-09-14 10:32:21]   tự sửa theo cổng đợt 2: B4-autofix-gate-gate2.md
+[2026-09-14 10:48:54]   fix-gate2: rc=1 [B4/fix-gate2] 91 lượt · 993.1s · vào 540 · cache 5,032,045 · ra 48,722 · $4.3967 · ok
+[2026-09-14 10:48:54]   fix-gate2: rc=1 [B4/fix-gate2] 91 lượt · 993.1s · vào 540 · cache 5,032,045 · ra 48,722 · $4.3967 · ok
+[2026-09-14 10:50:00]   CỔNG FAIL (rc=1)
+[2026-09-14 10:50:00]   CỔNG FAIL (rc=1)
+[2026-09-14 10:50:00]   tự sửa theo cổng đợt 3: B4-autofix-gate-gate3.md
+[2026-09-14 10:50:00]   tự sửa theo cổng đợt 3: B4-autofix-gate-gate3.md
+[2026-09-14 11:03:57]   fix-gate3: rc=0 [B4/fix-gate3] 77 lượt · 837.2s · vào 420 · cache 3,241,868 · ra 30,920 · $2.8789 · ok
+[2026-09-14 11:03:57]   fix-gate3: rc=0 [B4/fix-gate3] 77 lượt · 837.2s · vào 420 · cache 3,241,868 · ra 30,920 · $2.8789 · ok
+[2026-09-14 11:04:58]   CỔNG PASS (rc=0)
+[2026-09-14 11:04:58]   CỔNG PASS (rc=0)
+[2026-09-14 11:15:53]   3a-code: rc=0 [B4/3a-code] 51 lượt · 654.9s · vào 174 · cache 1,244,174 · ra 22,526 · $1.7169 · ok
+[2026-09-14 11:15:53]   3a-code: rc=0 [B4/3a-code] 51 lượt · 654.9s · vào 174 · cache 1,244,174 · ra 22,526 · $1.7169 · ok
+[2026-09-14 11:16:06]   3b-stress: rc=1 [B4/3b-stress] 31 lượt · 668.0s · vào 180 · cache 1,195,977 · ra 20,113 · $1.5329 · ok
+[2026-09-14 11:16:06]   3b-stress: rc=1 [B4/3b-stress] 31 lượt · 668.0s · vào 180 · cache 1,195,977 · ra 20,113 · $1.5329 · ok
+[2026-09-14 11:16:06]   review FAIL: 0 mục
+[2026-09-14 11:16:06]   review FAIL: 0 mục
+[2026-09-14 11:16:06] === HẾT B4: 88.3 phút · PASS · review FAIL 0 ===
+[2026-09-14 11:16:06] === HẾT B4: 88.3 phút · PASS · review FAIL 0 ===
+[2026-09-14 11:16:06] === BATCH B5 ===
+[2026-09-14 11:16:06] === BATCH B5 ===
+[2026-09-14 11:16:06]   ! không có prompt test — bỏ qua bước test
+[2026-09-14 11:16:06]   ! không có prompt test — bỏ qua bước test
+[2026-09-14 11:40:46]   2-code: rc=1 [B5/2-code] 91 lượt · 1479.5s · vào 540 · cache 4,948,848 · ra 65,080 · $4.8528 · ok
+[2026-09-14 11:40:46]   2-code: rc=1 [B5/2-code] 91 lượt · 1479.5s · vào 540 · cache 4,948,848 · ra 65,080 · $4.8528 · ok
+[2026-09-14 11:41:47]   CỔNG PASS (rc=0)
+[2026-09-14 11:41:47]   CỔNG PASS (rc=0)
+[2026-09-14 11:50:11]   3a-code: rc=0 [B5/3a-code] 30 lượt · 503.2s · vào 108 · cache 538,648 · ra 18,237 · $1.0578 · ok
+[2026-09-14 11:50:11]   3a-code: rc=0 [B5/3a-code] 30 lượt · 503.2s · vào 108 · cache 538,648 · ra 18,237 · $1.0578 · ok
+[2026-09-14 11:50:37]   3b-stress: rc=1 [B5/3b-stress] 31 lượt · 529.2s · vào 180 · cache 1,149,346 · ra 22,668 · $1.6 · ok
+[2026-09-14 11:50:37]   3b-stress: rc=1 [B5/3b-stress] 31 lượt · 529.2s · vào 180 · cache 1,149,346 · ra 22,668 · $1.6 · ok
+[2026-09-14 11:50:37]   review FAIL: 0 mục
+[2026-09-14 11:50:37]   review FAIL: 0 mục
+[2026-09-14 11:50:37] === HẾT B5: 34.5 phút · PASS · review FAIL 0 ===
+[2026-09-14 11:50:37] === HẾT B5: 34.5 phút · PASS · review FAIL 0 ===
+[2026-09-14 11:50:37] ##### TỔNG HỢP ĐÊM #####
+[2026-09-14 11:50:37] ##### TỔNG HỢP ĐÊM #####
+[2026-09-14 11:50:37]   B4: PASS · 88 phút · 0 mục review FAIL
+[2026-09-14 11:50:37]   B4: PASS · 88 phút · 0 mục review FAIL
+[2026-09-14 11:50:37]   B5: PASS · 35 phút · 0 mục review FAIL
+[2026-09-14 11:50:37]   B5: PASS · 35 phút · 0 mục review FAIL
+[2026-09-14 11:50:37] ĐÊM KẾT THÚC (B4 B5)
+[2026-09-14 11:53:59] ĐÁNH BÓNG 1: strip debug + bridge-config + luật vendor…
+[2026-09-14 12:00:26] LAYOUT-FIX bắt đầu (camera dọc 720x1420)…
+METRICS {"ts": "2026-09-14T12:27:53Z", "variant": "v1-harness", "batch": "B5", "step": "2b-fix-release", "model": "qwen3.8-flash", "max_turns": 110, "turns": 123, "duration_s": 2033.8, "api_ms": 1308467, "ttft_ms": 4365, "cost_usd": 5.7781, "session_id": "d3cf59cb-8458-41fc-a76e-4a02652a954d", "resume_from": null, "ctx_per_turn_avg": 4049, "ctx_per_turn_max": 4049, "syspack": "B5-syspack.md", "exit": 0, "timeout": null, "input_tokens": 630, "output_tokens": 58268, "cache_read": 7155726, "cache_creation": 114221}
+[B5/2b-fix-release] 123 lượt · 2033.8s · vào 630 · cache 7,155,726 · ra 58,268 · $5.7781 · ok
+[2026-09-14 12:27:53] LAYOUT-FIX bắt đầu (camera dọc 720x1420)…
+[2026-09-14 12:28:19] build standalone OK
+[2026-09-14 12:28:40] build ytgame OK
+[2026-09-14 12:29:04] build playgama OK
+[2026-09-14 12:29:05] check standalone PASS
+[2026-09-14 12:29:05] check ytgame PASS
+[2026-09-14 12:29:05] check playgama FAIL
+tổng dọn: 0
+[2026-09-14 12:29:05] ĐÁNH BÓNG 1 xong
+METRICS {"ts": "2026-09-14T12:59:24Z", "variant": "v1-harness", "batch": "B3c", "step": "layout-fix", "model": "qwen3.8-flash", "max_turns": 110, "turns": 111, "duration_s": 1890.7, "api_ms": 1658715, "ttft_ms": null, "cost_usd": 8.9509, "session_id": "700588f3-23d9-4213-bf2c-d02d2b0e4102", "resume_from": null, "ctx_per_turn_avg": 5287, "ctx_per_turn_max": 5309, "syspack": "B3c-syspack.md", "exit": 1, "timeout": null, "input_tokens": 660, "output_tokens": 84278, "cache_read": 11479134, "cache_creation": 173053}
+[B3c/layout-fix] 111 lượt · 1890.7s · vào 660 · cache 11,479,134 · ra 84,278 · $8.9509 · ok
+[2026-09-14 12:59:27] layout.test: PASS
+[2026-09-14 13:00:34] B3c cổng: FAIL
+[2026-09-14 13:00:55] build standalone lại: OK
+tổng dọn: 0
+[2026-09-14 13:00:55] LAYOUT-FIX xong
+[2026-09-14 13:04:20] ĐÁNH BÓNG LAYOUT 2 bắt đầu…

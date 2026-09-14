@@ -1,0 +1,13 @@
+{
+  "$comment": "Án lệ M8 R2 (B5): bản nộp kênh Playgama PHẢI kèm file cấu hình bridge này ở GỐC bundle. build-channels.sh copy nó theo manifest scripts/channels/playgama.files (danh sách file là DỮ LIỆU, không hardcode trong script). KHÔNG nhét URL nào vào đây: cổng check-bundle chỉ cho bundle nộp tồn tại ĐÚNG MỘT URL, đó là script bridge do vite.config.ts tiêm vào index.html.",
+  "platform": "playgama",
+  "gameId": "paper-crease",
+  "title": "Paper Crease",
+  "entry": "index.html",
+  "bridge": {
+    "global": "Playgama",
+    "scriptTag": "head-prepend",
+    "urlSource": "vite.config.ts :: PLAYGAMA_BRIDGE_URL (nguồn duy nhất, không lặp lại ở đây)"
+  },
+  "capabilities": ["storage", "ads", "lifecycle"]
+}

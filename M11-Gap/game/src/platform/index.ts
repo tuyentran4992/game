@@ -64,13 +64,9 @@ export function createAdapter(): PlatformAdapter {
   return platformRegistry.resolve(detectPlatformName());
 }
 
-export type {
-  AdCallResult,
-  AdOutcome,
-  AdPlacement,
-  PlatformAdapter,
-  PlatformAds,
-  PlatformLifecycle,
-  PlatformStorage,
-  RewardedPlacement,
-} from './types';
+/**
+ * Cửa kiểu của tầng nền tảng: kinds KHÓA do `types.ts` sở hữu ⇒ index chỉ mở nguyên bảng,
+ * không kể lại tên từng kiểu (kể lại là có bản sao thứ hai lệch nhau khi types.ts thêm khoá —
+ * F4: khối 6 dòng kể tên từng kiểu ở đây từng trùng với khối import ở sdkAdapter.ts).
+ */
+export type * from './types';

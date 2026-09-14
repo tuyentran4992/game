@@ -1,1 +1,6 @@
 [2026-09-14 02:06:32] chờ B2 xong…
+[2026-09-14 02:38:48] staged 232 file (chỉ M11-Gap)
+/usr/local/bin/gh auth git-credential store: 1: /usr/local/bin/gh: not found
+To https://github.com/tuyentran4992/game.git
+   231d2c0..6f96a64  HEAD -> m11/b1a-core-geometry
+[2026-09-14 02:38:53] pushed 6f96a64 → m11/b1a-core-geometry

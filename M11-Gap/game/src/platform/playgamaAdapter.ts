@@ -7,18 +7,8 @@
 // NỢ B5: PlaygamaBridge dưới đây là TỐI GIẢN do test chốt — cầu thật của máy chủ Playgama chưa
 //   có trong repo ⇒ adapter không bịa API thừa, không dựng URL, không tự tạo request (PC-15).
 
-import { createNullAdapter } from './nullAdapter';
-import {
-  createSdkAdapter,
-  globalObject,
-  hasMethods,
-  outcomeFor,
-  type SdkAdsSource,
-  type SdkLifecycleSource,
-  type SdkSources,
-  type SdkStorageSource,
-} from './sdkAdapter';
-import type { AdOutcome, PlatformAdapter, RewardedPlacement } from './types';
+import { globalObject, hostAdapter, outcomeFor, type HostShape } from './sdkAdapter';
+import type { AdOutcome, PlatformAdapter } from './types';
 
 export type PlaygamaAdEvent = 'rewarded' | 'failed' | 'user_closed';
 export type PlaygamaInterstitialEvent = 'shown' | 'failed';
@@ -52,63 +42,48 @@ const INTERSTITIAL_OUTCOME: Record<PlaygamaInterstitialEvent, AdOutcome> = {
   failed: 'failed',
 };
 /**
- * Bảng KHOÁ: hàm nào phần dịch từ vựng này SẼ GỌI. Thiếu bất kỳ hàm nào ⇒ cả phần đó coi như
- * nền tảng vắng (rơi về Null Object). Gate một hàm rồi gọi hàm khác chính là lỗi C9(a).
+ * HÌNH CỦA PLAYGAMA (F4): bảng KHOÁ — hàm nào phần dịch này SẼ GỌI. Thiếu bất kỳ hàm nào ⇒
+ * cả phần đó coi như nền tảng vắng (gate một hàm rồi gọi hàm khác chính là lỗ C9(a)).
+ * `hostAdapter` (sdkAdapter.ts) chạy phần DÙNG CHUNG, file này chỉ còn từ vựng của host.
  */
-const STORAGE_METHODS: readonly string[] = ['getItem', 'setItem'];
-const ADS_METHODS: readonly string[] = ['showRewardedVideo', 'showInterstitial'];
-const LIFECYCLE_METHODS: readonly string[] = [
-  'onPause',
-  'onResume',
-  'onAudioEnabledChange',
-  'setAudioEnabled',
-];
+const BRIDGE_SHAPE: HostShape<PlaygamaBridge> = {
+  storage: {
+    methods: ['getItem', 'setItem'],
+    pick: (b) => b.storage,
+    make: (b) => ({
+      read: (key) => b.storage.getItem(key),
+      write: (key, value) => b.storage.setItem(key, value),
+    }),
+  },
+  ads: {
+    methods: ['showRewardedVideo', 'showInterstitial'],
+    pick: (b) => b.ads,
+    make: (b) => ({
+      rewarded: (place, done) => {
+        b.ads.showRewardedVideo(place, (event) => done(outcomeFor(REWARDED_OUTCOME, event)));
+      },
+      interstitial: (done) => {
+        b.ads.showInterstitial((event) => done(outcomeFor(INTERSTITIAL_OUTCOME, event)));
+      },
+    }),
+  },
+  lifecycle: {
+    methods: ['onPause', 'onResume', 'onAudioEnabledChange', 'setAudioEnabled'],
+    pick: (b) => b.lifecycle,
+    make: (b) => ({
+      onPause: (handler) => b.lifecycle.onPause(handler),
+      onResume: (handler) => b.lifecycle.onResume(handler),
+      onAudioEnabled: (handler) => b.lifecycle.onAudioEnabledChange(handler),
+      setAudioEnabled: (on) => b.lifecycle.setAudioEnabled(on),
+    }),
+  },
+};
+
 /** Tên global do chủ nhà dựng (đọc LAZY — pack B2 §8). */
 const PLAYGAMA_GLOBAL = 'Playgama';
 
-function storageSource(bridge: PlaygamaBridge | null): SdkStorageSource | null {
-  if (bridge === null || !hasMethods(bridge.storage, STORAGE_METHODS)) {
-    return null;
-  }
-  const b = bridge;
-  return {
-    read: (key) => b.storage.getItem(key),
-    write: (key, value) => b.storage.setItem(key, value),
-  };
-}
-
-function adsSource(bridge: PlaygamaBridge | null): SdkAdsSource | null {
-  if (bridge === null || !hasMethods(bridge.ads, ADS_METHODS)) return null;
-  const b = bridge;
-  return {
-    rewarded: (place: RewardedPlacement, done) => {
-      b.ads.showRewardedVideo(place, (event) => done(outcomeFor(REWARDED_OUTCOME, event)));
-    },
-    interstitial: (done) => {
-      b.ads.showInterstitial((event) => done(outcomeFor(INTERSTITIAL_OUTCOME, event)));
-    },
-  };
-}
-
-function lifecycleSource(bridge: PlaygamaBridge | null): SdkLifecycleSource | null {
-  if (bridge === null || !hasMethods(bridge.lifecycle, LIFECYCLE_METHODS)) return null;
-  const b = bridge;
-  return {
-    onPause: (handler) => b.lifecycle.onPause(handler),
-    onResume: (handler) => b.lifecycle.onResume(handler),
-    onAudioEnabled: (handler) => b.lifecycle.onAudioEnabledChange(handler),
-    setAudioEnabled: (on) => b.lifecycle.setAudioEnabled(on),
-  };
-}
-
 /** Adapter Playgama — bridge vắng mặt thì từng lời gọi rơi về Null Object (PC-20). */
 export function createPlaygamaAdapter(bridge?: PlaygamaBridge): PlatformAdapter {
-  const atHand = (): PlaygamaBridge | null =>
-    bridge ?? globalObject<PlaygamaBridge>(PLAYGAMA_GLOBAL);
-  const sources: SdkSources = {
-    storage: () => storageSource(atHand()),
-    ads: () => adsSource(atHand()),
-    lifecycle: () => lifecycleSource(atHand()),
-  };
-  return createSdkAdapter(sources, createNullAdapter());
+  const atHand = (): PlaygamaBridge | null => bridge ?? globalObject<PlaygamaBridge>(PLAYGAMA_GLOBAL);
+  return hostAdapter(atHand, BRIDGE_SHAPE);
 }

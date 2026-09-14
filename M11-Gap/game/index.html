@@ -1,6 +1,17 @@
 <!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Paper Crease</title></head>
+<title>Paper Crease</title>
+<style>
+/* VÒNG SỬA LAYOUT: camera là một CỘT DỌC 720×1420 (Scale.FIT). Desktop rộng => hai dải
+   letterbox hai bên cột. Hai dải ĐÓ là VIỆC CỦA TRANG (nền giấy + vignette nhẹ), không phải
+   của scene — không có CSS/Layout số lẻ nào nằm trong src/render/scenes. */
+html,body{margin:0;height:100%;overflow:hidden;background:#EADFC4}
+#app{position:fixed;inset:0;background:linear-gradient(180deg,#FFF7E8 0%,#F4EAD2 55%,#EADFC4 100%)}
+#app::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(60% 52% at 50% 50%,rgba(23,50,77,0) 55%,rgba(23,50,77,.22) 100%)}
+#app canvas{position:relative;z-index:1;display:block;margin:0 auto}
+</style>
+</head>
 <body><div id="app"></div><script type="module" src="/src/main.ts"></script></body>
 </html>

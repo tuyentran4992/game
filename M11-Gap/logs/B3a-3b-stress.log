@@ -1,0 +1,66 @@
+
+[tool] Bash: {'command': 'ls -R src/render src/ui 2>/dev/null | head -60 && echo "---TESTS---" && ls tests/logic/ && echo "---HELPERS---" && ls tests/logic/helpers/ 2>/dev/null', 'description':
+
+[tool] Bash: {'command': 'npm run typecheck 2>&1 | tail -15 && echo "=== TEST ===" && npm run test:logic 2>&1 | tail -30', 'description': 'Run typecheck and logic tests', 'timeout': 600000}
+
+[tool] Bash: {'command': 'wc -l src/render/**/*.ts src/render/*.ts src/ui/*.ts 2>/dev/null; echo "=== GREP forbidden ==="; grep -rnE "Math\\.random|Date\\.now|performance\\.now|document|window|
+
+[tool] Bash: {'command': 'grep -rnE "\\bany\\b" src/render src/ui | head -30; echo "=== IF/ELSE SWITCH count ==="; grep -rcE "\\bif \\(|\\bcase |\\bswitch\\b|\\? " src/render src/ui | sort -t: 
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/scenes/PlayScene.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/ui/testids.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/anim/unfoldPlan.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/ui/button.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/layout.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/OptionCard.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/components/SheetView.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/session.ts'}
+
+[tool] Bash: {'command': 'grep -nE "Scale|scale|width|height|debug|searchParams|URLSearchParams|seed|level|registry.set|createConfig|autoCenter|RESIZE|ENVELOPE" src/main.ts | head -40', 'descri
+
+[tool] Bash: {'command': '(npx playwright --version 2>&1 | head -3); echo "--- puppeteer:"; node -e "try{require.resolve(\'puppeteer\');console.log(\'puppeteer OK\')}catch(e){console.log(\'no p
+
+[tool] Bash: {'command': 'wc -l tests/logic/view-b3a-*.test.ts tests/logic/scene-boot.test.ts; echo "=== asserts style ==="; grep -cE "expect\\(" tests/logic/view-b3a-contract.test.ts tests/log
+
+[tool] Bash: {'command': 'ls ~/.cache/ms-playwright 2>/dev/null | head; echo "--- global root:"; npm root -g 2>/dev/null; ls $(npm root -g) 2>/dev/null | head -20; echo "--- playwright bin:"; w
+
+[tool] Bash: {'command': 'cat package.json | head -40; echo "=== playwright module ==="; readlink -f /usr/local/bin/playwright; ls /usr/local/lib/node_modules 2>/dev/null | head', 'description'
+
+[tool] Bash: {'command': 'head -3 /usr/local/bin/playwright; echo "==="; python3 -c "import playwright, sys; print(\'py playwright\', playwright.__file__)" 2>&1 | tail -2', 'description': 'Iden
+
+[tool] Bash: {'command': 'npm run build:standalone 2>&1 | tail -12', 'description': 'Build standalone bundle', 'timeout': 300000}
+
+[tool] Bash: {'command': '(npx vite preview --port 4313 --strictPort > /tmp/preview.log 2>&1 &) ; sleep 4; curl -s -o /dev/null -w "%{http_code}\\n" http://localhost:4313/; grep -nE "background
+
+[tool] Bash: {'command': 'grep -nE "export function tap|export function resolve|export function retry|export function advanceClock|export function markReady|export function useHint|export funct
+
+[tool] Bash: {'command': 'grep -nE "advanceClock|timeLeft|timerOn" src/logic/levelState.ts | head -20; echo "=== keyboard ==="; grep -rnE "keyboard|keydown|KeyOne|addKey|cursor" src/render src/
+
+[tool] Bash: {'command': 'sed -n \'205,245p\' src/logic/levelState.ts; echo "=== timeLeft refs in logic+render ==="; grep -rn "timeLeft\\|timerOn\\|timeout\\|timeUp" src/logic/*.ts src/render s
+
+[tool] Bash: {'command': 'grep -nE "^\\s*(export|const|flags|\'|\\")" src/platform/debug.ts | grep -nE "level|seed|debug|hook|FLAG|parse|search" | head -25', 'description': 'Check debug query f
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/tests/logic/view-b3a-contract.test.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/scenes/TitleScene.ts'}
+
+[tool] Read: {'file_path': '/data/youtube-playables/M11-Gap/game/src/render/scenes/BootScene.ts'}
+
+[tool] Bash: {'command': 'python3 -c "import PIL;print(\'PIL ok\')" 2>&1|tail -1; python3 -c "import numpy;print(\'numpy ok\')" 2>&1|tail -1; grep -n "elapsedMs\\|ms" src/logic/stars.ts | head 
+
+[tool] Bash: {'command': 'mkdir -p /tmp/rev && cat > /tmp/rev/s.py <<\'EOF\'\nimport json,sys\nfrom playwright.sync_api import sync_playwright\nBASE="http://localhost:4313/"\nout={}\nerrs=[];ex
+
+[tool] Bash: {'command': 'cd /tmp/rev && sed -i \'s/+h\\])/_s=0/; s/str(w)+"x"+h/str(w)+"x"+str(h)/g\' s.py && grep -n \'str(w)\' s.py && timeout 200 python3 s.py > out1.json 2>err1.txt; tail -
+
+[tool] Bash: {'command': 'cat > /tmp/rev/s2.py <<\'EOF\'\nimport json,sys\nfrom playwright.sync_api import sync_playwright\nBASE="http://localhost:4313/"\nerrs=[];ext=[]\nREC=r"""()=>{window.__
+
+[tool] Bash: {'command': 'cd /tmp/rev && python3 - <<\'EOF\'\nimport numpy as np\nfrom PIL import Image\ndef load(p):\n    im=Image.open(p).convert(\'RGB\'); return np.asarray(im).astype(int)\n
+
+[tool] Bash: {'command': 'cat > /tmp/rev/s3.py <<\'EOF\'\nimport json,sys,time\nfrom playwright.sync_api import sync_playwright\nBASE="http://localhost:4313/"\nout={};errs=[];ext=[]\nINIT=r"""\
